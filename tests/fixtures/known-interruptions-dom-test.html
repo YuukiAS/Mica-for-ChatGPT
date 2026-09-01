@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="zh-CN" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <title>Mica known interruptions DOM test</title>
+    <style>
+      body {
+        margin: 24px;
+        color: #171717;
+        font: 14px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      #stage {
+        min-height: 220px;
+        padding: 16px;
+        border: 1px solid #dddddd;
+      }
+
+      [role="dialog"],
+      dialog {
+        display: block;
+        width: 420px;
+        min-height: 120px;
+        padding: 16px;
+        border: 1px solid #999999;
+        background: #ffffff;
+      }
+
+      button {
+        min-width: 72px;
+        min-height: 32px;
+      }
+
+      .pass {
+        color: #166534;
+      }
+
+      .fail {
+        color: #991b1b;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Mica known interruptions DOM test</h1>
+    <pre id="result">Running...</pre>
+    <div id="stage" aria-live="polite"></div>
+    <script src="../../dist/mica-v0.1.0/known-interruptions.js"></script>
+    <script>
+      const stage = document.getElementById("stage");
+      const resultEl = document.getElementById("result");
+
+      run().catch((error) => {
+        window.__MICA_TEST_RESULT__ = { passed: false, error: String(error?.stack || error) };
+        render();
+      });
+
+      async function run() {
+        const realFixture = await fetch("./chatgpt-rate-limit-dialog.zh-CN.html").then((response) => response.text());
+        const cases = [];
+
+        cases.push(await testCase("original real fixture", async () => {
+          const dialog = appendFromHtml(realFixture);
+          attachClickCounter(dialog);
+          scanRepeated();
+          return getClicks(dialog) === 1;
+        }));
+
+        cases.push(await testCase("second action button", async () => {
+          const dialog = appendFromHtml(realFixture);
+          attachClickCounter(dialog);
+          const second = document.createElement("button");
+          second.textContent = "稍后";
+          second.addEventListener("click", () => incrementClicks(dialog));
+          dialog.appendChild(second);
+          scanRepeated();
+          return getClicks(dialog) === 0;
+        }));
+
+        cases.push(await testCase("unknown consequential body", async () => {
+          const dialog = createDialog({
+            heading: "请求过于频繁",
+            body: "需要继续授权 Google Drive 文件访问后才能执行外部操作。",
+            buttons: ["明白了"]
+          });
+          scanRepeated();
+          return getClicks(dialog) === 0;
+        }));
+
+        cases.push(await testCase("Google Drive OAuth authorization", async () => {
+          const dialog = createDialog({
+            heading: "Authorize Google Drive",
+            body: "Google Drive requests permission to access files.",
+            buttons: ["Allow"]
+          });
+          scanRepeated();
+          return getClicks(dialog) === 0;
+        }));
+
+        cases.push(await testCase("delete confirmation", async () => {
+          const dialog = createDialog({
+            heading: "删除对话",
+            body: "确认删除这个对话吗？此操作无法撤销。",
+            buttons: ["删除"]
+          });
+          scanRepeated();
+          return getClicks(dialog) === 0;
+        }));
+
+        cases.push(await testCase("purchase payment confirmation", async () => {
+          const dialog = createDialog({
+            heading: "Confirm purchase",
+            body: "Payment is required to continue this subscription.",
+            buttons: ["Confirm"]
+          });
+          scanRepeated();
+          return getClicks(dialog) === 0;
+        }));
+
+        cases.push(await testCase("unknown dialog single confirm", async () => {
+          const dialog = createDialog({
+            heading: "系统提示",
+            body: "未知提示内容。",
+            buttons: ["确认"]
+          });
+          scanRepeated();
+          return getClicks(dialog) === 0;
+        }));
+
+        cases.push(await testCase("same DOM node MutationObserver-style repeat", async () => {
+          const dialog = appendFromHtml(realFixture);
+          attachClickCounter(dialog);
+          window.MicaKnownInterruptions.resetForTests();
+          window.MicaKnownInterruptions.scan({ enabled: true });
+          window.MicaKnownInterruptions.scan({ enabled: true });
+          window.MicaKnownInterruptions.scan({ enabled: true });
+          return getClicks(dialog) === 1;
+        }));
+
+        cases.push(await testCase("settings off", async () => {
+          const dialog = appendFromHtml(realFixture);
+          attachClickCounter(dialog);
+          scanRepeated(false);
+          return getClicks(dialog) === 0;
+        }));
+
+        cases.push(await testCase("safe whitespace and punctuation variant", async () => {
+          const dialog = createDialog({
+            heading: " 请求 过于 频繁 ",
+            body: "你的请求过于频繁！为保障数据安全，我们已暂时限制你访问对话记录。 请稍等几分钟后再重试。",
+            buttons: [" 明白了 "]
+          });
+          scanRepeated();
+          return getClicks(dialog) === 1;
+        }));
+
+        window.__MICA_TEST_RESULT__ = {
+          passed: cases.every((item) => item.passed),
+          cases
+        };
+        render();
+      }
+
+      async function testCase(name, fn) {
+        stage.replaceChildren();
+        window.MicaKnownInterruptions.resetForTests();
+        const passed = await fn();
+        return { name, passed };
+      }
+
+      function appendFromHtml(html) {
+        const template = document.createElement("template");
+        template.innerHTML = html;
+        const dialog = template.content.querySelector("[role='dialog'], dialog");
+        if (!dialog) throw new Error("fixture dialog missing");
+        stage.appendChild(dialog);
+        return dialog;
+      }
+
+      function createDialog({ heading, body, buttons }) {
+        const dialog = document.createElement("div");
+        const headingId = `heading-${Math.random().toString(36).slice(2)}`;
+        dialog.setAttribute("role", "dialog");
+        dialog.setAttribute("aria-labelledby", headingId);
+        dialog.innerHTML = `<h2 id="${headingId}"></h2><p></p><div class="actions"></div>`;
+        dialog.querySelector("h2").textContent = heading;
+        dialog.querySelector("p").textContent = body;
+        const actions = dialog.querySelector(".actions");
+        for (const label of buttons) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = label;
+          button.addEventListener("click", () => incrementClicks(dialog));
+          actions.appendChild(button);
+        }
+        dialog.dataset.clicks = "0";
+        stage.appendChild(dialog);
+        return dialog;
+      }
+
+      function attachClickCounter(dialog) {
+        dialog.dataset.clicks = "0";
+        for (const button of dialog.querySelectorAll("button")) {
+          button.addEventListener("click", () => incrementClicks(dialog));
+        }
+      }
+
+      function incrementClicks(dialog) {
+        dialog.dataset.clicks = String(getClicks(dialog) + 1);
+      }
+
+      function getClicks(dialog) {
+        return Number(dialog.dataset.clicks || "0");
+      }
+
+      function scanRepeated(enabled = true) {
+        window.MicaKnownInterruptions.resetForTests();
+        window.MicaKnownInterruptions.scan({ enabled });
+        window.MicaKnownInterruptions.scan({ enabled });
+        window.MicaKnownInterruptions.scan({ enabled });
+      }
+
+      function render() {
+        const result = window.__MICA_TEST_RESULT__;
+        resultEl.className = result?.passed ? "pass" : "fail";
+        resultEl.textContent = JSON.stringify(result, null, 2);
+      }
+    </script>
+  </body>
+</html>

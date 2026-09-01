@@ -8,8 +8,9 @@
     "build": "node scripts/build.mjs",
     "icons": "\"C:\\Users\\humc2\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe\" scripts/generate-icons.py",
     "test:fixture": "node scripts/fixture-smoke.mjs",
+    "test:interruptions": "node scripts/known-interruptions-fixture-smoke.mjs",
     "test:build": "node scripts/validate-build.mjs",
-    "test": "npm run build && npm run test:fixture && npm run test:build",
+    "test": "npm run build && npm run test:fixture && npm run test:interruptions && npm run test:build",
     "package:release": "npm run build && node scripts/package-release.mjs && node scripts/validate-release.mjs"
   },
   "engines": {

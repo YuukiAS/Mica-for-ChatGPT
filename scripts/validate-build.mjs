@@ -19,6 +19,8 @@ assert(manifest.action?.default_title === "Mica", "action.default_title missing"
 assert(manifest.permissions?.includes("storage"), "storage permission missing");
 assert(manifest.permissions?.includes("activeTab"), "activeTab permission missing");
 assert(!manifest.host_permissions?.some((host) => !/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(host)), "unexpected host permission");
+assert(manifest.content_scripts?.[0]?.js?.[0] === "known-interruptions.js", "known interruptions script must run before content.js");
+assert(manifest.content_scripts?.[0]?.js?.[1] === "content.js", "content.js must remain a content script");
 
 for (const size of [16, 32, 48, 128]) {
   assert(manifest.icons?.[size] === `icons/icon${size}.png`, `manifest icon${size} missing`);
@@ -38,15 +40,31 @@ for (const token of [
   "Native virtualization",
   "mountedTurns",
   "conversationTextIncluded: false",
-  "attachmentContentIncluded: false"
+  "attachmentContentIncluded: false",
+  "autoDismissKnownInterruptions",
+  "knownInterruptions"
 ]) {
   assert(content.includes(token), `content.js missing ${token}`);
 }
 const reportBody = extractFunctionBody(content, "buildDiagnosticsReport");
 assert(!/innerText|textContent|innerHTML|outerHTML/.test(reportBody), "diagnostics report builder must not read conversation text/html");
 
+const interruptions = await readFile(path.join(distDir, "known-interruptions.js"), "utf8");
+for (const token of [
+  "chatgpt.rate_limit_history_ack.zh-CN.v1",
+  "MicaKnownInterruptions",
+  "WeakSet",
+  "访问对话记录",
+  "明白了"
+]) {
+  assert(interruptions.includes(token), `known-interruptions.js missing ${token}`);
+}
+for (const forbidden of ["radix-_", "btn-primary", "[role=\"dialog\"] button", "location.reload", "fetch(", "XMLHttpRequest"]) {
+  assert(!interruptions.includes(forbidden), `known-interruptions.js contains forbidden dependency or behavior: ${forbidden}`);
+}
+
 const popupHtml = await readFile(path.join(distDir, "popup", "index.html"), "utf8");
-for (const token of ["Start diagnostics", "Stop diagnostics", "Copy report", "Reset"]) {
+for (const token of ["Start diagnostics", "Stop diagnostics", "Copy report", "Reset", "Auto-dismiss known interruptions"]) {
   assert(popupHtml.includes(token), `popup missing ${token}`);
 }
 

@@ -4,6 +4,7 @@
   const DEFAULT_SETTINGS = {
     enabled: true,
     showStatus: true,
+    autoDismissKnownInterruptions: true,
     recentTurnKeepCount: 8,
     nativeOnlyTurnThreshold: 14,
     viewportBufferMultiple: 1.75
@@ -51,7 +52,10 @@
     removedNodes: 0,
     turnMounts: 0,
     turnUnmounts: 0,
-    turnSamples: 0
+    turnSamples: 0,
+    knownInterruptionDismissals: 0,
+    knownInterruptionDismissalsByRule: {},
+    lastKnownInterruptionRuleId: null
   };
   const turnWindow = {
     previousKeys: new Set(),
@@ -128,6 +132,7 @@
     const next = {};
     if (typeof value.enabled === "boolean") next.enabled = value.enabled;
     if (typeof value.showStatus === "boolean") next.showStatus = value.showStatus;
+    if (typeof value.autoDismissKnownInterruptions === "boolean") next.autoDismissKnownInterruptions = value.autoDismissKnownInterruptions;
     if (Number.isFinite(value.recentTurnKeepCount)) next.recentTurnKeepCount = clamp(Math.round(value.recentTurnKeepCount), 4, 20);
     if (Number.isFinite(value.nativeOnlyTurnThreshold)) next.nativeOnlyTurnThreshold = clamp(Math.round(value.nativeOnlyTurnThreshold), 6, 40);
     if (Number.isFinite(value.viewportBufferMultiple)) next.viewportBufferMultiple = clamp(Number(value.viewportBufferMultiple), 1, 4);
@@ -147,6 +152,7 @@
 
     mutationObserver = new MutationObserver((mutations) => {
       recordMutations(mutations);
+      processKnownInterruptions();
       scheduleScan();
     });
     mutationObserver.observe(document.body, { childList: true, subtree: true });
@@ -162,6 +168,7 @@
         turnWindow.previousKeys = new Set();
       }
       scheduleScan();
+      processKnownInterruptions();
     }, 1500);
   }
 
@@ -177,6 +184,7 @@
         settings = { ...settings, ...next };
         writeSettings(next).then(() => {
           scheduleScan();
+          processKnownInterruptions();
           sendResponse({ status: currentStatus, settings, diagnostics: summarizeDiagnostics() });
         });
         return true;
@@ -237,6 +245,7 @@
       setStatus(STATUS.DISABLED, "Disabled by user", []);
       return;
     }
+    processKnownInterruptions();
     if (!SUPPORTS_CONTENT_VISIBILITY) {
       clearOptimization();
       setStatus(STATUS.DEGRADED, "Browser lacks content-visibility support", []);
@@ -485,6 +494,19 @@
     }
   }
 
+  function processKnownInterruptions() {
+    const api = globalThis.MicaKnownInterruptions;
+    if (!api || typeof api.scan !== "function") return;
+    api.scan({
+      enabled: settings.enabled && settings.autoDismissKnownInterruptions,
+      onDismiss: ({ ruleId }) => {
+        globalCounters.knownInterruptionDismissals += 1;
+        globalCounters.lastKnownInterruptionRuleId = ruleId;
+        globalCounters.knownInterruptionDismissalsByRule[ruleId] = (globalCounters.knownInterruptionDismissalsByRule[ruleId] || 0) + 1;
+      }
+    });
+  }
+
   function createDiagnosticsState() {
     return {
       running: false,
@@ -586,6 +608,9 @@
       turnMounts: globalCounters.turnMounts,
       turnUnmounts: globalCounters.turnUnmounts,
       turnSamples: globalCounters.turnSamples,
+      knownInterruptionDismissals: globalCounters.knownInterruptionDismissals,
+      knownInterruptionDismissalsByRule: { ...globalCounters.knownInterruptionDismissalsByRule },
+      lastKnownInterruptionRuleId: globalCounters.lastKnownInterruptionRuleId,
       domNodes: countDomNodes()
     };
   }
@@ -610,6 +635,7 @@
     const mutationDelta = Math.max(0, current.mutations - baseline.mutations);
     const mountDelta = Math.max(0, current.turnMounts - baseline.turnMounts);
     const unmountDelta = Math.max(0, current.turnUnmounts - baseline.turnUnmounts);
+    const interruptionDismissalDelta = Math.max(0, current.knownInterruptionDismissals - baseline.knownInterruptionDismissals);
     const frameCount = diagnostics.frames.count;
 
     return {
@@ -678,6 +704,11 @@
         scrollSamples: diagnostics.scroll.samples
       },
       memory: getMemorySnapshot(),
+      knownInterruptions: {
+        dismissals: interruptionDismissalDelta,
+        dismissalsByRule: diffRuleCounts(current.knownInterruptionDismissalsByRule, baseline.knownInterruptionDismissalsByRule),
+        lastMatchedRuleId: current.lastKnownInterruptionRuleId
+      },
       mountedTurnComplexity: measureMountedTurnComplexity(turns)
     };
   }
@@ -733,6 +764,15 @@
 
   function ratePerMinute(count, durationSeconds) {
     return durationSeconds > 0 ? round((count / durationSeconds) * 60) : 0;
+  }
+
+  function diffRuleCounts(current, baseline) {
+    const result = {};
+    for (const [ruleId, count] of Object.entries(current || {})) {
+      const delta = count - (baseline?.[ruleId] || 0);
+      if (delta > 0) result[ruleId] = delta;
+    }
+    return result;
   }
 
   function round(value) {

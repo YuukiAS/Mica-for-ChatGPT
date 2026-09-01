@@ -37,7 +37,7 @@ const manifest = {
   content_scripts: [
     {
       matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
-      js: ["content.js"],
+      js: ["known-interruptions.js", "content.js"],
       run_at: "document_idle"
     }
   ]
@@ -53,9 +53,11 @@ const replacements = {
 const render = (source) => Object.entries(replacements).reduce((value, [key, replacement]) => value.replaceAll(key, replacement), source);
 
 const content = render(await readFile(path.join(srcDir, "content.ts"), "utf8"));
+const knownInterruptions = render(await readFile(path.join(srcDir, "reliability", "known-interruptions.ts"), "utf8"));
 const popup = render(await readFile(path.join(popupDir, "popup.ts"), "utf8"));
 
 await writeFile(path.join(outDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+await writeFile(path.join(outDir, "known-interruptions.js"), knownInterruptions);
 await writeFile(path.join(outDir, "content.js"), content);
 await writeFile(path.join(outDir, "popup", "popup.js"), popup);
 await cp(path.join(popupDir, "index.html"), path.join(outDir, "popup", "index.html"));

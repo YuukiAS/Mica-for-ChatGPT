@@ -75,6 +75,20 @@ p {
   gap: 12px;
 }
 
+.row-with-detail span {
+  display: grid;
+  gap: 2px;
+}
+
+.row-with-detail strong {
+  font-size: 13px;
+}
+
+.row-with-detail small {
+  color: #666666;
+  font-size: 11px;
+}
+
 .field {
   display: grid;
   grid-template-columns: 1fr 64px;
