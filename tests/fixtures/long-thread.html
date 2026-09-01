@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mica long-thread fixture</title>
+    <style>
+      body {
+        margin: 0;
+        font: 15px/1.5 system-ui, sans-serif;
+        background: #f7f7f8;
+      }
+      main {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 32px 16px 120px;
+      }
+      article {
+        margin: 0 0 22px;
+        padding: 18px;
+        border: 1px solid #d9d9e3;
+        border-radius: 8px;
+        background: #ffffff;
+      }
+      [data-message-author-role="user"] {
+        font-weight: 650;
+      }
+      pre {
+        overflow: auto;
+        padding: 12px;
+        background: #101014;
+        color: #f7f7f8;
+        border-radius: 6px;
+      }
+      .composer {
+        position: fixed;
+        left: 50%;
+        right: auto;
+        bottom: 18px;
+        width: min(820px, calc(100vw - 32px));
+        transform: translateX(-50%);
+        display: flex;
+        gap: 8px;
+      }
+      textarea {
+        flex: 1;
+        min-height: 48px;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="thread"></main>
+    <div class="composer" data-testid="composer">
+      <textarea aria-label="Message Mica"></textarea>
+      <button id="send">Send</button>
+    </div>
+    <script>
+      const thread = document.getElementById("thread");
+      let total = 90;
+      function makeArticle(index, role, body) {
+        const article = document.createElement("article");
+        article.dataset.testid = `conversation-turn-${index}`;
+        article.innerHTML = `
+          <div data-message-author-role="${role}">${role} turn ${index}</div>
+          <p>${body || "Long ChatGPT-like content. ".repeat(24)}</p>
+          ${index % 10 === 0 ? "<pre><code>const value = \"code block\";</code></pre>" : ""}
+          ${index === 55 ? "<div data-testid=\"tool-card\">Tool result card that should stay native.</div>" : ""}
+          ${index === 65 ? "<div data-testid=\"auth-card\"><button>Allow access</button></div>" : ""}
+          <button data-action="copy">Copy</button>
+          ${role === "user" ? "<button data-action=\"edit\">Edit</button><button data-action=\"branch\">Branch</button>" : ""}
+        `;
+        return article;
+      }
+      for (let index = 1; index <= 90; index += 1) {
+        const role = index % 2 === 0 ? "assistant" : "user";
+        thread.appendChild(makeArticle(index, role));
+      }
+      thread.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-action]");
+        if (!button) return;
+        const article = button.closest("article");
+        article.dataset.lastAction = button.dataset.action;
+      });
+      document.getElementById("send").addEventListener("click", () => {
+        const textarea = document.querySelector("textarea");
+        const value = textarea.value.trim() || "fixture probe";
+        textarea.value = "";
+        total += 1;
+        thread.appendChild(makeArticle(total, "user", value));
+        total += 1;
+        const assistant = makeArticle(total, "assistant", "Streaming");
+        const stop = document.createElement("button");
+        stop.dataset.testid = "stop-generating";
+        stop.textContent = "Stop generating";
+        assistant.appendChild(stop);
+        thread.appendChild(assistant);
+        let ticks = 0;
+        const timer = setInterval(() => {
+          ticks += 1;
+          assistant.querySelector("p").textContent += " chunk";
+          if (ticks >= 4) {
+            clearInterval(timer);
+            stop.remove();
+          }
+        }, 100);
+      });
+    </script>
+    <script src="../../dist/mica-v0.1.0/content.js"></script>
+  </body>
+</html>

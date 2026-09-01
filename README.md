@@ -21,6 +21,62 @@ Mica 是一个面向 ChatGPT 网页端的浏览器扩展。目标不是重做 Ch
 
 详细执行方案见 [`docs/PHASE_1_LONG_THREAD_RECOVERY.md`](docs/PHASE_1_LONG_THREAD_RECOVERY.md)。整体路线见 [`docs/ROADMAP.md`](docs/ROADMAP.md)。
 
+## v0.1 候选版安装
+
+当前可加载的 unpacked extension 目录是：
+
+```text
+D:\Code\Mica-for-ChatGPT\dist\mica-v0.1.0
+```
+
+重新构建：
+
+```bash
+npm run build
+```
+
+Chrome / Edge 手动安装：
+
+1. 打开 `chrome://extensions` 或 `edge://extensions`。
+2. 开启 Developer mode。
+3. 点击 Load unpacked。
+4. 选择 `D:\Code\Mica-for-ChatGPT\dist\mica-v0.1.0`。
+5. 打开或刷新 `https://chatgpt.com/` 的长 conversation。
+
+页面右下角会显示状态：
+
+- `Active`：已识别长 thread，并对离屏历史 turn 应用渲染 containment。
+- `Native only`：当前 turn 数量较少，或 ChatGPT 原生页面还没有加载出需要处理的长 thread。
+- `Degraded`：疑似 conversation 页面，但 Mica 无法安全识别 turn 结构，已停止优化并保持原生页面。
+- `Disabled`：用户在 popup 或页面状态条中关闭了 Mica。
+
+最短诊断路径：
+
+```js
+document.documentElement.dataset.micaStatus
+document.documentElement.dataset.micaTurns
+document.documentElement.dataset.micaOptimizedTurns
+```
+
+popup 可切换启用状态、状态条显示，以及保留原生渲染的最近 turn 数量。
+
+## v0.1 当前限制
+
+- 默认不修改 ChatGPT 私有 API response，也不阻止 network request。
+- 不删除 React 管理的消息节点；这一版只用 `content-visibility:auto`、containment 和 intrinsic-size 降低离屏历史 turn 的渲染成本。
+- 工具卡片、文件/授权类 UI、正在编辑的内容、viewport 附近内容和最近 turn 会保持原生渲染。
+- Codex 当前只能访问未登录 ChatGPT 首页，不能在本机完成真实 authenticated long thread 回归；真实验收需要在目标 Chrome / Edge / MacBook Neo 上完成。
+- 旧 LightSession 失效调查见 [`docs/investigations/2026-09-01-lightsession-current-chatgpt.md`](docs/investigations/2026-09-01-lightsession-current-chatgpt.md)。
+
+## v0.1 本地验证
+
+```bash
+npm run build
+npm run test:fixture
+```
+
+本地 90-turn fixture 页面级检查结果：Mica 进入 `Active`，90 个模拟 turn 中 73 个离屏历史 turn 被加上 `mica-turn-optimized`，状态条显示 `Mica · Active · 17 active / 90 turns`。
+
 ## 后续方向
 
 在长对话性能稳定后，再逐步加入：

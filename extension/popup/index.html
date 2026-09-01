@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="popup.css">
+    <title>Mica</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <strong>Mica</strong>
+        <span id="version">v0.1</span>
+      </header>
+
+      <section class="status">
+        <span id="dot"></span>
+        <div>
+          <div id="state">Native only</div>
+          <p id="reason">Open a ChatGPT conversation.</p>
+        </div>
+      </section>
+
+      <label class="row">
+        <span>Enabled</span>
+        <input id="enabled" type="checkbox" checked>
+      </label>
+
+      <label class="row">
+        <span>Status pill</span>
+        <input id="showStatus" type="checkbox" checked>
+      </label>
+
+      <label class="field">
+        <span>Recent turns kept native</span>
+        <input id="recentTurnKeepCount" type="number" min="4" max="20" step="1" value="8">
+      </label>
+
+      <footer id="counts">0 active / 0 turns</footer>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

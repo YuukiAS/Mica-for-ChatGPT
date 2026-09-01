@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Mica for ChatGPT",
+  "short_name": "Mica",
+  "version": "0.1.0",
+  "description": "Low-risk render containment for very long ChatGPT threads.",
+  "action": {
+    "default_title": "Mica",
+    "default_popup": "popup/index.html"
+  },
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
