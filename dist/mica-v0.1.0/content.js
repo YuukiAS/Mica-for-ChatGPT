@@ -1,5 +1,6 @@
 (() => {
   const VERSION = "0.1.0";
+  const VERSION_NAME = "0.1.0-alpha.1";
   const DEFAULT_SETTINGS = {
     enabled: true,
     showStatus: true,
@@ -10,6 +11,7 @@
   const STORAGE_KEYS = Object.keys(DEFAULT_SETTINGS);
   const STATUS = {
     ACTIVE: "Active",
+    NATIVE_VIRTUALIZATION: "Native virtualization",
     NATIVE_ONLY: "Native only",
     DEGRADED: "Degraded",
     DISABLED: "Disabled"
@@ -38,20 +40,37 @@
     "[data-testid*='auth']"
   ].join(",");
   const SUPPORTS_CONTENT_VISIBILITY = typeof CSS !== "undefined" && CSS.supports?.("content-visibility", "auto");
+  const FRAME_STALL_MS = 50;
   const bootTime = Date.now();
   const measuredHeights = new WeakMap();
   const observedTurns = new WeakSet();
   const optimizedTurns = new Set();
+  const globalCounters = {
+    mutations: 0,
+    addedNodes: 0,
+    removedNodes: 0,
+    turnMounts: 0,
+    turnUnmounts: 0,
+    turnSamples: 0
+  };
+  const turnWindow = {
+    previousKeys: new Set(),
+    currentKeys: new Set(),
+    lastMountedCount: 0,
+    lastSampleAt: 0
+  };
+  let diagnostics = createDiagnosticsState();
   let settings = { ...DEFAULT_SETTINGS };
   let currentStatus = {
     name: STATUS.NATIVE_ONLY,
     reason: "Initializing",
-    turns: 0,
-    activeTurns: 0,
+    mountedTurns: 0,
     optimizedTurns: 0,
     protectedTurns: 0,
     updatedAt: new Date().toISOString(),
-    version: VERSION
+    version: VERSION,
+    versionName: VERSION_NAME,
+    label: "Mica · Native only · 0 mounted"
   };
   let badgeHost = null;
   let badgeRoot = null;
@@ -72,7 +91,7 @@
     setupBadge();
     setupObservers();
     setupMessages();
-    scheduleScan("init");
+    scheduleScan();
   }
 
   function isSupportedPage() {
@@ -126,16 +145,23 @@
       }
     });
 
-    mutationObserver = new MutationObserver(() => scheduleScan("mutation"));
+    mutationObserver = new MutationObserver((mutations) => {
+      recordMutations(mutations);
+      scheduleScan();
+    });
     mutationObserver.observe(document.body, { childList: true, subtree: true });
-    addEventListener("scroll", () => scheduleScan("scroll"), { passive: true, capture: true });
-    addEventListener("resize", () => scheduleScan("resize"), { passive: true });
+    addEventListener("scroll", () => {
+      recordScrollSample();
+      scheduleScan();
+    }, { passive: true, capture: true });
+    addEventListener("resize", () => scheduleScan(), { passive: true });
     setInterval(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
         clearOptimization();
+        turnWindow.previousKeys = new Set();
       }
-      scheduleScan("interval");
+      scheduleScan();
     }, 1500);
   }
 
@@ -143,16 +169,36 @@
     globalThis.chrome?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
       if (!message || typeof message !== "object") return false;
       if (message.type === "MICA_GET_STATUS") {
-        sendResponse({ status: currentStatus, settings });
+        sendResponse({ status: currentStatus, settings, diagnostics: summarizeDiagnostics() });
         return true;
       }
       if (message.type === "MICA_SET_SETTINGS") {
         const next = sanitizeSettings(message.settings || {});
         settings = { ...settings, ...next };
         writeSettings(next).then(() => {
-          scheduleScan("settings");
-          sendResponse({ status: currentStatus, settings });
+          scheduleScan();
+          sendResponse({ status: currentStatus, settings, diagnostics: summarizeDiagnostics() });
         });
+        return true;
+      }
+      if (message.type === "MICA_DIAGNOSTICS_START") {
+        startDiagnostics();
+        sendResponse({ status: currentStatus, diagnostics: summarizeDiagnostics() });
+        return true;
+      }
+      if (message.type === "MICA_DIAGNOSTICS_STOP") {
+        stopDiagnostics();
+        sendResponse({ status: currentStatus, diagnostics: summarizeDiagnostics(), report: buildDiagnosticsReport() });
+        return true;
+      }
+      if (message.type === "MICA_DIAGNOSTICS_COPY_REPORT") {
+        const report = buildDiagnosticsReport();
+        sendResponse({ status: currentStatus, diagnostics: summarizeDiagnostics(), report, reportText: JSON.stringify(report, null, 2) });
+        return true;
+      }
+      if (message.type === "MICA_DIAGNOSTICS_RESET") {
+        resetDiagnostics();
+        sendResponse({ status: currentStatus, diagnostics: summarizeDiagnostics() });
         return true;
       }
       return false;
@@ -167,7 +213,7 @@
         }
       }
       settings = { ...settings, ...sanitizeSettings(next) };
-      scheduleScan("storage");
+      scheduleScan();
     });
   }
 
@@ -198,19 +244,20 @@
     }
 
     const turns = collectConversationTurns();
+    updateTurnWindowStats(turns);
     if (turns.length === 0) {
       clearOptimization();
-      const conversationPath = /^\/(?:c|share)\//.test(location.pathname);
+      const conversationPath = isConversationPath();
       const hasTimedOut = Date.now() - bootTime > 5000;
       const name = conversationPath && hasTimedOut ? STATUS.DEGRADED : STATUS.NATIVE_ONLY;
-      const reason = conversationPath && hasTimedOut ? "No safe conversation turn container found" : "No loaded conversation turns";
+      const reason = conversationPath && hasTimedOut ? "No safe conversation turn container found" : "No mounted conversation turns";
       setStatus(name, reason, turns);
       return;
     }
 
     if (!isSafeTurnSet(turns)) {
       clearOptimization();
-      setStatus(STATUS.DEGRADED, "Turn structure is ambiguous", turns);
+      setStatus(STATUS.DEGRADED, "Mounted turn structure is ambiguous", turns);
       return;
     }
 
@@ -220,7 +267,11 @@
 
     if (turns.length <= settings.nativeOnlyTurnThreshold) {
       clearOptimization();
-      setStatus(STATUS.NATIVE_ONLY, "Turn count is small enough for native rendering", turns);
+      const nativeName = isNativeVirtualizationLikely(turns) ? STATUS.NATIVE_VIRTUALIZATION : STATUS.NATIVE_ONLY;
+      const reason = nativeName === STATUS.NATIVE_VIRTUALIZATION
+        ? "ChatGPT appears to keep only a small mounted conversation window"
+        : "Mounted turn count is small enough for native rendering";
+      setStatus(nativeName, reason, turns);
       return;
     }
 
@@ -240,7 +291,12 @@
       }
     }
 
-    setStatus(STATUS.ACTIVE, "Render containment applied to offscreen historical turns", turns, optimizedCount, protectedCount);
+    if (optimizedCount > 0) {
+      setStatus(STATUS.ACTIVE, "Mica render containment applied to offscreen mounted turns", turns, optimizedCount, protectedCount);
+      return;
+    }
+
+    setStatus(STATUS.NATIVE_ONLY, "All mounted turns are protected or near the viewport", turns, optimizedCount, protectedCount);
   }
 
   function collectConversationTurns() {
@@ -258,7 +314,7 @@
           roleNode.closest("[data-testid*='conversation-turn']") ||
           roleNode.closest("article") ||
           roleNode;
-      } else if (node.matches("article") && node.innerText.trim().length > 12) {
+      } else if (node.matches("article") && (node.childElementCount > 0 || node.getBoundingClientRect().height > 20)) {
         turn = node;
       }
 
@@ -349,26 +405,338 @@
     }
   }
 
+  function updateTurnWindowStats(turns) {
+    const nextKeys = new Set(turns.map((turn, index) => getTurnKey(turn, index)));
+    if (turnWindow.lastSampleAt > 0) {
+      for (const key of nextKeys) {
+        if (!turnWindow.previousKeys.has(key)) globalCounters.turnMounts += 1;
+      }
+      for (const key of turnWindow.previousKeys) {
+        if (!nextKeys.has(key)) globalCounters.turnUnmounts += 1;
+      }
+    }
+    globalCounters.turnSamples += 1;
+    turnWindow.previousKeys = nextKeys;
+    turnWindow.currentKeys = nextKeys;
+    turnWindow.lastMountedCount = turns.length;
+    turnWindow.lastSampleAt = Date.now();
+  }
+
+  function getTurnKey(turn, index) {
+    const roleNode = turn.matches("[data-message-author-role]") ? turn : turn.querySelector("[data-message-author-role]");
+    const role = roleNode?.getAttribute("data-message-author-role") || "unknown";
+    const testId = turn.getAttribute("data-testid") || roleNode?.closest("[data-testid]")?.getAttribute("data-testid") || "";
+    const messageId = turn.getAttribute("data-message-id") || roleNode?.getAttribute("data-message-id") || "";
+    const id = turn.id || "";
+    if (testId || messageId || id) {
+      return `${role}:${testId}:${messageId}:${id}`;
+    }
+    const rect = turn.getBoundingClientRect();
+    return `${role}:${index}:${Math.round(rect.top / 20)}:${Math.round(rect.height / 20)}`;
+  }
+
+  function isNativeVirtualizationLikely(turns) {
+    if (!isConversationPath() && document.documentElement.dataset.micaFixture !== "true") return false;
+    if (globalCounters.turnUnmounts > 0 && turns.length <= settings.nativeOnlyTurnThreshold) return true;
+    const scrollElement = document.scrollingElement || document.documentElement;
+    const viewport = window.innerHeight || document.documentElement.clientHeight || 900;
+    return turns.length > 0 && turns.length <= 12 && scrollElement.scrollHeight > viewport * 4;
+  }
+
+  function isConversationPath() {
+    return /^\/(?:c|share)\//.test(location.pathname);
+  }
+
   function setStatus(name, reason, turns, optimizedCount = 0, protectedCount = 0) {
+    const mountedCount = turns.length;
     currentStatus = {
       name,
       reason,
-      turns: turns.length,
-      activeTurns: Math.max(0, turns.length - optimizedCount),
+      mountedTurns: mountedCount,
       optimizedTurns: optimizedCount,
       protectedTurns: protectedCount,
       updatedAt: new Date().toISOString(),
       version: VERSION,
-      url: location.href
+      versionName: VERSION_NAME,
+      label: formatStatusLabel(name, mountedCount, optimizedCount)
     };
     globalThis.__MICA_LONG_THREAD_STATUS__ = currentStatus;
     if (globalThis.window) {
       globalThis.window.__MICA_LONG_THREAD_STATUS__ = currentStatus;
     }
     document.documentElement.dataset.micaStatus = name;
-    document.documentElement.dataset.micaTurns = String(turns.length);
+    document.documentElement.dataset.micaMountedTurns = String(mountedCount);
     document.documentElement.dataset.micaOptimizedTurns = String(optimizedCount);
+    delete document.documentElement.dataset.micaTurns;
     renderBadge();
+  }
+
+  function formatStatusLabel(name, mountedCount, optimizedCount) {
+    if (name === STATUS.DISABLED) return "Mica · Disabled";
+    if (name === STATUS.ACTIVE) return `Mica · Active · ${mountedCount} mounted · ${optimizedCount} optimized`;
+    return `Mica · ${name} · ${mountedCount} mounted`;
+  }
+
+  function recordMutations(mutations) {
+    globalCounters.mutations += mutations.length;
+    for (const mutation of mutations) {
+      globalCounters.addedNodes += mutation.addedNodes?.length || 0;
+      globalCounters.removedNodes += mutation.removedNodes?.length || 0;
+    }
+  }
+
+  function createDiagnosticsState() {
+    return {
+      running: false,
+      startedAt: null,
+      stoppedAt: null,
+      baseline: null,
+      longTaskObserver: null,
+      longTasks: {
+        count: 0,
+        totalDurationMs: 0,
+        maxDurationMs: 0
+      },
+      frames: {
+        count: 0,
+        stallCount: 0,
+        maxFrameGapMs: 0,
+        lastFrameAt: 0,
+        rafId: 0
+      },
+      scroll: {
+        samples: 0,
+        lastAt: 0
+      }
+    };
+  }
+
+  function startDiagnostics() {
+    stopDiagnostics();
+    diagnostics = createDiagnosticsState();
+    diagnostics.running = true;
+    diagnostics.startedAt = Date.now();
+    diagnostics.baseline = snapshotCounters();
+    startLongTaskObserver();
+    diagnostics.frames.rafId = requestAnimationFrame(sampleFrame);
+  }
+
+  function stopDiagnostics() {
+    if (diagnostics.longTaskObserver) {
+      diagnostics.longTaskObserver.disconnect();
+      diagnostics.longTaskObserver = null;
+    }
+    if (diagnostics.frames.rafId) {
+      cancelAnimationFrame(diagnostics.frames.rafId);
+      diagnostics.frames.rafId = 0;
+    }
+    if (diagnostics.running) {
+      diagnostics.running = false;
+      diagnostics.stoppedAt = Date.now();
+    }
+  }
+
+  function resetDiagnostics() {
+    stopDiagnostics();
+    diagnostics = createDiagnosticsState();
+  }
+
+  function startLongTaskObserver() {
+    if (typeof PerformanceObserver === "undefined") return;
+    const supported = PerformanceObserver.supportedEntryTypes || [];
+    if (!supported.includes("longtask")) return;
+    try {
+      diagnostics.longTaskObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          const duration = Math.round(entry.duration * 10) / 10;
+          diagnostics.longTasks.count += 1;
+          diagnostics.longTasks.totalDurationMs += duration;
+          diagnostics.longTasks.maxDurationMs = Math.max(diagnostics.longTasks.maxDurationMs, duration);
+        }
+      });
+      diagnostics.longTaskObserver.observe({ entryTypes: ["longtask"] });
+    } catch (_error) {
+      diagnostics.longTaskObserver = null;
+    }
+  }
+
+  function sampleFrame(timestamp) {
+    if (!diagnostics.running) return;
+    if (diagnostics.frames.lastFrameAt > 0) {
+      const gap = timestamp - diagnostics.frames.lastFrameAt;
+      diagnostics.frames.count += 1;
+      diagnostics.frames.maxFrameGapMs = Math.max(diagnostics.frames.maxFrameGapMs, Math.round(gap * 10) / 10);
+      if (gap >= FRAME_STALL_MS) diagnostics.frames.stallCount += 1;
+    }
+    diagnostics.frames.lastFrameAt = timestamp;
+    diagnostics.frames.rafId = requestAnimationFrame(sampleFrame);
+  }
+
+  function recordScrollSample() {
+    if (!diagnostics.running) return;
+    diagnostics.scroll.samples += 1;
+    diagnostics.scroll.lastAt = Date.now();
+  }
+
+  function snapshotCounters() {
+    return {
+      mutations: globalCounters.mutations,
+      addedNodes: globalCounters.addedNodes,
+      removedNodes: globalCounters.removedNodes,
+      turnMounts: globalCounters.turnMounts,
+      turnUnmounts: globalCounters.turnUnmounts,
+      turnSamples: globalCounters.turnSamples,
+      domNodes: countDomNodes()
+    };
+  }
+
+  function summarizeDiagnostics() {
+    const durationMs = getDiagnosticsDuration();
+    return {
+      running: diagnostics.running,
+      durationMs,
+      longTaskCount: diagnostics.longTasks.count,
+      frameStallCount: diagnostics.frames.stallCount,
+      maxFrameGapMs: diagnostics.frames.maxFrameGapMs
+    };
+  }
+
+  function buildDiagnosticsReport() {
+    const turns = collectConversationTurns();
+    const durationMs = getDiagnosticsDuration();
+    const baseline = diagnostics.baseline || snapshotCounters();
+    const current = snapshotCounters();
+    const durationSeconds = durationMs > 0 ? durationMs / 1000 : 0;
+    const mutationDelta = Math.max(0, current.mutations - baseline.mutations);
+    const mountDelta = Math.max(0, current.turnMounts - baseline.turnMounts);
+    const unmountDelta = Math.max(0, current.turnUnmounts - baseline.turnUnmounts);
+    const frameCount = diagnostics.frames.count;
+
+    return {
+      schemaVersion: 1,
+      generatedAt: new Date().toISOString(),
+      privacy: {
+        localOnly: true,
+        telemetryUploaded: false,
+        conversationTextIncluded: false,
+        attachmentContentIncluded: false
+      },
+      extension: {
+        name: "Mica for ChatGPT",
+        version: VERSION,
+        versionName: VERSION_NAME
+      },
+      page: {
+        origin: location.origin,
+        pathKind: getPathKind(),
+        uptimeMs: Date.now() - bootTime
+      },
+      status: {
+        name: currentStatus.name,
+        reason: currentStatus.reason,
+        mountedTurns: currentStatus.mountedTurns,
+        optimizedTurns: currentStatus.optimizedTurns
+      },
+      diagnostics: {
+        running: diagnostics.running,
+        startedAt: diagnostics.startedAt ? new Date(diagnostics.startedAt).toISOString() : null,
+        stoppedAt: diagnostics.stoppedAt ? new Date(diagnostics.stoppedAt).toISOString() : null,
+        durationMs
+      },
+      mountedTurns: {
+        current: turns.length,
+        lastObserved: turnWindow.lastMountedCount
+      },
+      turnChurn: {
+        mounts: mountDelta,
+        unmounts: unmountDelta,
+        mountRatePerMinute: ratePerMinute(mountDelta, durationSeconds),
+        unmountRatePerMinute: ratePerMinute(unmountDelta, durationSeconds)
+      },
+      dom: {
+        nodes: current.domNodes,
+        nodeDelta: current.domNodes - baseline.domNodes
+      },
+      mutations: {
+        count: mutationDelta,
+        addedNodes: Math.max(0, current.addedNodes - baseline.addedNodes),
+        removedNodes: Math.max(0, current.removedNodes - baseline.removedNodes),
+        ratePerSecond: durationSeconds > 0 ? round(mutationDelta / durationSeconds) : 0
+      },
+      longTasks: {
+        supported: isLongTaskSupported(),
+        count: diagnostics.longTasks.count,
+        totalDurationMs: round(diagnostics.longTasks.totalDurationMs),
+        maxDurationMs: round(diagnostics.longTasks.maxDurationMs)
+      },
+      frames: {
+        sampledFrames: frameCount,
+        stallThresholdMs: FRAME_STALL_MS,
+        stallCount: diagnostics.frames.stallCount,
+        maxFrameGapMs: diagnostics.frames.maxFrameGapMs,
+        jankRatio: frameCount > 0 ? round(diagnostics.frames.stallCount / frameCount) : null,
+        scrollSamples: diagnostics.scroll.samples
+      },
+      memory: getMemorySnapshot(),
+      mountedTurnComplexity: measureMountedTurnComplexity(turns)
+    };
+  }
+
+  function getDiagnosticsDuration() {
+    if (!diagnostics.startedAt) return 0;
+    const end = diagnostics.running ? Date.now() : diagnostics.stoppedAt || Date.now();
+    return Math.max(0, end - diagnostics.startedAt);
+  }
+
+  function getPathKind() {
+    if (/^\/c\//.test(location.pathname)) return "conversation";
+    if (/^\/share\//.test(location.pathname)) return "shared-conversation";
+    if (document.documentElement.dataset.micaFixture === "true") return "fixture";
+    return "other";
+  }
+
+  function countDomNodes() {
+    return document.getElementsByTagName("*").length;
+  }
+
+  function isLongTaskSupported() {
+    return typeof PerformanceObserver !== "undefined" && (PerformanceObserver.supportedEntryTypes || []).includes("longtask");
+  }
+
+  function getMemorySnapshot() {
+    const memory = performance?.memory;
+    if (!memory) {
+      return { supported: false };
+    }
+    return {
+      supported: true,
+      usedJSHeapSize: memory.usedJSHeapSize,
+      totalJSHeapSize: memory.totalJSHeapSize,
+      jsHeapSizeLimit: memory.jsHeapSizeLimit
+    };
+  }
+
+  function measureMountedTurnComplexity(turns) {
+    const counts = turns.map((turn) => turn.getElementsByTagName("*").length).sort((a, b) => a - b);
+    if (counts.length === 0) {
+      return { count: 0, descendantElements: { min: 0, median: 0, max: 0 } };
+    }
+    return {
+      count: counts.length,
+      descendantElements: {
+        min: counts[0],
+        median: counts[Math.floor(counts.length / 2)],
+        max: counts[counts.length - 1]
+      }
+    };
+  }
+
+  function ratePerMinute(count, durationSeconds) {
+    return durationSeconds > 0 ? round((count / durationSeconds) * 60) : 0;
+  }
+
+  function round(value) {
+    return Math.round(value * 100) / 100;
   }
 
   function injectStyles() {
@@ -402,7 +770,6 @@
   function renderBadge() {
     if (!badgeRoot) return;
     const hidden = !settings.showStatus;
-    const label = `Mica · ${currentStatus.name} · ${currentStatus.activeTurns} active / ${currentStatus.turns} turns`;
     badgeHost.hidden = hidden;
     badgeRoot.innerHTML = `
 <style>
@@ -411,7 +778,7 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    max-width: min(420px, calc(100vw - 24px));
+    max-width: min(440px, calc(100vw - 24px));
     min-height: 32px;
     padding: 6px 8px 6px 10px;
     border: 1px solid rgba(23, 23, 23, 0.18);
@@ -456,17 +823,18 @@
 </style>
 <div class="mica-badge" title="${escapeHtml(currentStatus.reason)}">
   <span class="mica-dot" aria-hidden="true"></span>
-  <span class="mica-label">${escapeHtml(label)}</span>
-  <button type="button" title="Disable Mica" aria-label="Disable Mica">×</button>
+  <span class="mica-label">${escapeHtml(currentStatus.label)}</span>
+  <button type="button" title="Disable Mica" aria-label="Disable Mica">x</button>
 </div>`;
     badgeRoot.querySelector("button")?.addEventListener("click", () => {
       settings = { ...settings, enabled: false };
-      writeSettings({ enabled: false }).then(() => scheduleScan("badge-disable"));
+      writeSettings({ enabled: false }).then(() => scheduleScan());
     });
   }
 
   function statusColor(name) {
     if (name === STATUS.ACTIVE) return "#16803c";
+    if (name === STATUS.NATIVE_VIRTUALIZATION) return "#0f766e";
     if (name === STATUS.NATIVE_ONLY) return "#2563eb";
     if (name === STATUS.DEGRADED) return "#b45309";
     return "#737373";

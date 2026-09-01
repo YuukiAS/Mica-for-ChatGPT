@@ -47,25 +47,34 @@ Chrome / Edge 手动安装：
 
 页面右下角会显示状态：
 
-- `Active`：Mica 确实施加了额外渲染优化。
-- `Native only`：当前页面保持原生渲染；当前 ChatGPT 已经会对长 conversation 做窗口化/虚拟化，因此这里观察到的 turn 数只是实时 mounted DOM turns，不代表完整 thread 长度。
-- `Degraded`：疑似 conversation 页面，但 Mica 无法安全识别 turn 结构，已停止优化并保持原生页面。
+- `Active`：Mica 确实对当前 mounted 的离屏 turn 应用了额外 containment。
+- `Native virtualization`：ChatGPT 看起来已经只保留一个较小 mounted conversation window。
+- `Native only`：当前页面保持原生渲染；这里观察到的数字只是实时 mounted DOM turns，不代表完整 thread 长度。
+- `Degraded`：疑似 conversation 页面，但 Mica 无法安全识别 mounted turn 结构，已停止优化并保持原生页面。
 - `Disabled`：用户在 popup 或页面状态条中关闭了 Mica。
 
 最短诊断路径：
 
 ```js
 document.documentElement.dataset.micaStatus
-document.documentElement.dataset.micaTurns
+document.documentElement.dataset.micaMountedTurns
 document.documentElement.dataset.micaOptimizedTurns
 ```
 
-popup 可切换启用状态、状态条显示，以及保留原生渲染的最近 turn 数量。
+popup 可切换启用状态、状态条显示、保留原生渲染的最近 turn 数量，并提供本地 diagnostics：
+
+- `Start diagnostics`
+- `Stop diagnostics`
+- `Copy report`
+- `Reset`
+
+diagnostics report 只统计 mounted turn 数、DOM node 数、mutation/long task/frame stall/heap/complexity 等指标，不复制聊天正文或附件内容，不上传 telemetry。
 
 ## v0.1 当前限制
 
 - 默认不修改 ChatGPT 私有 API response，也不阻止 network request。
 - 不删除 React 管理的消息节点；这一版只用 `content-visibility:auto`、containment 和 intrinsic-size 降低离屏历史 turn 的渲染成本。
+- 真实登录态 Edge 已确认当前 ChatGPT 已经原生 virtualize conversation；Mica 的 containment 现在只是低风险 fallback，`v0.1.0-alpha.1` 主要用于真实长 thread runtime diagnostics。
 - 工具卡片、文件/授权类 UI、正在编辑的内容、viewport 附近内容和最近 turn 会保持原生渲染。
 - Codex 当前只能访问未登录 ChatGPT 首页，不能在本机完成真实 authenticated long thread 回归；真实验收需要在目标 Chrome / Edge / MacBook Neo 上完成。
 - 旧 LightSession 失效调查见 [`docs/investigations/2026-09-01-lightsession-current-chatgpt.md`](docs/investigations/2026-09-01-lightsession-current-chatgpt.md)。
@@ -75,9 +84,11 @@ popup 可切换启用状态、状态条显示，以及保留原生渲染的最�
 ```bash
 npm run build
 npm run test:fixture
+npm test
+npm run package:release
 ```
 
-本地 90-turn fixture 页面级检查结果：Mica 进入 `Active`，90 个模拟 turn 中 73 个离屏历史 turn 被加上 `mica-turn-optimized`。这个 fixture 只用于验证 containment / fail-open 实现，不再视为当前真实 ChatGPT 长 thread 性能有效性的主要证据。
+本地 synthetic 90-turn fixture 只能证明 Mica 自己的 containment/fail-open 实现、manifest、icons、diagnostics message surface 和 release ZIP 结构工作；它不能证明 Mica 对当前真实 ChatGPT 长 conversation 有性能收益。真实 P0 性能结论必须来自 8 GB MacBook Neo。
 
 ## 真实设备更新：ChatGPT 已原生窗口化
 
@@ -88,6 +99,13 @@ npm run test:fixture
 ## Release 与安装包
 
 当前 `dist/mica-v0.1.0/` 可直接用于 `Load unpacked`。GitHub Release 则应提供版本化 ZIP，而不是只让用户下载仓库目录；ZIP 解压后根目录应直接出现 `manifest.json`。首个对外包在 8 GB MacBook Neo 完成 P0 验收前应标为 pre-release。
+
+当前 package 输出：
+
+```text
+release/mica-for-chatgpt-v0.1.0-alpha.1.zip
+release/mica-for-chatgpt-v0.1.0-alpha.1.sha256
+```
 
 详细规则见 [`docs/RELEASE_PACKAGING.md`](docs/RELEASE_PACKAGING.md)。
 

@@ -36,7 +36,18 @@
         <input id="recentTurnKeepCount" type="number" min="4" max="20" step="1" value="8">
       </label>
 
-      <footer id="counts">0 active / 0 turns</footer>
+      <section class="diagnostics" aria-label="Diagnostics">
+        <div class="section-title">Diagnostics</div>
+        <div class="button-grid">
+          <button id="startDiagnostics" type="button">Start diagnostics</button>
+          <button id="stopDiagnostics" type="button">Stop diagnostics</button>
+          <button id="copyReport" type="button">Copy report</button>
+          <button id="resetDiagnostics" type="button">Reset</button>
+        </div>
+        <p id="diagnosticsStatus">Idle</p>
+      </section>
+
+      <footer id="counts">0 mounted</footer>
     </main>
     <script src="popup.js"></script>
   </body>

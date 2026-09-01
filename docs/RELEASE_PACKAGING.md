@@ -49,6 +49,30 @@ mica-for-chatgpt-v0.1.0-alpha.1.zip
 
 Chrome manifest 的机器版本仍使用合法的四段以内数字版本，例如 `0.1.0`；如需要显示预发布名称，可使用 `version_name` 表达 `0.1.0-alpha.1`。
 
+当前本地命令：
+
+```bash
+npm run package:release
+```
+
+该命令会重新 build，然后生成：
+
+```text
+release/mica-for-chatgpt-v0.1.0-alpha.1.zip
+release/mica-for-chatgpt-v0.1.0-alpha.1.sha256
+```
+
+当前 ZIP 解压后根目录直接包含：
+
+```text
+manifest.json
+content.js
+popup/
+icons/
+```
+
+版本来源集中在 `scripts/release-config.mjs`，避免 manifest、dist 目录、ZIP 文件名和 release tag 漂移。
+
 ## 发布前最低检查
 
 - `manifest.json` 位于 ZIP 根目录。

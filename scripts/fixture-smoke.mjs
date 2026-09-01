@@ -1,10 +1,11 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { DIST_DIR_NAME } from "./release-config.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixturePath = path.join(root, "tests", "fixtures", "long-thread.html");
-const contentPath = path.join(root, "dist", "mica-v0.1.0", "content.js");
+const contentPath = path.join(root, "dist", DIST_DIR_NAME, "content.js");
 
 const html = await readFile(fixturePath, "utf8");
 const content = await readFile(contentPath, "utf8");
@@ -25,10 +26,13 @@ const requiredContent = [
   "content-visibility",
   "contain-intrinsic-size",
   "MICA_GET_STATUS",
+  "MICA_DIAGNOSTICS_COPY_REPORT",
   "Active",
+  "Native virtualization",
   "Native only",
   "Degraded",
-  "Disabled"
+  "Disabled",
+  "mountedTurns"
 ];
 
 for (const snippet of requiredContent) {
@@ -38,6 +42,10 @@ for (const snippet of requiredContent) {
 }
 
 new Function(content);
+
+if (/active \/.*turns/i.test(content)) {
+  throw new Error("Built content script still contains ambiguous active / turns status copy");
+}
 
 console.log("Fixture smoke checks passed");
 console.log(`Open fixture manually: ${pathToFileURL(fixturePath).href}`);

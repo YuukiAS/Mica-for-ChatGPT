@@ -20,6 +20,7 @@ Mica 是覆盖在原生 ChatGPT 之上的增强层，而不是 ChatGPT 的替代
 
 - [`assets/branding/mica-product-hero.png`](../assets/branding/mica-product-hero.png)：产品宣传概念图，用于 README、GitHub repo 和后续 Chrome Web Store 宣传。
 - [`assets/branding/mica-brand-concept.png`](../assets/branding/mica-brand-concept.png)：品牌/图标概念图，用于未来 extension icon 的设计参考。
+- [`assets/branding/mica-icon-master-v0.png`](../assets/branding/mica-icon-master-v0.png)：从品牌概念图中央 Mica symbol 裁切出的 v0.x working icon master。
 
 这两张图均属于早期设计稿，不代表最终 UI。
 
