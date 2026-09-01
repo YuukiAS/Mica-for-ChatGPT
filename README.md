@@ -1,6 +1,8 @@
 # Mica for ChatGPT
 
-> A lightweight local enhancement layer for ChatGPT.
+> A lighter, cleaner, less frustrating ChatGPT.
+
+![Mica for ChatGPT product hero](assets/branding/mica-product-hero.png)
 
 Mica 是一个面向 ChatGPT 网页端的浏览器扩展。目标不是重做 ChatGPT，而是在原生界面之上补上几个长期影响使用体验的问题：长对话性能、可靠的 Markdown/LaTeX 复制、烦人的重复确认与重试、以及少量真正有价值的界面增强。
 
@@ -76,6 +78,16 @@ npm run test:fixture
 ```
 
 本地 90-turn fixture 页面级检查结果：Mica 进入 `Active`，90 个模拟 turn 中 73 个离屏历史 turn 被加上 `mica-turn-optimized`，状态条显示 `Mica · Active · 17 active / 90 turns`。
+
+## Branding
+
+品牌说明见 [`docs/BRANDING.md`](docs/BRANDING.md)。
+
+产品主视觉：[`assets/branding/mica-product-hero.png`](assets/branding/mica-product-hero.png)
+
+品牌/图标概念图：
+
+<img src="assets/branding/mica-brand-concept.png" alt="Mica brand concept" width="360">
 
 ## 后续方向
 
