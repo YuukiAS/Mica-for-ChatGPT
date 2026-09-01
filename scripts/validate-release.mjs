@@ -18,17 +18,21 @@ const sha = createHash("sha256").update(zip).digest("hex");
 assert(shaText.trim() === `${sha}  ${path.basename(zipPath)}`, "SHA-256 file does not match ZIP");
 
 const entries = readZipEntries(zip);
-const entrySet = new Set(entries);
+const entrySet = new Set(entries.map((entry) => entry.name));
 assert(entrySet.has("manifest.json"), "ZIP manifest must be at root");
 for (const relative of REQUIRED_EXTENSION_FILES) {
   assert(entrySet.has(relative), `ZIP missing ${relative}`);
 }
 for (const entry of entries) {
-  assert(!entry.includes("node_modules/"), "ZIP must not include node_modules");
-  assert(!entry.startsWith("extension/"), "ZIP must not include source wrapper");
-  assert(!entry.startsWith("dist/"), "ZIP must not include dist wrapper");
-  assert(!entry.startsWith("release/"), "ZIP must not include release wrapper");
-  assert(!/diagnostic|telemetry|\.log$/i.test(entry), `ZIP contains disallowed artifact ${entry}`);
+  assert(!entry.name.includes("node_modules/"), "ZIP must not include node_modules");
+  assert(!entry.name.startsWith("extension/"), "ZIP must not include source wrapper");
+  assert(!entry.name.startsWith("dist/"), "ZIP must not include dist wrapper");
+  assert(!entry.name.startsWith("release/"), "ZIP must not include release wrapper");
+  assert(!/diagnostic|telemetry|\.log$/i.test(entry.name), `ZIP contains disallowed artifact ${entry.name}`);
+  if (/\.(js|html|json|css)$/i.test(entry.name)) {
+    const text = entry.data.toString("utf8");
+    assert(!/active\s*\/.*turns/i.test(text), `ZIP ${entry.name} contains old active / turns wording`);
+  }
 }
 
 console.log("Release package validation passed");
@@ -52,7 +56,15 @@ function readZipEntries(buffer) {
     const extraLength = buffer.readUInt16LE(offset + 30);
     const commentLength = buffer.readUInt16LE(offset + 32);
     const name = buffer.subarray(offset + 46, offset + 46 + nameLength).toString("utf8");
-    entries.push(name);
+    const localOffset = buffer.readUInt32LE(offset + 42);
+    assert(buffer.readUInt32LE(localOffset) === 0x04034b50, "invalid local file header");
+    const method = buffer.readUInt16LE(localOffset + 8);
+    assert(method === 0, `unsupported ZIP compression method for ${name}`);
+    const compressedSize = buffer.readUInt32LE(offset + 20);
+    const localNameLength = buffer.readUInt16LE(localOffset + 26);
+    const localExtraLength = buffer.readUInt16LE(localOffset + 28);
+    const dataOffset = localOffset + 30 + localNameLength + localExtraLength;
+    entries.push({ name, data: buffer.subarray(dataOffset, dataOffset + compressedSize) });
     offset += 46 + nameLength + extraLength + commentLength;
   }
   return entries;

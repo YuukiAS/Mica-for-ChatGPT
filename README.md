@@ -53,6 +53,8 @@ Chrome / Edge 手动安装：
 - `Degraded`：疑似 conversation 页面，但 Mica 无法安全识别 mounted turn 结构，已停止优化并保持原生页面。
 - `Disabled`：用户在 popup 或页面状态条中关闭了 Mica。
 
+页面上的常驻状态入口从 `v0.1.0-alpha.3` 起默认是 compact indicator。首次初始化、状态变化、进入 `Active` / `Degraded` 或用户点击时，会短暂展开完整状态，约 2–3 秒后自动收缩。overlay 会根据当前可见 composer 区域重新定位，避免覆盖输入框、发送按钮和语音按钮。
+
 最短诊断路径：
 
 ```js
@@ -68,15 +70,15 @@ popup 可切换启用状态、状态条显示、保留原生渲染的最近 turn
 - `Copy report`
 - `Reset`
 
-diagnostics report 只统计 mounted turn 数、DOM node 数、mutation/long task/frame stall/heap/complexity 等指标，不复制聊天正文或附件内容，不上传 telemetry。
+diagnostics report 只统计 mounted turn 数、DOM node 数、mutation/long task/frame stall/heap/complexity、overlay placement 和已知提示 dismiss count 等指标，不复制聊天正文或附件内容，不上传 telemetry。
 
-Reliability 仅处理显式 allowlist 中的纯 acknowledgement 提示。当前 `Auto-dismiss known interruptions` 默认开启，可自动 dismiss 已知中文 “请求过于频繁 / 访问对话记录 / 明白了” 弹窗；不会 retry、reload、重新发送请求、切换 conversation，也不会处理未知确认、授权、删除、支付或工具权限弹窗。
+Reliability 仅处理显式 allowlist 中的纯 acknowledgement 提示。当前 `Auto-dismiss known interruptions` 默认开启，可自动 dismiss 已知中文 “请求过于频繁 / 访问对话记录 / 明白了” 弹窗；成功处理后显示 2–3 秒非阻塞 toast。它不会 retry、reload、重新发送请求、切换 conversation，也不会处理未知确认、授权、删除、支付或工具权限弹窗。
 
 ## v0.1 当前限制
 
 - 默认不修改 ChatGPT 私有 API response，也不阻止 network request。
 - 不删除 React 管理的消息节点；这一版只用 `content-visibility:auto`、containment 和 intrinsic-size 降低离屏历史 turn 的渲染成本。
-- 真实登录态 Edge 已确认当前 ChatGPT 已经原生 virtualize conversation；Mica 的 containment 现在只是低风险 fallback，`v0.1.0-alpha.2` 主要用于真实长 thread runtime diagnostics，并加入严格 allowlist 的已知提示自动 dismiss。
+- 真实登录态 Edge 已确认当前 ChatGPT 已经原生 virtualize conversation；Mica 的 containment 现在只是低风险 fallback，`v0.1.0-alpha.3` 主要用于真实长 thread runtime diagnostics，并加入低干扰 overlay 与严格 allowlist 的已知提示自动 dismiss。
 - 工具卡片、文件/授权类 UI、正在编辑的内容、viewport 附近内容和最近 turn 会保持原生渲染。
 - Codex 当前只能访问未登录 ChatGPT 首页，不能在本机完成真实 authenticated long thread 回归；真实验收需要在目标 Chrome / Edge / MacBook Neo 上完成。
 - 旧 LightSession 失效调查见 [`docs/investigations/2026-09-01-lightsession-current-chatgpt.md`](docs/investigations/2026-09-01-lightsession-current-chatgpt.md)。
@@ -105,8 +107,8 @@ npm run package:release
 当前 package 输出：
 
 ```text
-release/mica-for-chatgpt-v0.1.0-alpha.2.zip
-release/mica-for-chatgpt-v0.1.0-alpha.2.sha256
+release/mica-for-chatgpt-v0.1.0-alpha.3.zip
+release/mica-for-chatgpt-v0.1.0-alpha.3.sha256
 ```
 
 详细规则见 [`docs/RELEASE_PACKAGING.md`](docs/RELEASE_PACKAGING.md)。

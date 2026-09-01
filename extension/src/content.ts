@@ -42,6 +42,11 @@
   ].join(",");
   const SUPPORTS_CONTENT_VISIBILITY = typeof CSS !== "undefined" && CSS.supports?.("content-visibility", "auto");
   const FRAME_STALL_MS = 50;
+  const OVERLAY_MARGIN = 12;
+  const OVERLAY_EXPAND_MS = 2600;
+  const TOAST_MS = 2800;
+  const TOAST_MERGE_MS = 3000;
+  const NARROW_VIEWPORT_WIDTH = 720;
   const bootTime = Date.now();
   const measuredHeights = new WeakMap();
   const observedTurns = new WeakSet();
@@ -55,7 +60,8 @@
     turnSamples: 0,
     knownInterruptionDismissals: 0,
     knownInterruptionDismissalsByRule: {},
-    lastKnownInterruptionRuleId: null
+    lastKnownInterruptionRuleId: null,
+    knownInterruptionToasts: 0
   };
   const turnWindow = {
     previousKeys: new Set(),
@@ -80,8 +86,23 @@
   let badgeRoot = null;
   let mutationObserver = null;
   let resizeObserver = null;
+  let overlayComposerObserver = null;
+  let overlayObservedComposer = null;
+  let overlayPlacementScheduled = false;
   let scheduled = false;
   let lastUrl = location.href;
+  const overlayState = {
+    expanded: false,
+    expandedByUser: false,
+    initializedExpansionShown: false,
+    forceCompactForPlacement: false,
+    placement: "unplaced",
+    expandTimer: 0,
+    toastTimer: 0,
+    toastVisible: false,
+    toastCount: 0,
+    lastToastAt: 0
+  };
 
   if (!isSupportedPage()) {
     return;
@@ -95,6 +116,7 @@
     setupBadge();
     setupObservers();
     setupMessages();
+    setupFixtureTestHooks();
     scheduleScan();
   }
 
@@ -140,27 +162,35 @@
   }
 
   function setupObservers() {
-    resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const target = entry.target;
-        if (!(target instanceof HTMLElement)) continue;
-        const height = Math.max(80, Math.ceil(entry.borderBoxSize?.[0]?.blockSize || target.getBoundingClientRect().height));
-        measuredHeights.set(target, height);
-        target.style.setProperty("--mica-intrinsic-height", `${height}px`);
-      }
-    });
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const target = entry.target;
+          if (!(target instanceof HTMLElement)) continue;
+          const height = Math.max(80, Math.ceil(entry.borderBoxSize?.[0]?.blockSize || target.getBoundingClientRect().height));
+          measuredHeights.set(target, height);
+          target.style.setProperty("--mica-intrinsic-height", `${height}px`);
+        }
+      });
+    }
 
-    mutationObserver = new MutationObserver((mutations) => {
-      recordMutations(mutations);
-      processKnownInterruptions();
-      scheduleScan();
-    });
-    mutationObserver.observe(document.body, { childList: true, subtree: true });
+    if (typeof MutationObserver !== "undefined") {
+      mutationObserver = new MutationObserver((mutations) => {
+        recordMutations(mutations);
+        processKnownInterruptions();
+        scheduleOverlayPlacement();
+        scheduleScan();
+      });
+      mutationObserver.observe(document.body, { childList: true, subtree: true });
+    }
     addEventListener("scroll", () => {
       recordScrollSample();
       scheduleScan();
     }, { passive: true, capture: true });
-    addEventListener("resize", () => scheduleScan(), { passive: true });
+    addEventListener("resize", () => {
+      scheduleScan();
+      scheduleOverlayPlacement();
+    }, { passive: true });
     setInterval(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
@@ -169,6 +199,7 @@
       }
       scheduleScan();
       processKnownInterruptions();
+      scheduleOverlayPlacement();
     }, 1500);
   }
 
@@ -222,13 +253,32 @@
       }
       settings = { ...settings, ...sanitizeSettings(next) };
       scheduleScan();
+      renderBadge();
     });
+  }
+
+  function setupFixtureTestHooks() {
+    if (document.documentElement.dataset.micaFixture !== "true") return;
+    globalThis.__MICA_TEST_CONTROLS__ = {
+      setSettings(next) {
+        settings = { ...settings, ...sanitizeSettings(next || {}) };
+        renderBadge();
+        scheduleScan();
+        processKnownInterruptions();
+      },
+      getSettings() {
+        return { ...settings };
+      },
+      expandStatus() {
+        expandOverlay(true);
+      }
+    };
   }
 
   function scheduleScan() {
     if (scheduled) return;
     scheduled = true;
-    requestAnimationFrame(() => {
+    nextFrame(() => {
       scheduled = false;
       try {
         scanAndApply();
@@ -458,6 +508,7 @@
 
   function setStatus(name, reason, turns, optimizedCount = 0, protectedCount = 0) {
     const mountedCount = turns.length;
+    const previousName = currentStatus.name;
     currentStatus = {
       name,
       reason,
@@ -477,6 +528,7 @@
     document.documentElement.dataset.micaMountedTurns = String(mountedCount);
     document.documentElement.dataset.micaOptimizedTurns = String(optimizedCount);
     delete document.documentElement.dataset.micaTurns;
+    maybeExpandForStatus(previousName, name);
     renderBadge();
   }
 
@@ -503,6 +555,7 @@
         globalCounters.knownInterruptionDismissals += 1;
         globalCounters.lastKnownInterruptionRuleId = ruleId;
         globalCounters.knownInterruptionDismissalsByRule[ruleId] = (globalCounters.knownInterruptionDismissalsByRule[ruleId] || 0) + 1;
+        showKnownInterruptionToast();
       }
     });
   }
@@ -540,7 +593,9 @@
     diagnostics.startedAt = Date.now();
     diagnostics.baseline = snapshotCounters();
     startLongTaskObserver();
-    diagnostics.frames.rafId = requestAnimationFrame(sampleFrame);
+    if (typeof requestAnimationFrame === "function") {
+      diagnostics.frames.rafId = requestAnimationFrame(sampleFrame);
+    }
   }
 
   function stopDiagnostics() {
@@ -548,7 +603,7 @@
       diagnostics.longTaskObserver.disconnect();
       diagnostics.longTaskObserver = null;
     }
-    if (diagnostics.frames.rafId) {
+    if (diagnostics.frames.rafId && typeof cancelAnimationFrame === "function") {
       cancelAnimationFrame(diagnostics.frames.rafId);
       diagnostics.frames.rafId = 0;
     }
@@ -591,7 +646,7 @@
       if (gap >= FRAME_STALL_MS) diagnostics.frames.stallCount += 1;
     }
     diagnostics.frames.lastFrameAt = timestamp;
-    diagnostics.frames.rafId = requestAnimationFrame(sampleFrame);
+    diagnostics.frames.rafId = typeof requestAnimationFrame === "function" ? requestAnimationFrame(sampleFrame) : 0;
   }
 
   function recordScrollSample() {
@@ -611,6 +666,7 @@
       knownInterruptionDismissals: globalCounters.knownInterruptionDismissals,
       knownInterruptionDismissalsByRule: { ...globalCounters.knownInterruptionDismissalsByRule },
       lastKnownInterruptionRuleId: globalCounters.lastKnownInterruptionRuleId,
+      knownInterruptionToasts: globalCounters.knownInterruptionToasts,
       domNodes: countDomNodes()
     };
   }
@@ -709,6 +765,13 @@
         dismissalsByRule: diffRuleCounts(current.knownInterruptionDismissalsByRule, baseline.knownInterruptionDismissalsByRule),
         lastMatchedRuleId: current.lastKnownInterruptionRuleId
       },
+      overlay: {
+        placement: overlayState.placement,
+        mode: getOverlayMode(),
+        toastVisible: overlayState.toastVisible,
+        toastCount: overlayState.toastCount,
+        toastEvents: current.knownInterruptionToasts
+      },
       mountedTurnComplexity: measureMountedTurnComplexity(turns)
     };
   }
@@ -779,6 +842,14 @@
     return Math.round(value * 100) / 100;
   }
 
+  function nextFrame(callback) {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(callback);
+      return;
+    }
+    setTimeout(callback, 16);
+  }
+
   function injectStyles() {
     if (document.getElementById("mica-long-thread-style")) return;
     const style = document.createElement("style");
@@ -798,10 +869,10 @@
     badgeHost = document.createElement("div");
     badgeHost.dataset.micaRoot = "true";
     badgeHost.style.position = "fixed";
-    badgeHost.style.right = "12px";
-    badgeHost.style.bottom = "12px";
+    badgeHost.style.left = "0";
+    badgeHost.style.top = "0";
     badgeHost.style.zIndex = "2147483646";
-    badgeHost.style.pointerEvents = "auto";
+    badgeHost.style.pointerEvents = "none";
     badgeRoot = badgeHost.attachShadow({ mode: "open" });
     document.documentElement.appendChild(badgeHost);
     renderBadge();
@@ -809,24 +880,50 @@
 
   function renderBadge() {
     if (!badgeRoot) return;
-    const hidden = !settings.showStatus;
-    badgeHost.hidden = hidden;
+    const statusVisible = !!settings.showStatus;
+    const expanded = statusVisible && shouldShowExpandedStatus();
+    const toastVisible = overlayState.toastVisible;
+    badgeHost.hidden = !statusVisible && !toastVisible;
     badgeRoot.innerHTML = `
 <style>
   :host { all: initial; }
-  .mica-badge {
+  .mica-overlay {
+    display: grid;
+    justify-items: end;
+    gap: 8px;
+    max-width: min(360px, calc(100vw - ${OVERLAY_MARGIN * 2}px));
+    pointer-events: none;
+  }
+  .mica-status {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    max-width: min(440px, calc(100vw - 24px));
-    min-height: 32px;
-    padding: 6px 8px 6px 10px;
+    justify-content: center;
+    gap: 7px;
     border: 1px solid rgba(23, 23, 23, 0.18);
-    border-radius: 8px;
     background: rgba(255, 255, 255, 0.94);
     color: #171717;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.12);
     font: 12px/1.25 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    pointer-events: auto;
+    transition: opacity 140ms ease, transform 140ms ease, width 140ms ease;
+  }
+  .mica-status.compact {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 999px;
+    opacity: 0.58;
+  }
+  .mica-status.expanded {
+    min-height: 32px;
+    max-width: min(360px, calc(100vw - ${OVERLAY_MARGIN * 2}px));
+    padding: 6px 9px;
+    border-radius: 8px;
+    opacity: 0.96;
+  }
+  .mica-status:hover,
+  .mica-status:focus-visible {
+    opacity: 1;
   }
   .mica-dot {
     width: 8px;
@@ -834,42 +931,346 @@
     border-radius: 999px;
     background: ${statusColor(currentStatus.name)};
     flex: 0 0 auto;
+    box-shadow: 0 0 0 3px ${statusGlowColor(currentStatus.name)};
   }
   .mica-label {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+  .compact .mica-label {
+    display: none;
   }
   button {
-    width: 24px;
-    height: 24px;
+    appearance: none;
     border: 0;
-    border-radius: 6px;
-    background: rgba(0, 0, 0, 0.06);
-    color: inherit;
     cursor: pointer;
     font: inherit;
   }
-  button:hover { background: rgba(0, 0, 0, 0.12); }
+  .mica-toast {
+    max-width: min(320px, calc(100vw - ${OVERLAY_MARGIN * 2}px));
+    padding: 8px 10px;
+    border: 1px solid rgba(23, 23, 23, 0.14);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.96);
+    color: #171717;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
+    font: 12px/1.35 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    pointer-events: none;
+  }
+  .mica-hidden {
+    display: none;
+  }
   @media (prefers-color-scheme: dark) {
-    .mica-badge {
+    .mica-status,
+    .mica-toast {
       border-color: rgba(255, 255, 255, 0.18);
       background: rgba(32, 33, 35, 0.94);
       color: #f7f7f8;
     }
-    button { background: rgba(255, 255, 255, 0.12); }
-    button:hover { background: rgba(255, 255, 255, 0.18); }
   }
 </style>
-<div class="mica-badge" title="${escapeHtml(currentStatus.reason)}">
-  <span class="mica-dot" aria-hidden="true"></span>
-  <span class="mica-label">${escapeHtml(currentStatus.label)}</span>
-  <button type="button" title="Disable Mica" aria-label="Disable Mica">x</button>
+<div id="mica-overlay" class="mica-overlay" data-placement="${escapeHtml(overlayState.placement)}">
+  <button class="mica-status ${expanded ? "expanded" : "compact"}${statusVisible ? "" : " mica-hidden"}" type="button" title="${escapeHtml(getCompactTooltip())}" aria-label="Mica status">
+    <span class="mica-dot" aria-hidden="true"></span>
+    <span class="mica-label">${escapeHtml(formatExpandedStatusLabel(currentStatus.name, currentStatus.mountedTurns, currentStatus.optimizedTurns))}</span>
+  </button>
+  <div class="mica-toast${toastVisible ? "" : " mica-hidden"}" role="status" aria-live="polite">${escapeHtml(getToastText())}</div>
 </div>`;
-    badgeRoot.querySelector("button")?.addEventListener("click", () => {
-      settings = { ...settings, enabled: false };
-      writeSettings({ enabled: false }).then(() => scheduleScan());
+    badgeRoot.querySelector(".mica-status")?.addEventListener("click", () => {
+      expandOverlay(true);
     });
+    scheduleOverlayPlacement();
+  }
+
+  function maybeExpandForStatus(previousName, nextName) {
+    if (!settings.showStatus) return;
+    const width = window.innerWidth || document.documentElement.clientWidth || 1024;
+    if (!overlayState.initializedExpansionShown) {
+      overlayState.initializedExpansionShown = true;
+      if (width >= NARROW_VIEWPORT_WIDTH || nextName === STATUS.DEGRADED) expandOverlay(false);
+      return;
+    }
+    if (previousName === nextName) return;
+    if (width < NARROW_VIEWPORT_WIDTH && nextName !== STATUS.DEGRADED) return;
+    if (previousName === STATUS.NATIVE_ONLY && nextName === STATUS.NATIVE_VIRTUALIZATION) expandOverlay(false);
+    if (nextName === STATUS.ACTIVE || nextName === STATUS.DEGRADED) expandOverlay(false);
+  }
+
+  function expandOverlay(byUser) {
+    overlayState.expanded = true;
+    overlayState.expandedByUser = !!byUser;
+    overlayState.forceCompactForPlacement = false;
+    clearTimeout(overlayState.expandTimer);
+    overlayState.expandTimer = setTimeout(() => {
+      overlayState.expanded = false;
+      overlayState.expandedByUser = false;
+      overlayState.forceCompactForPlacement = false;
+      renderBadge();
+    }, OVERLAY_EXPAND_MS);
+    renderBadge();
+  }
+
+  function shouldShowExpandedStatus() {
+    if (overlayState.forceCompactForPlacement) return false;
+    if (!overlayState.expanded) return false;
+    const width = window.innerWidth || document.documentElement.clientWidth || 1024;
+    return overlayState.expandedByUser || width >= NARROW_VIEWPORT_WIDTH || currentStatus.name === STATUS.DEGRADED;
+  }
+
+  function showKnownInterruptionToast() {
+    const now = Date.now();
+    const shouldMerge = overlayState.toastVisible && now - overlayState.lastToastAt <= TOAST_MERGE_MS;
+    overlayState.toastCount = shouldMerge ? overlayState.toastCount + 1 : 1;
+    overlayState.lastToastAt = now;
+    overlayState.toastVisible = true;
+    globalCounters.knownInterruptionToasts += 1;
+    clearTimeout(overlayState.toastTimer);
+    overlayState.toastTimer = setTimeout(() => {
+      overlayState.toastVisible = false;
+      overlayState.toastCount = 0;
+      renderBadge();
+    }, TOAST_MS);
+    renderBadge();
+  }
+
+  function getToastText() {
+    if (overlayState.toastCount > 1) {
+      return `Mica 已自动关闭 ${overlayState.toastCount} 个已知提示`;
+    }
+    return "Mica 已自动关闭一个已知提示";
+  }
+
+  function getOverlayMode() {
+    if (shouldShowExpandedStatus()) return "expanded";
+    return "compact";
+  }
+
+  function formatExpandedStatusLabel(name, mountedCount, optimizedCount) {
+    if (name === STATUS.DISABLED) return "Disabled";
+    if (name === STATUS.ACTIVE) return `Active · ${mountedCount} mounted · ${optimizedCount} optimized`;
+    return `${name} · ${mountedCount} mounted`;
+  }
+
+  function getCompactTooltip() {
+    return `Mica: ${formatExpandedStatusLabel(currentStatus.name, currentStatus.mountedTurns, currentStatus.optimizedTurns)}. Click for details.`;
+  }
+
+  function scheduleOverlayPlacement() {
+    if (!badgeHost || badgeHost.hidden || overlayPlacementScheduled) return;
+    overlayPlacementScheduled = true;
+    nextFrame(() => {
+      overlayPlacementScheduled = false;
+      placeOverlay();
+    });
+  }
+
+  function placeOverlay() {
+    if (!badgeRoot || !badgeHost || badgeHost.hidden) return;
+    const overlay = badgeRoot.getElementById("mica-overlay");
+    if (!overlay) return;
+    observeComposerForOverlay();
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1024;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 768;
+    let size = measureOverlay(overlay);
+    let composer = findComposerArea();
+    let placement = chooseOverlayPlacement(size, composer?.rect, viewportWidth, viewportHeight);
+    if (placement.collides && shouldShowExpandedStatus()) {
+      overlayState.forceCompactForPlacement = true;
+      renderBadge();
+      return;
+    }
+    badgeHost.style.transform = `translate(${placement.x}px, ${placement.y}px)`;
+    overlayState.placement = placement.name;
+    const placedRect = {
+      left: placement.x,
+      top: placement.y,
+      right: placement.x + size.width,
+      bottom: placement.y + size.height,
+      width: size.width,
+      height: size.height
+    };
+    globalThis.__MICA_OVERLAY_DEBUG__ = {
+      placement: placement.name,
+      mode: getOverlayMode(),
+      toastVisible: overlayState.toastVisible,
+      toastCount: overlayState.toastCount,
+      rect: placedRect,
+      composerRect: composer?.rect || null,
+      intersectsComposer: composer?.rect ? intersects(placedRect, composer.rect) : false
+    };
+  }
+
+  function measureOverlay(overlay) {
+    const rect = overlay.getBoundingClientRect();
+    return {
+      width: Math.max(26, Math.ceil(rect.width)),
+      height: Math.max(26, Math.ceil(rect.height))
+    };
+  }
+
+  function chooseOverlayPlacement(size, composerRect, viewportWidth, viewportHeight) {
+    const candidates = [
+      {
+        name: "bottom-right",
+        x: viewportWidth - size.width - OVERLAY_MARGIN,
+        y: viewportHeight - size.height - OVERLAY_MARGIN
+      }
+    ];
+    if (composerRect) {
+      candidates.push({
+        name: "right-above-composer",
+        x: viewportWidth - size.width - OVERLAY_MARGIN,
+        y: composerRect.top - size.height - OVERLAY_MARGIN
+      });
+    }
+    candidates.push(
+      {
+        name: "bottom-left",
+        x: OVERLAY_MARGIN,
+        y: viewportHeight - size.height - OVERLAY_MARGIN
+      },
+      {
+        name: "top-right",
+        x: viewportWidth - size.width - OVERLAY_MARGIN,
+        y: OVERLAY_MARGIN
+      },
+      {
+        name: "top-left",
+        x: OVERLAY_MARGIN,
+        y: OVERLAY_MARGIN
+      }
+    );
+
+    for (const candidate of candidates) {
+      const placed = clampPlacement(candidate, size, viewportWidth, viewportHeight);
+      const rect = {
+        left: placed.x,
+        top: placed.y,
+        right: placed.x + size.width,
+        bottom: placed.y + size.height
+      };
+      if (!composerRect || !intersects(rect, composerRect)) {
+        return { ...placed, name: candidate.name, collides: false };
+      }
+    }
+    const fallback = clampPlacement(candidates[candidates.length - 2], size, viewportWidth, viewportHeight);
+    return { ...fallback, name: "top-right", collides: composerRect ? intersects({
+      left: fallback.x,
+      top: fallback.y,
+      right: fallback.x + size.width,
+      bottom: fallback.y + size.height
+    }, composerRect) : false };
+  }
+
+  function clampPlacement(candidate, size, viewportWidth, viewportHeight) {
+    return {
+      x: clamp(candidate.x, OVERLAY_MARGIN, Math.max(OVERLAY_MARGIN, viewportWidth - size.width - OVERLAY_MARGIN)),
+      y: clamp(candidate.y, OVERLAY_MARGIN, Math.max(OVERLAY_MARGIN, viewportHeight - size.height - OVERLAY_MARGIN))
+    };
+  }
+
+  function observeComposerForOverlay() {
+    if (typeof ResizeObserver === "undefined") return;
+    const composer = findComposerArea()?.element || null;
+    if (!composer || composer === overlayObservedComposer) return;
+    if (!overlayComposerObserver) {
+      overlayComposerObserver = new ResizeObserver(() => scheduleOverlayPlacement());
+    }
+    if (overlayObservedComposer) overlayComposerObserver.unobserve(overlayObservedComposer);
+    overlayObservedComposer = composer;
+    overlayComposerObserver.observe(composer);
+  }
+
+  function findComposerArea() {
+    const candidates = getComposerCandidates();
+    if (candidates.length === 0) return null;
+    const rects = candidates.map((item) => item.rect);
+    const rect = unionRects(rects);
+    const element = candidates[0].element;
+    return rect ? { element, rect } : null;
+  }
+
+  function getComposerCandidates() {
+    const nodes = Array.from(document.querySelectorAll([
+      "[data-testid*='composer']",
+      "textarea",
+      "[contenteditable='true']",
+      "[role='textbox']",
+      "form"
+    ].join(","))).filter((node) => node instanceof HTMLElement && isVisibleForOverlay(node));
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 768;
+    const results = [];
+    const seen = new Set();
+
+    for (const node of nodes) {
+      const composer = chooseComposerContainer(node);
+      if (!composer || seen.has(composer)) continue;
+      seen.add(composer);
+      const rect = rectFromDomRect(composer.getBoundingClientRect());
+      if (!isComposerLikeRect(rect, viewportHeight)) continue;
+      results.push({ element: composer, rect });
+    }
+    return results;
+  }
+
+  function chooseComposerContainer(node) {
+    const testIdComposer = node.closest("[data-testid*='composer']");
+    if (testIdComposer instanceof HTMLElement) return testIdComposer;
+    const form = node.closest("form");
+    if (form instanceof HTMLElement) return form;
+    let current = node;
+    for (let depth = 0; depth < 4 && current?.parentElement; depth += 1) {
+      const parent = current.parentElement;
+      const rect = parent.getBoundingClientRect();
+      if (rect.width >= node.getBoundingClientRect().width && rect.height <= Math.max(360, node.getBoundingClientRect().height + 160)) {
+        current = parent;
+      }
+    }
+    return current;
+  }
+
+  function isComposerLikeRect(rect, viewportHeight) {
+    if (!rect || rect.width < 180 || rect.height < 24) return false;
+    if (rect.bottom < viewportHeight * 0.45) return false;
+    if (rect.top > viewportHeight || rect.bottom < 0) return false;
+    return rect.height <= Math.max(380, viewportHeight * 0.7);
+  }
+
+  function unionRects(rects) {
+    if (rects.length === 0) return null;
+    return {
+      left: Math.min(...rects.map((rect) => rect.left)),
+      top: Math.min(...rects.map((rect) => rect.top)),
+      right: Math.max(...rects.map((rect) => rect.right)),
+      bottom: Math.max(...rects.map((rect) => rect.bottom)),
+      width: Math.max(...rects.map((rect) => rect.right)) - Math.min(...rects.map((rect) => rect.left)),
+      height: Math.max(...rects.map((rect) => rect.bottom)) - Math.min(...rects.map((rect) => rect.top))
+    };
+  }
+
+  function rectFromDomRect(rect) {
+    return {
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      width: rect.width,
+      height: rect.height
+    };
+  }
+
+  function intersects(a, b) {
+    return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  }
+
+  function isVisibleForOverlay(element) {
+    if (element.closest("[data-mica-root='true']")) return false;
+    if (element.hidden || element.getAttribute("aria-hidden") === "true") return false;
+    const style = getComputedStyle(element);
+    if (style.display === "none" || style.visibility === "hidden") return false;
+    const rect = element.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
   }
 
   function statusColor(name) {
@@ -878,6 +1279,14 @@
     if (name === STATUS.NATIVE_ONLY) return "#2563eb";
     if (name === STATUS.DEGRADED) return "#b45309";
     return "#737373";
+  }
+
+  function statusGlowColor(name) {
+    if (name === STATUS.ACTIVE) return "rgba(22, 128, 60, 0.16)";
+    if (name === STATUS.NATIVE_VIRTUALIZATION) return "rgba(15, 118, 110, 0.16)";
+    if (name === STATUS.NATIVE_ONLY) return "rgba(37, 99, 235, 0.16)";
+    if (name === STATUS.DEGRADED) return "rgba(180, 83, 9, 0.18)";
+    return "rgba(115, 115, 115, 0.16)";
   }
 
   function escapeHtml(value) {

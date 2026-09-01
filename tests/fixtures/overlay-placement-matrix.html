@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Mica overlay placement matrix</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #f7f7f8;
+        color: #171717;
+        font: 13px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      iframe {
+        display: block;
+        height: 820px;
+        margin: 12px 0;
+        border: 1px solid #cccccc;
+        background: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Mica overlay placement matrix</h1>
+    <pre id="matrix-result">Running...</pre>
+    <div id="frames"></div>
+    <script>
+      const widths = [1600, 1200, 900, 700, 500];
+      const frames = document.getElementById("frames");
+      const resultNode = document.getElementById("matrix-result");
+
+      run().catch((error) => {
+        resultNode.textContent = JSON.stringify({ passed: false, error: String(error?.stack || error) }, null, 2);
+      });
+
+      async function run() {
+        const results = [];
+        for (const width of widths) {
+          results.push(await runFrame(width, "placement"));
+        }
+        results.push(await runFrame(700, "toast"));
+        resultNode.textContent = JSON.stringify({
+          passed: results.every((item) => item.passed),
+          results
+        }, null, 2);
+      }
+
+      async function runFrame(width, mode) {
+        const frame = document.createElement("iframe");
+        frame.style.width = `${width}px`;
+        frame.src = `./overlay-placement.html?run=${mode}&frameWidth=${width}&t=${Date.now()}`;
+        frames.appendChild(frame);
+        await new Promise((resolve, reject) => {
+          frame.addEventListener("load", resolve, { once: true });
+          frame.addEventListener("error", () => reject(new Error(`Failed to load ${width}px ${mode}`)), { once: true });
+        });
+        const started = Date.now();
+        while (Date.now() - started < 24000) {
+          const text = frame.contentDocument?.getElementById("overlay-test-result")?.textContent || "";
+          if (text.trim().startsWith("{")) {
+            try {
+              const result = JSON.parse(text);
+              return { width, mode, ...result };
+            } catch (error) {
+              return { width, mode, passed: false, error: String(error?.message || error), raw: text };
+            }
+          }
+          await delay(300);
+        }
+        return { width, mode, passed: false, error: "Timed out waiting for frame result" };
+      }
+
+      function delay(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+    </script>
+  </body>
+</html>

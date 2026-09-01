@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <title>Mica overlay placement fixture</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 2400px;
+        margin: 0;
+        background: #f7f7f8;
+        color: #171717;
+        font: 14px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        width: min(820px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 24px 0 180px;
+      }
+
+      article {
+        margin: 16px 0;
+        padding: 18px;
+        border: 1px solid #dddddd;
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      .composer {
+        position: fixed;
+        left: 50%;
+        bottom: 12px;
+        width: min(820px, calc(100vw - 24px));
+        min-height: 82px;
+        padding: 12px;
+        border: 1px solid #cccccc;
+        border-radius: 18px;
+        background: #ffffff;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+        transform: translateX(-50%);
+      }
+
+      .composer.tall {
+        min-height: 182px;
+      }
+
+      .composer [role="textbox"] {
+        min-height: 42px;
+        padding: 10px 84px 10px 12px;
+        border: 1px solid #dedede;
+        border-radius: 12px;
+      }
+
+      .composer button {
+        position: absolute;
+        right: 14px;
+        bottom: 14px;
+        min-width: 34px;
+        min-height: 34px;
+      }
+    </style>
+  </head>
+  <body>
+    <pre id="overlay-test-result">Idle</pre>
+    <main id="conversation" aria-label="Fixture conversation"></main>
+    <form class="composer" data-testid="composer" aria-label="Message composer">
+      <div role="textbox" contenteditable="true" aria-label="Message Mica">Fixture composer</div>
+      <button type="button" aria-label="Send message">Send</button>
+    </form>
+    <script>
+      const conversation = document.getElementById("conversation");
+      for (let index = 0; index < 24; index += 1) {
+        const article = document.createElement("article");
+        article.setAttribute("data-testid", `conversation-turn-${index}`);
+        const message = document.createElement("div");
+        message.setAttribute("data-message-author-role", index % 2 === 0 ? "assistant" : "user");
+        message.textContent = `Fixture mounted turn ${index}`;
+        article.appendChild(message);
+        conversation.appendChild(article);
+      }
+
+      window.__MICA_OVERLAY_FIXTURE__ = {
+        setComposerTall(value) {
+          document.querySelector("[data-testid='composer']").classList.toggle("tall", !!value);
+          window.dispatchEvent(new Event("resize"));
+        },
+        addKnownRateLimitDialog() {
+          const dialog = document.createElement("div");
+          dialog.setAttribute("role", "dialog");
+          dialog.setAttribute("aria-labelledby", "mica-fixture-rate-limit-heading");
+          dialog.innerHTML = `
+            <h2 id="mica-fixture-rate-limit-heading">请求过于频繁</h2>
+            <p>你的请求过于频繁。为保障数据安全，我们已暂时限制你访问对话记录。</p>
+            <p>请稍等几分钟后再重试。</p>
+            <button type="button"><span>明白了</span></button>
+          `;
+          dialog.dataset.clicks = "0";
+          dialog.querySelector("button").addEventListener("click", () => {
+            dialog.dataset.clicks = String(Number(dialog.dataset.clicks || "0") + 1);
+            dialog.remove();
+          });
+          document.body.appendChild(dialog);
+          return dialog;
+        },
+        addUnknownDialog() {
+          const dialog = document.createElement("div");
+          dialog.setAttribute("role", "dialog");
+          dialog.innerHTML = `
+            <h2>未知提示</h2>
+            <p>这不是 Mica allowlist 中的提示。</p>
+            <button type="button">确认</button>
+          `;
+          dialog.dataset.clicks = "0";
+          dialog.querySelector("button").addEventListener("click", () => {
+            dialog.dataset.clicks = String(Number(dialog.dataset.clicks || "0") + 1);
+          });
+          document.body.appendChild(dialog);
+          return dialog;
+        }
+      };
+    </script>
+    <script src="../../dist/mica-v0.1.0/known-interruptions.js"></script>
+    <script src="../../dist/mica-v0.1.0/content.js"></script>
+    <script>
+      const resultNode = document.getElementById("overlay-test-result");
+      const params = new URLSearchParams(location.search);
+      const runMode = params.get("run");
+
+      if (runMode) {
+        runOverlayFixtureTest(runMode).catch((error) => {
+          resultNode.textContent = JSON.stringify({ passed: false, error: String(error?.stack || error) }, null, 2);
+        });
+      }
+
+      async function runOverlayFixtureTest(mode) {
+        const results = [];
+        await waitFor(() => document.querySelector("[data-mica-root='true']")?.shadowRoot?.querySelector(".mica-status"));
+        results.push(assertCase("overlay exists", () => !!document.querySelector("[data-mica-root='true']")));
+        results.push(assertCase("initial no composer collision", () => !readOverlay().intersects));
+
+        await delay(3200);
+        const compact = readOverlay();
+        results.push(assertCase("compact after timeout", () => compact.statusClass.includes("compact")));
+        results.push(assertCase("compact does not cover composer", () => !compact.intersects));
+
+        document.querySelector("[data-mica-root='true']").shadowRoot.querySelector(".mica-status").click();
+        await delay(350);
+        const expanded = readOverlay();
+        results.push(assertCase("click expands status", () => expanded.statusClass.includes("expanded")));
+        results.push(assertCase("expanded does not cover composer", () => !expanded.intersects));
+
+        window.__MICA_OVERLAY_FIXTURE__.setComposerTall(true);
+        await delay(700);
+        const tall = readOverlay();
+        results.push(assertCase("tall composer does not collide", () => !tall.intersects));
+
+        if (mode === "toast") {
+          await delay(3200);
+          window.__MICA_OVERLAY_FIXTURE__.addKnownRateLimitDialog();
+          await delay(1900);
+          const toast = readOverlay();
+          results.push(assertCase("known dialog dismissed", () => document.querySelectorAll("body > [role='dialog'], body > dialog").length === 0));
+          results.push(assertCase("known dialog shows one toast", () => !toast.toastHidden && /Mica 已自动关闭一个已知提示/.test(toast.toastText)));
+          results.push(assertCase("toast does not cover composer", () => !toast.intersects));
+
+          window.__MICA_OVERLAY_FIXTURE__.addKnownRateLimitDialog();
+          await delay(650);
+          const flood = readOverlay();
+          results.push(assertCase("quick repeat does not stack toast", () => !flood.toastHidden && flood.toastCount === 1));
+          document.querySelectorAll("body > [role='dialog'], body > dialog").forEach((node) => node.remove());
+          await delay(3200);
+          results.push(assertCase("toast disappears after timeout", () => readOverlay().toastHidden));
+
+          window.__MICA_TEST_CONTROLS__.setSettings({ autoDismissKnownInterruptions: false });
+          window.__MICA_OVERLAY_FIXTURE__.addKnownRateLimitDialog();
+          await delay(1900);
+          const off = readOverlay();
+          results.push(assertCase("setting off does not dismiss", () => document.querySelectorAll("body > [role='dialog'], body > dialog").length === 1));
+          results.push(assertCase("setting off does not toast", () => off.toastHidden));
+          document.querySelectorAll("body > [role='dialog'], body > dialog").forEach((node) => node.remove());
+
+          window.__MICA_TEST_CONTROLS__.setSettings({ autoDismissKnownInterruptions: true });
+          window.__MICA_OVERLAY_FIXTURE__.addUnknownDialog();
+          await delay(1900);
+          const unknown = readOverlay();
+          results.push(assertCase("unknown dialog not dismissed", () => document.querySelectorAll("body > [role='dialog'], body > dialog").length === 1));
+          results.push(assertCase("unknown dialog does not toast", () => unknown.toastHidden));
+        }
+
+        const payload = {
+          passed: results.every((item) => item.passed),
+          width: window.innerWidth,
+          mode,
+          results
+        };
+        resultNode.textContent = JSON.stringify(payload, null, 2);
+      }
+
+      function readOverlay() {
+        const host = document.querySelector("[data-mica-root='true']");
+        const shadow = host.shadowRoot;
+        const status = shadow.querySelector(".mica-status");
+        const toast = shadow.querySelector(".mica-toast");
+        const composer = document.querySelector("[data-testid='composer']");
+        const hostRect = toRect(host.getBoundingClientRect());
+        const composerRect = toRect(composer.getBoundingClientRect());
+        const debug = window.__MICA_OVERLAY_DEBUG__ || {};
+        return {
+          statusClass: status?.className || "",
+          toastHidden: !toast || toast.classList.contains("mica-hidden"),
+          toastText: toast?.textContent?.trim() || "",
+          toastCount: debug.toastCount || 0,
+          intersects: intersects(hostRect, composerRect) || !!debug.intersectsComposer,
+          placement: debug.placement || null,
+          hostRect,
+          composerRect
+        };
+      }
+
+      function assertCase(name, fn) {
+        let passed = false;
+        let error = null;
+        try {
+          passed = !!fn();
+        } catch (caught) {
+          error = String(caught?.message || caught);
+        }
+        return { name, passed, error };
+      }
+
+      function waitFor(fn, timeout = 2500) {
+        const started = Date.now();
+        return new Promise((resolve, reject) => {
+          const timer = setInterval(() => {
+            if (fn()) {
+              clearInterval(timer);
+              resolve();
+              return;
+            }
+            if (Date.now() - started > timeout) {
+              clearInterval(timer);
+              reject(new Error("Timed out waiting for overlay"));
+            }
+          }, 50);
+        });
+      }
+
+      function delay(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+
+      function toRect(rect) {
+        return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+      }
+
+      function intersects(a, b) {
+        return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+      }
+    </script>
+  </body>
+</html>
