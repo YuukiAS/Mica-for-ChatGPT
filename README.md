@@ -47,8 +47,8 @@ Chrome / Edge 手动安装：
 
 页面右下角会显示状态：
 
-- `Active`：已识别长 thread，并对离屏历史 turn 应用渲染 containment。
-- `Native only`：当前 turn 数量较少，或 ChatGPT 原生页面还没有加载出需要处理的长 thread。
+- `Active`：Mica 确实施加了额外渲染优化。
+- `Native only`：当前页面保持原生渲染；当前 ChatGPT 已经会对长 conversation 做窗口化/虚拟化，因此这里观察到的 turn 数只是实时 mounted DOM turns，不代表完整 thread 长度。
 - `Degraded`：疑似 conversation 页面，但 Mica 无法安全识别 turn 结构，已停止优化并保持原生页面。
 - `Disabled`：用户在 popup 或页面状态条中关闭了 Mica。
 
@@ -77,11 +77,23 @@ npm run build
 npm run test:fixture
 ```
 
-本地 90-turn fixture 页面级检查结果：Mica 进入 `Active`，90 个模拟 turn 中 73 个离屏历史 turn 被加上 `mica-turn-optimized`，状态条显示 `Mica · Active · 17 active / 90 turns`。
+本地 90-turn fixture 页面级检查结果：Mica 进入 `Active`，90 个模拟 turn 中 73 个离屏历史 turn 被加上 `mica-turn-optimized`。这个 fixture 只用于验证 containment / fail-open 实现，不再视为当前真实 ChatGPT 长 thread 性能有效性的主要证据。
+
+## 真实设备更新：ChatGPT 已原生窗口化
+
+2026-09-01 在真实登录态 Edge + 一个实际很长的 CUHK Date conversation 上验证：虽然逻辑 thread 可以持续向上滚动直到顶部，当前 DOM 中只维持约 5–9 个 mounted turns，并在滚动时小范围波动。这说明当前 ChatGPT 已经原生实现 conversation windowing / virtualization。
+
+因此 P0 下一步不是简单降低 Mica 的 turn threshold，而是增加本地 runtime diagnostics，在实际出现卡顿的 8 GB MacBook Neo 上确认真正瓶颈。详细观察见 [`docs/investigations/2026-09-01-native-virtualization-real-device.md`](docs/investigations/2026-09-01-native-virtualization-real-device.md)，实现任务见 [Issue #2](https://github.com/YuukiAS/Mica-for-ChatGPT/issues/2)。
+
+## Release 与安装包
+
+当前 `dist/mica-v0.1.0/` 可直接用于 `Load unpacked`。GitHub Release 则应提供版本化 ZIP，而不是只让用户下载仓库目录；ZIP 解压后根目录应直接出现 `manifest.json`。首个对外包在 8 GB MacBook Neo 完成 P0 验收前应标为 pre-release。
+
+详细规则见 [`docs/RELEASE_PACKAGING.md`](docs/RELEASE_PACKAGING.md)。
 
 ## Branding
 
-品牌说明见 [`docs/BRANDING.md`](docs/BRANDING.md)。
+品牌说明见 [`docs/BRANDING.md`](docs/BRANDING.md)。扩展图标资产规范见 [`docs/ICON_ASSETS.md`](docs/ICON_ASSETS.md)。
 
 产品主视觉：[`assets/branding/mica-product-hero.png`](assets/branding/mica-product-hero.png)
 
