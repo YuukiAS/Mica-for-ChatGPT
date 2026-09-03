@@ -85,6 +85,8 @@ try {
 }
 
 async function runCase({ width, mica, disabled = false, loops: caseLoops = loops }) {
+  const label = `${mica ? (disabled ? "mica-disabled" : "mica") : "native"}@${width}px/${caseLoops}`;
+  console.error(`Running E2E case ${label}`);
   const page = await browser.newPage({ viewport: { width, height: 820 } });
   const errors = [];
   page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
@@ -92,12 +94,21 @@ async function runCase({ width, mica, disabled = false, loops: caseLoops = loops
     if (message.type() === "error") errors.push(message.text());
   });
   const url = `${baseUrl}/tests/fixtures/composer-lifecycle.html?mica=${mica ? "1" : "0"}&disabled=${disabled ? "1" : "0"}&loops=${caseLoops}&stress=${stress ? "1" : "0"}`;
-  await page.goto(url, { waitUntil: "load" });
-  await page.waitForFunction(() => {
-    const text = document.getElementById("e2e-result")?.textContent || "";
-    return text.trim().startsWith("{");
-  }, null, { timeout: stress ? 90000 : 45000 });
-  const payload = JSON.parse(await page.locator("#e2e-result").textContent());
+  let payload;
+  try {
+    await page.goto(url, { waitUntil: "load" });
+    await page.waitForFunction(() => {
+      const text = document.getElementById("e2e-result")?.textContent || "";
+      return text.trim().startsWith("{");
+    }, null, { timeout: stress ? 90000 : 45000 });
+    payload = JSON.parse(await page.locator("#e2e-result").textContent());
+  } catch (error) {
+    const resultText = await page.locator("#e2e-result").textContent().catch(() => "");
+    await page.close();
+    throw Object.assign(new Error(`E2E case ${label} failed before producing a result: ${error?.message || error}`), {
+      details: { label, resultText, errors }
+    });
+  }
   await page.close();
 
   payload.width = width;

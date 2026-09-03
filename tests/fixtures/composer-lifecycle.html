@@ -117,6 +117,7 @@
       let nativeMutating = false;
       let fixtureDispatching = false;
       let sendInProgress = false;
+      let deleteEditInProgress = false;
       let missingStartedAt = 0;
       let lastComposerRect = null;
 
@@ -145,9 +146,13 @@
         staleComposerAtEnd: 0,
         nextInputFailures: 0,
         overlayComposerCollisions: 0,
+        deleteCycles: 0,
+        composerMissingAfterDelete: 0,
+        composerGeometryReadsDuringDelete: 0,
         errors: []
       };
 
+      instrumentComposerGeometryReads();
       instrumentEvents();
       renderWindow();
       mountComposer(dock, "");
@@ -178,6 +183,7 @@
             missingDelay: [0, 12, 32, 64][index % 4],
             streamTicks: stress ? 14 + (index % 8) : 8 + (index % 5)
           };
+          await runCutDelete(scenario);
           await runOneSend(scenario);
           await typeNextInput(`next ${index}`);
           sampleMicaSafety();
@@ -199,6 +205,8 @@
           && metrics.optimizedComposerAncestor === 0
           && metrics.optimizedNearMissingComposer === 0
           && metrics.overlayComposerCollisions === 0
+          && metrics.composerMissingAfterDelete === 0
+          && metrics.composerGeometryReadsDuringDelete === 0
           && metrics.externalInputEvents === 0
           && metrics.externalChangeEvents === 0
           && metrics.externalSubmitEvents === 0;
@@ -247,6 +255,29 @@
         await forceMicaScan();
 
         if (!currentComposer) metrics.composerMissingAtEnd += 1;
+        if (getEditorText() !== "") metrics.staleComposerAtEnd += 1;
+      }
+
+      async function runCutDelete(scenario) {
+        if (!currentComposer || currentComposer.parentElement !== dock) {
+          mountComposer(dock, "");
+        }
+        currentComposer.classList.toggle("tall", scenario.tallComposer);
+        setEditorText(`draft to cut ${scenario.index}\nsecond line`);
+        await delay(0);
+        metrics.deleteCycles += 1;
+        deleteEditInProgress = true;
+        fixtureDispatching = true;
+        currentEditor?.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "deleteByCut", data: null }));
+        fixtureDispatching = false;
+        setEditorText("");
+        fixtureDispatching = true;
+        currentEditor?.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteByCut", data: null }));
+        fixtureDispatching = false;
+        await delay(40 + (scenario.index % 4) * 12);
+        deleteEditInProgress = false;
+        await forceMicaScan();
+        if (!currentComposer || !currentComposer.isConnected) metrics.composerMissingAfterDelete += 1;
         if (getEditorText() !== "") metrics.staleComposerAtEnd += 1;
       }
 
@@ -354,16 +385,34 @@
       function instrumentEvents() {
         document.addEventListener("input", () => {
           metrics.inputEvents += 1;
-          if (!nativeMutating) metrics.externalInputEvents += 1;
+          if (!nativeMutating && !fixtureDispatching) metrics.externalInputEvents += 1;
         }, true);
         document.addEventListener("change", () => {
           metrics.changeEvents += 1;
-          if (!nativeMutating) metrics.externalChangeEvents += 1;
+          if (!nativeMutating && !fixtureDispatching) metrics.externalChangeEvents += 1;
         }, true);
         document.addEventListener("submit", (event) => {
           event.preventDefault();
           if (!fixtureDispatching) metrics.externalSubmitEvents += 1;
         }, true);
+      }
+
+      function instrumentComposerGeometryReads() {
+        const original = HTMLElement.prototype.getBoundingClientRect;
+        HTMLElement.prototype.getBoundingClientRect = function instrumentedGetBoundingClientRect() {
+          if (deleteEditInProgress && currentEditor && isComposerRelatedElement(this)) {
+            metrics.composerGeometryReadsDuringDelete += 1;
+          }
+          return original.apply(this, arguments);
+        };
+      }
+
+      function isComposerRelatedElement(element) {
+        if (!(element instanceof HTMLElement)) return false;
+        if (element === currentEditor || element === currentComposer) return true;
+        if (currentEditor && (element.contains(currentEditor) || currentEditor.contains(element))) return true;
+        if (currentComposer && (element.contains(currentComposer) || currentComposer.contains(element))) return true;
+        return false;
       }
 
       function installMicaClassObserver() {

@@ -56,6 +56,7 @@
   const COMPOSER_PROTECTION_MS = 5000;
   const COMPOSER_PROTECTION_PADDING = 28;
   const COMPOSER_SEND_ACTIVITY_MS = 8000;
+  const COMPOSER_EDIT_ACTIVITY_MS = 900;
   const bootTime = Date.now();
   const measuredHeights = new WeakMap();
   const observedTurns = new WeakSet();
@@ -71,7 +72,12 @@
     knownInterruptionDismissalsByRule: {},
     lastKnownInterruptionRuleId: null,
     knownInterruptionToasts: 0,
-    composerProtectionSkips: 0
+    composerProtectionSkips: 0,
+    composerMutationBatchesIgnored: 0,
+    composerLifecycleMutationBatchesIgnored: 0,
+    composerEditScansSkipped: 0,
+    overlayPlacements: 0,
+    overlayStaticPlacements: 0
   };
   const composerState = {
     currentElement: null,
@@ -97,7 +103,8 @@
     lastOptimizationIntersection: null,
     submitEvents: 0,
     sendClickEvents: 0,
-    sendingUntil: 0
+    sendingUntil: 0,
+    editingUntil: 0
   };
   const turnWindow = {
     previousKeys: new Set(),
@@ -213,25 +220,51 @@
     if (typeof MutationObserver !== "undefined") {
       mutationObserver = new MutationObserver((mutations) => {
         recordMutations(mutations);
+        if (areOnlyComposerMutations(mutations)) {
+          globalCounters.composerMutationBatchesIgnored += 1;
+          updateComposerTextLengthOnly();
+          return;
+        }
+        if (isComposerLifecycleUnstable()) {
+          globalCounters.composerLifecycleMutationBatchesIgnored += 1;
+          updateComposerTextLengthOnly();
+          return;
+        }
         processKnownInterruptions();
-        scheduleOverlayPlacement();
         scheduleScan();
       });
       mutationObserver.observe(document.body, { childList: true, subtree: true });
     }
     addEventListener("scroll", () => {
       recordScrollSample();
-      scheduleScan();
+      if (!isComposerLifecycleUnstable()) scheduleScan();
     }, { passive: true, capture: true });
     addEventListener("resize", () => {
-      scheduleScan();
-      scheduleOverlayPlacement();
+      if (!isComposerLifecycleUnstable()) {
+        scheduleScan();
+        scheduleOverlayPlacement();
+      }
     }, { passive: true });
     document.addEventListener("submit", (event) => {
       if (isComposerEventTarget(event.target)) {
         composerState.submitEvents += 1;
         markComposerSendActivity();
       }
+    }, true);
+    document.addEventListener("beforeinput", (event) => {
+      if (isComposerEventTarget(event.target)) markComposerEditActivity();
+    }, true);
+    document.addEventListener("input", (event) => {
+      if (isComposerEventTarget(event.target)) markComposerEditActivity();
+    }, true);
+    document.addEventListener("cut", (event) => {
+      if (isComposerEventTarget(event.target)) markComposerEditActivity();
+    }, true);
+    document.addEventListener("paste", (event) => {
+      if (isComposerEventTarget(event.target)) markComposerEditActivity();
+    }, true);
+    document.addEventListener("keydown", (event) => {
+      if (isComposerEventTarget(event.target) && isEditingKey(event)) markComposerEditActivity();
     }, true);
     document.addEventListener("click", (event) => {
       const target = event.target instanceof Element ? event.target : null;
@@ -247,9 +280,11 @@
         clearOptimization();
         turnWindow.previousKeys = new Set();
       }
-      scheduleScan();
-      processKnownInterruptions();
-      scheduleOverlayPlacement();
+      if (!isComposerLifecycleUnstable()) {
+        scheduleScan();
+        processKnownInterruptions();
+        if (shouldPollOverlayPlacement()) scheduleOverlayPlacement();
+      }
     }, 1500);
   }
 
@@ -346,6 +381,11 @@
   }
 
   function scanAndApply() {
+    if (isComposerEditWindowActive()) {
+      globalCounters.composerEditScansSkipped += 1;
+      updateComposerTextLengthOnly();
+      return;
+    }
     updateComposerState();
     if (!settings.enabled) {
       clearOptimization();
@@ -716,12 +756,25 @@
     composerState.sendingUntil = Math.max(composerState.sendingUntil, Date.now() + COMPOSER_SEND_ACTIVITY_MS);
   }
 
+  function markComposerEditActivity() {
+    composerState.editingUntil = Math.max(composerState.editingUntil, Date.now() + COMPOSER_EDIT_ACTIVITY_MS);
+  }
+
+  function isComposerEditWindowActive() {
+    return Date.now() <= composerState.editingUntil;
+  }
+
   function isComposerSendWindowActive() {
     return Date.now() <= composerState.sendingUntil;
   }
 
   function isComposerLifecycleUnstable() {
-    return isComposerSendWindowActive() || (!!composerState.seenOnce && !composerState.currentElement && isRecentComposerProtectionActive());
+    return isComposerEditWindowActive() || isComposerSendWindowActive() || (!!composerState.seenOnce && !composerState.currentElement && isRecentComposerProtectionActive());
+  }
+
+  function isEditingKey(event) {
+    if (!event) return false;
+    return event.key === "Backspace" || event.key === "Delete" || event.key === "Enter" || event.key.length === 1;
   }
 
   function countCurrentOptimizedTurns(turns) {
@@ -807,6 +860,48 @@
     for (const mutation of mutations) {
       globalCounters.addedNodes += mutation.addedNodes?.length || 0;
       globalCounters.removedNodes += mutation.removedNodes?.length || 0;
+    }
+  }
+
+  function areOnlyComposerMutations(mutations) {
+    if (!mutations || mutations.length === 0) return false;
+    return mutations.every((mutation) => isComposerMutation(mutation));
+  }
+
+  function isComposerMutation(mutation) {
+    if (!mutation) return false;
+    if (isComposerMutationNode(mutation.target)) return true;
+    for (const node of Array.from(mutation.addedNodes || [])) {
+      if (isComposerMutationNode(node)) return true;
+    }
+    for (const node of Array.from(mutation.removedNodes || [])) {
+      if (isComposerMutationNode(node)) return true;
+    }
+    return false;
+  }
+
+  function isComposerMutationNode(node) {
+    const element = getMutationElement(node);
+    if (!(element instanceof HTMLElement)) return false;
+    if (element.closest("[data-mica-root='true']")) return false;
+    if (element.matches(COMPOSER_SELECTOR) || element.closest(COMPOSER_SELECTOR)) return true;
+    if (node instanceof HTMLElement && node.querySelector?.(COMPOSER_SELECTOR)) return true;
+    if (composerState.currentRoot && (element === composerState.currentRoot || composerState.currentRoot.contains(element) || element.contains(composerState.currentRoot))) return true;
+    if (composerState.lastKnownRoot && isRecentComposerProtectionActive() && (element === composerState.lastKnownRoot || composerState.lastKnownRoot.contains(element) || element.contains(composerState.lastKnownRoot))) return true;
+    return false;
+  }
+
+  function getMutationElement(node) {
+    if (node instanceof HTMLElement) return node;
+    if (node instanceof Element) return node.closest("*");
+    if (node instanceof CharacterData) return node.parentElement;
+    return null;
+  }
+
+  function updateComposerTextLengthOnly() {
+    const element = composerState.currentElement;
+    if (element instanceof HTMLElement && element.isConnected) {
+      composerState.currentTextLength = getComposerTextLength(element);
     }
   }
 
@@ -932,6 +1027,11 @@
       lastKnownInterruptionRuleId: globalCounters.lastKnownInterruptionRuleId,
       knownInterruptionToasts: globalCounters.knownInterruptionToasts,
       composerProtectionSkips: globalCounters.composerProtectionSkips,
+      composerMutationBatchesIgnored: globalCounters.composerMutationBatchesIgnored,
+      composerLifecycleMutationBatchesIgnored: globalCounters.composerLifecycleMutationBatchesIgnored,
+      composerEditScansSkipped: globalCounters.composerEditScansSkipped,
+      overlayPlacements: globalCounters.overlayPlacements,
+      overlayStaticPlacements: globalCounters.overlayStaticPlacements,
       composer: snapshotComposerState(),
       domNodes: countDomNodes()
     };
@@ -1036,7 +1136,9 @@
         mode: getOverlayMode(),
         toastVisible: overlayState.toastVisible,
         toastCount: overlayState.toastCount,
-        toastEvents: current.knownInterruptionToasts
+        toastEvents: current.knownInterruptionToasts,
+        placements: Math.max(0, current.overlayPlacements - (baseline.overlayPlacements || 0)),
+        staticPlacements: Math.max(0, current.overlayStaticPlacements - (baseline.overlayStaticPlacements || 0))
       },
       composer: {
         exists: current.composer.exists,
@@ -1052,6 +1154,9 @@
         lastOptimizationIntersection: current.composer.lastOptimizationIntersection,
         optimizationChangesPaused: isComposerLifecycleUnstable(),
         protectionSkips: Math.max(0, current.composerProtectionSkips - (baseline.composerProtectionSkips || 0)),
+        mutationBatchesIgnored: Math.max(0, current.composerMutationBatchesIgnored - (baseline.composerMutationBatchesIgnored || 0)),
+        lifecycleMutationBatchesIgnored: Math.max(0, current.composerLifecycleMutationBatchesIgnored - (baseline.composerLifecycleMutationBatchesIgnored || 0)),
+        editScansSkipped: Math.max(0, current.composerEditScansSkipped - (baseline.composerEditScansSkipped || 0)),
         optimizationApplyDuringSend: Math.max(0, current.composer.optimizationApplyDuringSendCount - (baseline.composer?.optimizationApplyDuringSendCount || 0)),
         optimizationRemoveDuringSend: Math.max(0, current.composer.optimizationRemoveDuringSendCount - (baseline.composer?.optimizationRemoveDuringSendCount || 0))
       },
@@ -1381,20 +1486,45 @@
     if (!badgeRoot || !badgeHost || badgeHost.hidden) return;
     const overlay = badgeRoot.getElementById("mica-overlay");
     if (!overlay) return;
-    updateComposerState();
-    observeComposerForOverlay();
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1024;
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 768;
     let size = measureOverlay(overlay);
-    let composer = findComposerArea();
+    if (shouldUseStaticOverlayPlacement()) {
+      disconnectOverlayComposerObserver();
+      const placement = clampPlacement({
+        name: "top-right-static",
+        x: viewportWidth - size.width - OVERLAY_MARGIN,
+        y: OVERLAY_MARGIN
+      }, size, viewportWidth, viewportHeight);
+      applyOverlayPlacement(placement.name, placement, size, null);
+      globalCounters.overlayStaticPlacements += 1;
+      return;
+    }
+
+    updateComposerState();
+    observeComposerForOverlay();
+    const composer = findComposerArea();
     let placement = chooseOverlayPlacement(size, composer?.rect, viewportWidth, viewportHeight);
     if (placement.collides && shouldShowExpandedStatus()) {
       overlayState.forceCompactForPlacement = true;
       renderBadge();
       return;
     }
+    applyOverlayPlacement(placement.name, placement, size, composer?.rect || null);
+  }
+
+  function shouldUseStaticOverlayPlacement() {
+    return isComposerEditWindowActive() || (!overlayState.toastVisible && !shouldShowExpandedStatus());
+  }
+
+  function shouldPollOverlayPlacement() {
+    return overlayState.toastVisible || shouldShowExpandedStatus() || currentStatus.name === STATUS.DEGRADED;
+  }
+
+  function applyOverlayPlacement(name, placement, size, composerRect) {
     badgeHost.style.transform = `translate(${placement.x}px, ${placement.y}px)`;
-    overlayState.placement = placement.name;
+    overlayState.placement = name;
+    globalCounters.overlayPlacements += 1;
     const placedRect = {
       left: placement.x,
       top: placement.y,
@@ -1409,8 +1539,8 @@
       toastVisible: overlayState.toastVisible,
       toastCount: overlayState.toastCount,
       rect: placedRect,
-      composerRect: composer?.rect || null,
-      intersectsComposer: composer?.rect ? intersects(placedRect, composer.rect) : false
+      composerRect,
+      intersectsComposer: composerRect ? intersects(placedRect, composerRect) : false
     };
   }
 
@@ -1485,6 +1615,10 @@
 
   function observeComposerForOverlay() {
     if (typeof ResizeObserver === "undefined") return;
+    if (shouldUseStaticOverlayPlacement()) {
+      disconnectOverlayComposerObserver();
+      return;
+    }
     const composer = findComposerArea()?.element || null;
     if (!composer || composer === overlayObservedComposer) return;
     if (!overlayComposerObserver) {
@@ -1493,6 +1627,13 @@
     if (overlayObservedComposer) overlayComposerObserver.unobserve(overlayObservedComposer);
     overlayObservedComposer = composer;
     overlayComposerObserver.observe(composer);
+  }
+
+  function disconnectOverlayComposerObserver() {
+    if (overlayObservedComposer && overlayComposerObserver) {
+      overlayComposerObserver.unobserve(overlayObservedComposer);
+    }
+    overlayObservedComposer = null;
   }
 
   function findComposerArea() {
