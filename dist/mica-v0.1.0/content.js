@@ -20,10 +20,16 @@
   const TURN_SELECTOR = [
     "[data-message-author-role]",
     "[data-testid^='conversation-turn-']",
-    "[data-testid*='conversation-turn']",
-    "article"
+    "[data-testid*='conversation-turn']"
   ].join(",");
   const ROLE_SELECTOR = "[data-message-author-role='user'], [data-message-author-role='assistant'], [data-message-author-role='tool']";
+  const COMPOSER_SELECTOR = [
+    "[data-testid*='composer']",
+    "textarea",
+    "[contenteditable='true']",
+    "[role='textbox']",
+    "form"
+  ].join(",");
   const SPECIAL_SELECTOR = [
     "textarea",
     "input:not([type='hidden'])",
@@ -47,6 +53,9 @@
   const TOAST_MS = 2800;
   const TOAST_MERGE_MS = 3000;
   const NARROW_VIEWPORT_WIDTH = 720;
+  const COMPOSER_PROTECTION_MS = 5000;
+  const COMPOSER_PROTECTION_PADDING = 28;
+  const COMPOSER_SEND_ACTIVITY_MS = 8000;
   const bootTime = Date.now();
   const measuredHeights = new WeakMap();
   const observedTurns = new WeakSet();
@@ -61,7 +70,34 @@
     knownInterruptionDismissals: 0,
     knownInterruptionDismissalsByRule: {},
     lastKnownInterruptionRuleId: null,
-    knownInterruptionToasts: 0
+    knownInterruptionToasts: 0,
+    composerProtectionSkips: 0
+  };
+  const composerState = {
+    currentElement: null,
+    currentRoot: null,
+    currentRect: null,
+    currentAncestors: [],
+    lastKnownElement: null,
+    lastKnownRoot: null,
+    lastKnownRect: null,
+    lastKnownAncestors: [],
+    lastSeenAt: 0,
+    missingSince: 0,
+    maxMissingDurationMs: 0,
+    seenOnce: false,
+    mountCount: 0,
+    unmountCount: 0,
+    identityChanges: 0,
+    currentTextLength: 0,
+    visible: false,
+    optimizationIntersectionCount: 0,
+    optimizationApplyDuringSendCount: 0,
+    optimizationRemoveDuringSendCount: 0,
+    lastOptimizationIntersection: null,
+    submitEvents: 0,
+    sendClickEvents: 0,
+    sendingUntil: 0
   };
   const turnWindow = {
     previousKeys: new Set(),
@@ -191,6 +227,20 @@
       scheduleScan();
       scheduleOverlayPlacement();
     }, { passive: true });
+    document.addEventListener("submit", (event) => {
+      if (isComposerEventTarget(event.target)) {
+        composerState.submitEvents += 1;
+        markComposerSendActivity();
+      }
+    }, true);
+    document.addEventListener("click", (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const button = target?.closest("button, [role='button']");
+      if (button instanceof HTMLElement && isComposerEventTarget(button) && isLikelySendButton(button)) {
+        composerState.sendClickEvents += 1;
+        markComposerSendActivity();
+      }
+    }, true);
     setInterval(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
@@ -271,6 +321,12 @@
       },
       expandStatus() {
         expandOverlay(true);
+      },
+      forceScan() {
+        scanAndApply();
+      },
+      getDiagnosticsReport() {
+        return buildDiagnosticsReport();
       }
     };
   }
@@ -290,6 +346,7 @@
   }
 
   function scanAndApply() {
+    updateComposerState();
     if (!settings.enabled) {
       clearOptimization();
       setStatus(STATUS.DISABLED, "Disabled by user", []);
@@ -334,6 +391,17 @@
       return;
     }
 
+    if (isComposerLifecycleUnstable()) {
+      removeUnsafeComposerOptimizations();
+      const optimizedCount = countCurrentOptimizedTurns(turns);
+      const nativeName = optimizedCount > 0 ? STATUS.ACTIVE : STATUS.NATIVE_ONLY;
+      const reason = optimizedCount > 0
+        ? "Composer lifecycle is active; existing render containment preserved"
+        : "Composer lifecycle is active; render containment changes paused";
+      setStatus(nativeName, reason, turns, optimizedCount, 0);
+      return;
+    }
+
     const protectedIndexes = getProtectedIndexes(turns);
     let optimizedCount = 0;
     let protectedCount = 0;
@@ -342,13 +410,17 @@
       const shouldProtect = protectedIndexes.has(index);
       const shouldOptimize = !shouldProtect && isFarFromViewport(turn);
       if (shouldOptimize) {
-        applyOptimization(turn);
-        optimizedCount += 1;
+        if (applyOptimization(turn)) {
+          optimizedCount += 1;
+        } else {
+          protectedCount += 1;
+        }
       } else {
         removeOptimization(turn);
         if (shouldProtect) protectedCount += 1;
       }
     }
+    removeUnsafeComposerOptimizations();
 
     if (optimizedCount > 0) {
       setStatus(STATUS.ACTIVE, "Mica render containment applied to offscreen mounted turns", turns, optimizedCount, protectedCount);
@@ -373,13 +445,12 @@
           roleNode.closest("[data-testid*='conversation-turn']") ||
           roleNode.closest("article") ||
           roleNode;
-      } else if (node.matches("article") && (node.childElementCount > 0 || node.getBoundingClientRect().height > 20)) {
-        turn = node;
       }
 
       if (!(turn instanceof HTMLElement)) continue;
       if (!main.contains(turn)) continue;
       if (turn.offsetParent === null && turn.getClientRects().length === 0) continue;
+      if (isComposerProtectedElement(turn)) continue;
       unique.add(turn);
     }
 
@@ -392,8 +463,8 @@
   function isSafeTurnSet(turns) {
     if (turns.length < 2) return true;
     const roleCount = turns.filter((turn) => turn.querySelector(ROLE_SELECTOR) || turn.matches(ROLE_SELECTOR)).length;
-    const articleCount = turns.filter((turn) => turn.matches("article") || turn.querySelector("article")).length;
-    return roleCount >= 2 || articleCount >= Math.min(3, turns.length);
+    const testIdCount = turns.filter((turn) => /conversation-turn/.test(turn.getAttribute("data-testid") || "")).length;
+    return roleCount >= 2 || (testIdCount >= Math.min(3, turns.length) && roleCount >= 1);
   }
 
   function getProtectedIndexes(turns) {
@@ -407,6 +478,7 @@
       if (isNearViewport(turn)) protectedIndexes.add(index);
       if (turn.contains(document.activeElement)) protectedIndexes.add(index);
       if (isSpecialTurn(turn)) protectedIndexes.add(index);
+      if (isComposerProtectedElement(turn)) protectedIndexes.add(index);
       if (streaming && index >= turns.length - Math.max(4, settings.recentTurnKeepCount)) protectedIndexes.add(index);
     }
     return protectedIndexes;
@@ -445,23 +517,215 @@
   }
 
   function applyOptimization(turn) {
+    if (isComposerProtectedElement(turn)) {
+      globalCounters.composerProtectionSkips += 1;
+      removeOptimization(turn);
+      return false;
+    }
     const height = measuredHeights.get(turn) || Math.max(240, Math.ceil(turn.getBoundingClientRect().height));
     turn.style.setProperty("--mica-intrinsic-height", `${height}px`);
     turn.classList.add("mica-turn-optimized");
     turn.dataset.micaOptimized = "true";
     optimizedTurns.add(turn);
+    if (isComposerSendWindowActive()) composerState.optimizationApplyDuringSendCount += 1;
+    return true;
   }
 
   function removeOptimization(turn) {
+    const wasOptimized = optimizedTurns.has(turn);
     turn.classList.remove("mica-turn-optimized");
     delete turn.dataset.micaOptimized;
     optimizedTurns.delete(turn);
+    if (wasOptimized && isComposerSendWindowActive()) composerState.optimizationRemoveDuringSendCount += 1;
   }
 
   function clearOptimization() {
     for (const turn of Array.from(optimizedTurns)) {
       removeOptimization(turn);
     }
+  }
+
+  function updateComposerState() {
+    const now = Date.now();
+    const area = findComposerProtectionArea();
+
+    if (area) {
+      if (!composerState.seenOnce) {
+        composerState.mountCount += 1;
+      } else if (!composerState.currentElement) {
+        composerState.mountCount += 1;
+      } else if (composerState.currentElement !== area.element) {
+        composerState.identityChanges += 1;
+      }
+      if (composerState.missingSince > 0) {
+        composerState.maxMissingDurationMs = Math.max(composerState.maxMissingDurationMs, now - composerState.missingSince);
+      }
+      composerState.currentElement = area.element;
+      composerState.currentRoot = area.root;
+      composerState.currentRect = area.rect;
+      composerState.currentAncestors = getComposerAncestorChain(area.root);
+      composerState.lastKnownElement = area.element;
+      composerState.lastKnownRoot = area.root;
+      composerState.lastKnownRect = area.rect;
+      composerState.lastKnownAncestors = composerState.currentAncestors;
+      composerState.lastSeenAt = now;
+      composerState.missingSince = 0;
+      composerState.seenOnce = true;
+      composerState.currentTextLength = getComposerTextLength(area.element);
+      composerState.visible = true;
+      removeUnsafeComposerOptimizations();
+      return;
+    }
+
+    if (composerState.currentElement && composerState.missingSince === 0) {
+      composerState.unmountCount += 1;
+      composerState.missingSince = now;
+    }
+    if (composerState.missingSince > 0) {
+      composerState.maxMissingDurationMs = Math.max(composerState.maxMissingDurationMs, now - composerState.missingSince);
+    }
+    composerState.currentElement = null;
+    composerState.currentRoot = null;
+    composerState.currentRect = null;
+    composerState.currentAncestors = [];
+    composerState.currentTextLength = 0;
+    composerState.visible = false;
+  }
+
+  function findComposerProtectionArea() {
+    const candidates = getComposerProtectionCandidates();
+    if (candidates.length === 0) return null;
+    const active = document.activeElement instanceof HTMLElement
+      ? candidates.find((item) => item.root.contains(document.activeElement) || item.element.contains(document.activeElement))
+      : null;
+    const chosen = active || candidates.sort((a, b) => b.rect.bottom - a.rect.bottom)[0];
+    return { element: chosen.element, root: chosen.root, rect: chosen.rect };
+  }
+
+  function getComposerProtectionCandidates() {
+    const nodes = Array.from(document.querySelectorAll(COMPOSER_SELECTOR))
+      .filter((node) => node instanceof HTMLElement && isVisibleForOverlay(node) && isLikelyComposerNode(node));
+    const results = [];
+    const seenRoots = new Set();
+
+    for (const node of nodes) {
+      const root = chooseComposerContainer(node);
+      if (!root || seenRoots.has(root) || root.closest("[data-mica-root='true']")) continue;
+      const rect = rectFromDomRect(root.getBoundingClientRect());
+      if (!isComposerProtectionRect(rect)) continue;
+      const editable = root.querySelector("textarea, input:not([type='hidden']), [contenteditable='true'], [role='textbox']");
+      seenRoots.add(root);
+      results.push({ element: editable instanceof HTMLElement ? editable : node, root, rect });
+    }
+    return results;
+  }
+
+  function isLikelyComposerNode(node) {
+    if (!(node instanceof HTMLElement) || node.closest("[data-mica-root='true']")) return false;
+    if (node.matches("textarea, [contenteditable='true'], [role='textbox']")) return true;
+    const testId = node.getAttribute("data-testid") || "";
+    if (/composer/i.test(testId)) {
+      return !!node.querySelector("textarea, [contenteditable='true'], [role='textbox']");
+    }
+    if (node.matches("form")) {
+      return !!node.querySelector("textarea, [contenteditable='true'], [role='textbox']");
+    }
+    return false;
+  }
+
+  function isComposerProtectionRect(rect) {
+    return !!rect && rect.width >= 120 && rect.height >= 18 && rect.bottom > 0 && rect.top < (window.innerHeight || document.documentElement.clientHeight || 768);
+  }
+
+  function getComposerTextLength(element) {
+    if (!element) return 0;
+    if (element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement) return element.value.length;
+    return (element.innerText || element.textContent || "").length;
+  }
+
+  function isComposerProtectedElement(element) {
+    if (!(element instanceof HTMLElement) || element.closest("[data-mica-root='true']")) return false;
+    if (element.matches(COMPOSER_SELECTOR) || element.querySelector(COMPOSER_SELECTOR)) return true;
+
+    const protectedNodes = [
+      composerState.currentElement,
+      composerState.currentRoot,
+      isRecentComposerProtectionActive() ? composerState.lastKnownElement : null,
+      isRecentComposerProtectionActive() ? composerState.lastKnownRoot : null
+    ]
+      .concat(composerState.currentAncestors || [])
+      .concat(isRecentComposerProtectionActive() ? composerState.lastKnownAncestors || [] : [])
+      .filter((node) => node instanceof HTMLElement);
+
+    for (const node of protectedNodes) {
+      if (element === node || element.contains(node) || node.contains(element)) return true;
+    }
+
+    const rect = getRecentComposerProtectedRect();
+    if (!rect) return false;
+    return intersects(rectFromDomRect(element.getBoundingClientRect()), rect);
+  }
+
+  function getRecentComposerProtectedRect() {
+    const rect = composerState.currentRect || (isRecentComposerProtectionActive() ? composerState.lastKnownRect : null);
+    if (!rect) return null;
+    return expandRect(rect, COMPOSER_PROTECTION_PADDING);
+  }
+
+  function isRecentComposerProtectionActive() {
+    if (!composerState.lastSeenAt) return false;
+    return Date.now() - composerState.lastSeenAt <= COMPOSER_PROTECTION_MS;
+  }
+
+  function removeUnsafeComposerOptimizations() {
+    for (const turn of Array.from(optimizedTurns)) {
+      if (!isComposerProtectedElement(turn)) continue;
+      composerState.optimizationIntersectionCount += 1;
+      composerState.lastOptimizationIntersection = describeElementForDiagnostics(turn);
+      removeOptimization(turn);
+    }
+  }
+
+  function isComposerEventTarget(target) {
+    const element = target instanceof HTMLElement ? target : null;
+    if (!element || element.closest("[data-mica-root='true']")) return false;
+    if (element.matches(COMPOSER_SELECTOR) || element.closest(COMPOSER_SELECTOR)) return true;
+    if (composerState.currentRoot && composerState.currentRoot.contains(element)) return true;
+    if (composerState.lastKnownRoot && isRecentComposerProtectionActive() && composerState.lastKnownRoot.contains(element)) return true;
+    return false;
+  }
+
+  function getComposerAncestorChain(root) {
+    const chain = [];
+    let current = root;
+    for (let depth = 0; depth < 5 && current instanceof HTMLElement; depth += 1) {
+      if (current.matches("main, body, html")) break;
+      chain.push(current);
+      current = current.parentElement;
+    }
+    return chain;
+  }
+
+  function isLikelySendButton(button) {
+    const text = `${button.getAttribute("aria-label") || ""} ${button.textContent || ""}`;
+    const testId = button.getAttribute("data-testid") || "";
+    return /send|submit|发送|提交/i.test(text) || /send|submit/i.test(testId);
+  }
+
+  function markComposerSendActivity() {
+    composerState.sendingUntil = Math.max(composerState.sendingUntil, Date.now() + COMPOSER_SEND_ACTIVITY_MS);
+  }
+
+  function isComposerSendWindowActive() {
+    return Date.now() <= composerState.sendingUntil;
+  }
+
+  function isComposerLifecycleUnstable() {
+    return isComposerSendWindowActive() || (!!composerState.seenOnce && !composerState.currentElement && isRecentComposerProtectionActive());
+  }
+
+  function countCurrentOptimizedTurns(turns) {
+    return turns.reduce((count, turn) => count + (optimizedTurns.has(turn) ? 1 : 0), 0);
   }
 
   function updateTurnWindowStats(turns) {
@@ -667,6 +931,8 @@
       knownInterruptionDismissalsByRule: { ...globalCounters.knownInterruptionDismissalsByRule },
       lastKnownInterruptionRuleId: globalCounters.lastKnownInterruptionRuleId,
       knownInterruptionToasts: globalCounters.knownInterruptionToasts,
+      composerProtectionSkips: globalCounters.composerProtectionSkips,
+      composer: snapshotComposerState(),
       domNodes: countDomNodes()
     };
   }
@@ -772,6 +1038,23 @@
         toastCount: overlayState.toastCount,
         toastEvents: current.knownInterruptionToasts
       },
+      composer: {
+        exists: current.composer.exists,
+        visible: current.composer.visible,
+        textLength: current.composer.textLength,
+        mountCount: current.composer.mountCount,
+        unmountCount: current.composer.unmountCount,
+        identityChanges: current.composer.identityChanges,
+        maxMissingDurationMs: current.composer.maxMissingDurationMs,
+        submitEvents: current.composer.submitEvents,
+        sendClickEvents: current.composer.sendClickEvents,
+        optimizationIntersections: current.composer.optimizationIntersectionCount,
+        lastOptimizationIntersection: current.composer.lastOptimizationIntersection,
+        optimizationChangesPaused: isComposerLifecycleUnstable(),
+        protectionSkips: Math.max(0, current.composerProtectionSkips - (baseline.composerProtectionSkips || 0)),
+        optimizationApplyDuringSend: Math.max(0, current.composer.optimizationApplyDuringSendCount - (baseline.composer?.optimizationApplyDuringSendCount || 0)),
+        optimizationRemoveDuringSend: Math.max(0, current.composer.optimizationRemoveDuringSendCount - (baseline.composer?.optimizationRemoveDuringSendCount || 0))
+      },
       mountedTurnComplexity: measureMountedTurnComplexity(turns)
     };
   }
@@ -827,6 +1110,35 @@
 
   function ratePerMinute(count, durationSeconds) {
     return durationSeconds > 0 ? round((count / durationSeconds) * 60) : 0;
+  }
+
+  function snapshotComposerState() {
+    updateComposerState();
+    return {
+      exists: !!composerState.currentElement,
+      visible: composerState.visible,
+      textLength: composerState.currentTextLength,
+      mountCount: composerState.mountCount,
+      unmountCount: composerState.unmountCount,
+      identityChanges: composerState.identityChanges,
+      maxMissingDurationMs: Math.round(composerState.maxMissingDurationMs),
+      submitEvents: composerState.submitEvents,
+      sendClickEvents: composerState.sendClickEvents,
+      optimizationIntersectionCount: composerState.optimizationIntersectionCount,
+      lastOptimizationIntersection: composerState.lastOptimizationIntersection,
+      optimizationApplyDuringSendCount: composerState.optimizationApplyDuringSendCount,
+      optimizationRemoveDuringSendCount: composerState.optimizationRemoveDuringSendCount
+    };
+  }
+
+  function describeElementForDiagnostics(element) {
+    if (!(element instanceof HTMLElement)) return null;
+    return {
+      tagName: element.tagName.toLowerCase(),
+      testId: element.getAttribute("data-testid") || null,
+      role: element.getAttribute("role") || null,
+      messageRole: element.getAttribute("data-message-author-role") || element.querySelector("[data-message-author-role]")?.getAttribute("data-message-author-role") || null
+    };
   }
 
   function diffRuleCounts(current, baseline) {
@@ -1069,6 +1381,7 @@
     if (!badgeRoot || !badgeHost || badgeHost.hidden) return;
     const overlay = badgeRoot.getElementById("mica-overlay");
     if (!overlay) return;
+    updateComposerState();
     observeComposerForOverlay();
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1024;
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 768;
@@ -1246,6 +1559,17 @@
       bottom: Math.max(...rects.map((rect) => rect.bottom)),
       width: Math.max(...rects.map((rect) => rect.right)) - Math.min(...rects.map((rect) => rect.left)),
       height: Math.max(...rects.map((rect) => rect.bottom)) - Math.min(...rects.map((rect) => rect.top))
+    };
+  }
+
+  function expandRect(rect, padding) {
+    return {
+      left: rect.left - padding,
+      top: rect.top - padding,
+      right: rect.right + padding,
+      bottom: rect.bottom + padding,
+      width: rect.width + padding * 2,
+      height: rect.height + padding * 2
     };
   }
 

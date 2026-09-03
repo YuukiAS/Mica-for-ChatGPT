@@ -12,6 +12,8 @@
     "test:overlay": "node scripts/overlay-fixture-smoke.mjs",
     "test:build": "node scripts/validate-build.mjs",
     "test": "npm run build && npm run test:fixture && npm run test:interruptions && npm run test:overlay && npm run test:build",
+    "test:e2e": "npm run build && node scripts/run-e2e.mjs",
+    "test:e2e:stress": "npm run build && node scripts/run-e2e.mjs --stress",
     "package:release": "npm run build && node scripts/package-release.mjs && node scripts/validate-release.mjs"
   },
   "engines": {

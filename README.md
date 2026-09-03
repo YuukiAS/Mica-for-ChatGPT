@@ -89,10 +89,14 @@ Reliability 仅处理显式 allowlist 中的纯 acknowledgement 提示。当前 
 npm run build
 npm run test:fixture
 npm test
+npm run test:e2e
+npm run test:e2e:stress
 npm run package:release
 ```
 
 本地 synthetic 90-turn fixture 只能证明 Mica 自己的 containment/fail-open 实现、manifest、icons、diagnostics message surface 和 release ZIP 结构工作；它不能证明 Mica 对当前真实 ChatGPT 长 conversation 有性能收益。真实 P0 性能结论必须来自 8 GB MacBook Neo。
+
+`npm run test:e2e` 和 `npm run test:e2e:stress` 使用隔离 Playwright Chromium 访问仓库内 synthetic fixture，覆盖 composer lifecycle、overlay placement、send/streaming race 和 Mica disabled baseline。它们不得访问真实登录态 ChatGPT，也不得操作用户正在使用的 Edge。
 
 ## 真实设备更新：ChatGPT 已原生窗口化
 

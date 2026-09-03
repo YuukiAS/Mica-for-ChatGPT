@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mica composer lifecycle fixture</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 3600px;
+        margin: 0;
+        background: #f7f7f8;
+        color: #171717;
+        font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        width: min(860px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 24px 0 180px;
+      }
+
+      article {
+        margin: 16px 0;
+        padding: 16px;
+        border: 1px solid #d9d9e3;
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      #composer-ancestry-host {
+        min-height: 120px;
+        border-style: dashed;
+      }
+
+      .composer-dock {
+        position: fixed;
+        left: 50%;
+        bottom: 14px;
+        width: min(820px, calc(100vw - 24px));
+        transform: translateX(-50%);
+        z-index: 10;
+      }
+
+      .composer {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        min-height: 82px;
+        padding: 12px;
+        border: 1px solid #cfcfd6;
+        border-radius: 18px;
+        background: #ffffff;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+      }
+
+      .composer.tall {
+        min-height: 172px;
+      }
+
+      [role="textbox"] {
+        min-height: 46px;
+        max-height: 138px;
+        overflow: auto;
+        padding: 10px 12px;
+        border: 1px solid #dddddd;
+        border-radius: 12px;
+        white-space: pre-wrap;
+      }
+
+      button {
+        min-width: 42px;
+        min-height: 36px;
+      }
+
+      #e2e-result {
+        position: fixed;
+        left: 8px;
+        top: 8px;
+        z-index: 1;
+        max-width: 40vw;
+        white-space: pre-wrap;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <pre id="e2e-result">Idle</pre>
+    <main>
+      <article id="composer-ancestry-host" data-testid="conversation-turn-composer-host">
+        <p>Potential composer host used to exercise ancestry protection.</p>
+      </article>
+      <section id="conversation" aria-label="Synthetic ChatGPT conversation"></section>
+    </main>
+    <div id="composer-dock" class="composer-dock"></div>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      const withMica = params.get("mica") === "1";
+      const disabled = params.get("disabled") === "1";
+      const stress = params.get("stress") === "1";
+      const loops = Number(params.get("loops") || (stress ? 72 : 24));
+      const resultNode = document.getElementById("e2e-result");
+      const conversation = document.getElementById("conversation");
+      const dock = document.getElementById("composer-dock");
+      const ancestryHost = document.getElementById("composer-ancestry-host");
+
+      let totalTurns = 120;
+      let windowStart = 88;
+      let composerSerial = 0;
+      let currentComposer = null;
+      let currentEditor = null;
+      let nativeMutating = false;
+      let fixtureDispatching = false;
+      let sendInProgress = false;
+      let missingStartedAt = 0;
+      let lastComposerRect = null;
+
+      const metrics = {
+        mode: withMica ? (disabled ? "mica-disabled" : "mica") : "native",
+        loops,
+        composerMounts: 0,
+        composerUnmounts: 0,
+        composerReplacements: 0,
+        maxMissingDurationMs: 0,
+        submitEvents: 0,
+        inputEvents: 0,
+        changeEvents: 0,
+        externalInputEvents: 0,
+        externalChangeEvents: 0,
+        externalSubmitEvents: 0,
+        staleRestorations: 0,
+        streamingMutations: 0,
+        nativeVirtualizationRenders: 0,
+        optimizedClassChanges: 0,
+        optimizedClassChangesDuringSend: 0,
+        optimizedContainsComposer: 0,
+        optimizedComposerAncestor: 0,
+        optimizedNearMissingComposer: 0,
+        composerMissingAtEnd: 0,
+        staleComposerAtEnd: 0,
+        nextInputFailures: 0,
+        overlayComposerCollisions: 0,
+        errors: []
+      };
+
+      instrumentEvents();
+      renderWindow();
+      mountComposer(dock, "");
+
+      if (withMica) {
+        loadScript("../../dist/mica-v0.1.0/known-interruptions.js")
+          .then(() => loadScript("../../dist/mica-v0.1.0/content.js"))
+          .then(async () => {
+            await waitFor(() => window.__MICA_TEST_CONTROLS__, 3000);
+            if (disabled) window.__MICA_TEST_CONTROLS__.setSettings({ enabled: false });
+            await runFixture();
+          })
+          .catch(fail);
+      } else {
+        runFixture().catch(fail);
+      }
+
+      async function runFixture() {
+        installMicaClassObserver();
+        for (let index = 0; index < loops; index += 1) {
+          const scenario = {
+            index,
+            hostedComposer: index % 5 === 1,
+            staleRestore: index % 3 !== 0,
+            doubleReplace: index % 7 === 3,
+            tallComposer: index % 4 === 2,
+            clearDelay: [0, 8, 24, 48][index % 4],
+            missingDelay: [0, 12, 32, 64][index % 4],
+            streamTicks: stress ? 14 + (index % 8) : 8 + (index % 5)
+          };
+          await runOneSend(scenario);
+          await typeNextInput(`next ${index}`);
+          sampleMicaSafety();
+        }
+
+        await delay(320);
+        const finalText = getEditorText();
+        if (!currentComposer) metrics.composerMissingAtEnd += 1;
+        if (finalText !== `next ${loops - 1}`) metrics.nextInputFailures += 1;
+        setEditorText("");
+        sampleMicaSafety();
+
+        const report = window.__MICA_TEST_CONTROLS__?.getDiagnosticsReport?.() || null;
+        const passed = metrics.errors.length === 0
+          && metrics.composerMissingAtEnd === 0
+          && metrics.staleComposerAtEnd === 0
+          && metrics.nextInputFailures === 0
+          && metrics.optimizedContainsComposer === 0
+          && metrics.optimizedComposerAncestor === 0
+          && metrics.optimizedNearMissingComposer === 0
+          && metrics.overlayComposerCollisions === 0
+          && metrics.externalInputEvents === 0
+          && metrics.externalChangeEvents === 0
+          && metrics.externalSubmitEvents === 0;
+
+        resultNode.textContent = JSON.stringify({ passed, metrics, micaReport: report }, null, 2);
+      }
+
+      async function runOneSend(scenario) {
+        const text = `fixture message ${scenario.index}\nsecond line ${scenario.index}`;
+        const targetParent = scenario.hostedComposer ? ancestryHost : dock;
+        if (currentComposer?.parentElement !== targetParent) {
+          mountComposer(targetParent, "");
+        }
+        currentComposer.classList.toggle("tall", scenario.tallComposer);
+        setEditorText(text);
+        await fixtureSubmit();
+        sendInProgress = true;
+        totalTurns += 1;
+        appendTurn(totalTurns, "user", `sent length ${text.length}`);
+        totalTurns += 1;
+        const assistant = appendTurn(totalTurns, "assistant", "streaming");
+        const stop = document.createElement("button");
+        stop.dataset.testid = "stop-generating";
+        stop.textContent = "Stop generating";
+        assistant.appendChild(stop);
+
+        if (scenario.hostedComposer) window.scrollTo(0, 0);
+        await forceMicaScan();
+        unmountComposer();
+        renderWindow(windowStart + (scenario.index % 6));
+        await forceMicaScan();
+        await streamAssistant(assistant, scenario.streamTicks, scenario.index);
+        await delay(scenario.missingDelay);
+        mountComposer(dock, scenario.staleRestore ? text : "");
+        if (scenario.staleRestore) metrics.staleRestorations += 1;
+        await forceMicaScan();
+        if (scenario.doubleReplace) {
+          unmountComposer();
+          await delay(4);
+          mountComposer(dock, scenario.staleRestore ? text : "");
+        }
+        await delay(scenario.clearDelay);
+        setEditorText("");
+        stop.remove();
+        sendInProgress = false;
+        await forceMicaScan();
+
+        if (!currentComposer) metrics.composerMissingAtEnd += 1;
+        if (getEditorText() !== "") metrics.staleComposerAtEnd += 1;
+      }
+
+      function renderWindow(start = windowStart) {
+        windowStart = start;
+        metrics.nativeVirtualizationRenders += 1;
+        conversation.textContent = "";
+        for (let index = start; index < start + 24; index += 1) {
+          appendTurn(index, index % 2 === 0 ? "assistant" : "user", `Mounted window turn ${index}`);
+        }
+      }
+
+      function appendTurn(index, role, body) {
+        const article = document.createElement("article");
+        article.dataset.testid = `conversation-turn-${index}`;
+        const marker = document.createElement("div");
+        marker.dataset.messageAuthorRole = role;
+        marker.textContent = `${role} turn ${index}`;
+        const paragraph = document.createElement("p");
+        paragraph.textContent = body;
+        article.append(marker, paragraph);
+        conversation.appendChild(article);
+        return article;
+      }
+
+      function mountComposer(parent, initialText) {
+        const previous = currentComposer;
+        const form = document.createElement("form");
+        form.className = "composer";
+        form.dataset.testid = "composer";
+        form.setAttribute("aria-label", "Message composer");
+        form.innerHTML = `
+          <div role="textbox" contenteditable="true" aria-label="Message Mica"></div>
+          <button type="submit" data-testid="send-button" aria-label="Send message">Send</button>
+        `;
+        parent.appendChild(form);
+        currentComposer = form;
+        currentEditor = form.querySelector("[role='textbox']");
+        setEditorText(initialText);
+        metrics.composerMounts += 1;
+        composerSerial += 1;
+        form.dataset.serial = String(composerSerial);
+        if (previous && previous !== form) metrics.composerReplacements += 1;
+        if (missingStartedAt) {
+          metrics.maxMissingDurationMs = Math.max(metrics.maxMissingDurationMs, performance.now() - missingStartedAt);
+          missingStartedAt = 0;
+        }
+      }
+
+      function unmountComposer() {
+        if (!currentComposer) return;
+        lastComposerRect = toRect(currentComposer.getBoundingClientRect());
+        currentComposer.remove();
+        currentComposer = null;
+        currentEditor = null;
+        metrics.composerUnmounts += 1;
+        missingStartedAt = performance.now();
+      }
+
+      function setEditorText(value) {
+        if (!currentEditor) return;
+        nativeMutating = true;
+        currentEditor.textContent = value;
+        nativeMutating = false;
+      }
+
+      function getEditorText() {
+        return currentEditor?.textContent || "";
+      }
+
+      async function fixtureSubmit() {
+        metrics.submitEvents += 1;
+        const event = new Event("submit", { bubbles: true, cancelable: true });
+        fixtureDispatching = true;
+        currentComposer.dispatchEvent(event);
+        fixtureDispatching = false;
+        await delay(0);
+      }
+
+      async function typeNextInput(value) {
+        setEditorText(value);
+        await delay(0);
+        if (getEditorText() !== value) metrics.nextInputFailures += 1;
+      }
+
+      async function streamAssistant(assistant, ticks, seed) {
+        for (let tick = 0; tick < ticks; tick += 1) {
+          const span = document.createElement("span");
+          span.textContent = ` chunk-${seed}-${tick}`;
+          assistant.querySelector("p").appendChild(span);
+          metrics.streamingMutations += 1;
+          if (tick % 3 === 0) {
+            currentComposer?.classList.toggle("tall");
+            window.dispatchEvent(new Event("resize"));
+          }
+          if (tick % 4 === 0) {
+            window.scrollTo(0, document.body.scrollHeight);
+            window.dispatchEvent(new Event("scroll"));
+          }
+          await forceMicaScan();
+          await delay(stress ? 2 : 6);
+        }
+      }
+
+      function instrumentEvents() {
+        document.addEventListener("input", () => {
+          metrics.inputEvents += 1;
+          if (!nativeMutating) metrics.externalInputEvents += 1;
+        }, true);
+        document.addEventListener("change", () => {
+          metrics.changeEvents += 1;
+          if (!nativeMutating) metrics.externalChangeEvents += 1;
+        }, true);
+        document.addEventListener("submit", (event) => {
+          event.preventDefault();
+          if (!fixtureDispatching) metrics.externalSubmitEvents += 1;
+        }, true);
+      }
+
+      function installMicaClassObserver() {
+        if (!withMica || typeof MutationObserver === "undefined") return;
+        const observer = new MutationObserver((mutations) => {
+          for (const mutation of mutations) {
+            if (mutation.type !== "attributes" || mutation.attributeName !== "class") continue;
+            const target = mutation.target;
+            if (!(target instanceof HTMLElement) || !target.classList.contains("mica-turn-optimized")) continue;
+            metrics.optimizedClassChanges += 1;
+            if (sendInProgress) metrics.optimizedClassChangesDuringSend += 1;
+            sampleMicaSafety();
+          }
+        });
+        observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class"] });
+      }
+
+      function sampleMicaSafety() {
+        if (!withMica) return;
+        const optimized = Array.from(document.querySelectorAll(".mica-turn-optimized")).filter((node) => node instanceof HTMLElement);
+        const editor = currentEditor;
+        const composer = currentComposer;
+        for (const node of optimized) {
+          if (editor && (node === editor || node.contains(editor) || editor.contains(node))) metrics.optimizedContainsComposer += 1;
+          if (composer && (node === composer || node.contains(composer) || composer.contains(node))) metrics.optimizedComposerAncestor += 1;
+          if (!composer && lastComposerRect && intersects(toRect(node.getBoundingClientRect()), expandRect(lastComposerRect, 28))) {
+            metrics.optimizedNearMissingComposer += 1;
+          }
+        }
+        const debug = window.__MICA_OVERLAY_DEBUG__;
+        if (debug?.intersectsComposer) metrics.overlayComposerCollisions += 1;
+      }
+
+      async function forceMicaScan() {
+        window.__MICA_TEST_CONTROLS__?.forceScan?.();
+        sampleMicaSafety();
+        await delay(0);
+      }
+
+      function loadScript(src) {
+        return new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = src;
+          script.onload = resolve;
+          script.onerror = reject;
+          document.documentElement.appendChild(script);
+        });
+      }
+
+      function waitFor(fn, timeout) {
+        const started = performance.now();
+        return new Promise((resolve, reject) => {
+          const timer = setInterval(() => {
+            if (fn()) {
+              clearInterval(timer);
+              resolve();
+              return;
+            }
+            if (performance.now() - started > timeout) {
+              clearInterval(timer);
+              reject(new Error("Timed out waiting for fixture condition"));
+            }
+          }, 25);
+        });
+      }
+
+      function fail(error) {
+        metrics.errors.push(String(error?.stack || error));
+        resultNode.textContent = JSON.stringify({ passed: false, metrics }, null, 2);
+      }
+
+      function delay(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+
+      function toRect(rect) {
+        return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+      }
+
+      function expandRect(rect, padding) {
+        return {
+          left: rect.left - padding,
+          top: rect.top - padding,
+          right: rect.right + padding,
+          bottom: rect.bottom + padding,
+          width: rect.width + padding * 2,
+          height: rect.height + padding * 2
+        };
+      }
+
+      function intersects(a, b) {
+        return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+      }
+    </script>
+  </body>
+</html>
