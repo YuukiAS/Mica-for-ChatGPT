@@ -103,6 +103,7 @@
       const withMica = params.get("mica") === "1";
       const disabled = params.get("disabled") === "1";
       const stress = params.get("stress") === "1";
+      const smallMounted = params.get("small") === "1";
       const loops = Number(params.get("loops") || (stress ? 72 : 24));
       const resultNode = document.getElementById("e2e-result");
       const conversation = document.getElementById("conversation");
@@ -122,7 +123,7 @@
       let lastComposerRect = null;
 
       const metrics = {
-        mode: withMica ? (disabled ? "mica-disabled" : "mica") : "native",
+        mode: `${withMica ? (disabled ? "mica-disabled" : "mica") : "native"}${smallMounted ? "-small-mounted" : ""}`,
         loops,
         composerMounts: 0,
         composerUnmounts: 0,
@@ -287,7 +288,8 @@
         windowStart = start;
         metrics.nativeVirtualizationRenders += 1;
         conversation.textContent = "";
-        for (let index = start; index < start + 24; index += 1) {
+        const mountedCount = smallMounted ? 6 : 24;
+        for (let index = start; index < start + mountedCount; index += 1) {
           appendTurn(index, index % 2 === 0 ? "assistant" : "user", `Mounted window turn ${index}`);
         }
       }

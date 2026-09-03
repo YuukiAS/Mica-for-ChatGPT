@@ -60,7 +60,7 @@
   const COMPOSER_EDIT_ACTIVITY_MS = 900;
   const bootTime = Date.now();
   const measuredHeights = new WeakMap();
-  const observedTurns = new WeakSet();
+  const observedTurns = new Set();
   const optimizedTurns = new Set();
   const globalCounters = {
     mutations: 0,
@@ -78,7 +78,8 @@
     composerLifecycleMutationBatchesIgnored: 0,
     composerEditScansSkipped: 0,
     overlayPlacements: 0,
-    overlayStaticPlacements: 0
+    overlayStaticPlacements: 0,
+    nativeSafeModeEntries: 0
   };
   const composerState = {
     currentElement: null,
@@ -139,6 +140,12 @@
   let overlayPlacementScheduled = false;
   let scheduled = false;
   let lastUrl = location.href;
+  const runtimeState = {
+    nativeSafeMode: false,
+    nativeSafeReason: null,
+    documentMutationsObserved: false,
+    composerLifecycleListenersAttached: false
+  };
   const overlayState = {
     expanded: false,
     expandedByUser: false,
@@ -238,52 +245,29 @@
         processKnownInterruptions();
         scheduleScan();
       });
-      observeDocumentMutations();
     }
     addEventListener("scroll", () => {
       recordScrollSample();
-      if (!isComposerLifecycleUnstable()) scheduleScan();
+      if (!runtimeState.nativeSafeMode && !isComposerLifecycleUnstable()) scheduleScan();
     }, { passive: true, capture: true });
     addEventListener("resize", () => {
-      if (!isComposerLifecycleUnstable()) {
+      if (!runtimeState.nativeSafeMode && !isComposerLifecycleUnstable()) {
         scheduleScan();
         scheduleOverlayPlacement();
       }
     }, { passive: true });
-    document.addEventListener("submit", (event) => {
-      if (isComposerEventTarget(event.target)) {
-        composerState.submitEvents += 1;
-        markComposerSendActivity();
-      }
-    }, true);
-    document.addEventListener("beforeinput", (event) => {
-      if (isComposerEventTarget(event.target)) markComposerEditActivity();
-    }, true);
-    document.addEventListener("input", (event) => {
-      if (isComposerEventTarget(event.target)) markComposerEditActivity();
-    }, true);
-    document.addEventListener("cut", (event) => {
-      if (isComposerEventTarget(event.target)) markComposerEditActivity();
-    }, true);
-    document.addEventListener("paste", (event) => {
-      if (isComposerEventTarget(event.target)) markComposerEditActivity();
-    }, true);
-    document.addEventListener("keydown", (event) => {
-      if (isComposerEventTarget(event.target) && isEditingKey(event)) markComposerEditActivity();
-    }, true);
-    document.addEventListener("click", (event) => {
-      const target = event.target instanceof Element ? event.target : null;
-      const button = target?.closest("button, [role='button']");
-      if (button instanceof HTMLElement && isComposerEventTarget(button) && isLikelySendButton(button)) {
-        composerState.sendClickEvents += 1;
-        markComposerSendActivity();
-      }
-    }, true);
     setInterval(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
+        exitNativeSafeMode();
         clearOptimization();
         turnWindow.previousKeys = new Set();
+        scheduleScan();
+        return;
+      }
+      if (runtimeState.nativeSafeMode) {
+        processKnownInterruptions();
+        return;
       }
       if (!isComposerLifecycleUnstable()) {
         scheduleScan();
@@ -291,6 +275,54 @@
         if (shouldPollOverlayPlacement()) scheduleOverlayPlacement();
       }
     }, 1500);
+  }
+
+  function attachComposerLifecycleListeners() {
+    if (runtimeState.composerLifecycleListenersAttached) return;
+    document.addEventListener("submit", handleComposerSubmit, true);
+    document.addEventListener("beforeinput", handleComposerEditEvent, true);
+    document.addEventListener("input", handleComposerEditEvent, true);
+    document.addEventListener("cut", handleComposerEditEvent, true);
+    document.addEventListener("paste", handleComposerEditEvent, true);
+    document.addEventListener("keydown", handleComposerKeydown, true);
+    document.addEventListener("click", handleComposerClick, true);
+    runtimeState.composerLifecycleListenersAttached = true;
+  }
+
+  function detachComposerLifecycleListeners() {
+    if (!runtimeState.composerLifecycleListenersAttached) return;
+    document.removeEventListener("submit", handleComposerSubmit, true);
+    document.removeEventListener("beforeinput", handleComposerEditEvent, true);
+    document.removeEventListener("input", handleComposerEditEvent, true);
+    document.removeEventListener("cut", handleComposerEditEvent, true);
+    document.removeEventListener("paste", handleComposerEditEvent, true);
+    document.removeEventListener("keydown", handleComposerKeydown, true);
+    document.removeEventListener("click", handleComposerClick, true);
+    runtimeState.composerLifecycleListenersAttached = false;
+  }
+
+  function handleComposerSubmit(event) {
+    if (isComposerEventTarget(event.target)) {
+      composerState.submitEvents += 1;
+      markComposerSendActivity();
+    }
+  }
+
+  function handleComposerEditEvent(event) {
+    if (isComposerEventTarget(event.target)) markComposerEditActivity();
+  }
+
+  function handleComposerKeydown(event) {
+    if (isComposerEventTarget(event.target) && isEditingKey(event)) markComposerEditActivity();
+  }
+
+  function handleComposerClick(event) {
+    const target = event.target instanceof Element ? event.target : null;
+    const button = target?.closest("button, [role='button']");
+    if (button instanceof HTMLElement && isComposerEventTarget(button) && isLikelySendButton(button)) {
+      composerState.sendClickEvents += 1;
+      markComposerSendActivity();
+    }
   }
 
   function setupMessages() {
@@ -304,7 +336,8 @@
         const next = sanitizeSettings(message.settings || {});
         settings = { ...settings, ...next };
         writeSettings(next).then(() => {
-          scheduleScan();
+          exitNativeSafeMode();
+          scheduleScan("settings");
           processKnownInterruptions();
           sendResponse({ status: currentStatus, settings, diagnostics: summarizeDiagnostics() });
         });
@@ -342,7 +375,8 @@
         }
       }
       settings = { ...settings, ...sanitizeSettings(next) };
-      scheduleScan();
+      exitNativeSafeMode();
+      scheduleScan("settings");
       renderBadge();
     });
   }
@@ -353,7 +387,8 @@
       setSettings(next) {
         settings = { ...settings, ...sanitizeSettings(next || {}) };
         renderBadge();
-        scheduleScan();
+        exitNativeSafeMode();
+        scheduleScan("settings");
         processKnownInterruptions();
       },
       getSettings() {
@@ -371,7 +406,8 @@
     };
   }
 
-  function scheduleScan() {
+  function scheduleScan(reason = "auto") {
+    if (runtimeState.nativeSafeMode && reason !== "settings" && reason !== "url" && reason !== "manual") return;
     if (scheduled) return;
     scheduled = true;
     nextFrame(() => {
@@ -391,15 +427,16 @@
       updateComposerTextLengthOnly();
       return;
     }
-    updateComposerState();
     if (!settings.enabled) {
       clearOptimization();
+      enterNativeSafeMode("disabled");
       setStatus(STATUS.DISABLED, "Disabled by user", []);
       return;
     }
     processKnownInterruptions();
     if (!SUPPORTS_CONTENT_VISIBILITY) {
       clearOptimization();
+      enterNativeSafeMode("content-visibility unsupported");
       setStatus(STATUS.DEGRADED, "Browser lacks content-visibility support", []);
       return;
     }
@@ -408,6 +445,7 @@
     updateTurnWindowStats(turns);
     if (turns.length === 0) {
       clearOptimization();
+      enterNativeSafeMode("no mounted turns");
       const conversationPath = isConversationPath();
       const hasTimedOut = Date.now() - bootTime > 5000;
       const name = conversationPath && hasTimedOut ? STATUS.DEGRADED : STATUS.NATIVE_ONLY;
@@ -418,16 +456,14 @@
 
     if (!isSafeTurnSet(turns)) {
       clearOptimization();
+      enterNativeSafeMode("ambiguous turn structure");
       setStatus(STATUS.DEGRADED, "Mounted turn structure is ambiguous", turns);
       return;
     }
 
-    for (const turn of turns) {
-      observeTurn(turn);
-    }
-
     if (turns.length <= settings.nativeOnlyTurnThreshold) {
       clearOptimization();
+      enterNativeSafeMode("small mounted turn window");
       const nativeName = isNativeVirtualizationLikely(turns) ? STATUS.NATIVE_VIRTUALIZATION : STATUS.NATIVE_ONLY;
       const reason = nativeName === STATUS.NATIVE_VIRTUALIZATION
         ? "ChatGPT appears to keep only a small mounted conversation window"
@@ -436,6 +472,10 @@
       return;
     }
 
+    exitNativeSafeMode();
+    attachComposerLifecycleListeners();
+    observeDocumentMutations();
+    updateComposerState();
     if (isComposerLifecycleUnstable()) {
       removeUnsafeComposerOptimizations();
       const optimizedCount = countCurrentOptimizedTurns(turns);
@@ -445,6 +485,10 @@
         : "Composer lifecycle is active; render containment changes paused";
       setStatus(nativeName, reason, turns, optimizedCount, 0);
       return;
+    }
+
+    for (const turn of turns) {
+      observeTurn(turn);
     }
 
     const protectedIndexes = getProtectedIndexes(turns);
@@ -559,6 +603,14 @@
     measuredHeights.set(turn, height);
     turn.style.setProperty("--mica-intrinsic-height", `${height}px`);
     resizeObserver?.observe(turn);
+  }
+
+  function disconnectTurnResizeObservers() {
+    if (!resizeObserver) return;
+    for (const turn of Array.from(observedTurns)) {
+      resizeObserver.unobserve(turn);
+    }
+    observedTurns.clear();
   }
 
   function applyOptimization(turn) {
@@ -811,20 +863,51 @@
   }
 
   function observeDocumentMutations() {
-    if (!mutationObserver || mutationObserverPaused || !document.body) return;
+    if (!mutationObserver || mutationObserverPaused || runtimeState.nativeSafeMode || !document.body) return;
     mutationObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+    runtimeState.documentMutationsObserved = true;
+  }
+
+  function disconnectDocumentMutations() {
+    if (!mutationObserver) return;
+    mutationObserver.disconnect();
+    runtimeState.documentMutationsObserved = false;
   }
 
   function pauseDocumentMutations(durationMs) {
-    if (!mutationObserver) return;
+    if (!mutationObserver || runtimeState.nativeSafeMode) return;
     mutationObserverPaused = true;
-    mutationObserver.disconnect();
+    disconnectDocumentMutations();
     clearTimeout(mutationObserverResumeTimer);
     mutationObserverResumeTimer = setTimeout(() => {
       mutationObserverPaused = false;
+      if (runtimeState.nativeSafeMode) return;
       observeDocumentMutations();
       if (!isComposerLifecycleUnstable()) scheduleScan();
     }, durationMs);
+  }
+
+  function enterNativeSafeMode(reason) {
+    if (!runtimeState.nativeSafeMode) {
+      globalCounters.nativeSafeModeEntries += 1;
+    }
+    runtimeState.nativeSafeMode = true;
+    runtimeState.nativeSafeReason = reason || null;
+    mutationObserverPaused = false;
+    clearTimeout(mutationObserverResumeTimer);
+    mutationObserverResumeTimer = 0;
+    disconnectDocumentMutations();
+    detachComposerLifecycleListeners();
+    disconnectOverlayComposerObserver();
+    disconnectTurnResizeObservers();
+    composerState.sendingUntil = 0;
+    composerState.editingUntil = 0;
+  }
+
+  function exitNativeSafeMode() {
+    if (!runtimeState.nativeSafeMode) return;
+    runtimeState.nativeSafeMode = false;
+    runtimeState.nativeSafeReason = null;
   }
 
   function updateTurnWindowStats(turns) {
@@ -1079,6 +1162,7 @@
       composerEditScansSkipped: globalCounters.composerEditScansSkipped,
       overlayPlacements: globalCounters.overlayPlacements,
       overlayStaticPlacements: globalCounters.overlayStaticPlacements,
+      nativeSafeModeEntries: globalCounters.nativeSafeModeEntries,
       composer: snapshotComposerState(),
       domNodes: countDomNodes()
     };
@@ -1132,6 +1216,13 @@
         reason: currentStatus.reason,
         mountedTurns: currentStatus.mountedTurns,
         optimizedTurns: currentStatus.optimizedTurns
+      },
+      runtime: {
+        nativeSafeMode: runtimeState.nativeSafeMode,
+        nativeSafeReason: runtimeState.nativeSafeReason,
+        documentMutationObserverActive: runtimeState.documentMutationsObserved,
+        composerLifecycleListenersAttached: runtimeState.composerLifecycleListenersAttached,
+        nativeSafeModeEntries: current.nativeSafeModeEntries
       },
       diagnostics: {
         running: diagnostics.running,
@@ -1681,8 +1772,8 @@
   }
 
   function disconnectOverlayComposerObserver() {
-    if (overlayObservedComposer && overlayComposerObserver) {
-      overlayComposerObserver.unobserve(overlayObservedComposer);
+    if (overlayComposerObserver) {
+      overlayComposerObserver.disconnect();
     }
     overlayObservedComposer = null;
   }

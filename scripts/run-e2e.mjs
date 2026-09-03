@@ -55,6 +55,17 @@ try {
     results.push(micaResult);
   }
 
+  const smallLoops = Math.max(8, Math.floor(loops / 3));
+  const nativeSmallResult = await runCase({ width: 700, mica: false, small: true, loops: smallLoops });
+  results.push(nativeSmallResult);
+  const micaSmallResult = await runCase({ width: 700, mica: true, small: true, loops: smallLoops });
+  compareWithBaseline(nativeSmallResult, micaSmallResult);
+  assert(micaSmallResult.micaReport?.runtime?.nativeSafeMode === true, "Small mounted Mica case did not enter native-safe mode", micaSmallResult);
+  assert(micaSmallResult.micaReport?.runtime?.documentMutationObserverActive === false, "Native-safe mode left document MutationObserver active", micaSmallResult);
+  assert(micaSmallResult.micaReport?.runtime?.composerLifecycleListenersAttached === false, "Native-safe mode left composer lifecycle listeners attached", micaSmallResult);
+  assert(micaSmallResult.metrics.composerGeometryReadsDuringDelete === 0, "Native-safe mode read composer geometry during delete", micaSmallResult);
+  results.push(micaSmallResult);
+
   const disabledResult = await runCase({ width: 700, mica: true, disabled: true, loops: Math.max(8, Math.floor(loops / 3)) });
   assert(disabledResult.metrics.optimizedClassChanges === 0, "Mica disabled produced optimized class changes", disabledResult);
   results.push(disabledResult);
@@ -72,6 +83,7 @@ try {
       cases: results.map((result) => ({
         mode: result.metrics.mode,
         width: result.width,
+        nativeSafeMode: result.micaReport?.runtime?.nativeSafeMode ?? null,
         maxMissingDurationMs: result.metrics.maxMissingDurationMs,
         optimizedClassChanges: result.metrics.optimizedClassChanges,
         optimizedClassChangesDuringSend: result.metrics.optimizedClassChangesDuringSend,
@@ -84,8 +96,8 @@ try {
   await new Promise((resolve) => server.close(resolve));
 }
 
-async function runCase({ width, mica, disabled = false, loops: caseLoops = loops }) {
-  const label = `${mica ? (disabled ? "mica-disabled" : "mica") : "native"}@${width}px/${caseLoops}`;
+async function runCase({ width, mica, disabled = false, small = false, loops: caseLoops = loops }) {
+  const label = `${mica ? (disabled ? "mica-disabled" : "mica") : "native"}${small ? "-small-mounted" : ""}@${width}px/${caseLoops}`;
   console.error(`Running E2E case ${label}`);
   const page = await browser.newPage({ viewport: { width, height: 820 } });
   const errors = [];
@@ -93,7 +105,7 @@ async function runCase({ width, mica, disabled = false, loops: caseLoops = loops
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
   });
-  const url = `${baseUrl}/tests/fixtures/composer-lifecycle.html?mica=${mica ? "1" : "0"}&disabled=${disabled ? "1" : "0"}&loops=${caseLoops}&stress=${stress ? "1" : "0"}`;
+  const url = `${baseUrl}/tests/fixtures/composer-lifecycle.html?mica=${mica ? "1" : "0"}&disabled=${disabled ? "1" : "0"}&small=${small ? "1" : "0"}&loops=${caseLoops}&stress=${stress ? "1" : "0"}`;
   let payload;
   try {
     await page.goto(url, { waitUntil: "load" });
