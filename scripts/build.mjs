@@ -1,7 +1,7 @@
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DIST_DIR_NAME, MACHINE_VERSION, VERSION_NAME } from "./release-config.mjs";
+import { BUILD_LABEL, DIST_DIR_NAME, MACHINE_VERSION, VERSION_NAME } from "./release-config.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = path.join(root, "dist", DIST_DIR_NAME);
@@ -48,7 +48,8 @@ await mkdir(path.join(outDir, "popup"), { recursive: true });
 
 const replacements = {
   __MICA_VERSION__: MACHINE_VERSION,
-  __MICA_VERSION_NAME__: VERSION_NAME
+  __MICA_VERSION_NAME__: VERSION_NAME,
+  __MICA_BUILD_LABEL__: BUILD_LABEL
 };
 const render = (source) => Object.entries(replacements).reduce((value, [key, replacement]) => value.replaceAll(key, replacement), source);
 

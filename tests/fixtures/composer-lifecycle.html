@@ -263,16 +263,18 @@
           mountComposer(dock, "");
         }
         currentComposer.classList.toggle("tall", scenario.tallComposer);
-        setEditorText(`draft to cut ${scenario.index}\nsecond line`);
+        const draft = `draft to cut ${scenario.index}\nsecond line`;
+        setEditorText(draft);
+        const eventTarget = scenario.index % 2 === 0 ? currentEditor : prepareNestedEditTarget(draft);
         await delay(0);
         metrics.deleteCycles += 1;
         deleteEditInProgress = true;
         fixtureDispatching = true;
-        currentEditor?.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "deleteByCut", data: null }));
+        eventTarget?.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "deleteByCut", data: null }));
         fixtureDispatching = false;
         setEditorText("");
         fixtureDispatching = true;
-        currentEditor?.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteByCut", data: null }));
+        eventTarget?.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteByCut", data: null }));
         fixtureDispatching = false;
         await delay(40 + (scenario.index % 4) * 12);
         deleteEditInProgress = false;
@@ -310,7 +312,7 @@
         form.dataset.testid = "composer";
         form.setAttribute("aria-label", "Message composer");
         form.innerHTML = `
-          <div role="textbox" contenteditable="true" aria-label="Message Mica"></div>
+          <div role="textbox" contenteditable="plaintext-only" aria-label="Message Mica"></div>
           <button type="submit" data-testid="send-button" aria-label="Send message">Send</button>
         `;
         parent.appendChild(form);
@@ -342,6 +344,17 @@
         nativeMutating = true;
         currentEditor.textContent = value;
         nativeMutating = false;
+      }
+
+      function prepareNestedEditTarget(value) {
+        if (!currentEditor) return null;
+        nativeMutating = true;
+        currentEditor.textContent = "";
+        const span = document.createElement("span");
+        span.textContent = value;
+        currentEditor.appendChild(span);
+        nativeMutating = false;
+        return span;
       }
 
       function getEditorText() {
@@ -447,6 +460,11 @@
       }
 
       async function forceMicaScan() {
+        if (sendInProgress || deleteEditInProgress) {
+          sampleMicaSafety();
+          await delay(0);
+          return;
+        }
         window.__MICA_TEST_CONTROLS__?.forceScan?.();
         sampleMicaSafety();
         await delay(0);

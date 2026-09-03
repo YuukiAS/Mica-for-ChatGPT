@@ -1,6 +1,7 @@
 (() => {
   const VERSION = "0.1.0";
   const VERSION_NAME = "0.1.0-alpha.3";
+  const BUILD_LABEL = "composer-edit-quiet.3";
   const DEFAULT_SETTINGS = {
     enabled: true,
     showStatus: true,
@@ -26,7 +27,7 @@
   const COMPOSER_SELECTOR = [
     "[data-testid*='composer']",
     "textarea",
-    "[contenteditable='true']",
+    "[contenteditable]",
     "[role='textbox']",
     "form"
   ].join(",");
@@ -35,7 +36,7 @@
     "input:not([type='hidden'])",
     "select",
     "form",
-    "[contenteditable='true']",
+    "[contenteditable]",
     "[role='dialog']",
     "iframe",
     "[data-testid*='composer']",
@@ -97,6 +98,7 @@
     identityChanges: 0,
     currentTextLength: 0,
     visible: false,
+    editEvents: 0,
     optimizationIntersectionCount: 0,
     optimizationApplyDuringSendCount: 0,
     optimizationRemoveDuringSendCount: 0,
@@ -123,11 +125,14 @@
     updatedAt: new Date().toISOString(),
     version: VERSION,
     versionName: VERSION_NAME,
+    buildLabel: BUILD_LABEL,
     label: "Mica · Native only · 0 mounted"
   };
   let badgeHost = null;
   let badgeRoot = null;
   let mutationObserver = null;
+  let mutationObserverPaused = false;
+  let mutationObserverResumeTimer = 0;
   let resizeObserver = null;
   let overlayComposerObserver = null;
   let overlayObservedComposer = null;
@@ -233,7 +238,7 @@
         processKnownInterruptions();
         scheduleScan();
       });
-      mutationObserver.observe(document.body, { childList: true, subtree: true });
+      observeDocumentMutations();
     }
     addEventListener("scroll", () => {
       recordScrollSample();
@@ -653,7 +658,7 @@
       if (!root || seenRoots.has(root) || root.closest("[data-mica-root='true']")) continue;
       const rect = rectFromDomRect(root.getBoundingClientRect());
       if (!isComposerProtectionRect(rect)) continue;
-      const editable = root.querySelector("textarea, input:not([type='hidden']), [contenteditable='true'], [role='textbox']");
+      const editable = root.querySelector(getEditableSelector());
       seenRoots.add(root);
       results.push({ element: editable instanceof HTMLElement ? editable : node, root, rect });
     }
@@ -662,13 +667,13 @@
 
   function isLikelyComposerNode(node) {
     if (!(node instanceof HTMLElement) || node.closest("[data-mica-root='true']")) return false;
-    if (node.matches("textarea, [contenteditable='true'], [role='textbox']")) return true;
+    if (isEditableComposerNode(node)) return true;
     const testId = node.getAttribute("data-testid") || "";
     if (/composer/i.test(testId)) {
-      return !!node.querySelector("textarea, [contenteditable='true'], [role='textbox']");
+      return !!node.querySelector(getEditableSelector());
     }
     if (node.matches("form")) {
-      return !!node.querySelector("textarea, [contenteditable='true'], [role='textbox']");
+      return !!node.querySelector(getEditableSelector());
     }
     return false;
   }
@@ -727,12 +732,33 @@
   }
 
   function isComposerEventTarget(target) {
-    const element = target instanceof HTMLElement ? target : null;
+    const element = getEventElement(target);
     if (!element || element.closest("[data-mica-root='true']")) return false;
+    if (isEditableComposerNode(element) || element.isContentEditable) return true;
+    const editable = element.closest(getEditableSelector());
+    if (editable instanceof HTMLElement && isLikelyComposerNode(editable)) return true;
     if (element.matches(COMPOSER_SELECTOR) || element.closest(COMPOSER_SELECTOR)) return true;
     if (composerState.currentRoot && composerState.currentRoot.contains(element)) return true;
     if (composerState.lastKnownRoot && isRecentComposerProtectionActive() && composerState.lastKnownRoot.contains(element)) return true;
     return false;
+  }
+
+  function getEventElement(target) {
+    if (target instanceof HTMLElement) return target;
+    if (target instanceof Element) return target.closest("*");
+    if (target instanceof CharacterData) return target.parentElement;
+    return null;
+  }
+
+  function isEditableComposerNode(element) {
+    if (!(element instanceof HTMLElement)) return false;
+    if (element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement) return element.type !== "hidden";
+    if (element.isContentEditable || element.hasAttribute("contenteditable")) return true;
+    return element.getAttribute("role") === "textbox";
+  }
+
+  function getEditableSelector() {
+    return "textarea, input:not([type='hidden']), [contenteditable], [role='textbox']";
   }
 
   function getComposerAncestorChain(root) {
@@ -754,10 +780,13 @@
 
   function markComposerSendActivity() {
     composerState.sendingUntil = Math.max(composerState.sendingUntil, Date.now() + COMPOSER_SEND_ACTIVITY_MS);
+    pauseDocumentMutations(COMPOSER_SEND_ACTIVITY_MS);
   }
 
   function markComposerEditActivity() {
+    composerState.editEvents += 1;
     composerState.editingUntil = Math.max(composerState.editingUntil, Date.now() + COMPOSER_EDIT_ACTIVITY_MS);
+    pauseDocumentMutations(COMPOSER_EDIT_ACTIVITY_MS);
   }
 
   function isComposerEditWindowActive() {
@@ -779,6 +808,23 @@
 
   function countCurrentOptimizedTurns(turns) {
     return turns.reduce((count, turn) => count + (optimizedTurns.has(turn) ? 1 : 0), 0);
+  }
+
+  function observeDocumentMutations() {
+    if (!mutationObserver || mutationObserverPaused || !document.body) return;
+    mutationObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+  }
+
+  function pauseDocumentMutations(durationMs) {
+    if (!mutationObserver) return;
+    mutationObserverPaused = true;
+    mutationObserver.disconnect();
+    clearTimeout(mutationObserverResumeTimer);
+    mutationObserverResumeTimer = setTimeout(() => {
+      mutationObserverPaused = false;
+      observeDocumentMutations();
+      if (!isComposerLifecycleUnstable()) scheduleScan();
+    }, durationMs);
   }
 
   function updateTurnWindowStats(turns) {
@@ -835,6 +881,7 @@
       updatedAt: new Date().toISOString(),
       version: VERSION,
       versionName: VERSION_NAME,
+      buildLabel: BUILD_LABEL,
       label: formatStatusLabel(name, mountedCount, optimizedCount)
     };
     globalThis.__MICA_LONG_THREAD_STATUS__ = currentStatus;
@@ -1072,7 +1119,8 @@
       extension: {
         name: "Mica for ChatGPT",
         version: VERSION,
-        versionName: VERSION_NAME
+        versionName: VERSION_NAME,
+        buildLabel: BUILD_LABEL
       },
       page: {
         origin: location.origin,
@@ -1148,11 +1196,13 @@
         unmountCount: current.composer.unmountCount,
         identityChanges: current.composer.identityChanges,
         maxMissingDurationMs: current.composer.maxMissingDurationMs,
+        editEvents: Math.max(0, current.composer.editEvents - (baseline.composer?.editEvents || 0)),
         submitEvents: current.composer.submitEvents,
         sendClickEvents: current.composer.sendClickEvents,
         optimizationIntersections: current.composer.optimizationIntersectionCount,
         lastOptimizationIntersection: current.composer.lastOptimizationIntersection,
         optimizationChangesPaused: isComposerLifecycleUnstable(),
+        mutationObserverPaused,
         protectionSkips: Math.max(0, current.composerProtectionSkips - (baseline.composerProtectionSkips || 0)),
         mutationBatchesIgnored: Math.max(0, current.composerMutationBatchesIgnored - (baseline.composerMutationBatchesIgnored || 0)),
         lifecycleMutationBatchesIgnored: Math.max(0, current.composerLifecycleMutationBatchesIgnored - (baseline.composerLifecycleMutationBatchesIgnored || 0)),
@@ -1227,6 +1277,7 @@
       unmountCount: composerState.unmountCount,
       identityChanges: composerState.identityChanges,
       maxMissingDurationMs: Math.round(composerState.maxMissingDurationMs),
+      editEvents: composerState.editEvents,
       submitEvents: composerState.submitEvents,
       sendClickEvents: composerState.sendClickEvents,
       optimizationIntersectionCount: composerState.optimizationIntersectionCount,
@@ -1649,7 +1700,7 @@
     const nodes = Array.from(document.querySelectorAll([
       "[data-testid*='composer']",
       "textarea",
-      "[contenteditable='true']",
+      "[contenteditable]",
       "[role='textbox']",
       "form"
     ].join(","))).filter((node) => node instanceof HTMLElement && isVisibleForOverlay(node));

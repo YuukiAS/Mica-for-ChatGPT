@@ -11,6 +11,14 @@ Per `AGENTS.md`, this investigation did not automate the user's normal Edge sess
 
 On 2026-09-03, the user additionally confirmed an A/B result: with Mica disabled in `edge://extensions`, cutting/removing the same composer text no longer made the composer disappear. With Mica enabled from `D:\Code\Mica-for-ChatGPT\dist\mica-v0.1.0`, cutting the whole composer text could still trigger a temporary composer disappearance.
 
+Later on 2026-09-03, after the first quiet-window patch, the user provided another real diagnostics report from the latest unpacked build. It still showed the cut/delete disappearance. The report confirmed:
+
+- `optimizedTurns: 0` and `optimizationIntersections: 0`;
+- compact overlay was already static: `overlay.staticPlacements: 7`;
+- composer-only/lifecycle mutation protection was active: `mutationBatchesIgnored: 4`, `lifecycleMutationBatchesIgnored: 6`;
+- but edit-event quieting did not fire: `editScansSkipped: 0`;
+- composer still disappeared for a long real interval: `maxMissingDurationMs: 5746`.
+
 ## Confirmed In Code
 
 - `extension/src/content.ts` used a broad `article` fallback in turn discovery. This could classify non-message article-like regions as conversation turns if the current DOM shape changed.
@@ -19,6 +27,7 @@ On 2026-09-03, the user additionally confirmed an A/B result: with Mica disabled
 - The previous protection logic only looked at the current DOM frame. If ChatGPT temporarily unmounted or replaced the composer, there was no recent composer root, ancestor, or rect cache to keep related active regions protected during that lifecycle gap.
 - A real diagnostics report captured during the cut/delete reproduction showed `Native only`, `optimizedTurns: 0`, `optimizationIntersections: 0`, `submitEvents: 0`, and `sendClickEvents: 0`, while composer lifecycle counters still showed repeated mount/unmount and `maxMissingDurationMs: 1859`.
 - The synthetic E2E initially reproduced the remaining risk as observation pressure rather than containment: composer text deletion caused Mica to read composer geometry during the delete window, because global mutation handling still scheduled scan / overlay placement work for composer text mutations and already queued scans could run during active editing.
+- The second real report indicated the edit-event guard was still too narrow. The most likely DOM compatibility gap was relying on exact `contenteditable="true"` selectors while current ChatGPT can use another valid `contenteditable` value, such as `plaintext-only`, or dispatch edit events from descendants inside the editable root.
 
 ## Inferred From User Evidence
 
@@ -51,6 +60,9 @@ On 2026-09-03, the user additionally confirmed an A/B result: with Mica disabled
 - Added a composer editing quiet window triggered by `beforeinput`, `input`, `cut`, `paste`, and editing keys. While active, `scanAndApply()` returns without reading composer geometry.
 - Composer-only text mutations are now ignored by the global `MutationObserver` path instead of scheduling scan / overlay placement work.
 - Compact overlay placement now uses a static top-right position and does not read composer geometry or attach a composer `ResizeObserver`. Composer-aware collision placement is reserved for expanded status/toast cases where it is actually needed.
+- Replaced exact `[contenteditable='true']` matching with `[contenteditable]` / `isContentEditable`-aware composer detection, including descendant event targets inside the editable root.
+- Added diagnostics `extension.buildLabel`, currently `composer-edit-quiet.3`, so local post-alpha.3 builds can be distinguished even while the release `version_name` remains `0.1.0-alpha.3`.
+- During composer edit/send quiet windows, Mica now disconnects the global document `MutationObserver` and reconnects it after the quiet window, reducing observer pressure rather than only returning early inside the callback.
 
 ## Synthetic E2E Coverage
 
@@ -85,6 +97,7 @@ Core assertions include:
 - Mica does not trigger input/change/submit;
 - cutting/deleting the composer text does not make the composer disappear;
 - cutting/deleting composer text does not cause Mica to read composer geometry during the active edit window;
+- `contenteditable="plaintext-only"` composer roots and edit events dispatched from editable descendants;
 - disabled Mica produces native baseline behavior;
 - diagnostics do not include synthetic message text.
 
@@ -95,7 +108,7 @@ The synthetic fixture cannot prove the exact current ChatGPT private React lifec
 - send a normal message in a long thread and confirm the composer clears permanently;
 - watch for temporary composer disappearance during streaming;
 - copy Mica diagnostics after a real send and confirm composer `textLength` returns to `0`, `optimizationIntersections` remains `0`, and `optimizationChangesPaused` only appears during the send/remount window;
-- copy Mica diagnostics after cutting/deleting composer text and confirm `composer.textLength` returns to `0`, `composer.optimizationIntersections` remains `0`, and `composer.editScansSkipped` increases when editing overlaps a pending scan;
+- copy Mica diagnostics after cutting/deleting composer text and confirm `extension.buildLabel` is `composer-edit-quiet.3`, `composer.textLength` returns to `0`, `composer.optimizationIntersections` remains `0`, and either `composer.editEvents` or `composer.mutationObserverPaused` indicates the edit quiet window was active;
 - repeat on the 8 GB MacBook Neo before deciding whether P0 is complete.
 
 ## Test Results
