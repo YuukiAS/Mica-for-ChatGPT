@@ -37,9 +37,15 @@ Mica 的路线按“先能用，再稳定，再扩功能”推进。任何阶段
 重点：
 
 - 识别明确可重试的请求失败、临时限流和前端卡死状态。
-- 对安全的恢复动作提供自动或半自动重试。
+- 建立发送生命周期守护：区分“点击发送 / 页面显示正在思考”和“新的 user turn 已真正进入 conversation”，检测网络异常造成的 ghost send / fake thinking，并保留可恢复的输入草稿。
+- 检测明显的 stale-turn / duplicate response：当前 user turn 已变化，但新 assistant turn 仍复用或高度重复上一轮回答时，以结构证据和高阈值文本指纹进行提示，不依赖语义猜测。
+- 对安全的恢复动作提供自动或半自动重试；任何自动重发都必须先高置信确认未 commit，并有单次重试上限与去重锁，避免双发。
+- 对疑似旧回答重放优先提供“刷新确认 / 重新生成本轮”等人工恢复路径；工具、附件、授权或外部动作存在时禁止自动 regenerate / retry。
 - 对需要真实授权、付费、敏感操作或不可逆操作的确认框绝不自动越过。
 - 所有自动行为有次数上限、退避和可见状态，避免形成请求风暴。
+- diagnostics 只记录状态、时间、指纹等元数据，不保存 prompt / answer 原文。
+
+详细设计与回归范围：[#4 Reliability: guard against ghost sends and stale/duplicate turn responses](https://github.com/YuukiAS/Mica-for-ChatGPT/issues/4)。
 
 ## Phase 4 — Interface
 
