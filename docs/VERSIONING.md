@@ -73,20 +73,54 @@ Mica 的版本号首先用于区分“用户实际加载的是哪一份运行代
 
 用户判断“我到底加载了哪版”时，版本号应该已经足够区分；`BUILD_LABEL` 只负责补充说明该版本的实现主题。
 
-## 6. Dist 与验收一致性
+## 6. 开发用 unpacked 路径必须稳定
+
+**版本号应该变化，但浏览器日常 `Load unpacked` 的目录不应该跟着版本号变化。**
+
+从 `0.1.4` 起，开发构建使用一个跨版本稳定的 canonical 路径：
+
+`dist/mica-dev`
+
+日常流程应当是：
+
+1. Edge / Chrome 只需要第一次 `Load unpacked` 选择 `dist/mica-dev`；
+2. 后续 `0.1.4 -> 0.1.5 -> 0.1.6` 只重建这个目录的内容；
+3. 用户只需要在扩展管理页点击 Reload，不应每次重新浏览并选择新的版本目录；
+4. `manifest.json`、popup 和 diagnostics 内部仍显示真实版本号，因此稳定路径不会掩盖版本差异。
+
+不要把日常开发目录写成：
+
+- `dist/mica-v0.1.4`
+- `dist/mica-v0.1.5`
+- `dist/mica-v0.1.6`
+
+这种版本化目录只适合作为阶段性 snapshot，不适合作为长期加载路径。路径不断变化会增加人工操作，也可能让 Chromium 把不同路径视为不同的 unpacked extension 实例，从而干扰本地设置和诊断连续性。
+
+### 版本化产物仍然保留
+
+稳定开发目录与版本化发布产物是两件事：
+
+- **开发 / 真机手工验收：** `dist/mica-dev`
+- **需要归档或发布时：** 生成带版本号的 ZIP / SHA-256 / 可选 snapshot，例如 `mica-for-chatgpt-v0.1.4.zip`
+
+`npm run build` 不应为了普通开发产生一个新的版本化 Load-unpacked 目录。
+
+`npm run package:release` 可以从当前 canonical build 生成版本化发布产物，但必须验证包内 manifest 的正式版本与 `scripts/release-config.mjs` 一致。
+
+## 7. Dist 与验收一致性
 
 每次 runtime version bump 后必须：
 
 1. 更新版本 source of truth；
-2. rebuild `dist`；
-3. 验证 `dist/.../manifest.json` 与 popup 显示的是新版本；
+2. rebuild canonical `dist/mica-dev`；
+3. 验证 `dist/mica-dev/manifest.json` 与 popup 显示的是新版本；
 4. diagnostics 报告中的 `version` / `versionName` 与新版本一致；
 5. 测试通过后才 push 到 `main`；
-6. 汇报用户需要 reload 的 unpacked 路径和新版本号。
+6. 汇报用户只需 Reload `dist/mica-dev`，而不是提供一个每轮变化的新 unpacked 路径。
 
-不得出现 source 已变、`dist` 还是旧版本，或 popup / diagnostics 继续显示旧编号的情况。
+不得出现 source 已变、canonical dev build 还是旧版本，或 popup / diagnostics 继续显示旧编号的情况。
 
-## 7. GitHub Release
+## 8. GitHub Release
 
 不是每次 patch 都必须创建 GitHub Release。
 
