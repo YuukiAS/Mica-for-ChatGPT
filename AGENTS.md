@@ -9,6 +9,7 @@ Read these first:
 1. `README.md`
 2. `docs/PHASE_1_LONG_THREAD_RECOVERY.md`
 3. `docs/ROADMAP.md`
+4. `docs/VERSIONING.md`
 
 ## P0 rules
 
@@ -20,6 +21,20 @@ Read these first:
 - Preserve streaming answers, editing, branching, tools, attachments, and navigation.
 - Prefer a small Manifest V3 + TypeScript implementation over a framework-heavy architecture.
 - The first useful artifact should be a loadable unpacked Chromium extension, not a design-only scaffold.
+
+## Versioning rules
+
+Mica runtime versions must identify the actual code the user has loaded. Follow `docs/VERSIONING.md`.
+
+- Do not keep changing runtime code while continuing to report the same version such as `0.1.0-alpha.3`.
+- Any change pushed to `main` that changes the loadable extension's runtime behavior must bump the runtime version in the same iteration and rebuild `dist`.
+- Pure documentation, task, roadmap, investigation, or unused development-helper changes do not require a runtime bump.
+- Starting with the next runtime change after the historical alpha.3 builds, use plain three-part versions beginning at `0.1.4`; do not continue the `0.1.0-alpha.N` sequence.
+- During the current `0.x` line, use PATCH bumps for ordinary fixes/small features and MINOR bumps for a clear new capability stage.
+- `scripts/release-config.mjs` is the version source of truth. `MACHINE_VERSION` and the user-visible version must not drift from the actual build.
+- `BUILD_LABEL` may remain as an internal descriptive diagnostic field, but it never substitutes for a unique formal version.
+- After a bump, verify source, built manifest, popup, diagnostics, and reported unpacked path all agree on the new version.
+- Do not create or rewrite GitHub Releases automatically unless the task explicitly asks for a release. A runtime version bump on `main` does not by itself require a Release.
 
 ## Investigation requirements
 
@@ -61,6 +76,7 @@ Each iteration should leave the repository in a runnable state and include:
 - source changes;
 - a short note on what was tested;
 - any new known limitation;
-- updated installation instructions if the loadable output path changed.
+- updated installation instructions if the loadable output path changed;
+- for runtime-changing iterations, a unique bumped version and rebuilt `dist` matching that version.
 
 Avoid unrelated refactors during P0.
