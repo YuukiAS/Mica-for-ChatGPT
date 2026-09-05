@@ -18,6 +18,19 @@ Lenovo Legion 上当前加载的 Mica 已确认是 `buildLabel: native-safe-iner
 
 本轮不是直接解决所有 composer 根因。先把状态本身修正确，并准备足够好的真机诊断闭环，再决定“文本框消失 / 发送后文本残留”到底是 Mica、ChatGPT 原生 composer/connector lifecycle、Edge profile/其他扩展，还是叠加问题。
 
+## 本轮版本要求
+
+先阅读 `docs/VERSIONING.md`。历史 `0.1.0-alpha.1` / `.2` / `.3` 保持不动；本轮只要开始修改实际 extension runtime，就必须把正式运行版本升级到 **`0.1.4`**。
+
+要求：
+
+- `scripts/release-config.mjs` 中正式版本改为 `0.1.4`；
+- popup、manifest、diagnostics 都应明确显示 `0.1.4`，不要继续显示 `0.1.0-alpha.3`；
+- 不继续使用 `0.1.0-alpha.N` 双重编号；
+- `BUILD_LABEL` 可以更新为 `composer-guided-diagnostics.1` 或同等清晰描述，但它只是补充诊断字段；
+- rebuild 后 `dist` 必须与 source / version source of truth 一致；
+- 本轮不自动创建 GitHub Release，先让用户在 Lenovo 上手工验收 `0.1.4`。
+
 ---
 
 ## Goal A — 恢复右下角 compact status，且继续 zero-contact composer
@@ -200,9 +213,10 @@ Mica 记录：发送前后 composer 是否 unmount/remount、editable/root ident
 Codex 完成后必须：
 
 1. 更新 source + build/dist；
-2. 更新/新增 investigation，说明 stale `0 mounted` 根因与修复；
-3. 新增 guided diagnostics 的 privacy/safety 说明；
-4. 跑完 `npm test`、`npm run test:e2e`，条件允许再跑 `npm run test:e2e:stress`；
-5. 给出新的 `BUILD_LABEL`，不要继续沿用 `native-safe-inert.1`，建议类似 `composer-guided-diagnostics.1`；
-6. 不自动发布 GitHub Release，先留给用户 Lenovo 真站手工验收；
-7. 最后只告诉用户：需要 reload 哪个 unpacked extension、刷新哪个页面、按 guided check 做哪些动作，以及把哪份报告发回来。
+2. 正式 runtime version 为 `0.1.4`，popup / manifest / diagnostics 一致，不再显示 `0.1.0-alpha.3`；
+3. 更新/新增 investigation，说明 stale `0 mounted` 根因与修复；
+4. 新增 guided diagnostics 的 privacy/safety 说明；
+5. 跑完 `npm test`、`npm run test:e2e`，条件允许再跑 `npm run test:e2e:stress`；
+6. 更新 `BUILD_LABEL`，不要继续沿用 `native-safe-inert.1`，建议类似 `composer-guided-diagnostics.1`；
+7. 不自动发布 GitHub Release，先留给用户 Lenovo 真站手工验收；
+8. 最后只告诉用户：新版本号、commit SHA、需要 reload 哪个 unpacked extension、刷新哪个页面、按 guided check 做哪些动作，以及把哪份报告发回来。
