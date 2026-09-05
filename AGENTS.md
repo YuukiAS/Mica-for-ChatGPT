@@ -33,8 +33,19 @@ Mica runtime versions must identify the actual code the user has loaded. Follow 
 - During the current `0.x` line, use PATCH bumps for ordinary fixes/small features and MINOR bumps for a clear new capability stage.
 - `scripts/release-config.mjs` is the version source of truth. `MACHINE_VERSION` and the user-visible version must not drift from the actual build.
 - `BUILD_LABEL` may remain as an internal descriptive diagnostic field, but it never substitutes for a unique formal version.
-- After a bump, verify source, built manifest, popup, diagnostics, and reported unpacked path all agree on the new version.
+- After a bump, verify source, built manifest, popup, diagnostics, and reported unpacked build all agree on the new version.
 - Do not create or rewrite GitHub Releases automatically unless the task explicitly asks for a release. A runtime version bump on `main` does not by itself require a Release.
+
+### Stable development build path
+
+Version numbers change; the browser's development `Load unpacked` path should not.
+
+- Canonical development build path: `dist/mica-dev`.
+- `npm run build` should refresh `dist/mica-dev` in place across `0.1.4`, `0.1.5`, `0.1.6`, etc.
+- The user should load `dist/mica-dev` once, then only click Reload in `edge://extensions` / `chrome://extensions` after later builds.
+- Do not require the user to reselect `dist/mica-vX.Y.Z` on every patch.
+- Versioned ZIP / SHA-256 / snapshots belong to release packaging, not the routine development path.
+- The stable path must not cause version ambiguity: manifest, popup and diagnostics still carry the formal runtime version.
 
 ## Investigation requirements
 
@@ -49,6 +60,53 @@ When diagnosing LightSession or current ChatGPT behavior, write the result into 
 Do not leave the only evidence in console output.
 
 ## Testing requirements
+
+Testing should be proportional to the change. Do not run the heaviest suite after every small edit merely because it exists.
+
+### Test tiers
+
+**Tier 0 — docs / task only**
+
+- No runtime test is required when only documentation, task files, issue notes, or unused helper scripts change.
+
+**Tier 1 — normal runtime iteration**
+
+Run:
+
+`npm test`
+
+This is the default gate for ordinary source/build/popup/version changes.
+
+**Tier 2 — browser lifecycle / DOM-sensitive change**
+
+Run, after the implementation has settled:
+
+1. `npm test`
+2. `npm run test:e2e`
+
+Use Tier 2 when the change touches composer lifecycle, DOM mounting/unmounting, overlay placement, virtualization, observers/listeners, guided browser diagnostics, or another behavior that static/build checks cannot validate.
+
+Do not rerun the entire E2E suite after every tiny edit. Batch the implementation, run focused/local checks while iterating, then run the Tier 2 gate once on the candidate.
+
+**Tier 3 — stress / race-condition gate**
+
+Run:
+
+`npm run test:e2e:stress`
+
+only when at least one of these is true:
+
+- the task specifically targets a race condition, intermittent lifecycle failure, or observer timing issue;
+- normal E2E has shown flakiness that needs repeated-loop evidence;
+- a substantial lifecycle/virtualization change is being finalized;
+- a stage/release candidate is about to be packaged and stress evidence is materially useful;
+- the task explicitly requests stress testing.
+
+Do **not** make Tier 3 an automatic requirement for every patch. If Tier 1/Tier 2 are sufficient, report `stress: not run — not indicated by test policy` rather than spending time on it.
+
+If a stress run is already in progress for the current race-condition investigation, let that one run complete and record the result; do not rerun it solely because build-path/documentation changes happened afterward unless runtime lifecycle code changed again.
+
+### P0 acceptance
 
 Before calling P0 complete, test a real long conversation and cover the regression checklist in `docs/PHASE_1_LONG_THREAD_RECOVERY.md`. Record enough before/after evidence to show that the optimization is real. A powerful development desktop is not sufficient final evidence if the target symptom only appears on a lower-power machine.
 
@@ -76,7 +134,8 @@ Each iteration should leave the repository in a runnable state and include:
 - source changes;
 - a short note on what was tested;
 - any new known limitation;
-- updated installation instructions if the loadable output path changed;
-- for runtime-changing iterations, a unique bumped version and rebuilt `dist` matching that version.
+- canonical development output at `dist/mica-dev` for runtime-changing iterations;
+- updated installation instructions only if the canonical development path itself changes;
+- for runtime-changing iterations, a unique bumped version and rebuilt canonical dev build matching that version.
 
 Avoid unrelated refactors during P0.
