@@ -53,7 +53,6 @@
   const OVERLAY_EXPAND_MS = 2600;
   const TOAST_MS = 2800;
   const TOAST_MERGE_MS = 3000;
-  const NARROW_VIEWPORT_WIDTH = 720;
   const COMPOSER_PROTECTION_MS = 5000;
   const COMPOSER_PROTECTION_PADDING = 28;
   const COMPOSER_SEND_ACTIVITY_MS = 8000;
@@ -1740,11 +1739,11 @@
   }
 </style>
 <div id="mica-overlay" class="mica-overlay" data-placement="${escapeHtml(overlayState.placement)}">
+  <div class="mica-toast${toastVisible ? "" : " mica-hidden"}" role="status" aria-live="polite">${escapeHtml(getToastText())}</div>
   <button class="mica-status ${expanded ? "expanded" : "compact"}${statusVisible ? "" : " mica-hidden"}" type="button" title="${escapeHtml(getCompactTooltip())}" aria-label="Mica status">
     <span class="mica-dot" aria-hidden="true"></span>
     <span class="mica-label">${escapeHtml(formatExpandedStatusLabel(currentStatus.name, currentStatus.mountedTurns, currentStatus.optimizedTurns))}</span>
   </button>
-  <div class="mica-toast${toastVisible ? "" : " mica-hidden"}" role="status" aria-live="polite">${escapeHtml(getToastText())}</div>
 </div>`;
     badgeRoot.querySelector(".mica-status")?.addEventListener("click", () => {
       expandOverlay(true);
@@ -1754,16 +1753,9 @@
 
   function maybeExpandForStatus(previousName, nextName) {
     if (!settings.showStatus) return;
-    const width = window.innerWidth || document.documentElement.clientWidth || 1024;
     if (!overlayState.initializedExpansionShown) {
       overlayState.initializedExpansionShown = true;
-      if (width >= NARROW_VIEWPORT_WIDTH || nextName === STATUS.DEGRADED) expandOverlay(false);
-      return;
     }
-    if (previousName === nextName) return;
-    if (width < NARROW_VIEWPORT_WIDTH && nextName !== STATUS.DEGRADED) return;
-    if (previousName === STATUS.NATIVE_ONLY && nextName === STATUS.NATIVE_VIRTUALIZATION) expandOverlay(false);
-    if (nextName === STATUS.ACTIVE || nextName === STATUS.DEGRADED) expandOverlay(false);
   }
 
   function expandOverlay(byUser) {
@@ -1783,8 +1775,7 @@
   function shouldShowExpandedStatus() {
     if (overlayState.forceCompactForPlacement) return false;
     if (!overlayState.expanded) return false;
-    const width = window.innerWidth || document.documentElement.clientWidth || 1024;
-    return overlayState.expandedByUser || width >= NARROW_VIEWPORT_WIDTH || currentStatus.name === STATUS.DEGRADED;
+    return overlayState.expandedByUser;
   }
 
   function showKnownInterruptionToast() {
@@ -1852,17 +1843,10 @@
   }
 
   function getStaticOverlayPlacement(size, viewportWidth, viewportHeight) {
-    if (getOverlayMode() === "compact" && !overlayState.toastVisible) {
-      return {
-        name: "bottom-right-static",
-        x: viewportWidth - size.width - OVERLAY_MARGIN,
-        y: viewportHeight - size.height - OVERLAY_MARGIN
-      };
-    }
     return {
-      name: "top-right-static",
+      name: "bottom-right-static",
       x: viewportWidth - size.width - OVERLAY_MARGIN,
-      y: OVERLAY_MARGIN
+      y: viewportHeight - size.height - OVERLAY_MARGIN
     };
   }
 

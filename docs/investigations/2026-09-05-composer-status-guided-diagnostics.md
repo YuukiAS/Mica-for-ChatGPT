@@ -29,8 +29,10 @@ The likely failure was a timing deadlock: Mica's first scan could run before Cha
 - Stopped refreshing composer state from `snapshotComposerState()` while native-safe is active, so ordinary diagnostics reports no longer touch composer just to export runtime state.
 - Replaced composer-aware overlay placement with viewport-only static placement:
   - compact status uses `bottom-right-static`;
-  - expanded status and known-interruption toast use `top-right-static`;
+  - expanded status stays on the same bottom-right static anchor instead of jumping to the top-right;
+  - known-interruption toast stays above the bottom-right status anchor;
   - the overlay path no longer attaches a composer `ResizeObserver` or reads composer geometry.
+- The status overlay no longer auto-expands on initialization, status changes, `Active`, or `Degraded`; it remains a small bottom dot until the user clicks it.
 - Added `extension/src/reliability/composer-diagnostics.ts` as a separate guided composer diagnostic module loaded before `content.js`.
 - Popup now exposes `Run composer check`, `Next step`, `Stop check`, and `Copy report` for guided composer diagnostics.
 
@@ -59,6 +61,7 @@ The page overlay is a static top-right guide card and is separate from the botto
 - Mounted turn churn 6 -> 7 -> 6 updates `status.mountedTurns`, `mountedTurns.current`, and `mountedTurns.lastObserved`.
 - Native-safe remains true and keeps `documentMutationObserverActive: false` and `composerLifecycleListenersAttached: false`.
 - Compact status reaches the viewport bottom-right static placement.
+- Expanded status remains anchored at the viewport bottom-right after clicking the dot.
 - Guided normal delete observes non-zero then zero text length.
 - Mention-like GitHub chip replacement records mention signal and editable identity change without Mica clicking or modifying connector UI.
 - Manual-send surrogate observes a new user turn and stale text length after the native remount surrogate.
@@ -68,8 +71,8 @@ The page overlay is a static top-right guide card and is separate from the botto
 ## Test Results
 
 - `npm test`: passed after the stable dev-path change; build output was `dist/mica-dev`.
-- `npm run test:e2e`: passed after fixture paths were moved to `dist/mica-dev`.
-- `npm run test:e2e:stress`: passed earlier in this `0.1.4` lifecycle candidate; not rerun after build-path-only changes.
+- `npm run test:e2e`: passed after fixture paths were moved to `dist/mica-dev`; now includes the overlay placement matrix for default compact bottom dot, bottom-anchored expansion, and bottom-anchored toast.
+- `npm run test:e2e:stress`: passed earlier in this `0.1.4` lifecycle candidate; not rerun after build-path and compact-status-only changes.
 
 All browser E2E runs used isolated Playwright Chromium against local fixtures only. Codex did not automate the user's Edge profile, did not log into ChatGPT, and did not send a real ChatGPT message.
 

@@ -53,7 +53,7 @@ Chrome / Edge 手动安装：
 - `Degraded`：疑似 conversation 页面，但 Mica 无法安全识别 mounted turn 结构，已停止优化并保持原生页面。
 - `Disabled`：用户在 popup 或页面状态条中关闭了 Mica。
 
-当前本地运行版本是 `0.1.4`，`BUILD_LABEL` 是 `composer-guided-diagnostics.1`。页面上的常驻状态入口默认是 compact indicator；本构建中 compact 点恢复为 viewport 右下角静态放置。首次初始化、状态变化、进入 `Active` / `Degraded` 或用户点击时，会短暂展开完整状态，约 2–3 秒后自动收缩。展开状态和 toast 使用静态 viewport 布局，不再读取 composer geometry 来避让输入框。
+当前本地运行版本是 `0.1.4`，`BUILD_LABEL` 是 `composer-guided-diagnostics.1`。页面上的常驻状态入口默认只是 viewport 右下角的小圆点，不再默认显示右上角文字 pill，也不会因初始化或状态变化自动展开。用户点击小圆点后，状态文字会从同一个底部锚点临时展开，约 2–3 秒后自动收回为小圆点；状态与 toast 都使用静态 viewport 布局，不读取 composer geometry 来避让输入框。
 
 最短诊断路径：
 

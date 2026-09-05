@@ -141,7 +141,9 @@
         const results = [];
         await waitFor(() => document.querySelector("[data-mica-root='true']")?.shadowRoot?.querySelector(".mica-status"));
         results.push(assertCase("overlay exists", () => !!document.querySelector("[data-mica-root='true']")));
-        results.push(assertCase("initial no composer collision", () => !readOverlay().intersects));
+        const initial = readOverlay();
+        results.push(assertCase("initial status is compact", () => initial.statusClass.includes("compact")));
+        results.push(assertCase("initial status uses bottom-right static placement", () => initial.placement === "bottom-right-static"));
 
         await delay(3200);
         const compact = readOverlay();
@@ -153,13 +155,13 @@
         await delay(350);
         const expanded = readOverlay();
         results.push(assertCase("click expands status", () => expanded.statusClass.includes("expanded")));
-        results.push(assertCase("expanded uses top-right static placement", () => expanded.placement === "top-right-static"));
-        results.push(assertCase("expanded does not cover composer", () => !expanded.intersects));
+        results.push(assertCase("expanded stays on bottom-right static placement", () => expanded.placement === "bottom-right-static"));
+        results.push(assertCase("expanded stays anchored at viewport bottom right", () => isBottomRight(expanded.hostRect)));
 
         window.__MICA_OVERLAY_FIXTURE__.setComposerTall(true);
         await delay(700);
         const tall = readOverlay();
-        results.push(assertCase("tall composer does not collide", () => !tall.intersects));
+        results.push(assertCase("tall composer keeps bottom-right status anchor", () => tall.placement === "bottom-right-static"));
 
         if (mode === "toast") {
           await delay(3200);
@@ -168,8 +170,7 @@
           const toast = readOverlay();
           results.push(assertCase("known dialog dismissed", () => document.querySelectorAll("body > [role='dialog'], body > dialog").length === 0));
           results.push(assertCase("known dialog shows one toast", () => !toast.toastHidden && /Mica 已自动关闭一个已知提示/.test(toast.toastText)));
-          results.push(assertCase("toast uses top-right static placement", () => toast.placement === "top-right-static"));
-          results.push(assertCase("toast does not cover composer", () => !toast.intersects));
+          results.push(assertCase("toast stays with bottom-right status anchor", () => toast.placement === "bottom-right-static"));
 
           window.__MICA_OVERLAY_FIXTURE__.addKnownRateLimitDialog();
           await delay(650);

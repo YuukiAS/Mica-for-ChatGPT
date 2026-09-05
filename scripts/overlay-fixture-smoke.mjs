@@ -32,11 +32,9 @@ for (const snippet of [
   "__MICA_OVERLAY_DEBUG__",
   "__MICA_TEST_CONTROLS__",
   "bottom-right-static",
-  "top-right-static",
   "intersectsComposer",
   "Mica 已自动关闭一个已知提示",
   "Mica 已自动关闭 ${overlayState.toastCount} 个已知提示",
-  "NARROW_VIEWPORT_WIDTH",
   "getStaticOverlayPlacement"
 ]) {
   assert(source.includes(snippet), `content source missing overlay token ${snippet}`);

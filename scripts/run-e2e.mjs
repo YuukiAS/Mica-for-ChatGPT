@@ -72,6 +72,8 @@ try {
 
   const guidedResult = await runGuidedComposerDiagnosticsCase();
   results.push(guidedResult);
+  const overlayResult = await runOverlayPlacementMatrixCase();
+  results.push(overlayResult);
 
   const failed = results.filter((result) => !result.passed);
   if (failed.length > 0) {
@@ -97,6 +99,42 @@ try {
 } finally {
   await browser?.close();
   await new Promise((resolve) => server.close(resolve));
+}
+
+async function runOverlayPlacementMatrixCase() {
+  console.error("Running E2E case overlay-placement-matrix");
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  const url = `${baseUrl}/tests/fixtures/overlay-placement-matrix.html?t=${Date.now()}`;
+  let payload;
+  try {
+    await page.goto(url, { waitUntil: "load" });
+    await page.waitForFunction(() => {
+      const text = document.getElementById("matrix-result")?.textContent || "";
+      return text.trim().startsWith("{");
+    }, null, { timeout: stress ? 120000 : 90000 });
+    payload = JSON.parse(await page.locator("#matrix-result").textContent());
+  } catch (error) {
+    const resultText = await page.locator("#matrix-result").textContent().catch(() => "");
+    await page.close();
+    throw Object.assign(new Error(`Overlay placement matrix failed before producing a result: ${error?.message || error}`), {
+      details: { resultText, errors }
+    });
+  }
+  await page.close();
+
+  payload.mode = "overlay-placement-matrix";
+  payload.width = 1280;
+  payload.errors = errors;
+  if (errors.length > 0) payload.passed = false;
+  assert(payload.passed, "Overlay placement matrix fixture failed", payload);
+  assert(JSON.stringify(payload).includes("expanded stays on bottom-right static placement"), "Overlay matrix did not cover expanded bottom-right placement", payload);
+  assert(JSON.stringify(payload).includes("toast stays with bottom-right status anchor"), "Overlay matrix did not cover toast bottom-right placement", payload);
+  return payload;
 }
 
 async function runGuidedComposerDiagnosticsCase() {
