@@ -1,6 +1,6 @@
 {
   "name": "mica-for-chatgpt",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "private": true,
   "description": "Local Chromium extension for ChatGPT long-thread render recovery.",
   "type": "module",

@@ -1,6 +1,6 @@
 (() => {
-  const VERSION = "0.1.0";
-  const VERSION_NAME = "0.1.0-alpha.3";
+  const VERSION = "0.1.4";
+  const VERSION_NAME = "0.1.4";
   const BUILD_LABEL = "composer-guided-diagnostics.1";
   const DEFAULT_SETTINGS = {
     enabled: true,

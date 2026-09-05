@@ -5,7 +5,7 @@
 GitHub Release 不应只指向仓库里的 `dist/` 目录。每个可测试/可发布版本都应额外提供一个可下载的 ZIP，例如：
 
 ```text
-mica-for-chatgpt-v0.1.0-alpha.3.zip
+mica-for-chatgpt-v0.1.4.zip
 ```
 
 用户下载后解压，再在 Edge / Chrome 的扩展管理页中使用 `Load unpacked` 选择解压目录。未来提交 Chrome Web Store 时，也可以复用同一份经过校验的 ZIP 结构。
@@ -38,16 +38,16 @@ icons/
 
 ## 当前 v0.1 状态
 
-当前 `dist/mica-v0.1.0/` 已经可以通过 `Load unpacked` 安装，但 P0 尚未在目标 8 GB MacBook Neo 上完成真实性能验收。因此不应把它表述为“稳定版”。
+当前 `dist/mica-v0.1.4/` 已经可以通过 `Load unpacked` 安装，但 P0 尚未在目标 8 GB MacBook Neo 上完成真实性能验收。因此不应把它表述为“稳定版”。
 
-当前 diagnostics、状态文案修正、v0.x working icon、已知安全提示自动 dismiss、低干扰 overlay 与 composer collision avoidance 已合入预发布包：
+当前 diagnostics、状态文案修正、v0.x working icon、已知安全提示自动 dismiss、低干扰 overlay、native-safe mounted-turn probe 与 guided composer diagnostics 已合入当前测试 build：
 
 ```text
-v0.1.0-alpha.3
-mica-for-chatgpt-v0.1.0-alpha.3.zip
+v0.1.4
+mica-for-chatgpt-v0.1.4.zip
 ```
 
-Chrome manifest 的机器版本仍使用合法的四段以内数字版本，例如 `0.1.0`；如需要显示预发布名称，可使用 `version_name` 表达 `0.1.0-alpha.3`。
+Chrome manifest 的机器版本与用户可见版本均使用 `scripts/release-config.mjs` 中的三段式正式 runtime 版本，例如 `0.1.4`。日常 runtime build 不再继续 `0.1.0-alpha.N` 双重编号。
 
 当前本地命令：
 
@@ -58,8 +58,8 @@ npm run package:release
 该命令会重新 build，然后生成：
 
 ```text
-release/mica-for-chatgpt-v0.1.0-alpha.3.zip
-release/mica-for-chatgpt-v0.1.0-alpha.3.sha256
+release/mica-for-chatgpt-v0.1.4.zip
+release/mica-for-chatgpt-v0.1.4.sha256
 ```
 
 当前 ZIP 解压后根目录直接包含：
@@ -67,6 +67,7 @@ release/mica-for-chatgpt-v0.1.0-alpha.3.sha256
 ```text
 manifest.json
 known-interruptions.js
+composer-diagnostics.js
 content.js
 popup/
 icons/

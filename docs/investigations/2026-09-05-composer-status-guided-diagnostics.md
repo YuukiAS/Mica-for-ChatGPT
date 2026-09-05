@@ -78,7 +78,7 @@ All browser E2E runs used isolated Playwright Chromium against local fixtures on
 Reload the unpacked extension from:
 
 ```text
-C:\Code\Mica-for-ChatGPT\dist\mica-v0.1.0
+C:\Code\Mica-for-ChatGPT\dist\mica-v0.1.4
 ```
 
 Then refresh the target ChatGPT conversation manually and run the popup `Run composer check` flow:

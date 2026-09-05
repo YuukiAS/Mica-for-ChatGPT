@@ -28,7 +28,7 @@ Mica 是一个面向 ChatGPT 网页端的浏览器扩展。目标不是重做 Ch
 当前可加载的 unpacked extension 目录是：
 
 ```text
-C:\Code\Mica-for-ChatGPT\dist\mica-v0.1.0
+C:\Code\Mica-for-ChatGPT\dist\mica-v0.1.4
 ```
 
 重新构建：
@@ -42,7 +42,7 @@ Chrome / Edge 手动安装：
 1. 打开 `chrome://extensions` 或 `edge://extensions`。
 2. 开启 Developer mode。
 3. 点击 Load unpacked。
-4. 选择 `C:\Code\Mica-for-ChatGPT\dist\mica-v0.1.0`。
+4. 选择 `C:\Code\Mica-for-ChatGPT\dist\mica-v0.1.4`。
 5. 打开或刷新 `https://chatgpt.com/` 的长 conversation。
 
 页面右下角会显示状态：
@@ -53,7 +53,7 @@ Chrome / Edge 手动安装：
 - `Degraded`：疑似 conversation 页面，但 Mica 无法安全识别 mounted turn 结构，已停止优化并保持原生页面。
 - `Disabled`：用户在 popup 或页面状态条中关闭了 Mica。
 
-当前本地构建的 `BUILD_LABEL` 是 `composer-guided-diagnostics.1`。页面上的常驻状态入口从 `v0.1.0-alpha.3` 起默认是 compact indicator；本构建中 compact 点恢复为 viewport 右下角静态放置。首次初始化、状态变化、进入 `Active` / `Degraded` 或用户点击时，会短暂展开完整状态，约 2–3 秒后自动收缩。展开状态和 toast 使用静态 viewport 布局，不再读取 composer geometry 来避让输入框。
+当前本地运行版本是 `0.1.4`，`BUILD_LABEL` 是 `composer-guided-diagnostics.1`。页面上的常驻状态入口默认是 compact indicator；本构建中 compact 点恢复为 viewport 右下角静态放置。首次初始化、状态变化、进入 `Active` / `Degraded` 或用户点击时，会短暂展开完整状态，约 2–3 秒后自动收缩。展开状态和 toast 使用静态 viewport 布局，不再读取 composer geometry 来避让输入框。
 
 最短诊断路径：
 
@@ -86,7 +86,7 @@ Reliability 仅处理显式 allowlist 中的纯 acknowledgement 提示。当前 
 
 - 默认不修改 ChatGPT 私有 API response，也不阻止 network request。
 - 不删除 React 管理的消息节点；这一版只用 `content-visibility:auto`、containment 和 intrinsic-size 降低离屏历史 turn 的渲染成本。
-- 真实登录态 Edge 已确认当前 ChatGPT 已经原生 virtualize conversation；Mica 的 containment 现在只是低风险 fallback，`v0.1.0-alpha.3` 主要用于真实长 thread runtime diagnostics，并加入低干扰 overlay 与严格 allowlist 的已知提示自动 dismiss。
+- 真实登录态 Edge 已确认当前 ChatGPT 已经原生 virtualize conversation；Mica 的 containment 现在只是低风险 fallback，`0.1.4` 主要用于真实长 thread runtime diagnostics、native-safe 状态修正、guided composer diagnostics，并保留低干扰 overlay 与严格 allowlist 的已知提示自动 dismiss。
 - 工具卡片、文件/授权类 UI、正在编辑的内容、viewport 附近内容和最近 turn 会保持原生渲染。
 - Codex 当前只能访问未登录 ChatGPT 首页，不能在本机完成真实 authenticated long thread 回归；真实验收需要在目标 Chrome / Edge / MacBook Neo 上完成。
 - 旧 LightSession 失效调查见 [`docs/investigations/2026-09-01-lightsession-current-chatgpt.md`](docs/investigations/2026-09-01-lightsession-current-chatgpt.md)。
@@ -114,13 +114,13 @@ npm run package:release
 
 ## Release 与安装包
 
-当前 `dist/mica-v0.1.0/` 可直接用于 `Load unpacked`。GitHub Release 则应提供版本化 ZIP，而不是只让用户下载仓库目录；ZIP 解压后根目录应直接出现 `manifest.json`。首个对外包在 8 GB MacBook Neo 完成 P0 验收前应标为 pre-release。
+当前 `dist/mica-v0.1.4/` 可直接用于 `Load unpacked`。GitHub Release 则应提供版本化 ZIP，而不是只让用户下载仓库目录；ZIP 解压后根目录应直接出现 `manifest.json`。首个对外包在 8 GB MacBook Neo 完成 P0 验收前应标为 pre-release。
 
 当前 package 输出：
 
 ```text
-release/mica-for-chatgpt-v0.1.0-alpha.3.zip
-release/mica-for-chatgpt-v0.1.0-alpha.3.sha256
+release/mica-for-chatgpt-v0.1.4.zip
+release/mica-for-chatgpt-v0.1.4.sha256
 ```
 
 详细规则见 [`docs/RELEASE_PACKAGING.md`](docs/RELEASE_PACKAGING.md)。

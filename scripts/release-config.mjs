@@ -1,5 +1,5 @@
-export const MACHINE_VERSION = "0.1.0";
-export const VERSION_NAME = "0.1.0-alpha.3";
+export const MACHINE_VERSION = "0.1.4";
+export const VERSION_NAME = "0.1.4";
 export const BUILD_LABEL = "composer-guided-diagnostics.1";
 export const RELEASE_TAG = `v${VERSION_NAME}`;
 export const DIST_DIR_NAME = `mica-v${MACHINE_VERSION}`;
