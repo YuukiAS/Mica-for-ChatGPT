@@ -31,13 +31,13 @@ for (const snippet of ["1600", "1200", "900", "700", "500", "overlay-placement.h
 for (const snippet of [
   "__MICA_OVERLAY_DEBUG__",
   "__MICA_TEST_CONTROLS__",
-  "right-above-composer",
+  "bottom-right-static",
+  "top-right-static",
   "intersectsComposer",
   "Mica 已自动关闭一个已知提示",
   "Mica 已自动关闭 ${overlayState.toastCount} 个已知提示",
   "NARROW_VIEWPORT_WIDTH",
-  "findComposerArea",
-  "chooseOverlayPlacement"
+  "getStaticOverlayPlacement"
 ]) {
   assert(source.includes(snippet), `content source missing overlay token ${snippet}`);
   assert(dist.includes(snippet), `built content missing overlay token ${snippet}`);
@@ -47,6 +47,7 @@ for (const text of [source, dist]) {
   assert(!/active\s*\/.*turns/i.test(text), "old active / turns wording must not exist");
   assert(!/right\s*=\s*["']12px["']/.test(text), "status overlay must not use fixed right 12px placement");
   assert(!/bottom\s*=\s*["']12px["']/.test(text), "status overlay must not use fixed bottom 12px placement");
+  assert(!/findComposerArea|right-above-composer|chooseOverlayPlacement/.test(text), "status overlay must not use composer-aware placement");
 }
 
 new Function(dist);

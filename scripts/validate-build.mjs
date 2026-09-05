@@ -20,7 +20,8 @@ assert(manifest.permissions?.includes("storage"), "storage permission missing");
 assert(manifest.permissions?.includes("activeTab"), "activeTab permission missing");
 assert(!manifest.host_permissions?.some((host) => !/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(host)), "unexpected host permission");
 assert(manifest.content_scripts?.[0]?.js?.[0] === "known-interruptions.js", "known interruptions script must run before content.js");
-assert(manifest.content_scripts?.[0]?.js?.[1] === "content.js", "content.js must remain a content script");
+assert(manifest.content_scripts?.[0]?.js?.[1] === "composer-diagnostics.js", "composer diagnostics script must run before content.js");
+assert(manifest.content_scripts?.[0]?.js?.[2] === "content.js", "content.js must remain a content script");
 
 for (const size of [16, 32, 48, 128]) {
   assert(manifest.icons?.[size] === `icons/icon${size}.png`, `manifest icon${size} missing`);
@@ -37,6 +38,8 @@ for (const token of [
   "MICA_DIAGNOSTICS_STOP",
   "MICA_DIAGNOSTICS_COPY_REPORT",
   "MICA_DIAGNOSTICS_RESET",
+  "MICA_COMPOSER_GUIDED_START",
+  "MICA_COMPOSER_GUIDED_COPY_REPORT",
   "Native virtualization",
   "mountedTurns",
   "conversationTextIncluded: false",
@@ -59,12 +62,25 @@ for (const token of [
 ]) {
   assert(interruptions.includes(token), `known-interruptions.js missing ${token}`);
 }
+
+const composerDiagnostics = await readFile(path.join(distDir, "composer-diagnostics.js"), "utf8");
+for (const token of [
+  "MicaComposerDiagnostics",
+  "composer-guided-diagnostics.v1",
+  "promptTextIncluded: false",
+  "answerTextIncluded: false",
+  "requestDataIncluded: false",
+  "Mica will not type, click connectors, send messages, retry, reload, or record prompt/answer text."
+]) {
+  assert(composerDiagnostics.includes(token), `composer-diagnostics.js missing ${token}`);
+}
+assert(!/dispatchEvent\(|\.click\(|fetch\(|XMLHttpRequest|new\s+MutationObserver/.test(composerDiagnostics), "composer diagnostics must stay passive and local");
 for (const forbidden of ["radix-_", "btn-primary", "[role=\"dialog\"] button", "location.reload", "fetch(", "XMLHttpRequest"]) {
   assert(!interruptions.includes(forbidden), `known-interruptions.js contains forbidden dependency or behavior: ${forbidden}`);
 }
 
 const popupHtml = await readFile(path.join(distDir, "popup", "index.html"), "utf8");
-for (const token of ["Start diagnostics", "Stop diagnostics", "Copy report", "Reset", "Auto-dismiss known interruptions"]) {
+for (const token of ["Start diagnostics", "Stop diagnostics", "Copy report", "Reset", "Auto-dismiss known interruptions", "Run composer check"]) {
   assert(popupHtml.includes(token), `popup missing ${token}`);
 }
 

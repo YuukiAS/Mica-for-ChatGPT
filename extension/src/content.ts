@@ -79,7 +79,9 @@
     composerEditScansSkipped: 0,
     overlayPlacements: 0,
     overlayStaticPlacements: 0,
-    nativeSafeModeEntries: 0
+    nativeSafeModeEntries: 0,
+    nativeSafeMountedStatusProbes: 0,
+    nativeSafeMountedStatusUpdates: 0
   };
   const composerState = {
     currentElement: null,
@@ -135,8 +137,6 @@
   let mutationObserverPaused = false;
   let mutationObserverResumeTimer = 0;
   let resizeObserver = null;
-  let overlayComposerObserver = null;
-  let overlayObservedComposer = null;
   let overlayPlacementScheduled = false;
   let scheduled = false;
   let lastUrl = location.href;
@@ -169,6 +169,7 @@
     injectStyles();
     settings = { ...DEFAULT_SETTINGS, ...(await readSettings()) };
     setupBadge();
+    setupComposerGuidedDiagnostics();
     setupObservers();
     setupMessages();
     setupFixtureTestHooks();
@@ -267,6 +268,7 @@
       }
       if (runtimeState.nativeSafeMode) {
         processKnownInterruptions();
+        refreshNativeSafeMountedStatus("interval");
         return;
       }
       if (!isComposerLifecycleUnstable()) {
@@ -329,7 +331,7 @@
     globalThis.chrome?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
       if (!message || typeof message !== "object") return false;
       if (message.type === "MICA_GET_STATUS") {
-        sendResponse({ status: currentStatus, settings, diagnostics: summarizeDiagnostics() });
+        sendResponse({ status: currentStatus, settings, diagnostics: summarizeDiagnostics(), composerGuided: summarizeComposerGuidedDiagnostics() });
         return true;
       }
       if (message.type === "MICA_SET_SETTINGS") {
@@ -339,7 +341,7 @@
           exitNativeSafeMode();
           scheduleScan("settings");
           processKnownInterruptions();
-          sendResponse({ status: currentStatus, settings, diagnostics: summarizeDiagnostics() });
+          sendResponse({ status: currentStatus, settings, diagnostics: summarizeDiagnostics(), composerGuided: summarizeComposerGuidedDiagnostics() });
         });
         return true;
       }
@@ -363,6 +365,32 @@
         sendResponse({ status: currentStatus, diagnostics: summarizeDiagnostics() });
         return true;
       }
+      if (message.type === "MICA_COMPOSER_GUIDED_START") {
+        sendResponse({ status: currentStatus, composerGuided: startComposerGuidedDiagnostics() });
+        return true;
+      }
+      if (message.type === "MICA_COMPOSER_GUIDED_NEXT") {
+        sendResponse({ status: currentStatus, composerGuided: nextComposerGuidedDiagnosticsStep() });
+        return true;
+      }
+      if (message.type === "MICA_COMPOSER_GUIDED_STOP") {
+        sendResponse({ status: currentStatus, composerGuided: stopComposerGuidedDiagnostics(), report: getComposerGuidedDiagnosticsReport() });
+        return true;
+      }
+      if (message.type === "MICA_COMPOSER_GUIDED_COPY_REPORT") {
+        const report = getComposerGuidedDiagnosticsReport();
+        sendResponse({
+          status: currentStatus,
+          composerGuided: summarizeComposerGuidedDiagnostics(),
+          report,
+          reportText: report ? JSON.stringify(report, null, 2) : ""
+        });
+        return true;
+      }
+      if (message.type === "MICA_COMPOSER_GUIDED_RESET") {
+        sendResponse({ status: currentStatus, composerGuided: resetComposerGuidedDiagnostics() });
+        return true;
+      }
       return false;
     });
 
@@ -379,6 +407,71 @@
       scheduleScan("settings");
       renderBadge();
     });
+  }
+
+  function setupComposerGuidedDiagnostics() {
+    const api = globalThis.MicaComposerDiagnostics;
+    if (!api || typeof api.configure !== "function") return;
+    api.configure({
+      getRuntimeSnapshot: () => ({
+        extension: {
+          name: "Mica for ChatGPT",
+          version: VERSION,
+          versionName: VERSION_NAME,
+          buildLabel: BUILD_LABEL
+        },
+        page: {
+          origin: location.origin,
+          pathKind: getPathKind(),
+          uptimeMs: Date.now() - bootTime
+        },
+        status: {
+          name: currentStatus.name,
+          reason: currentStatus.reason,
+          mountedTurns: currentStatus.mountedTurns,
+          optimizedTurns: currentStatus.optimizedTurns
+        },
+        runtime: {
+          nativeSafeMode: runtimeState.nativeSafeMode,
+          nativeSafeReason: runtimeState.nativeSafeReason,
+          documentMutationObserverActive: runtimeState.documentMutationsObserved,
+          composerLifecycleListenersAttached: runtimeState.composerLifecycleListenersAttached,
+          nativeSafeModeEntries: globalCounters.nativeSafeModeEntries
+        }
+      }),
+      countMountedTurns: () => collectMountedTurnStatusProbe().length,
+      countUserTurns: () => collectMountedTurnStatusProbe().filter((turn) => hasTurnRole(turn, "user")).length
+    });
+  }
+
+  function startComposerGuidedDiagnostics() {
+    const api = globalThis.MicaComposerDiagnostics;
+    return api?.start?.() || { available: false, running: false };
+  }
+
+  function nextComposerGuidedDiagnosticsStep() {
+    const api = globalThis.MicaComposerDiagnostics;
+    return api?.nextStep?.() || { available: false, running: false };
+  }
+
+  function stopComposerGuidedDiagnostics() {
+    const api = globalThis.MicaComposerDiagnostics;
+    return api?.stop?.() || { available: false, running: false };
+  }
+
+  function resetComposerGuidedDiagnostics() {
+    const api = globalThis.MicaComposerDiagnostics;
+    return api?.reset?.() || { available: false, running: false };
+  }
+
+  function summarizeComposerGuidedDiagnostics() {
+    const api = globalThis.MicaComposerDiagnostics;
+    return api?.summarize?.() || { available: false, running: false };
+  }
+
+  function getComposerGuidedDiagnosticsReport() {
+    const api = globalThis.MicaComposerDiagnostics;
+    return api?.getReport?.() || null;
   }
 
   function setupFixtureTestHooks() {
@@ -402,6 +495,24 @@
       },
       getDiagnosticsReport() {
         return buildDiagnosticsReport();
+      },
+      startComposerGuidedDiagnostics() {
+        return startComposerGuidedDiagnostics();
+      },
+      nextComposerGuidedDiagnosticsStep() {
+        return nextComposerGuidedDiagnosticsStep();
+      },
+      stopComposerGuidedDiagnostics() {
+        return stopComposerGuidedDiagnostics();
+      },
+      getComposerGuidedDiagnosticsReport() {
+        return getComposerGuidedDiagnosticsReport();
+      },
+      getComposerGuidedDiagnosticsState() {
+        return globalThis.MicaComposerDiagnostics?.getDebugState?.() || null;
+      },
+      refreshNativeSafeMountedStatus() {
+        return refreshNativeSafeMountedStatus("fixture");
       }
     };
   }
@@ -547,6 +658,97 @@
       if (a === b) return 0;
       return a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
     });
+  }
+
+  function collectMountedTurnStatusProbe() {
+    const main = document.querySelector("main") || document.body;
+    if (!main) return [];
+    const raw = Array.from(main.querySelectorAll(TURN_SELECTOR)).filter((node) => node instanceof HTMLElement);
+    const unique = new Set();
+
+    for (const node of raw) {
+      if (!(node instanceof HTMLElement) || node.closest("[data-mica-root='true']")) continue;
+      let turn = null;
+      const roleNode = node.matches("[data-message-author-role]") ? node : node.querySelector("[data-message-author-role]");
+      if (roleNode instanceof HTMLElement) {
+        turn =
+          roleNode.closest("[data-testid^='conversation-turn-']") ||
+          roleNode.closest("[data-testid*='conversation-turn']") ||
+          roleNode.closest("article") ||
+          roleNode;
+      }
+
+      if (!(turn instanceof HTMLElement)) continue;
+      if (!main.contains(turn)) continue;
+      if (turn.offsetParent === null && turn.getClientRects().length === 0) continue;
+      unique.add(turn);
+    }
+
+    return Array.from(unique).sort((a, b) => {
+      if (a === b) return 0;
+      return a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+    });
+  }
+
+  function refreshNativeSafeMountedStatus(reason) {
+    if (!runtimeState.nativeSafeMode) return currentStatus;
+    globalCounters.nativeSafeMountedStatusProbes += 1;
+    const turns = collectMountedTurnStatusProbe();
+    updateTurnWindowStats(turns);
+
+    if (!settings.enabled) {
+      runtimeState.nativeSafeReason = "disabled";
+      setStatusIfChanged(STATUS.DISABLED, "Disabled by user", turns);
+      return currentStatus;
+    }
+    if (turns.length === 0) {
+      const conversationPath = isConversationPath();
+      const hasTimedOut = Date.now() - bootTime > 5000;
+      const name = conversationPath && hasTimedOut ? STATUS.DEGRADED : STATUS.NATIVE_ONLY;
+      const statusReason = conversationPath && hasTimedOut ? "No safe conversation turn container found" : "No mounted conversation turns";
+      runtimeState.nativeSafeReason = conversationPath && hasTimedOut ? "no safe conversation turn container found" : "no mounted turns";
+      setStatusIfChanged(name, statusReason, turns);
+      return currentStatus;
+    }
+    if (!isSafeTurnSet(turns)) {
+      runtimeState.nativeSafeReason = "ambiguous turn structure";
+      setStatusIfChanged(STATUS.DEGRADED, "Mounted turn structure is ambiguous", turns);
+      return currentStatus;
+    }
+    if (turns.length <= settings.nativeOnlyTurnThreshold) {
+      const nativeName = isNativeVirtualizationLikely(turns) ? STATUS.NATIVE_VIRTUALIZATION : STATUS.NATIVE_ONLY;
+      const statusReason = nativeName === STATUS.NATIVE_VIRTUALIZATION
+        ? "ChatGPT appears to keep only a small mounted conversation window"
+        : "Mounted turn count is small enough for native rendering";
+      runtimeState.nativeSafeReason = "small mounted turn window";
+      setStatusIfChanged(nativeName, statusReason, turns);
+      return currentStatus;
+    }
+
+    exitNativeSafeMode();
+    scheduleScan(`native-safe-mounted-probe:${reason || "unknown"}`);
+    return currentStatus;
+  }
+
+  function setStatusIfChanged(name, reason, turns, optimizedCount = 0, protectedCount = 0) {
+    const mountedCount = turns.length;
+    if (
+      currentStatus.name === name &&
+      currentStatus.reason === reason &&
+      currentStatus.mountedTurns === mountedCount &&
+      currentStatus.optimizedTurns === optimizedCount &&
+      currentStatus.protectedTurns === protectedCount
+    ) {
+      return;
+    }
+    globalCounters.nativeSafeMountedStatusUpdates += 1;
+    setStatus(name, reason, turns, optimizedCount, protectedCount);
+  }
+
+  function hasTurnRole(turn, role) {
+    if (!(turn instanceof HTMLElement)) return false;
+    const selector = `[data-message-author-role='${role}']`;
+    return turn.matches(selector) || !!turn.querySelector(selector);
   }
 
   function isSafeTurnSet(turns) {
@@ -898,7 +1100,6 @@
     mutationObserverResumeTimer = 0;
     disconnectDocumentMutations();
     detachComposerLifecycleListeners();
-    disconnectOverlayComposerObserver();
     disconnectTurnResizeObservers();
     composerState.sendingUntil = 0;
     composerState.editingUntil = 0;
@@ -1163,6 +1364,8 @@
       overlayPlacements: globalCounters.overlayPlacements,
       overlayStaticPlacements: globalCounters.overlayStaticPlacements,
       nativeSafeModeEntries: globalCounters.nativeSafeModeEntries,
+      nativeSafeMountedStatusProbes: globalCounters.nativeSafeMountedStatusProbes,
+      nativeSafeMountedStatusUpdates: globalCounters.nativeSafeMountedStatusUpdates,
       composer: snapshotComposerState(),
       domNodes: countDomNodes()
     };
@@ -1180,7 +1383,10 @@
   }
 
   function buildDiagnosticsReport() {
-    const turns = collectConversationTurns();
+    if (runtimeState.nativeSafeMode) {
+      refreshNativeSafeMountedStatus("diagnostics-report");
+    }
+    const turns = runtimeState.nativeSafeMode ? collectMountedTurnStatusProbe() : collectConversationTurns();
     const durationMs = getDiagnosticsDuration();
     const baseline = diagnostics.baseline || snapshotCounters();
     const current = snapshotCounters();
@@ -1222,7 +1428,9 @@
         nativeSafeReason: runtimeState.nativeSafeReason,
         documentMutationObserverActive: runtimeState.documentMutationsObserved,
         composerLifecycleListenersAttached: runtimeState.composerLifecycleListenersAttached,
-        nativeSafeModeEntries: current.nativeSafeModeEntries
+        nativeSafeModeEntries: current.nativeSafeModeEntries,
+        nativeSafeMountedStatusProbes: current.nativeSafeMountedStatusProbes,
+        nativeSafeMountedStatusUpdates: current.nativeSafeMountedStatusUpdates
       },
       diagnostics: {
         running: diagnostics.running,
@@ -1359,7 +1567,9 @@
   }
 
   function snapshotComposerState() {
-    updateComposerState();
+    if (!runtimeState.nativeSafeMode) {
+      updateComposerState();
+    }
     return {
       exists: !!composerState.currentElement,
       visible: composerState.visible,
@@ -1630,37 +1840,30 @@
     if (!overlay) return;
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1024;
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 768;
-    let size = measureOverlay(overlay);
-    if (shouldUseStaticOverlayPlacement()) {
-      disconnectOverlayComposerObserver();
-      const placement = clampPlacement({
-        name: "top-right-static",
-        x: viewportWidth - size.width - OVERLAY_MARGIN,
-        y: OVERLAY_MARGIN
-      }, size, viewportWidth, viewportHeight);
-      applyOverlayPlacement(placement.name, placement, size, null);
-      globalCounters.overlayStaticPlacements += 1;
-      return;
-    }
-
-    updateComposerState();
-    observeComposerForOverlay();
-    const composer = findComposerArea();
-    let placement = chooseOverlayPlacement(size, composer?.rect, viewportWidth, viewportHeight);
-    if (placement.collides && shouldShowExpandedStatus()) {
-      overlayState.forceCompactForPlacement = true;
-      renderBadge();
-      return;
-    }
-    applyOverlayPlacement(placement.name, placement, size, composer?.rect || null);
-  }
-
-  function shouldUseStaticOverlayPlacement() {
-    return isComposerEditWindowActive() || (!overlayState.toastVisible && !shouldShowExpandedStatus());
+    const size = measureOverlay(overlay);
+    const candidate = getStaticOverlayPlacement(size, viewportWidth, viewportHeight);
+    const placement = clampPlacement(candidate, size, viewportWidth, viewportHeight);
+    applyOverlayPlacement(candidate.name, placement, size, null);
+    globalCounters.overlayStaticPlacements += 1;
   }
 
   function shouldPollOverlayPlacement() {
     return overlayState.toastVisible || shouldShowExpandedStatus() || currentStatus.name === STATUS.DEGRADED;
+  }
+
+  function getStaticOverlayPlacement(size, viewportWidth, viewportHeight) {
+    if (getOverlayMode() === "compact" && !overlayState.toastVisible) {
+      return {
+        name: "bottom-right-static",
+        x: viewportWidth - size.width - OVERLAY_MARGIN,
+        y: viewportHeight - size.height - OVERLAY_MARGIN
+      };
+    }
+    return {
+      name: "top-right-static",
+      x: viewportWidth - size.width - OVERLAY_MARGIN,
+      y: OVERLAY_MARGIN
+    };
   }
 
   function applyOverlayPlacement(name, placement, size, composerRect) {
@@ -1682,7 +1885,7 @@
       toastCount: overlayState.toastCount,
       rect: placedRect,
       composerRect,
-      intersectsComposer: composerRect ? intersects(placedRect, composerRect) : false
+      intersectsComposer: false
     };
   }
 
@@ -1694,120 +1897,11 @@
     };
   }
 
-  function chooseOverlayPlacement(size, composerRect, viewportWidth, viewportHeight) {
-    const candidates = [
-      {
-        name: "bottom-right",
-        x: viewportWidth - size.width - OVERLAY_MARGIN,
-        y: viewportHeight - size.height - OVERLAY_MARGIN
-      }
-    ];
-    if (composerRect) {
-      candidates.push({
-        name: "right-above-composer",
-        x: viewportWidth - size.width - OVERLAY_MARGIN,
-        y: composerRect.top - size.height - OVERLAY_MARGIN
-      });
-    }
-    candidates.push(
-      {
-        name: "bottom-left",
-        x: OVERLAY_MARGIN,
-        y: viewportHeight - size.height - OVERLAY_MARGIN
-      },
-      {
-        name: "top-right",
-        x: viewportWidth - size.width - OVERLAY_MARGIN,
-        y: OVERLAY_MARGIN
-      },
-      {
-        name: "top-left",
-        x: OVERLAY_MARGIN,
-        y: OVERLAY_MARGIN
-      }
-    );
-
-    for (const candidate of candidates) {
-      const placed = clampPlacement(candidate, size, viewportWidth, viewportHeight);
-      const rect = {
-        left: placed.x,
-        top: placed.y,
-        right: placed.x + size.width,
-        bottom: placed.y + size.height
-      };
-      if (!composerRect || !intersects(rect, composerRect)) {
-        return { ...placed, name: candidate.name, collides: false };
-      }
-    }
-    const fallback = clampPlacement(candidates[candidates.length - 2], size, viewportWidth, viewportHeight);
-    return { ...fallback, name: "top-right", collides: composerRect ? intersects({
-      left: fallback.x,
-      top: fallback.y,
-      right: fallback.x + size.width,
-      bottom: fallback.y + size.height
-    }, composerRect) : false };
-  }
-
   function clampPlacement(candidate, size, viewportWidth, viewportHeight) {
     return {
       x: clamp(candidate.x, OVERLAY_MARGIN, Math.max(OVERLAY_MARGIN, viewportWidth - size.width - OVERLAY_MARGIN)),
       y: clamp(candidate.y, OVERLAY_MARGIN, Math.max(OVERLAY_MARGIN, viewportHeight - size.height - OVERLAY_MARGIN))
     };
-  }
-
-  function observeComposerForOverlay() {
-    if (typeof ResizeObserver === "undefined") return;
-    if (shouldUseStaticOverlayPlacement()) {
-      disconnectOverlayComposerObserver();
-      return;
-    }
-    const composer = findComposerArea()?.element || null;
-    if (!composer || composer === overlayObservedComposer) return;
-    if (!overlayComposerObserver) {
-      overlayComposerObserver = new ResizeObserver(() => scheduleOverlayPlacement());
-    }
-    if (overlayObservedComposer) overlayComposerObserver.unobserve(overlayObservedComposer);
-    overlayObservedComposer = composer;
-    overlayComposerObserver.observe(composer);
-  }
-
-  function disconnectOverlayComposerObserver() {
-    if (overlayComposerObserver) {
-      overlayComposerObserver.disconnect();
-    }
-    overlayObservedComposer = null;
-  }
-
-  function findComposerArea() {
-    const candidates = getComposerCandidates();
-    if (candidates.length === 0) return null;
-    const rects = candidates.map((item) => item.rect);
-    const rect = unionRects(rects);
-    const element = candidates[0].element;
-    return rect ? { element, rect } : null;
-  }
-
-  function getComposerCandidates() {
-    const nodes = Array.from(document.querySelectorAll([
-      "[data-testid*='composer']",
-      "textarea",
-      "[contenteditable]",
-      "[role='textbox']",
-      "form"
-    ].join(","))).filter((node) => node instanceof HTMLElement && isVisibleForOverlay(node));
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 768;
-    const results = [];
-    const seen = new Set();
-
-    for (const node of nodes) {
-      const composer = chooseComposerContainer(node);
-      if (!composer || seen.has(composer)) continue;
-      seen.add(composer);
-      const rect = rectFromDomRect(composer.getBoundingClientRect());
-      if (!isComposerLikeRect(rect, viewportHeight)) continue;
-      results.push({ element: composer, rect });
-    }
-    return results;
   }
 
   function chooseComposerContainer(node) {
@@ -1824,25 +1918,6 @@
       }
     }
     return current;
-  }
-
-  function isComposerLikeRect(rect, viewportHeight) {
-    if (!rect || rect.width < 180 || rect.height < 24) return false;
-    if (rect.bottom < viewportHeight * 0.45) return false;
-    if (rect.top > viewportHeight || rect.bottom < 0) return false;
-    return rect.height <= Math.max(380, viewportHeight * 0.7);
-  }
-
-  function unionRects(rects) {
-    if (rects.length === 0) return null;
-    return {
-      left: Math.min(...rects.map((rect) => rect.left)),
-      top: Math.min(...rects.map((rect) => rect.top)),
-      right: Math.max(...rects.map((rect) => rect.right)),
-      bottom: Math.max(...rects.map((rect) => rect.bottom)),
-      width: Math.max(...rects.map((rect) => rect.right)) - Math.min(...rects.map((rect) => rect.left)),
-      height: Math.max(...rects.map((rect) => rect.bottom)) - Math.min(...rects.map((rect) => rect.top))
-    };
   }
 
   function expandRect(rect, padding) {

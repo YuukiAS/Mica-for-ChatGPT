@@ -37,6 +37,7 @@
       ],
       "js": [
         "known-interruptions.js",
+        "composer-diagnostics.js",
         "content.js"
       ],
       "run_at": "document_idle"

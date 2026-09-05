@@ -160,6 +160,7 @@
 
       if (withMica) {
         loadScript("../../dist/mica-v0.1.0/known-interruptions.js")
+          .then(() => loadScript("../../dist/mica-v0.1.0/composer-diagnostics.js"))
           .then(() => loadScript("../../dist/mica-v0.1.0/content.js"))
           .then(async () => {
             await waitFor(() => window.__MICA_TEST_CONTROLS__, 3000);

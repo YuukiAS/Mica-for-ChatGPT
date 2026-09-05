@@ -28,7 +28,7 @@ Mica 是一个面向 ChatGPT 网页端的浏览器扩展。目标不是重做 Ch
 当前可加载的 unpacked extension 目录是：
 
 ```text
-D:\Code\Mica-for-ChatGPT\dist\mica-v0.1.0
+C:\Code\Mica-for-ChatGPT\dist\mica-v0.1.0
 ```
 
 重新构建：
@@ -42,7 +42,7 @@ Chrome / Edge 手动安装：
 1. 打开 `chrome://extensions` 或 `edge://extensions`。
 2. 开启 Developer mode。
 3. 点击 Load unpacked。
-4. 选择 `D:\Code\Mica-for-ChatGPT\dist\mica-v0.1.0`。
+4. 选择 `C:\Code\Mica-for-ChatGPT\dist\mica-v0.1.0`。
 5. 打开或刷新 `https://chatgpt.com/` 的长 conversation。
 
 页面右下角会显示状态：
@@ -53,7 +53,7 @@ Chrome / Edge 手动安装：
 - `Degraded`：疑似 conversation 页面，但 Mica 无法安全识别 mounted turn 结构，已停止优化并保持原生页面。
 - `Disabled`：用户在 popup 或页面状态条中关闭了 Mica。
 
-页面上的常驻状态入口从 `v0.1.0-alpha.3` 起默认是 compact indicator。首次初始化、状态变化、进入 `Active` / `Degraded` 或用户点击时，会短暂展开完整状态，约 2–3 秒后自动收缩。overlay 会根据当前可见 composer 区域重新定位，避免覆盖输入框、发送按钮和语音按钮。
+当前本地构建的 `BUILD_LABEL` 是 `composer-guided-diagnostics.1`。页面上的常驻状态入口从 `v0.1.0-alpha.3` 起默认是 compact indicator；本构建中 compact 点恢复为 viewport 右下角静态放置。首次初始化、状态变化、进入 `Active` / `Degraded` 或用户点击时，会短暂展开完整状态，约 2–3 秒后自动收缩。展开状态和 toast 使用静态 viewport 布局，不再读取 composer geometry 来避让输入框。
 
 最短诊断路径：
 
@@ -69,6 +69,14 @@ popup 可切换启用状态、状态条显示、保留原生渲染的最近 turn
 - `Stop diagnostics`
 - `Copy report`
 - `Reset`
+
+popup 还提供 `Run composer check`，用于替代手工 Console probe。启动后页面右上角会出现引导卡，用户按提示手动完成三步：
+
+1. 在输入框输入 `abc test`，然后 Ctrl+A -> Delete，不发送。
+2. 输入 `@GitHub`，从 ChatGPT 候选中手动选择 GitHub，然后 Ctrl+A -> Delete，不发送。
+3. 输入一条很短的测试消息，并由用户自己点击发送。
+
+Mica 只记录 composer 是否存在、文本长度、DOM identity、mounted turn/user turn 数等结构证据；不记录 prompt/answer 原文，不点击 connector，不自动发送，不 retry/reload/regenerate，不读取请求 body/header/token。完成后用 `Copy report` 复制 privacy-safe report。
 
 diagnostics report 只统计 mounted turn 数、DOM node 数、mutation/long task/frame stall/heap/complexity、overlay placement 和已知提示 dismiss count 等指标，不复制聊天正文或附件内容，不上传 telemetry。
 
@@ -96,7 +104,7 @@ npm run package:release
 
 本地 synthetic 90-turn fixture 只能证明 Mica 自己的 containment/fail-open 实现、manifest、icons、diagnostics message surface 和 release ZIP 结构工作；它不能证明 Mica 对当前真实 ChatGPT 长 conversation 有性能收益。真实 P0 性能结论必须来自 8 GB MacBook Neo。
 
-`npm run test:e2e` 和 `npm run test:e2e:stress` 使用隔离 Playwright Chromium 访问仓库内 synthetic fixture，覆盖 composer lifecycle、overlay placement、send/streaming race 和 Mica disabled baseline。它们不得访问真实登录态 ChatGPT，也不得操作用户正在使用的 Edge。
+`npm run test:e2e` 和 `npm run test:e2e:stress` 使用隔离 Playwright Chromium 访问仓库内 synthetic fixture，覆盖 composer lifecycle、overlay placement、send/streaming race、native-safe delayed mounted-turn status、guided composer diagnostics 和 Mica disabled baseline。它们不得访问真实登录态 ChatGPT，也不得操作用户正在使用的 Edge。
 
 ## 真实设备更新：ChatGPT 已原生窗口化
 

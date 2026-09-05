@@ -124,6 +124,7 @@
       };
     </script>
     <script src="../../dist/mica-v0.1.0/known-interruptions.js"></script>
+    <script src="../../dist/mica-v0.1.0/composer-diagnostics.js"></script>
     <script src="../../dist/mica-v0.1.0/content.js"></script>
     <script>
       const resultNode = document.getElementById("overlay-test-result");
@@ -145,12 +146,14 @@
         await delay(3200);
         const compact = readOverlay();
         results.push(assertCase("compact after timeout", () => compact.statusClass.includes("compact")));
-        results.push(assertCase("compact does not cover composer", () => !compact.intersects));
+        results.push(assertCase("compact uses bottom-right static placement", () => compact.placement === "bottom-right-static"));
+        results.push(assertCase("compact sits at viewport bottom right", () => isBottomRight(compact.hostRect)));
 
         document.querySelector("[data-mica-root='true']").shadowRoot.querySelector(".mica-status").click();
         await delay(350);
         const expanded = readOverlay();
         results.push(assertCase("click expands status", () => expanded.statusClass.includes("expanded")));
+        results.push(assertCase("expanded uses top-right static placement", () => expanded.placement === "top-right-static"));
         results.push(assertCase("expanded does not cover composer", () => !expanded.intersects));
 
         window.__MICA_OVERLAY_FIXTURE__.setComposerTall(true);
@@ -165,6 +168,7 @@
           const toast = readOverlay();
           results.push(assertCase("known dialog dismissed", () => document.querySelectorAll("body > [role='dialog'], body > dialog").length === 0));
           results.push(assertCase("known dialog shows one toast", () => !toast.toastHidden && /Mica 已自动关闭一个已知提示/.test(toast.toastText)));
+          results.push(assertCase("toast uses top-right static placement", () => toast.placement === "top-right-static"));
           results.push(assertCase("toast does not cover composer", () => !toast.intersects));
 
           window.__MICA_OVERLAY_FIXTURE__.addKnownRateLimitDialog();
@@ -206,16 +210,17 @@
         const status = shadow.querySelector(".mica-status");
         const toast = shadow.querySelector(".mica-toast");
         const composer = document.querySelector("[data-testid='composer']");
-        const hostRect = toRect(host.getBoundingClientRect());
-        const composerRect = toRect(composer.getBoundingClientRect());
         const debug = window.__MICA_OVERLAY_DEBUG__ || {};
+        const shadowPlacement = shadow.getElementById("mica-overlay")?.dataset?.placement || null;
+        const hostRect = debug.rect || toRect(host.getBoundingClientRect());
+        const composerRect = toRect(composer.getBoundingClientRect());
         return {
           statusClass: status?.className || "",
           toastHidden: !toast || toast.classList.contains("mica-hidden"),
           toastText: toast?.textContent?.trim() || "",
           toastCount: debug.toastCount || 0,
           intersects: intersects(hostRect, composerRect) || !!debug.intersectsComposer,
-          placement: debug.placement || null,
+          placement: debug.placement || shadowPlacement,
           hostRect,
           composerRect
         };
@@ -259,6 +264,10 @@
 
       function intersects(a, b) {
         return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+      }
+
+      function isBottomRight(rect) {
+        return Math.abs(window.innerWidth - rect.right - 12) <= 3 && Math.abs(window.innerHeight - rect.bottom - 12) <= 3;
       }
     </script>
   </body>

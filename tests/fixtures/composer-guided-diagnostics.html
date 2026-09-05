@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mica guided composer diagnostics fixture</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 1800px;
+        margin: 0;
+        background: #f7f7f8;
+        color: #171717;
+        font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        width: min(840px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 24px 0 180px;
+      }
+
+      article {
+        margin: 14px 0;
+        padding: 14px;
+        border: 1px solid #d9d9e3;
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      .composer {
+        position: fixed;
+        left: 50%;
+        bottom: 14px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        width: min(820px, calc(100vw - 24px));
+        min-height: 82px;
+        padding: 12px;
+        border: 1px solid #cfcfd6;
+        border-radius: 18px;
+        background: #ffffff;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+        transform: translateX(-50%);
+      }
+
+      [role="textbox"] {
+        min-height: 46px;
+        padding: 10px 12px;
+        border: 1px solid #dddddd;
+        border-radius: 12px;
+        white-space: pre-wrap;
+      }
+
+      .mention-chip {
+        display: inline-flex;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: #e5e7eb;
+      }
+
+      #guided-result {
+        position: fixed;
+        left: 8px;
+        top: 8px;
+        z-index: 1;
+        max-width: 48vw;
+        white-space: pre-wrap;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <pre id="guided-result">Idle</pre>
+    <main>
+      <section id="conversation" aria-label="Synthetic ChatGPT conversation"></section>
+    </main>
+    <form class="composer" data-testid="composer" aria-label="Message composer">
+      <div id="editor" role="textbox" contenteditable="plaintext-only" aria-label="Message Mica"></div>
+      <button type="submit" data-testid="send-button" aria-label="Send message">Send</button>
+    </form>
+
+    <script src="../../dist/mica-v0.1.0/known-interruptions.js"></script>
+    <script src="../../dist/mica-v0.1.0/composer-diagnostics.js"></script>
+    <script src="../../dist/mica-v0.1.0/content.js"></script>
+    <script>
+      const resultNode = document.getElementById("guided-result");
+      const conversation = document.getElementById("conversation");
+      let editor = document.getElementById("editor");
+
+      run().catch((error) => {
+        resultNode.textContent = JSON.stringify({ passed: false, error: String(error?.stack || error) }, null, 2);
+      });
+
+      async function run() {
+        await waitFor(() => window.__MICA_TEST_CONTROLS__, 3000);
+        await waitFor(() => window.__MICA_LONG_THREAD_STATUS__?.mountedTurns === 0, 3000);
+
+        const samplerBefore = window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsState();
+        const statusBeforeTurns = window.__MICA_TEST_CONTROLS__.getDiagnosticsReport();
+        appendTurns(0, 6);
+        await waitFor(() => {
+          window.__MICA_TEST_CONTROLS__.refreshNativeSafeMountedStatus();
+          return window.__MICA_LONG_THREAD_STATUS__?.mountedTurns === 6;
+        }, 3500);
+        const delayedReport = window.__MICA_TEST_CONTROLS__.getDiagnosticsReport();
+
+        appendTurn(6, "assistant", "Mounted count churn 6");
+        await waitFor(() => {
+          window.__MICA_TEST_CONTROLS__.refreshNativeSafeMountedStatus();
+          return window.__MICA_LONG_THREAD_STATUS__?.mountedTurns === 7;
+        }, 2500);
+        conversation.lastElementChild.remove();
+        await waitFor(() => {
+          window.__MICA_TEST_CONTROLS__.refreshNativeSafeMountedStatus();
+          return window.__MICA_LONG_THREAD_STATUS__?.mountedTurns === 6;
+        }, 2500);
+        const churnReport = window.__MICA_TEST_CONTROLS__.getDiagnosticsReport();
+
+        const compact = await waitForOverlay((overlay) => isBottomRight(overlay.hostRect), 4200);
+        const compactReport = window.__MICA_TEST_CONTROLS__.getDiagnosticsReport();
+
+        window.__MICA_TEST_CONTROLS__.startComposerGuidedDiagnostics();
+        await delay(260);
+        setEditorText("abc test");
+        await delay(260);
+        setEditorText("");
+        await delay(260);
+        window.__MICA_TEST_CONTROLS__.nextComposerGuidedDiagnosticsStep();
+
+        setMentionLikeComposer();
+        await delay(260);
+        setEditorText("");
+        await delay(260);
+        window.__MICA_TEST_CONTROLS__.nextComposerGuidedDiagnosticsStep();
+
+        setEditorText("fixture secret prompt");
+        await delay(260);
+        appendTurn(7, "user", "fixture prompt should not leak");
+        appendTurn(8, "assistant", "fixture answer should not leak");
+        remountComposer("fixture secret prompt");
+        await delay(260);
+        setEditorText("");
+        await delay(260);
+        window.__MICA_TEST_CONTROLS__.nextComposerGuidedDiagnosticsStep();
+        await delay(120);
+
+        const guidedReport = window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport();
+        const guidedState = window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsState();
+        const reportText = JSON.stringify(guidedReport);
+        const statusAfter = window.__MICA_TEST_CONTROLS__.getDiagnosticsReport();
+        window.__MICA_TEST_CONTROLS__.stopComposerGuidedDiagnostics();
+
+        const checks = [
+          ["diagnostics sampler off before start", samplerBefore && samplerBefore.sampleCount === 0 && samplerBefore.samplerActive === false],
+          ["initial status is native-safe 0", statusBeforeTurns.runtime.nativeSafeMode === true && statusBeforeTurns.status.mountedTurns === 0],
+          ["delayed status updates to 6", delayedReport.status.mountedTurns === 6 && delayedReport.mountedTurns.current === 6 && delayedReport.mountedTurns.lastObserved === 6],
+          ["delayed status remains native-safe", delayedReport.runtime.nativeSafeMode === true],
+          ["delayed status has no document observer", delayedReport.runtime.documentMutationObserverActive === false],
+          ["delayed status has no composer listeners", delayedReport.runtime.composerLifecycleListenersAttached === false],
+          ["churn status updates back to 6", churnReport.status.mountedTurns === 6 && churnReport.mountedTurns.current === 6 && churnReport.mountedTurns.lastObserved === 6],
+          ["compact status is bottom-right static", compactReport.overlay.placement === "bottom-right-static" && isBottomRight(compact.hostRect)],
+          ["guided sampler ran only after start", guidedState.sampleCount > 0],
+          ["guided normal delete cleared text", guidedReport.steps[0].zeroTextSeen === true && guidedReport.steps[0].nonZeroTextSeen === true],
+          ["guided mention replacement observed", guidedReport.steps[1].mentionSignalSeen === true && guidedReport.steps[1].editableIdentityChanges > 0],
+          ["guided manual send observed user turn", guidedReport.steps[2].newUserTurnObserved === true],
+          ["guided stale send surrogate observed", guidedReport.summary.staleTextAfterSend === true],
+          ["guided report says no prompt text", guidedReport.privacy.promptTextIncluded === false],
+          ["guided report says no answer text", guidedReport.privacy.answerTextIncluded === false],
+          ["guided report excludes fixture prompt", !reportText.includes("fixture secret prompt")],
+          ["guided report excludes fixture answer", !reportText.includes("fixture answer should not leak")],
+          ["native-safe stayed enabled", statusAfter.runtime.nativeSafeMode === true],
+          ["native-safe document observer false", statusAfter.runtime.documentMutationObserverActive === false],
+          ["native-safe composer listeners false", statusAfter.runtime.composerLifecycleListenersAttached === false]
+        ].map(([name, passed]) => ({ name, passed: !!passed }));
+
+        resultNode.textContent = JSON.stringify({
+          passed: checks.every((check) => check.passed),
+          checks,
+          delayedReport,
+          churnReport,
+          guidedReport
+        }, null, 2);
+      }
+
+      function appendTurns(start, count) {
+        for (let index = start; index < start + count; index += 1) {
+          appendTurn(index, index % 2 === 0 ? "assistant" : "user", `Mounted turn ${index}`);
+        }
+      }
+
+      function appendTurn(index, role, body) {
+        const article = document.createElement("article");
+        article.dataset.testid = `conversation-turn-${index}`;
+        const marker = document.createElement("div");
+        marker.dataset.messageAuthorRole = role;
+        marker.textContent = `${role} turn ${index}`;
+        const paragraph = document.createElement("p");
+        paragraph.textContent = body;
+        article.append(marker, paragraph);
+        conversation.appendChild(article);
+        return article;
+      }
+
+      function setMentionLikeComposer() {
+        replaceEditor();
+        const chip = document.createElement("span");
+        chip.className = "mention-chip";
+        chip.dataset.mention = "GitHub";
+        chip.setAttribute("aria-label", "GitHub connector");
+        chip.textContent = "@GitHub";
+        editor.appendChild(chip);
+      }
+
+      function remountComposer(text) {
+        const form = document.querySelector("[data-testid='composer']");
+        form.remove();
+        const next = document.createElement("form");
+        next.className = "composer";
+        next.dataset.testid = "composer";
+        next.setAttribute("aria-label", "Message composer");
+        next.innerHTML = `
+          <div id="editor" role="textbox" contenteditable="plaintext-only" aria-label="Message Mica"></div>
+          <button type="submit" data-testid="send-button" aria-label="Send message">Send</button>
+        `;
+        document.body.appendChild(next);
+        editor = next.querySelector("[role='textbox']");
+        setEditorText(text);
+      }
+
+      function replaceEditor() {
+        const next = document.createElement("div");
+        next.id = "editor";
+        next.setAttribute("role", "textbox");
+        next.setAttribute("contenteditable", "plaintext-only");
+        next.setAttribute("aria-label", "Message Mica");
+        editor.replaceWith(next);
+        editor = next;
+      }
+
+      function setEditorText(value) {
+        editor.textContent = value;
+      }
+
+      function readOverlay() {
+        const host = document.querySelector("[data-mica-root='true']");
+        const shadowPlacement = host?.shadowRoot?.getElementById("mica-overlay")?.dataset?.placement || null;
+        const debug = window.__MICA_OVERLAY_DEBUG__ || {};
+        return {
+          placement: debug.placement || shadowPlacement,
+          hostRect: debug.rect || toRect(host.getBoundingClientRect())
+        };
+      }
+
+      function waitForOverlay(predicate, timeout) {
+        let lastOverlay = null;
+        return waitFor(() => {
+          lastOverlay = readOverlay();
+          return predicate(lastOverlay) ? lastOverlay : null;
+        }, timeout, () => `last overlay ${JSON.stringify(lastOverlay)}`);
+      }
+
+      function isBottomRight(rect) {
+        return Math.abs(window.innerWidth - rect.right - 12) <= 3 && Math.abs(window.innerHeight - rect.bottom - 12) <= 3;
+      }
+
+      function toRect(rect) {
+        return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+      }
+
+      function waitFor(fn, timeout, describeTimeout) {
+        const started = Date.now();
+        return new Promise((resolve, reject) => {
+          const timer = setInterval(() => {
+            try {
+              const value = fn();
+              if (value) {
+                clearInterval(timer);
+                resolve(value);
+                return;
+              }
+            } catch (_error) {
+              // Keep polling until timeout so late extension init can still pass.
+            }
+            if (Date.now() - started > timeout) {
+              clearInterval(timer);
+              const detail = typeof describeTimeout === "function" ? `: ${describeTimeout()}` : "";
+              reject(new Error(`Timed out waiting for guided fixture condition${detail}`));
+            }
+          }, 50);
+        });
+      }
+
+      function delay(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+    </script>
+  </body>
+</html>

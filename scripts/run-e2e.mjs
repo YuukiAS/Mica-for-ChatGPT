@@ -8,7 +8,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const stress = process.argv.includes("--stress");
 const loops = stress ? 72 : 24;
 const widths = stress ? [1200, 900, 700, 500] : [1200, 700, 500];
-const bundledNodeModules = "C:\\Users\\humc2\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\node_modules";
+const bundledNodeModules = "C:\\Users\\yuukias\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\node_modules";
 const { chromium } = loadPlaywright();
 
 const server = createServer(async (request, response) => {
@@ -70,6 +70,9 @@ try {
   assert(disabledResult.metrics.optimizedClassChanges === 0, "Mica disabled produced optimized class changes", disabledResult);
   results.push(disabledResult);
 
+  const guidedResult = await runGuidedComposerDiagnosticsCase();
+  results.push(guidedResult);
+
   const failed = results.filter((result) => !result.passed);
   if (failed.length > 0) {
     console.error(JSON.stringify({ passed: false, failed, results }, null, 2));
@@ -81,19 +84,58 @@ try {
       loops,
       widths,
       cases: results.map((result) => ({
-        mode: result.metrics.mode,
+        mode: result.metrics?.mode || result.mode,
         width: result.width,
         nativeSafeMode: result.micaReport?.runtime?.nativeSafeMode ?? null,
-        maxMissingDurationMs: result.metrics.maxMissingDurationMs,
-        optimizedClassChanges: result.metrics.optimizedClassChanges,
-        optimizedClassChangesDuringSend: result.metrics.optimizedClassChangesDuringSend,
-        composerReport: result.micaReport?.composer || null
+        maxMissingDurationMs: result.metrics?.maxMissingDurationMs ?? result.guidedReport?.summary?.maxMissingDurationMs ?? null,
+        optimizedClassChanges: result.metrics?.optimizedClassChanges ?? null,
+        optimizedClassChangesDuringSend: result.metrics?.optimizedClassChangesDuringSend ?? null,
+        composerReport: result.micaReport?.composer || result.guidedReport?.summary || null
       }))
     }, null, 2));
   }
 } finally {
   await browser?.close();
   await new Promise((resolve) => server.close(resolve));
+}
+
+async function runGuidedComposerDiagnosticsCase() {
+  console.error("Running E2E case guided-composer-diagnostics@900px");
+  const page = await browser.newPage({ viewport: { width: 900, height: 820 } });
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  const url = `${baseUrl}/tests/fixtures/composer-guided-diagnostics.html?t=${Date.now()}`;
+  let payload;
+  try {
+    await page.goto(url, { waitUntil: "load" });
+    await page.waitForFunction(() => {
+      const text = document.getElementById("guided-result")?.textContent || "";
+      return text.trim().startsWith("{");
+    }, null, { timeout: stress ? 45000 : 30000 });
+    payload = JSON.parse(await page.locator("#guided-result").textContent());
+  } catch (error) {
+    const resultText = await page.locator("#guided-result").textContent().catch(() => "");
+    await page.close();
+    throw Object.assign(new Error(`Guided composer diagnostics fixture failed before producing a result: ${error?.message || error}`), {
+      details: { resultText, errors }
+    });
+  }
+  await page.close();
+
+  payload.width = 900;
+  payload.mode = "guided-composer-diagnostics";
+  payload.errors = errors;
+  if (errors.length > 0) payload.passed = false;
+  assert(payload.passed, "Guided composer diagnostics fixture failed", payload);
+  assert(JSON.stringify(payload.guidedReport || {}).includes("fixture secret prompt") === false, "Guided diagnostics leaked fixture prompt text", payload);
+  assert(JSON.stringify(payload.guidedReport || {}).includes("fixture answer should not leak") === false, "Guided diagnostics leaked fixture answer text", payload);
+  assert(payload.delayedReport?.runtime?.nativeSafeMode === true, "Delayed-turn probe left native-safe mode", payload);
+  assert(payload.delayedReport?.runtime?.documentMutationObserverActive === false, "Delayed-turn probe enabled document MutationObserver", payload);
+  assert(payload.delayedReport?.runtime?.composerLifecycleListenersAttached === false, "Delayed-turn probe enabled composer lifecycle listeners", payload);
+  return payload;
 }
 
 async function runCase({ width, mica, disabled = false, small = false, loops: caseLoops = loops }) {

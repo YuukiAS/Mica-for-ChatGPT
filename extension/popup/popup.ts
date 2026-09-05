@@ -27,7 +27,12 @@ const elements = {
   stopDiagnostics: document.getElementById("stopDiagnostics"),
   copyReport: document.getElementById("copyReport"),
   resetDiagnostics: document.getElementById("resetDiagnostics"),
-  diagnosticsStatus: document.getElementById("diagnosticsStatus")
+  diagnosticsStatus: document.getElementById("diagnosticsStatus"),
+  runComposerCheck: document.getElementById("runComposerCheck"),
+  nextComposerCheck: document.getElementById("nextComposerCheck"),
+  stopComposerCheck: document.getElementById("stopComposerCheck"),
+  copyComposerReport: document.getElementById("copyComposerReport"),
+  composerCheckStatus: document.getElementById("composerCheckStatus")
 };
 
 load();
@@ -40,6 +45,10 @@ elements.startDiagnostics.addEventListener("click", () => diagnosticsAction("MIC
 elements.stopDiagnostics.addEventListener("click", () => diagnosticsAction("MICA_DIAGNOSTICS_STOP"));
 elements.copyReport.addEventListener("click", copyReport);
 elements.resetDiagnostics.addEventListener("click", () => diagnosticsAction("MICA_DIAGNOSTICS_RESET"));
+elements.runComposerCheck.addEventListener("click", () => composerCheckAction("MICA_COMPOSER_GUIDED_START"));
+elements.nextComposerCheck.addEventListener("click", () => composerCheckAction("MICA_COMPOSER_GUIDED_NEXT"));
+elements.stopComposerCheck.addEventListener("click", () => composerCheckAction("MICA_COMPOSER_GUIDED_STOP"));
+elements.copyComposerReport.addEventListener("click", copyComposerReport);
 
 async function load() {
   const manifest = chrome.runtime.getManifest();
@@ -57,7 +66,7 @@ async function load() {
     elements.autoDismissKnownInterruptions.checked = response.settings.autoDismissKnownInterruptions;
     elements.recentTurnKeepCount.value = String(response.settings.recentTurnKeepCount);
   }
-  renderStatus(response?.status, response?.diagnostics);
+  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
 }
 
 async function save() {
@@ -70,7 +79,7 @@ async function save() {
   elements.recentTurnKeepCount.value = String(next.recentTurnKeepCount);
   await setStorage(next);
   const response = await sendToActiveTab({ type: "MICA_SET_SETTINGS", settings: next });
-  renderStatus(response?.status, response?.diagnostics);
+  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
 }
 
 async function requestStatus() {
@@ -79,12 +88,12 @@ async function requestStatus() {
 
 async function diagnosticsAction(type) {
   const response = await sendToActiveTab({ type });
-  renderStatus(response?.status, response?.diagnostics);
+  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
 }
 
 async function copyReport() {
   const response = await sendToActiveTab({ type: "MICA_DIAGNOSTICS_COPY_REPORT" });
-  renderStatus(response?.status, response?.diagnostics);
+  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
   if (!response?.reportText) {
     elements.diagnosticsStatus.textContent = "No diagnostics report available.";
     return;
@@ -94,6 +103,26 @@ async function copyReport() {
     elements.diagnosticsStatus.textContent = "Report copied to clipboard.";
   } catch (_error) {
     elements.diagnosticsStatus.textContent = "Clipboard copy failed.";
+  }
+}
+
+async function composerCheckAction(type) {
+  const response = await sendToActiveTab({ type });
+  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
+}
+
+async function copyComposerReport() {
+  const response = await sendToActiveTab({ type: "MICA_COMPOSER_GUIDED_COPY_REPORT" });
+  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
+  if (!response?.reportText) {
+    elements.composerCheckStatus.textContent = "No composer report available.";
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(response.reportText);
+    elements.composerCheckStatus.textContent = "Composer report copied.";
+  } catch (_error) {
+    elements.composerCheckStatus.textContent = "Clipboard copy failed.";
   }
 }
 
@@ -125,13 +154,14 @@ async function setStorage(value) {
   });
 }
 
-function renderStatus(status, diagnostics) {
+function renderStatus(status, diagnostics, composerGuided = null) {
   const name = status?.name || "Native only";
   elements.state.textContent = name;
   elements.reason.textContent = status?.reason || "Open a ChatGPT conversation.";
   elements.counts.textContent = formatCounts(status);
   elements.dot.style.background = statusColors[name] || statusColors["Native only"];
   renderDiagnostics(diagnostics);
+  renderComposerCheck(composerGuided);
 }
 
 function formatCounts(status) {
@@ -150,6 +180,27 @@ function renderDiagnostics(diagnostics) {
   elements.diagnosticsStatus.textContent = running
     ? `Running · ${Math.round((diagnostics.durationMs || 0) / 1000)}s · ${diagnostics.longTaskCount || 0} long tasks`
     : `Idle · ${diagnostics?.longTaskCount || 0} long tasks · ${diagnostics?.frameStallCount || 0} stalls`;
+}
+
+function renderComposerCheck(composerGuided) {
+  const running = !!composerGuided?.running;
+  const available = composerGuided?.available !== false;
+  elements.runComposerCheck.disabled = running || !available;
+  elements.nextComposerCheck.disabled = !running;
+  elements.stopComposerCheck.disabled = !running;
+  elements.copyComposerReport.disabled = !available || (!running && !composerGuided?.lastReport);
+  if (!available) {
+    elements.composerCheckStatus.textContent = "Open a supported ChatGPT page.";
+    return;
+  }
+  if (running) {
+    elements.composerCheckStatus.textContent = `Running · step ${(composerGuided.stepIndex || 0) + 1}/${composerGuided.stepCount || 4} · ${composerGuided.sampleCount || 0} samples`;
+    return;
+  }
+  const summary = composerGuided?.lastReport?.summary;
+  elements.composerCheckStatus.textContent = summary
+    ? `Ready · max missing ${Math.round(summary.maxMissingDurationMs || 0)} ms · stale after send ${summary.staleTextAfterSend ? "yes" : "no"}`
+    : "Idle";
 }
 
 function clamp(value, min, max) {

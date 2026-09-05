@@ -55,6 +55,17 @@
         <p id="diagnosticsStatus">Idle</p>
       </section>
 
+      <section class="diagnostics" aria-label="Composer check">
+        <div class="section-title">Composer check</div>
+        <div class="button-grid">
+          <button id="runComposerCheck" type="button">Run composer check</button>
+          <button id="nextComposerCheck" type="button">Next step</button>
+          <button id="stopComposerCheck" type="button">Stop check</button>
+          <button id="copyComposerReport" type="button">Copy report</button>
+        </div>
+        <p id="composerCheckStatus">Idle</p>
+      </section>
+
       <footer id="counts">0 mounted</footer>
     </main>
     <script src="popup.js"></script>
