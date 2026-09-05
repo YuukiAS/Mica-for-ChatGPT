@@ -1,11 +1,11 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { DIST_DIR_NAME } from "./release-config.mjs";
+import { DEV_DIST_DIR_NAME } from "./release-config.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixturePath = path.join(root, "tests", "fixtures", "long-thread.html");
-const contentPath = path.join(root, "dist", DIST_DIR_NAME, "content.js");
+const contentPath = path.join(root, "dist", DEV_DIST_DIR_NAME, "content.js");
 
 const html = await readFile(fixturePath, "utf8");
 const content = await readFile(contentPath, "utf8");

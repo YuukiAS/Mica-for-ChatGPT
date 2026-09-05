@@ -1,10 +1,10 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DIST_DIR_NAME, ICON_SIZES, MACHINE_VERSION, REQUIRED_EXTENSION_FILES, VERSION_NAME } from "./release-config.mjs";
+import { DEV_DIST_DIR_NAME, ICON_SIZES, MACHINE_VERSION, REQUIRED_EXTENSION_FILES, VERSION_NAME } from "./release-config.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const distDir = path.join(root, "dist", DIST_DIR_NAME);
+const distDir = path.join(root, "dist", DEV_DIST_DIR_NAME);
 
 for (const relative of REQUIRED_EXTENSION_FILES) {
   await assertFile(path.join(distDir, relative));

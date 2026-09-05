@@ -2,7 +2,7 @@ export const MACHINE_VERSION = "0.1.4";
 export const VERSION_NAME = "0.1.4";
 export const BUILD_LABEL = "composer-guided-diagnostics.1";
 export const RELEASE_TAG = `v${VERSION_NAME}`;
-export const DIST_DIR_NAME = `mica-v${MACHINE_VERSION}`;
+export const DEV_DIST_DIR_NAME = "mica-dev";
 export const RELEASE_BASENAME = `mica-for-chatgpt-v${VERSION_NAME}`;
 
 export const REQUIRED_EXTENSION_FILES = [

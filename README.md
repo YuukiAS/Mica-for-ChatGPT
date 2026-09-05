@@ -28,7 +28,7 @@ Mica 是一个面向 ChatGPT 网页端的浏览器扩展。目标不是重做 Ch
 当前可加载的 unpacked extension 目录是：
 
 ```text
-C:\Code\Mica-for-ChatGPT\dist\mica-v0.1.4
+C:\Code\Mica-for-ChatGPT\dist\mica-dev
 ```
 
 重新构建：
@@ -42,8 +42,8 @@ Chrome / Edge 手动安装：
 1. 打开 `chrome://extensions` 或 `edge://extensions`。
 2. 开启 Developer mode。
 3. 点击 Load unpacked。
-4. 选择 `C:\Code\Mica-for-ChatGPT\dist\mica-v0.1.4`。
-5. 打开或刷新 `https://chatgpt.com/` 的长 conversation。
+4. 选择 `C:\Code\Mica-for-ChatGPT\dist\mica-dev`。
+5. 后续版本升级只需重新构建、在扩展管理页点击 Reload，并刷新 `https://chatgpt.com/` 的长 conversation。
 
 页面右下角会显示状态：
 
@@ -98,11 +98,12 @@ npm run build
 npm run test:fixture
 npm test
 npm run test:e2e
-npm run test:e2e:stress
 npm run package:release
 ```
 
 本地 synthetic 90-turn fixture 只能证明 Mica 自己的 containment/fail-open 实现、manifest、icons、diagnostics message surface 和 release ZIP 结构工作；它不能证明 Mica 对当前真实 ChatGPT 长 conversation 有性能收益。真实 P0 性能结论必须来自 8 GB MacBook Neo。
+
+默认测试按风险分层：普通 runtime/build/version 改动跑 `npm test`；涉及 composer lifecycle、DOM mounting、overlay、virtualization、observer/listener 或 guided browser diagnostics 时，再跑 `npm run test:e2e`。`npm run test:e2e:stress` 只用于 race condition、intermittent lifecycle bug、E2E flaky、重大 lifecycle/virtualization 变更、release candidate 或任务明确要求。
 
 `npm run test:e2e` 和 `npm run test:e2e:stress` 使用隔离 Playwright Chromium 访问仓库内 synthetic fixture，覆盖 composer lifecycle、overlay placement、send/streaming race、native-safe delayed mounted-turn status、guided composer diagnostics 和 Mica disabled baseline。它们不得访问真实登录态 ChatGPT，也不得操作用户正在使用的 Edge。
 
@@ -114,7 +115,7 @@ npm run package:release
 
 ## Release 与安装包
 
-当前 `dist/mica-v0.1.4/` 可直接用于 `Load unpacked`。GitHub Release 则应提供版本化 ZIP，而不是只让用户下载仓库目录；ZIP 解压后根目录应直接出现 `manifest.json`。首个对外包在 8 GB MacBook Neo 完成 P0 验收前应标为 pre-release。
+当前 `dist/mica-dev/` 是固定的开发版 `Load unpacked` 路径。GitHub Release 则应提供版本化 ZIP，而不是只让用户下载仓库目录；ZIP 解压后根目录应直接出现 `manifest.json`。首个对外包在 8 GB MacBook Neo 完成 P0 验收前应标为 pre-release。
 
 当前 package 输出：
 

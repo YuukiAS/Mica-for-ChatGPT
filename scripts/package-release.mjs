@@ -2,10 +2,10 @@ import { createHash } from "node:crypto";
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DIST_DIR_NAME, RELEASE_BASENAME } from "./release-config.mjs";
+import { DEV_DIST_DIR_NAME, RELEASE_BASENAME } from "./release-config.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const distDir = path.join(root, "dist", DIST_DIR_NAME);
+const distDir = path.join(root, "dist", DEV_DIST_DIR_NAME);
 const releaseDir = path.join(root, "release");
 const zipPath = path.join(releaseDir, `${RELEASE_BASENAME}.zip`);
 const shaPath = path.join(releaseDir, `${RELEASE_BASENAME}.sha256`);

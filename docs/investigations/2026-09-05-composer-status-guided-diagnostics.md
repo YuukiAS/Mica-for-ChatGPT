@@ -67,9 +67,9 @@ The page overlay is a static top-right guide card and is separate from the botto
 
 ## Test Results
 
-- `npm test`: passed.
-- `npm run test:e2e`: passed.
-- `npm run test:e2e:stress`: passed.
+- `npm test`: passed after the stable dev-path change; build output was `dist/mica-dev`.
+- `npm run test:e2e`: passed after fixture paths were moved to `dist/mica-dev`.
+- `npm run test:e2e:stress`: passed earlier in this `0.1.4` lifecycle candidate; not rerun after build-path-only changes.
 
 All browser E2E runs used isolated Playwright Chromium against local fixtures only. Codex did not automate the user's Edge profile, did not log into ChatGPT, and did not send a real ChatGPT message.
 
@@ -78,7 +78,7 @@ All browser E2E runs used isolated Playwright Chromium against local fixtures on
 Reload the unpacked extension from:
 
 ```text
-C:\Code\Mica-for-ChatGPT\dist\mica-v0.1.4
+C:\Code\Mica-for-ChatGPT\dist\mica-dev
 ```
 
 Then refresh the target ChatGPT conversation manually and run the popup `Run composer check` flow:

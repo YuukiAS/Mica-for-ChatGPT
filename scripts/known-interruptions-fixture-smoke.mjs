@@ -1,15 +1,15 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { DIST_DIR_NAME } from "./release-config.mjs";
+import { DEV_DIST_DIR_NAME } from "./release-config.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixturePath = path.join(root, "tests", "fixtures", "chatgpt-rate-limit-dialog.zh-CN.html");
 const harnessPath = path.join(root, "tests", "fixtures", "known-interruptions-dom-test.html");
 const sourcePath = path.join(root, "extension", "src", "reliability", "known-interruptions.ts");
-const builtPath = path.join(root, "dist", DIST_DIR_NAME, "known-interruptions.js");
-const popupPath = path.join(root, "dist", DIST_DIR_NAME, "popup", "index.html");
-const contentPath = path.join(root, "dist", DIST_DIR_NAME, "content.js");
+const builtPath = path.join(root, "dist", DEV_DIST_DIR_NAME, "known-interruptions.js");
+const popupPath = path.join(root, "dist", DEV_DIST_DIR_NAME, "popup", "index.html");
+const contentPath = path.join(root, "dist", DEV_DIST_DIR_NAME, "content.js");
 
 const fixture = await readFile(fixturePath, "utf8");
 const harness = await readFile(harnessPath, "utf8");

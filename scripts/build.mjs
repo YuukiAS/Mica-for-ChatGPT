@@ -1,10 +1,10 @@
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { BUILD_LABEL, DIST_DIR_NAME, MACHINE_VERSION, VERSION_NAME } from "./release-config.mjs";
+import { BUILD_LABEL, DEV_DIST_DIR_NAME, MACHINE_VERSION, VERSION_NAME } from "./release-config.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const outDir = path.join(root, "dist", DIST_DIR_NAME);
+const outDir = path.join(root, "dist", DEV_DIST_DIR_NAME);
 const srcDir = path.join(root, "extension", "src");
 const popupDir = path.join(root, "extension", "popup");
 const iconsDir = path.join(root, "extension", "icons");

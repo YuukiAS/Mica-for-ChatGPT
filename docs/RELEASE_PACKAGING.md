@@ -25,7 +25,7 @@ icons/
 
 ## Repo 与 Release 的职责
 
-开发阶段可以暂时保留 `dist/mica-vX.Y.Z/`，方便本地 `Load unpacked`、fixture 和快速排查。
+开发阶段使用固定的 `dist/mica-dev/`，方便本地 `Load unpacked`、fixture 和快速排查。普通 `npm run build` 不再生成新的版本化 unpacked 目录。
 
 正式进入稳定发布流程后：
 
@@ -38,7 +38,7 @@ icons/
 
 ## 当前 v0.1 状态
 
-当前 `dist/mica-v0.1.4/` 已经可以通过 `Load unpacked` 安装，但 P0 尚未在目标 8 GB MacBook Neo 上完成真实性能验收。因此不应把它表述为“稳定版”。
+当前 `dist/mica-dev/` 已经可以通过 `Load unpacked` 安装，但 P0 尚未在目标 8 GB MacBook Neo 上完成真实性能验收。因此不应把它表述为“稳定版”。
 
 当前 diagnostics、状态文案修正、v0.x working icon、已知安全提示自动 dismiss、低干扰 overlay、native-safe mounted-turn probe 与 guided composer diagnostics 已合入当前测试 build：
 
@@ -73,7 +73,7 @@ popup/
 icons/
 ```
 
-版本来源集中在 `scripts/release-config.mjs`，避免 manifest、dist 目录、ZIP 文件名和 release tag 漂移。
+版本来源集中在 `scripts/release-config.mjs`，避免 manifest、固定开发目录、ZIP 文件名和 release tag 漂移。Release package 从当前 canonical `dist/mica-dev` 内容生成版本化 ZIP / SHA-256。
 
 ## 发布前最低检查
 
