@@ -59,6 +59,21 @@ When diagnosing LightSession or current ChatGPT behavior, write the result into 
 
 Do not leave the only evidence in console output.
 
+### Real-site diagnostic UX
+
+Authenticated ChatGPT acceptance is manual, but the diagnostic burden must live inside Mica rather than in DevTools.
+
+- Do not ask the user to paste large JavaScript snippets into DevTools Console, run ad-hoc DOM probes, inspect the Elements panel, copy raw DOM, or repeatedly execute console commands as the normal debugging workflow.
+- Any JavaScript needed to observe a recurring real-site lifecycle problem should be implemented as a small, bounded, privacy-safe Mica diagnostic module and shipped in the development build.
+- Prefer one-click or guided diagnostics exposed through the Mica popup/page status UI: start/stop a check, perform one short manual reproduction, then `Copy report`.
+- Reports must be directly consumable by Codex/GPT and should contain structural evidence rather than conversation content: timestamps, composer presence, root/editable identity changes, text length, focus, mention/connector signals, mounted turn counts, relevant Mica runtime flags, and bounded lifecycle events.
+- Do not include prompt text, assistant answer text, auth tokens, request bodies, headers, or other sensitive account/session data in diagnostic reports.
+- Diagnostic instrumentation must be off when no diagnostic session is active, except for already-required lightweight runtime state. Do not turn debugging into another permanent observer/polling source.
+- Keep the diagnostic implementation isolated from core optimization logic. A diagnostic feature must not itself alter composer behavior, synthesize input, restore text, intercept Enter, submit prompts, or become required for normal runtime behavior.
+- Prefer a compact summary plus an optional bounded event trace. Avoid dumping large raw DOM snapshots or unbounded logs.
+- When a new recurring real-site bug cannot be diagnosed from the existing report, improve Mica's built-in report first; do not shift the complexity to the user via Console instructions.
+- The user's manual acceptance loop should normally be: reload `dist/mica-dev` if needed -> reproduce one short action -> click `Copy report` -> paste/report the result. Keep each requested manual step small and explicit.
+
 ## Testing requirements
 
 Testing should be proportional to the change. Do not run the heaviest suite after every small edit merely because it exists.
