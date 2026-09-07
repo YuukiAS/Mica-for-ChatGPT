@@ -103,6 +103,17 @@ Use Tier 2 when the change touches composer lifecycle, DOM mounting/unmounting, 
 
 Do not rerun the entire E2E suite after every tiny edit. Batch the implementation, run focused/local checks while iterating, then run the Tier 2 gate once on the candidate.
 
+### Focused iteration before full E2E
+
+For DOM/composer lifecycle work, a full Tier 2 gate is still required before a real-site acceptance candidate, but full E2E is not the normal edit loop.
+
+- During implementation, prefer focused unit checks, focused fixture runs, or the smallest available E2E filter for the failing case.
+- If a full E2E run is already in progress, let it complete and record it as that candidate's full gate attempt.
+- If full E2E fails, do not immediately rerun the whole suite after each patch. Identify the failing case, fix it, and rerun only the focused case until it passes.
+- Run the full Tier 2 gate again only when the candidate is stable and ready for manual real-site acceptance, or after a later real-site acceptance failure leads to substantive runtime changes.
+- For a given candidate, once full E2E has passed, do not rerun it for docs, build-label text, manifest/order bookkeeping, small diagnostics fields, selector tweaks, or other changes already covered by focused regression and `npm run test:build`.
+- Final test reports should distinguish focused tests, `npm test`, full E2E run count for the candidate, `npm run test:build`, and stress status.
+
 **Tier 3 — stress / race-condition gate**
 
 Run:

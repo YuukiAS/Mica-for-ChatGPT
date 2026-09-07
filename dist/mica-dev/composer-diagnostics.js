@@ -1,33 +1,15 @@
 (() => {
   const GLOBAL_KEY = "MicaComposerDiagnostics";
-  const SESSION_VERSION = "composer-guided-diagnostics.v1";
+  const SESSION_VERSION = "composer-capture-diagnostics.v2";
   const SAMPLE_INTERVAL_MS = 150;
   const PANEL_MARGIN = 12;
-  const steps = [
-    {
-      id: "normal-delete",
-      title: "Step 1: normal delete",
-      instruction: "Type abc test in the composer, then press Ctrl+A and Delete. Do not send."
-    },
-    {
-      id: "mention-delete",
-      title: "Step 2: GitHub mention delete",
-      instruction: "Type @GitHub, choose GitHub from ChatGPT's candidates yourself, then press Ctrl+A and Delete. Do not send."
-    },
-    {
-      id: "manual-send",
-      title: "Step 3: manual send",
-      instruction: "Type one very short test message and click Send yourself. Mica will not send it for you."
-    },
-    {
-      id: "complete",
-      title: "Step 4: report",
-      instruction: "Review the summary and copy the privacy-safe report."
-    }
-  ];
+  const MAX_EVENTS = 180;
+  const USER_TURN_STALE_GRACE_MS = 600;
+  const CORRELATION_WINDOW_MS = 250;
 
   const defaultBridge = {
     getRuntimeSnapshot: () => ({}),
+    getStaleRecoverySnapshot: () => null,
     countMountedTurns: () => countMountedTurns(),
     countUserTurns: () => countUserTurns()
   };
@@ -46,31 +28,24 @@
     stop({ keepPanel: false });
     session = createSession();
     ensurePanel();
+    attachSessionListeners();
     startSampler();
-    sample();
+    const snapshot = sample();
+    addEvent("session_start", snapshot);
     renderPanel();
     return summarize();
   }
 
   function nextStep() {
-    if (!session) return summarize();
-    sample();
-    finishCurrentStep();
-    session.stepIndex = Math.min(session.stepIndex + 1, steps.length - 1);
-    startCurrentStep();
-    if (getCurrentStep().id === "complete") {
-      stopSampler();
-      lastReport = buildReport();
-    }
-    renderPanel();
     return summarize();
   }
 
   function stop(options = {}) {
     if (session) {
-      sample();
-      finishCurrentStep();
+      const snapshot = sample();
+      addEvent("session_stop", snapshot);
       stopSampler();
+      detachSessionListeners();
       session.stoppedAt = Date.now();
       lastReport = buildReport();
       session = null;
@@ -86,15 +61,19 @@
   }
 
   function summarize() {
+    const activeReport = session ? buildReport() : null;
+    const report = activeReport || lastReport;
     return {
       available: true,
       running: !!session,
       samplerActive: !!session?.timer,
-      stepId: session ? getCurrentStep().id : null,
-      stepIndex: session ? session.stepIndex : null,
-      stepCount: steps.length,
-      sampleCount: session?.samples.length || 0,
-      lastReport: lastReport ? summarizeReport(lastReport) : null
+      listenersActive: !!session?.listenersActive,
+      stepId: session ? "capture" : null,
+      stepIndex: session ? 0 : null,
+      stepCount: 1,
+      sampleCount: session?.sampleCount || 0,
+      eventCount: session?.events.length || report?.events?.length || 0,
+      lastReport: report ? summarizeReport(report) : null
     };
   }
 
@@ -102,6 +81,7 @@
     if (session) {
       sample();
       lastReport = buildReport();
+      return lastReport;
     }
     return lastReport;
   }
@@ -115,49 +95,112 @@
     return {
       running: !!session,
       samplerActive: !!session?.timer,
-      sampleCount: session?.samples.length || 0,
+      listenersActive: !!session?.listenersActive,
+      sampleCount: session?.sampleCount || 0,
+      eventCount: session?.events.length || 0,
       panelVisible: !!panelHost,
-      stepId: session ? getCurrentStep().id : null
+      stepId: session ? "capture" : null
     };
+  }
+
+  function isActive() {
+    return !!session;
+  }
+
+  function recordRuntimeCallback(name, details = {}) {
+    if (!session || typeof name !== "string" || !name) return;
+    addSafeEvent("mica_callback", { callback: name, ...(details || {}) });
+  }
+
+  function recordStaleRecoveryEvent(type, details = {}) {
+    if (!session || typeof type !== "string" || !/^stale_recovery_/.test(type)) return;
+    addSafeEvent(type, details || {});
+  }
+
+  function addSafeEvent(type, details = {}) {
+    if (!session || typeof type !== "string" || !type) return;
+    const safeDetails = {};
+    for (const [key, value] of Object.entries(details || {})) {
+      if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null) {
+        safeDetails[key] = value;
+      }
+    }
+    addEvent(type, readSnapshot(), safeDetails);
   }
 
   function createSession() {
     const now = Date.now();
-    const next = {
+    return {
       version: SESSION_VERSION,
       id: `${now}-${Math.random().toString(16).slice(2)}`,
       startedAt: now,
       stoppedAt: null,
-      stepIndex: 0,
       timer: 0,
+      listenersActive: false,
       ids: new WeakMap(),
       nextId: 1,
-      samples: [],
+      sampleCount: 0,
       lastSampleKey: "",
-      previousEditableId: null,
-      previousRootId: null,
-      steps: steps.map((step) => ({
-        id: step.id,
-        title: step.title,
-        startedAt: null,
-        endedAt: null,
-        samples: 0,
-        composerMissing: false,
-        maxMissingDurationMs: 0,
-        missingSince: 0,
-        editableIdentityChanges: 0,
-        rootIdentityChanges: 0,
-        zeroTextSeen: false,
-        nonZeroTextSeen: false,
-        mentionSignalSeen: false,
-        newUserTurnObserved: false,
-        staleTextAfterUserTurn: false,
-        startUserTurns: null,
-        maxTextLengthAfterUserTurn: 0
-      }))
+      lastSnapshot: null,
+      events: [],
+      missingSince: 0,
+      maxMissingDurationMs: 0,
+      composerUnmountCount: 0,
+      composerMountCount: 0,
+      editableIdentityChanges: 0,
+      rootIdentityChanges: 0,
+      mentionSignalObserved: false,
+      deleteClearObserved: false,
+      nativeLikeRemountObserved: false,
+      remountWithTextObserved: false,
+      staleTextRestoredAfterClear: false,
+      staleTextAfterUserTurn: false,
+      clearAnchor: null,
+      staleRestoration: null,
+      staleAfterUserTurn: null,
+      userTurnBaseline: safeCall(bridge.countUserTurns, countUserTurns()),
+      userTurnLastCount: null,
+      userTurnDelta: 0,
+      lastUserTurnChangeAt: null,
+      deleteFlow: null,
+      lastNonZeroTextSnapshot: null,
+      missingFromSnapshot: null,
+      connectorLifecycle: createConnectorLifecycle()
     };
-    next.steps[0].startedAt = now;
-    return next;
+  }
+
+  function createConnectorLifecycle() {
+    return {
+      mentionSeen: false,
+      mentionSignalSource: null,
+      composerUnmounted: false,
+      composerRemounted: false,
+      editableChanged: false,
+      rootChanged: false,
+      finalTextLength: 0,
+      staleRestorationObserved: false,
+      classification: "NO_MENTION_SIGNAL"
+    };
+  }
+
+  function attachSessionListeners() {
+    if (!session || session.listenersActive) return;
+    document.addEventListener("focusin", handleFocus, true);
+    document.addEventListener("focusout", handleBlur, true);
+    document.addEventListener("beforeinput", handleBeforeInput, true);
+    document.addEventListener("input", handleInput, true);
+    document.addEventListener("cut", handleCut, true);
+    session.listenersActive = true;
+  }
+
+  function detachSessionListeners() {
+    if (!session?.listenersActive) return;
+    document.removeEventListener("focusin", handleFocus, true);
+    document.removeEventListener("focusout", handleBlur, true);
+    document.removeEventListener("beforeinput", handleBeforeInput, true);
+    document.removeEventListener("input", handleInput, true);
+    document.removeEventListener("cut", handleCut, true);
+    session.listenersActive = false;
   }
 
   function startSampler() {
@@ -171,71 +214,303 @@
     session.timer = 0;
   }
 
-  function startCurrentStep() {
-    const step = session?.steps[session.stepIndex];
-    if (!step || step.startedAt) return;
-    step.startedAt = Date.now();
-    step.startUserTurns = safeCall(bridge.countUserTurns, 0);
+  function handleFocus(event) {
+    if (!isComposerEventTarget(event.target)) return;
+    addEvent("focus", sample());
   }
 
-  function finishCurrentStep() {
-    const step = session?.steps[session.stepIndex];
-    if (!step || step.endedAt) return;
-    if (step.missingSince) {
-      step.maxMissingDurationMs = Math.max(step.maxMissingDurationMs, Date.now() - step.missingSince);
-      step.missingSince = 0;
+  function handleBlur(event) {
+    if (!isComposerEventTarget(event.target)) return;
+    addEvent("blur", sample());
+  }
+
+  function handleBeforeInput(event) {
+    if (!isComposerEventTarget(event.target)) return;
+    const inputType = getInputType(event);
+    const snapshot = sample();
+    if (isDeleteLikeInputType(inputType)) beginDeleteFlow(snapshot, "beforeinput", inputType);
+    addEvent("beforeinput", snapshot, inputType ? { inputType } : {});
+    if (isDeleteLikeInputType(inputType)) addEvent("delete_like_inputType", snapshot, { inputType });
+  }
+
+  function handleInput(event) {
+    if (!isComposerEventTarget(event.target)) return;
+    const inputType = getInputType(event);
+    const snapshot = sample();
+    if (isDeleteLikeInputType(inputType)) beginDeleteFlow(snapshot, "input", inputType);
+    addEvent("input", snapshot, inputType ? { inputType } : {});
+    if (isDeleteLikeInputType(inputType)) addEvent("delete_like_inputType", snapshot, { inputType });
+  }
+
+  function handleCut(event) {
+    if (!isComposerEventTarget(event.target)) return;
+    const snapshot = sample();
+    beginDeleteFlow(snapshot, "cut", "cut");
+    addEvent("cut", snapshot);
+  }
+
+  function getInputType(event) {
+    return typeof event?.inputType === "string" ? event.inputType : null;
+  }
+
+  function isDeleteLikeInputType(inputType) {
+    return typeof inputType === "string" && /delete|cut|clear/i.test(inputType);
+  }
+
+  function beginDeleteFlow(snapshot, source, inputType) {
+    if (!session || !snapshot) return;
+    const existing = session.deleteFlow;
+    if (existing?.active && !existing.staleRestored) return;
+    session.deleteFlow = {
+      active: true,
+      source,
+      inputType,
+      startedAtMs: snapshot.elapsedMs,
+      beforeLength: snapshot.textLength,
+      beforeEditableId: snapshot.editableId,
+      beforeRootId: snapshot.rootId,
+      clearSeen: snapshot.exists && snapshot.textLength === 0,
+      clearAtMs: snapshot.exists && snapshot.textLength === 0 ? snapshot.elapsedMs : null,
+      missingSeen: !snapshot.exists,
+      missingAtMs: !snapshot.exists ? snapshot.elapsedMs : null,
+      remountSeen: false,
+      staleRestored: false,
+      runtimeAtRestoration: null
+    };
+    if (snapshot.exists && snapshot.textLength === 0) {
+      if (session.clearAnchor?.elapsedMs === snapshot.elapsedMs) {
+        session.clearAnchor.type = "delete_then_present_zero";
+      } else {
+        establishClearAnchor(snapshot, "delete_then_present_zero");
+      }
     }
-    step.endedAt = Date.now();
-  }
-
-  function getCurrentStep() {
-    return steps[session?.stepIndex || 0] || steps[0];
   }
 
   function sample() {
     if (!session) return null;
     const snapshot = readSnapshot();
-    const keyState = { ...snapshot };
-    delete keyState.ms;
-    const key = JSON.stringify(keyState);
-    if (key !== session.lastSampleKey) {
-      session.lastSampleKey = key;
-      session.samples.push(snapshot);
-    }
-    updateCurrentStep(snapshot);
+    session.sampleCount += 1;
+    processSnapshotTransitions(snapshot);
     renderPanel();
     return snapshot;
   }
 
-  function updateCurrentStep(snapshot) {
-    const step = session?.steps[session.stepIndex];
-    if (!step) return;
-    if (step.startUserTurns === null) step.startUserTurns = snapshot.userTurns;
-    step.samples += 1;
-    if (!snapshot.exists) {
-      step.composerMissing = true;
-      if (!step.missingSince) step.missingSince = Date.now();
-    } else if (step.missingSince) {
-      step.maxMissingDurationMs = Math.max(step.maxMissingDurationMs, Date.now() - step.missingSince);
-      step.missingSince = 0;
+  function processSnapshotTransitions(snapshot) {
+    if (!session || !snapshot) return;
+    const previous = session.lastSnapshot;
+    const keyState = { ...snapshot };
+    delete keyState.elapsedMs;
+    delete keyState.ms;
+    const key = JSON.stringify(keyState);
+
+    if (snapshot.hasMentionSignal) {
+      session.mentionSignalObserved = true;
+      session.connectorLifecycle.mentionSeen = true;
+      session.connectorLifecycle.mentionSignalSource ||= snapshot.mentionSignalSource || "unknown";
+      session.connectorLifecycle.finalTextLength = snapshot.textLength;
     }
-    if (snapshot.textLength === 0) step.zeroTextSeen = true;
-    if (snapshot.textLength > 0) step.nonZeroTextSeen = true;
-    if (snapshot.hasMentionSignal) step.mentionSignalSeen = true;
-    if (session.previousEditableId && snapshot.editableId && session.previousEditableId !== snapshot.editableId) {
-      step.editableIdentityChanges += 1;
+
+    if (previous) {
+      trackComposerPresence(previous, snapshot);
+      trackIdentity(previous, snapshot);
+      trackMention(previous, snapshot);
+      trackUserTurns(previous, snapshot);
+    } else {
+      session.userTurnLastCount = snapshot.userTurns;
+      if (snapshot.exists) session.composerMountCount += 1;
+      if (snapshot.hasMentionSignal) addEvent("mention_signal_on", snapshot);
     }
-    if (session.previousRootId && snapshot.rootId && session.previousRootId !== snapshot.rootId) {
-      step.rootIdentityChanges += 1;
+
+    trackReliableClearAnchor(snapshot);
+    trackDeleteFlow(snapshot);
+    trackManualSendStale(snapshot);
+
+    if (key !== session.lastSampleKey) {
+      session.lastSampleKey = key;
     }
-    if (snapshot.editableId) session.previousEditableId = snapshot.editableId;
-    if (snapshot.rootId) session.previousRootId = snapshot.rootId;
-    if (snapshot.userTurns > (step.startUserTurns || 0)) {
-      step.newUserTurnObserved = true;
-      if (snapshot.textLength > 0) {
-        step.staleTextAfterUserTurn = true;
-        step.maxTextLengthAfterUserTurn = Math.max(step.maxTextLengthAfterUserTurn, snapshot.textLength);
+    session.lastSnapshot = snapshot;
+  }
+
+  function trackComposerPresence(previous, snapshot) {
+    if (!session) return;
+    if (previous.exists && !snapshot.exists) {
+      session.composerUnmountCount += 1;
+      session.missingSince = Date.now();
+      session.missingFromSnapshot = {
+        elapsedMs: previous.elapsedMs,
+        textLength: previous.textLength,
+        editableId: previous.editableId,
+        rootId: previous.rootId
+      };
+      if (session.clearAnchor) session.clearAnchor.unmountAfter = true;
+      if (session.connectorLifecycle.mentionSeen) session.connectorLifecycle.composerUnmounted = true;
+      addEvent("composer_unmount", snapshot);
+      return;
+    }
+    if (!previous.exists && snapshot.exists) {
+      session.composerMountCount += 1;
+      const missingDuration = session.missingSince ? Date.now() - session.missingSince : 0;
+      session.maxMissingDurationMs = Math.max(session.maxMissingDurationMs, missingDuration);
+      session.missingSince = 0;
+      if (session.connectorLifecycle.mentionSeen) {
+        session.connectorLifecycle.composerRemounted = true;
+        session.nativeLikeRemountObserved = true;
       }
+      if (session.clearAnchor) session.clearAnchor.remountAfter = true;
+      if (!session.clearAnchor && session.missingFromSnapshot?.textLength > 0 && snapshot.textLength > 0) {
+        session.remountWithTextObserved = true;
+      }
+      session.missingFromSnapshot = null;
+      addEvent("composer_mount", snapshot, { missingDurationMs: Math.round(missingDuration) });
+      return;
+    }
+    if (!snapshot.exists && session.missingSince) {
+      session.maxMissingDurationMs = Math.max(session.maxMissingDurationMs, Date.now() - session.missingSince);
+    }
+    if (session.connectorLifecycle.mentionSeen) {
+      session.connectorLifecycle.finalTextLength = snapshot.textLength;
+    }
+  }
+
+  function trackIdentity(previous, snapshot) {
+    if (!session) return;
+    if (previous.editableId && snapshot.editableId && previous.editableId !== snapshot.editableId) {
+      session.editableIdentityChanges += 1;
+      if (session.clearAnchor) session.clearAnchor.identityAfter = true;
+      if (session.connectorLifecycle.mentionSeen) session.connectorLifecycle.editableChanged = true;
+      addEvent("editable_identity_change", snapshot, { previousEditableId: previous.editableId });
+    }
+    if (previous.rootId && snapshot.rootId && previous.rootId !== snapshot.rootId) {
+      session.rootIdentityChanges += 1;
+      if (session.clearAnchor) session.clearAnchor.identityAfter = true;
+      if (session.connectorLifecycle.mentionSeen) session.connectorLifecycle.rootChanged = true;
+      addEvent("root_identity_change", snapshot, { previousRootId: previous.rootId });
+    }
+  }
+
+  function trackMention(previous, snapshot) {
+    if (!session) return;
+    if (!previous.hasMentionSignal && snapshot.hasMentionSignal) {
+      session.mentionSignalObserved = true;
+      session.connectorLifecycle.mentionSeen = true;
+      session.connectorLifecycle.mentionSignalSource ||= snapshot.mentionSignalSource || "unknown";
+      addEvent("mention_signal_on", snapshot);
+    } else if (previous.hasMentionSignal && !snapshot.hasMentionSignal) {
+      addEvent("mention_signal_off", snapshot);
+    }
+  }
+
+  function trackUserTurns(previous, snapshot) {
+    if (!session) return;
+    if (session.userTurnLastCount === null) session.userTurnLastCount = previous.userTurns;
+    if (snapshot.userTurns !== session.userTurnLastCount) {
+      const delta = snapshot.userTurns - session.userTurnLastCount;
+      session.userTurnLastCount = snapshot.userTurns;
+      session.userTurnDelta = snapshot.userTurns - session.userTurnBaseline;
+      session.lastUserTurnChangeAt = snapshot.elapsedMs;
+      addEvent("user_turn_count_change", snapshot, { delta, totalDelta: session.userTurnDelta });
+    }
+  }
+
+  function trackReliableClearAnchor(snapshot) {
+    if (!session || !snapshot?.exists) return;
+    if (snapshot.textLength > 0) {
+      session.lastNonZeroTextSnapshot = {
+        elapsedMs: snapshot.elapsedMs,
+        textLength: snapshot.textLength,
+        editableId: snapshot.editableId,
+        rootId: snapshot.rootId
+      };
+      maybeDetectStaleRestoration(snapshot);
+      return;
+    }
+    if (snapshot.textLength !== 0 || !session.lastNonZeroTextSnapshot || session.staleTextRestoredAfterClear) return;
+    const flow = session.deleteFlow;
+    establishClearAnchor(snapshot, flow?.active ? "delete_then_present_zero" : "present_zero");
+  }
+
+  function establishClearAnchor(snapshot, type) {
+    if (!session || !snapshot?.exists || session.clearAnchor) return;
+    session.deleteClearObserved = true;
+    session.clearAnchor = {
+      type,
+      elapsedMs: snapshot.elapsedMs,
+      editableId: snapshot.editableId,
+      rootId: snapshot.rootId,
+      previousNonZeroLength: session.lastNonZeroTextSnapshot?.textLength ?? null,
+      unmountAfter: false,
+      remountAfter: false,
+      identityAfter: false
+    };
+    if (session.deleteFlow?.active) {
+      session.deleteFlow.clearSeen = true;
+      if (session.deleteFlow.clearAtMs === null) session.deleteFlow.clearAtMs = snapshot.elapsedMs;
+    }
+  }
+
+  function maybeDetectStaleRestoration(snapshot) {
+    const anchor = session?.clearAnchor;
+    if (!session || !anchor || session.staleTextRestoredAfterClear || !snapshot?.exists || snapshot.textLength <= 0) return;
+    if (!anchor.unmountAfter && !anchor.remountAfter && !anchor.identityAfter) return;
+    const flow = session.deleteFlow;
+    if (flow) {
+      flow.staleRestored = true;
+      flow.runtimeAtRestoration = runtimeFlags(snapshot);
+    }
+    session.staleTextRestoredAfterClear = true;
+    session.staleRestoration = {
+      restorationDelayMs: Math.max(0, snapshot.elapsedMs - anchor.elapsedMs),
+      beforeEditableId: anchor.editableId,
+      beforeRootId: anchor.rootId,
+      afterEditableId: snapshot.editableId,
+      afterRootId: snapshot.rootId,
+      restoredLength: snapshot.textLength,
+      clearAnchor: publicClearAnchor(anchor),
+      runtime: runtimeFlags(snapshot)
+    };
+    session.connectorLifecycle.staleRestorationObserved = true;
+    addEvent("stale_text_suspected", snapshot, {
+      reason: "text_restored_after_clear",
+      restorationDelayMs: session.staleRestoration.restorationDelayMs,
+      clearAnchorType: anchor.type
+    });
+  }
+
+  function trackDeleteFlow(snapshot) {
+    const flow = session?.deleteFlow;
+    if (!flow?.active) return;
+    if (!snapshot.exists) {
+      flow.missingSeen = true;
+      if (flow.missingAtMs === null) flow.missingAtMs = snapshot.elapsedMs;
+    }
+    if (snapshot.exists && flow.missingSeen) {
+      flow.remountSeen = true;
+    }
+    if (snapshot.exists && snapshot.textLength === 0) establishClearAnchor(snapshot, "delete_then_present_zero");
+    maybeDetectStaleRestoration(snapshot);
+  }
+
+  function trackManualSendStale(snapshot) {
+    if (!session?.lastUserTurnChangeAt || session.staleTextAfterUserTurn) return;
+    const delay = snapshot.elapsedMs - session.lastUserTurnChangeAt;
+    if (delay < USER_TURN_STALE_GRACE_MS) return;
+    if (snapshot.exists && snapshot.textLength > 0) {
+      session.staleTextAfterUserTurn = true;
+      session.staleAfterUserTurn = {
+        delayMs: Math.round(delay),
+        textLength: snapshot.textLength,
+        userTurnDelta: session.userTurnDelta,
+        editableId: snapshot.editableId,
+        rootId: snapshot.rootId,
+        editableIdentityChanges: session.editableIdentityChanges,
+        rootIdentityChanges: session.rootIdentityChanges,
+        runtime: runtimeFlags(snapshot)
+      };
+      addEvent("stale_text_suspected", snapshot, {
+        reason: "text_after_user_turn",
+        delayMs: Math.round(delay),
+        userTurnDelta: session.userTurnDelta
+      });
     }
   }
 
@@ -244,9 +519,11 @@
     const root = findComposerRoot(editable);
     const textLength = getComposerTextLength(editable);
     const runtime = safeCall(bridge.getRuntimeSnapshot, {});
+    const mentionSignal = detectMentionSignal(root, editable);
+    const now = Date.now();
     return {
+      elapsedMs: session ? now - session.startedAt : 0,
       ms: Math.round(performance.now()),
-      stepId: getCurrentStep().id,
       exists: !!editable,
       editableId: elementId(editable),
       rootId: elementId(root),
@@ -257,40 +534,56 @@
       rootTag: root?.tagName?.toLowerCase() || null,
       rootTestId: root?.getAttribute?.("data-testid") || null,
       textLength,
-      hasMentionSignal: hasMentionSignal(root),
+      hasMentionSignal: mentionSignal.seen,
+      mentionSignalSource: mentionSignal.source,
       focused: !!editable && (document.activeElement === editable || editable.contains(document.activeElement)),
       mountedTurns: safeCall(bridge.countMountedTurns, countMountedTurns()),
       userTurns: safeCall(bridge.countUserTurns, countUserTurns()),
       micaStatus: runtime.status?.name || null,
       nativeSafeMode: !!runtime.runtime?.nativeSafeMode,
       documentMutationObserverActive: !!runtime.runtime?.documentMutationObserverActive,
-      composerLifecycleListenersAttached: !!runtime.runtime?.composerLifecycleListenersAttached
+      composerLifecycleListenersAttached: !!runtime.runtime?.composerLifecycleListenersAttached,
+      optimizedTurns: Number(runtime.status?.optimizedTurns || 0),
+      micaEnabled: runtime.runtime?.micaEnabled ?? runtime.settings?.enabled ?? null
     };
+  }
+
+  function addEvent(type, snapshot = readSnapshot(), data = {}) {
+    if (!session || !snapshot) return;
+    const event = {
+      elapsedMs: Math.round(snapshot.elapsedMs || 0),
+      type,
+      composerPresent: !!snapshot.exists,
+      editableId: snapshot.editableId,
+      rootId: snapshot.rootId,
+      textLength: snapshot.textLength,
+      focused: !!snapshot.focused,
+      mentionSignal: !!snapshot.hasMentionSignal,
+      mentionSignalSource: snapshot.mentionSignalSource || null,
+      mountedTurns: snapshot.mountedTurns,
+      userTurns: snapshot.userTurns,
+      nativeSafeMode: !!snapshot.nativeSafeMode,
+      documentMutationObserverActive: !!snapshot.documentMutationObserverActive,
+      composerLifecycleListenersAttached: !!snapshot.composerLifecycleListenersAttached,
+      optimizedTurns: snapshot.optimizedTurns,
+      ...data
+    };
+    session.events.push(event);
+    if (session.events.length > MAX_EVENTS) {
+      session.events.splice(0, session.events.length - MAX_EVENTS);
+    }
   }
 
   function buildReport() {
     if (!session) return lastReport;
     const runtime = safeCall(bridge.getRuntimeSnapshot, {});
-    const stepReports = session.steps.map((step) => ({
-      id: step.id,
-      title: step.title,
-      startedAt: step.startedAt ? new Date(step.startedAt).toISOString() : null,
-      endedAt: step.endedAt ? new Date(step.endedAt).toISOString() : null,
-      samples: step.samples,
-      composerDisappeared: step.composerMissing,
-      maxMissingDurationMs: Math.round(step.maxMissingDurationMs),
-      editableIdentityChanges: step.editableIdentityChanges,
-      rootIdentityChanges: step.rootIdentityChanges,
-      zeroTextSeen: step.zeroTextSeen,
-      nonZeroTextSeen: step.nonZeroTextSeen,
-      mentionSignalSeen: step.mentionSignalSeen,
-      newUserTurnObserved: step.newUserTurnObserved,
-      staleTextAfterUserTurn: step.staleTextAfterUserTurn,
-      maxTextLengthAfterUserTurn: step.maxTextLengthAfterUserTurn
-    }));
-    const maxMissingDurationMs = Math.max(0, ...stepReports.map((step) => step.maxMissingDurationMs));
+    const staleRecovery = safeCall(bridge.getStaleRecoverySnapshot, null);
+    const snapshot = session.lastSnapshot || readSnapshot();
+    const connectorLifecycle = buildConnectorLifecycle(snapshot);
+    const summary = buildSummary(snapshot, connectorLifecycle);
+    const currentClearGeneration = buildCurrentClearGeneration(staleRecovery, snapshot);
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       probe: SESSION_VERSION,
       generatedAt: new Date().toISOString(),
       privacy: {
@@ -299,38 +592,191 @@
         conversationTextIncluded: false,
         promptTextIncluded: false,
         answerTextIncluded: false,
-        requestDataIncluded: false
+        requestDataIncluded: false,
+        headersIncluded: false,
+        cookiesIncluded: false,
+        rawDomIncluded: false
+      },
+      extension: runtime.extension || null,
+      runtime: {
+        ...(runtime.runtime || {}),
+        micaEnabled: runtime.runtime?.micaEnabled ?? runtime.settings?.enabled ?? null,
+        optimizedTurns: runtime.status?.optimizedTurns ?? snapshot.optimizedTurns ?? null
       },
       page: {
         origin: location.origin,
         pathKind: runtime.page?.pathKind || getPathKind()
       },
-      mica: {
-        status: runtime.status || null,
-        runtime: runtime.runtime || null,
-        extension: runtime.extension || null
+      session: {
+        id: session.id,
+        version: session.version,
+        startedAt: new Date(session.startedAt).toISOString(),
+        stoppedAt: session.stoppedAt ? new Date(session.stoppedAt).toISOString() : null,
+        durationMs: (session.stoppedAt || Date.now()) - session.startedAt,
+        sampleIntervalMs: SAMPLE_INTERVAL_MS,
+        sampleCount: session.sampleCount,
+        eventLimit: MAX_EVENTS,
+        eventCount: session.events.length,
+        diagnosticTimerActive: !!session.timer,
+        diagnosticListenersActive: !!session.listenersActive
       },
-      summary: {
-        composerDisappearedDuringDelete: stepReports.slice(0, 2).some((step) => step.composerDisappeared),
-        maxMissingDurationMs,
-        editableIdentityChanges: stepReports.reduce((sum, step) => sum + step.editableIdentityChanges, 0),
-        rootIdentityChanges: stepReports.reduce((sum, step) => sum + step.rootIdentityChanges, 0),
-        normalDeleteTextCleared: !!stepReports[0]?.zeroTextSeen,
-        mentionSignalObserved: !!stepReports[1]?.mentionSignalSeen,
-        newUserTurnObserved: !!stepReports[2]?.newUserTurnObserved,
-        staleTextAfterSend: !!stepReports[2]?.staleTextAfterUserTurn,
-        runtimeNativeSafeMode: !!runtime.runtime?.nativeSafeMode
-      },
-      steps: stepReports,
-      samples: session.samples.slice(-80)
+      summary,
+      currentClearGeneration,
+      connectorLifecycle,
+      clearAnchor: publicClearAnchor(session.clearAnchor),
+      staleRecovery,
+      staleRestoration: session.staleRestoration,
+      staleAfterUserTurn: session.staleAfterUserTurn,
+      correlations: buildCorrelations(),
+      events: session.events.slice()
     };
+  }
+
+  function buildSummary(snapshot, connectorLifecycle) {
+    return {
+      composerUnmountCount: session.composerUnmountCount,
+      composerMountCount: session.composerMountCount,
+      editableIdentityChanges: session.editableIdentityChanges,
+      rootIdentityChanges: session.rootIdentityChanges,
+      deleteClearObserved: session.deleteClearObserved,
+      nativeLikeRemountObserved: session.nativeLikeRemountObserved,
+      remountWithTextObserved: session.remountWithTextObserved,
+      staleTextRestoredAfterClear: session.staleTextRestoredAfterClear,
+      staleTextAfterUserTurn: session.staleTextAfterUserTurn,
+      clearAnchor: publicClearAnchor(session.clearAnchor),
+      maxMissingDurationMs: Math.round(session.maxMissingDurationMs),
+      mentionSignalObserved: session.mentionSignalObserved,
+      mentionSignalSource: session.connectorLifecycle.mentionSignalSource || null,
+      userTurnDelta: session.userTurnDelta,
+      finalTextLength: snapshot?.textLength ?? 0,
+      finalComposerPresent: !!snapshot?.exists,
+      classification: classifySummary(connectorLifecycle)
+    };
+  }
+
+  function buildCurrentClearGeneration(staleRecovery, snapshot) {
+    const empty = {
+      clearConfirmed: false,
+      remountCount: 0,
+      remountWithTextObserved: false,
+      staleFingerprintReappeared: false,
+      recoveryAttemptCount: 0,
+      finalClearStable: false,
+      finalTextLength: snapshot?.textLength ?? 0,
+      successMode: null
+    };
+    if (!session || !staleRecovery?.clearConfirmed) return empty;
+    const generationId = staleRecovery.generationId;
+    let clearEvent = null;
+    for (let index = session.events.length - 1; index >= 0; index -= 1) {
+      const event = session.events[index];
+      if (event.type === "stale_recovery_clear_confirmed" && event.generationId === generationId) {
+        clearEvent = event;
+        break;
+      }
+    }
+    const clearElapsedMs = clearEvent?.elapsedMs ?? session.clearAnchor?.elapsedMs ?? 0;
+    const generationEvents = session.events.filter((event) => event.elapsedMs >= clearElapsedMs);
+    return {
+      clearConfirmed: true,
+      remountCount: generationEvents.filter((event) => event.type === "composer_mount").length,
+      remountWithTextObserved: generationEvents.some((event) => event.type === "composer_mount" && event.textLength > 0),
+      staleFingerprintReappeared: !!staleRecovery.sameStalePayloadReappeared || generationEvents.some((event) => event.type === "stale_recovery_same_payload_reappeared"),
+      recoveryAttemptCount: Number(staleRecovery.attemptCount || 0),
+      finalClearStable: !!staleRecovery.finalClearStable,
+      finalTextLength: snapshot?.textLength ?? 0,
+      successMode: staleRecovery.successMode || null
+    };
+  }
+
+  function buildConnectorLifecycle(snapshot) {
+    const flow = { ...session.connectorLifecycle };
+    flow.finalTextLength = snapshot?.textLength ?? flow.finalTextLength ?? 0;
+    flow.staleRestorationObserved = !!session.staleTextRestoredAfterClear;
+    flow.mentionSignalSource = flow.mentionSignalSource || null;
+    const lifecycleObserved = flow.composerUnmounted
+      || flow.composerRemounted
+      || flow.editableChanged
+      || flow.rootChanged
+      || session.composerUnmountCount > 0
+      || session.editableIdentityChanges > 0
+      || session.rootIdentityChanges > 0;
+    if (flow.staleRestorationObserved) {
+      flow.classification = "SUSPICIOUS_STALE_RESTORATION";
+    } else if (flow.mentionSeen && (flow.composerUnmounted || flow.composerRemounted || flow.editableChanged || flow.rootChanged)) {
+      flow.classification = "EXPECTED_NATIVE_LIKE_REMOUNT";
+    } else if (!flow.mentionSeen && session.remountWithTextObserved) {
+      flow.classification = "REMOUNT_WITH_TEXT";
+    } else if (!flow.mentionSeen && lifecycleObserved) {
+      flow.classification = "COMPOSER_LIFECYCLE_OBSERVED";
+    } else if (!flow.mentionSeen) {
+      flow.classification = "NO_MENTION_SIGNAL";
+    } else {
+      flow.classification = "MENTION_OBSERVED_NO_REMOUNT";
+    }
+    return flow;
+  }
+
+  function classifySummary(connectorLifecycle) {
+    if (session.staleTextRestoredAfterClear) return "STALE_TEXT_RESTORED_AFTER_CLEAR";
+    if (session.staleTextAfterUserTurn) return "STALE_TEXT_AFTER_USER_TURN";
+    if (connectorLifecycle.classification === "EXPECTED_NATIVE_LIKE_REMOUNT") return "EXPECTED_NATIVE_LIKE_REMOUNT";
+    if (connectorLifecycle.classification === "REMOUNT_WITH_TEXT") return "REMOUNT_WITH_TEXT";
+    if (session.deleteClearObserved) return "DELETE_CLEAR_SUCCESS";
+    return "CAPTURED";
+  }
+
+  function buildCorrelations() {
+    const suspicious = session.events.filter((event) => event.type === "stale_text_suspected");
+    return suspicious.map((event) => ({
+      eventElapsedMs: event.elapsedMs,
+      reason: event.reason || null,
+      micaCallbacksWithin250ms: session.events
+        .filter((candidate) => candidate.type === "mica_callback" && Math.abs(candidate.elapsedMs - event.elapsedMs) <= CORRELATION_WINDOW_MS)
+        .map((candidate) => ({
+          elapsedMs: candidate.elapsedMs,
+          callback: candidate.callback || null,
+          nativeSafeMode: candidate.nativeSafeMode,
+          documentMutationObserverActive: candidate.documentMutationObserverActive,
+          composerLifecycleListenersAttached: candidate.composerLifecycleListenersAttached,
+          optimizedTurns: candidate.optimizedTurns
+        }))
+    }));
   }
 
   function summarizeReport(report) {
     return {
       generatedAt: report.generatedAt,
       probe: report.probe,
-      summary: report.summary
+      summary: report.summary,
+      connectorLifecycle: report.connectorLifecycle
+    };
+  }
+
+  function runtimeFlags(snapshot) {
+    return {
+      micaEnabled: snapshot.micaEnabled,
+      nativeSafeMode: snapshot.nativeSafeMode,
+      documentMutationObserverActive: snapshot.documentMutationObserverActive,
+      composerLifecycleListenersAttached: snapshot.composerLifecycleListenersAttached,
+      optimizedTurns: snapshot.optimizedTurns
+    };
+  }
+
+  function publicClearAnchor(anchor) {
+    if (!anchor) {
+      return {
+        type: null,
+        elapsedMs: null,
+        editableId: null,
+        rootId: null
+      };
+    }
+    return {
+      type: anchor.type,
+      elapsedMs: Math.round(anchor.elapsedMs),
+      editableId: anchor.editableId,
+      rootId: anchor.rootId
     };
   }
 
@@ -342,7 +788,7 @@
     panelHost.style.top = `${PANEL_MARGIN}px`;
     panelHost.style.right = `${PANEL_MARGIN}px`;
     panelHost.style.zIndex = "2147483645";
-    panelHost.style.width = `min(360px, calc(100vw - ${PANEL_MARGIN * 2}px))`;
+    panelHost.style.width = `min(300px, calc(100vw - ${PANEL_MARGIN * 2}px))`;
     panelHost.style.pointerEvents = "none";
     panelRoot = panelHost.attachShadow({ mode: "open" });
     document.documentElement.appendChild(panelHost);
@@ -356,23 +802,21 @@
 
   function renderPanel() {
     if (!panelRoot || !session) return;
-    const step = getCurrentStep();
-    const report = getCurrentStep().id === "complete" ? (lastReport || buildReport()) : null;
-    const summary = report?.summary || null;
-    const nextLabel = step.id === "manual-send" ? "Finish" : "Next";
+    const report = buildReport();
+    const summary = report.summary;
     panelRoot.innerHTML = `
 <style>
   :host { all: initial; }
   .card {
     display: grid;
-    gap: 10px;
-    padding: 12px;
+    gap: 8px;
+    padding: 10px;
     border: 1px solid rgba(23, 23, 23, 0.16);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.97);
     color: #171717;
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
-    font: 12px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font: 12px/1.35 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     pointer-events: auto;
   }
   h2 {
@@ -380,15 +824,10 @@
     font-size: 13px;
     line-height: 1.25;
   }
-  p {
-    margin: 0;
-  }
-  .notice {
-    color: #6b7280;
-  }
+  p { margin: 0; }
   .summary {
     display: grid;
-    gap: 4px;
+    gap: 3px;
     color: #374151;
   }
   .actions {
@@ -413,7 +852,6 @@
       background: rgba(32, 33, 35, 0.96);
       color: #f7f7f8;
     }
-    .notice,
     .summary { color: #d1d5db; }
     button {
       border-color: rgba(255, 255, 255, 0.2);
@@ -424,31 +862,21 @@
   }
 </style>
 <section class="card" role="status" aria-live="polite">
-  <h2>${escapeHtml(step.title)}</h2>
-  <p>${escapeHtml(step.instruction)}</p>
-  <p class="notice">Mica will not type, click connectors, send messages, retry, reload, or record prompt/answer text.</p>
-  ${summary ? renderSummary(summary) : ""}
+  <h2>Composer check recording</h2>
+  <p>Reproduce one short composer issue, then copy the report.</p>
+  <div class="summary">
+    <div>Events: ${summary.composerUnmountCount} unmounts, ${summary.editableIdentityChanges}/${summary.rootIdentityChanges} identity changes</div>
+    <div>Mention: ${summary.mentionSignalObserved ? "seen" : "not seen"}; final length: ${summary.finalTextLength}</div>
+    <div>Stale after clear: ${summary.staleTextRestoredAfterClear ? "yes" : "no"}</div>
+    <div>Stale after user turn: ${summary.staleTextAfterUserTurn ? "yes" : "no"}</div>
+  </div>
   <div class="actions">
-    ${step.id === "complete" ? "" : `<button type="button" data-action="next">${escapeHtml(nextLabel)}</button>`}
     <button type="button" data-action="copy">Copy report</button>
     <button type="button" data-action="stop">Stop</button>
   </div>
 </section>`;
-    panelRoot.querySelector("[data-action='next']")?.addEventListener("click", nextStep);
     panelRoot.querySelector("[data-action='stop']")?.addEventListener("click", () => stop({ keepPanel: false }));
     panelRoot.querySelector("[data-action='copy']")?.addEventListener("click", copyReportFromPanel);
-  }
-
-  function renderSummary(summary) {
-    return `
-  <div class="summary">
-    <div>Delete disappearance: ${summary.composerDisappearedDuringDelete ? "yes" : "no"}</div>
-    <div>Max missing: ${Math.round(summary.maxMissingDurationMs)} ms</div>
-    <div>Identity changes: ${summary.editableIdentityChanges}/${summary.rootIdentityChanges}</div>
-    <div>New user turn: ${summary.newUserTurnObserved ? "yes" : "unknown"}</div>
-    <div>Stale text after send: ${summary.staleTextAfterSend ? "yes" : "no"}</div>
-    <div>Native-safe: ${summary.runtimeNativeSafeMode ? "yes" : "no"}</div>
-  </div>`;
   }
 
   async function copyReportFromPanel() {
@@ -489,26 +917,103 @@
     return element.closest("[data-testid*='composer'], form") || element.parentElement;
   }
 
+  function isComposerEventTarget(target) {
+    const element = getEventElement(target);
+    if (!element || element.closest("[data-mica-root='true']") || element.closest("[data-mica-composer-diagnostics-root='true']")) return false;
+    const editable = findComposerEditable();
+    const root = findComposerRoot(editable);
+    if (editable && (element === editable || editable.contains(element) || element.contains(editable))) return true;
+    if (root && (element === root || root.contains(element))) return true;
+    return !!element.closest("#prompt-textarea, [data-testid*='composer'], textarea, [contenteditable][role='textbox'], [role='textbox']");
+  }
+
+  function getEventElement(target) {
+    if (target instanceof HTMLElement) return target;
+    if (target instanceof Element) return target.closest("*");
+    if (target instanceof CharacterData) return target.parentElement;
+    return null;
+  }
+
   function getComposerTextLength(element) {
     if (!element) return 0;
     if (element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement) return (element.value || "").length;
-    return (element.innerText || element.textContent || "").length;
+    return (element.textContent ?? element.innerText ?? "").length;
   }
 
-  function hasMentionSignal(root) {
-    if (!(root instanceof Element)) return false;
-    const marked = root.querySelectorAll("[aria-label], [data-testid], [data-mention], [data-entity], [data-type]");
+  function detectMentionSignal(root, editable) {
+    const rootSignal = detectMentionSignalInRoot(root);
+    if (rootSignal.seen) return rootSignal;
+    const editableSignal = detectMentionSignalInRoot(editable);
+    if (editableSignal.seen) return editableSignal;
+    if (hasComposerControlledChooser(root, editable)) return { seen: true, source: "chooser" };
+    const chooser = findActiveMentionChooser();
+    if (chooser) return { seen: true, source: "chooser" };
+    return { seen: false, source: null };
+  }
+
+  function detectMentionSignalInRoot(root) {
+    if (!(root instanceof Element)) return { seen: false, source: null };
+    if (root.matches?.("[data-mention], [data-token-type], [data-entity]")) return { seen: true, source: "chip" };
+    if (root.querySelector?.("[data-mention], [data-token-type], [data-entity]")) return { seen: true, source: "chip" };
+    const marked = root.querySelectorAll?.("[aria-label], [data-testid], [data-type], [role], [aria-controls], [aria-expanded]") || [];
     for (const node of marked) {
-      const signal = [
-        node.getAttribute("aria-label"),
-        node.getAttribute("data-testid"),
-        node.getAttribute("data-mention"),
-        node.getAttribute("data-entity"),
-        node.getAttribute("data-type")
-      ].filter(Boolean).join(" ");
-      if (/github/i.test(signal)) return true;
+      const source = mentionSourceFromAttributes(node);
+      if (source) return { seen: true, source };
     }
-    return false;
+    const rootSource = mentionSourceFromAttributes(root);
+    return rootSource ? { seen: true, source: rootSource } : { seen: false, source: null };
+  }
+
+  function mentionSourceFromAttributes(node) {
+    if (!(node instanceof Element)) return null;
+    if (node.hasAttribute("data-mention") || node.hasAttribute("data-entity") || node.hasAttribute("data-token-type")) return "chip";
+    const signal = [
+      node.getAttribute("aria-label"),
+      node.getAttribute("data-testid"),
+      node.getAttribute("data-type"),
+      node.getAttribute("role")
+    ].filter(Boolean).join(" ");
+    if (/connector|mention/i.test(signal)) return "structural-marker";
+    if (/github/i.test(signal)) return "chip";
+    if (node.getAttribute("aria-expanded") === "true" && node.hasAttribute("aria-controls")) return "chooser";
+    return null;
+  }
+
+  function hasComposerControlledChooser(root, editable) {
+    const owner = editable instanceof Element ? editable : root;
+    if (!(owner instanceof Element)) return false;
+    const controls = owner.getAttribute("aria-controls") || root?.getAttribute?.("aria-controls") || "";
+    if (!controls || owner.getAttribute("aria-expanded") !== "true") return false;
+    const controlled = document.getElementById(controls);
+    return controlled instanceof Element && isLikelyChooser(controlled);
+  }
+
+  function findActiveMentionChooser() {
+    const selectors = [
+      "[data-testid*='mention' i]",
+      "[data-testid*='connector' i]",
+      "[aria-label*='mention' i]",
+      "[aria-label*='connector' i]",
+      "[role='listbox'][aria-activedescendant]",
+      "[role='menu'][aria-activedescendant]"
+    ];
+    for (const selector of selectors) {
+      for (const node of document.querySelectorAll(selector)) {
+        if (!(node instanceof Element) || node.closest("[data-mica-root='true']") || node.closest("[data-mica-composer-diagnostics-root='true']")) continue;
+        if (isLikelyChooser(node)) return node;
+      }
+    }
+    return null;
+  }
+
+  function isLikelyChooser(node) {
+    if (!(node instanceof Element)) return false;
+    const signal = [
+      node.getAttribute("role"),
+      node.getAttribute("aria-label"),
+      node.getAttribute("data-testid")
+    ].filter(Boolean).join(" ");
+    return /listbox|menu|dialog|connector|mention/i.test(signal);
   }
 
   function countMountedTurns() {
@@ -561,14 +1066,6 @@
     }
   }
 
-  function escapeHtml(value) {
-    return String(value)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;");
-  }
-
   globalThis[GLOBAL_KEY] = {
     configure,
     start,
@@ -578,6 +1075,9 @@
     summarize,
     getReport,
     getReportText,
-    getDebugState
+    getDebugState,
+    isActive,
+    recordRuntimeCallback,
+    recordStaleRecoveryEvent
   };
 })();

@@ -109,3 +109,35 @@ A development iteration is acceptable when:
 - normal Mica runtime remains simpler rather than accumulating permanent observers/polling just for debugging;
 - privacy constraints above are preserved;
 - canonical `dist/mica-dev` is rebuilt if runtime code changes and versioning rules are followed.
+
+## 2026-09-06 0.1.5 ON evidence retained
+
+`ON_RESULT = REAL_STALE_RESTORATION_CONFIRMED`.
+
+The first reliable real-site 0.1.5 report with Mica enabled showed a present composer with `textLength = 0`, followed by unmount/remount into non-zero text:
+
+- `11799ms`: `composerPresent = true`, `textLength = 0`, `rootId = 3`
+- `11868ms`: `composer_unmount`
+- `12766ms`: `composer_mount`, `rootId = 4`, `textLength = 2`
+- `12879ms`: `textLength = 10`
+- `12943ms`: `composer_unmount`
+- `13758ms`: `composer_mount`, `rootId = 5`, `textLength = 10`
+
+The same report had `userTurnDelta = 0`, `micaEnabled = true`, `nativeSafeMode = true`, `documentMutationObserverActive = false`, `composerLifecycleListenersAttached = false`, and `optimizedTurns = 0`.
+
+This proves a real stale restoration occurred in the Mica ON run, but it does not yet prove Mica caused it. A nearby `known_interruption_check` is retained as correlation only, not as a root cause.
+
+## 2026-09-07 delete-path outcome
+
+Subsequent real-site reports with Mica runtime OFF confirmed the same reliable clear-anchor pattern can occur natively in ChatGPT's connector composer lifecycle:
+
+- composer present with `textLength = 0`;
+- native composer unmount;
+- new composer root mount with the old non-zero payload restored;
+- no Mica optimization observer/listener activity and no Mica callback correlation at the restoration point.
+
+The delete-after-connector path is therefore treated as `CHATGPT_NATIVE / CONNECTOR_COMPOSER_LIFECYCLE`, with Mica providing only a narrow clear-intent workaround.
+
+The local `0.1.5 / stale-composer-recovery.6` candidate added a bounded tombstone for trusted full-clear intent. Real authenticated acceptance for the delete path passed: after `@GitHub -> select GitHub -> Ctrl+A/Delete`, the composer reached a reliable clear state, remounted empty, and stayed empty through session stop. In that successful native-empty run `attemptCount = 0` is expected because no stale payload reappeared.
+
+The remaining Issue #6 work is separate: long-text manual Send can still leave old composer content after a new user turn commits. That path must be diagnosed with the same built-in `Run composer check -> manual send -> Copy report` workflow before extending recovery semantics.

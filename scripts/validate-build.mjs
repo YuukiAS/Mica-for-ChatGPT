@@ -21,7 +21,8 @@ assert(manifest.permissions?.includes("activeTab"), "activeTab permission missin
 assert(!manifest.host_permissions?.some((host) => !/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(host)), "unexpected host permission");
 assert(manifest.content_scripts?.[0]?.js?.[0] === "known-interruptions.js", "known interruptions script must run before content.js");
 assert(manifest.content_scripts?.[0]?.js?.[1] === "composer-diagnostics.js", "composer diagnostics script must run before content.js");
-assert(manifest.content_scripts?.[0]?.js?.[2] === "content.js", "content.js must remain a content script");
+assert(manifest.content_scripts?.[0]?.js?.[2] === "stale-composer-recovery.js", "stale composer recovery script must run before content.js");
+assert(manifest.content_scripts?.[0]?.js?.[3] === "content.js", "content.js must remain a content script");
 
 for (const size of [16, 32, 48, 128]) {
   assert(manifest.icons?.[size] === `icons/icon${size}.png`, `manifest icon${size} missing`);
@@ -45,7 +46,8 @@ for (const token of [
   "conversationTextIncluded: false",
   "attachmentContentIncluded: false",
   "autoDismissKnownInterruptions",
-  "knownInterruptions"
+  "knownInterruptions",
+  "MicaStaleComposerRecovery"
 ]) {
   assert(content.includes(token), `content.js missing ${token}`);
 }
@@ -66,15 +68,46 @@ for (const token of [
 const composerDiagnostics = await readFile(path.join(distDir, "composer-diagnostics.js"), "utf8");
 for (const token of [
   "MicaComposerDiagnostics",
-  "composer-guided-diagnostics.v1",
+  "composer-capture-diagnostics.v2",
+  "staleTextRestoredAfterClear",
+  "staleTextAfterUserTurn",
+  "clearAnchor",
+  "mentionSignalSource",
+  "EXPECTED_NATIVE_LIKE_REMOUNT",
+  "REMOUNT_WITH_TEXT",
   "promptTextIncluded: false",
   "answerTextIncluded: false",
   "requestDataIncluded: false",
-  "Mica will not type, click connectors, send messages, retry, reload, or record prompt/answer text."
+  "rawDomIncluded: false"
 ]) {
   assert(composerDiagnostics.includes(token), `composer-diagnostics.js missing ${token}`);
 }
 assert(!/dispatchEvent\(|\.click\(|fetch\(|XMLHttpRequest|new\s+MutationObserver/.test(composerDiagnostics), "composer diagnostics must stay passive and local");
+const staleRecovery = await readFile(path.join(distDir, "stale-composer-recovery.js"), "utf8");
+for (const token of [
+  "MicaStaleComposerRecovery",
+  "stale_recovery_full_clear_intent",
+  "stale_recovery_clear_confirmation_started",
+  "stale_recovery_clear_confirmation_check",
+  "stale_recovery_clear_confirmation_expired",
+  "stale_recovery_clear_confirmed",
+  "clearConfirmationSource",
+  "clearConfirmedTargetMatched",
+  "stale_recovery_rearmed",
+  "stale_recovery_armed",
+  "stale_recovery_waiting_for_settle",
+  "stale_recovery_match",
+  "stale_recovery_cancelled_new_input",
+  "stale_recovery_attempt",
+  "stale_recovery_success",
+  "stale_recovery_failed",
+  "stale_recovery_expired",
+  "GUARD_DURATION_MS",
+  "MAX_ATTEMPTS"
+]) {
+  assert(staleRecovery.includes(token), `stale-composer-recovery.js missing ${token}`);
+}
+assert(!/fetch\(|XMLHttpRequest|new\s+MutationObserver|location\.reload|innerHTML\s*=|textContent\s*=/.test(staleRecovery), "stale recovery must stay bounded and avoid invasive DOM/network behavior");
 for (const forbidden of ["radix-_", "btn-primary", "[role=\"dialog\"] button", "location.reload", "fetch(", "XMLHttpRequest"]) {
   assert(!interruptions.includes(forbidden), `known-interruptions.js contains forbidden dependency or behavior: ${forbidden}`);
 }

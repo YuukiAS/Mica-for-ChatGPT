@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mica guided composer diagnostics fixture</title>
+    <title>Mica composer capture diagnostics fixture</title>
     <style>
       * {
         box-sizing: border-box;
@@ -79,18 +79,20 @@
     <main>
       <section id="conversation" aria-label="Synthetic ChatGPT conversation"></section>
     </main>
-    <form class="composer" data-testid="composer" aria-label="Message composer">
-      <div id="editor" role="textbox" contenteditable="plaintext-only" aria-label="Message Mica"></div>
-      <button type="submit" data-testid="send-button" aria-label="Send message">Send</button>
-    </form>
+    <div id="composer-dock"></div>
 
     <script src="../../dist/mica-dev/known-interruptions.js"></script>
     <script src="../../dist/mica-dev/composer-diagnostics.js"></script>
+    <script src="../../dist/mica-dev/stale-composer-recovery.js"></script>
     <script src="../../dist/mica-dev/content.js"></script>
     <script>
       const resultNode = document.getElementById("guided-result");
       const conversation = document.getElementById("conversation");
-      let editor = document.getElementById("editor");
+      const dock = document.getElementById("composer-dock");
+
+      let composer = null;
+      let editor = null;
+      let composerSerial = 0;
 
       run().catch((error) => {
         resultNode.textContent = JSON.stringify({ passed: false, error: String(error?.stack || error) }, null, 2);
@@ -100,8 +102,6 @@
         await waitFor(() => window.__MICA_TEST_CONTROLS__, 3000);
         await waitFor(() => window.__MICA_LONG_THREAD_STATUS__?.mountedTurns === 0, 3000);
 
-        const samplerBefore = window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsState();
-        const statusBeforeTurns = window.__MICA_TEST_CONTROLS__.getDiagnosticsReport();
         appendTurns(0, 6);
         await waitFor(() => {
           window.__MICA_TEST_CONTROLS__.refreshNativeSafeMountedStatus();
@@ -109,82 +109,666 @@
         }, 3500);
         const delayedReport = window.__MICA_TEST_CONTROLS__.getDiagnosticsReport();
 
-        appendTurn(6, "assistant", "Mounted count churn 6");
+        const samplerBefore = window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsState();
+        const remountWithTextReport = await captureCase(async () => {
+          mountComposer("stable ten");
+          await delay(220);
+          unmountComposer();
+          await delay(220);
+          mountComposer("stable ten");
+          await delay(420);
+        });
+
+        const nativeLikeReport = await captureCase(async () => {
+          mountComposer("");
+          setMentionLikeComposer();
+          await delay(220);
+          unmountComposer();
+          await delay(220);
+          mountComposer("");
+          setMentionLikeComposer();
+          await delay(320);
+        });
+
+        const restoredAfterPresentZeroReport = await captureCase(async () => {
+          mountComposer("stale draft two");
+          await delay(220);
+          setEditorText("");
+          await delay(220);
+          unmountComposer();
+          await delay(220);
+          mountComposer("stale draft two");
+          await delay(420);
+        });
+
+        const restoredAfterDeleteClearReport = await captureCase(async () => {
+          mountComposer("stale draft one");
+          await dispatchDeleteClear();
+          await delay(180);
+          unmountComposer();
+          await delay(220);
+          mountComposer("stale draft one");
+          await delay(420);
+        });
+
+        const staleAfterUserTurnReport = await captureCase(async () => {
+          mountComposer("manual send draft");
+          await delay(180);
+          appendTurn(20, "user", "sent length 17");
+          await delay(80);
+          unmountComposer();
+          await delay(180);
+          mountComposer("manual send draft");
+          await delay(820);
+        });
+
+        const cleanDeleteReport = await captureCase(async () => {
+          mountComposer("clearable draft");
+          await dispatchDeleteClear();
+          await delay(180);
+          unmountComposer();
+          await delay(220);
+          mountComposer("");
+          await delay(420);
+        });
+
+        window.__MICA_TEST_CONTROLS__.setSettings({ enabled: true });
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoverySingleBackspaceReport = await captureCase(async () => {
+          mountComposer("single x");
+          await dispatchSingleBackspace();
+          await delay(420);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryDelayedConfirmationReport = await captureCase(async () => {
+          mountComposer("delay old");
+          await dispatchFullClearIntentOnly("Delete");
+          await delay(57);
+          setEditorText("");
+          await waitForClearConfirmed(1000);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryBlurConfirmationReport = await captureCase(async () => {
+          mountComposer("blur old");
+          await dispatchFullClearIntentOnly("Delete");
+          await delay(60);
+          setEditorText("");
+          dispatchEditorBlur();
+          await waitForClearConfirmed(1000);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryFocusoutConfirmationReport = await captureCase(async () => {
+          mountComposer("focus old");
+          await dispatchFullClearIntentOnly("Delete");
+          await delay(60);
+          setEditorText("");
+          dispatchEditorFocusout();
+          await waitForClearConfirmed(1000);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryOrdinaryBlurReport = await captureCase(async () => {
+          mountComposer("plain old");
+          dispatchEditorBlur();
+          await delay(420);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryUnrelatedBlurReport = await captureCase(async () => {
+          mountComposer("other old");
+          await dispatchFullClearIntentOnly("Delete");
+          dispatchUnrelatedBlur();
+          await delay(420);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryDirectUnmountNoConfirmationReport = await captureCase(async () => {
+          mountComposer("vanish old");
+          await dispatchFullClearIntentOnly("Delete");
+          unmountComposer();
+          await delay(420);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoverySamePayloadReport = await captureCase(async () => {
+          mountComposer("old text");
+          await dispatchFullClearIntentOnly("Delete");
+          await delay(57);
+          setEditorText("");
+          dispatchEditorBlur();
+          await waitForClearConfirmed(1000);
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("old text");
+          await waitForRecoverySucceeded(2600);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryNativeStayedEmptyReport = await captureCase(async () => {
+          mountComposer("native0x");
+          await dispatchFullClearDelete("Delete");
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("");
+          window.__MICA_TEST_CONTROLS__.forceStaleComposerRecoveryTimeoutForTests("WAITING_FOR_REMOUNT");
+          await waitForFinalClearStable(1200);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryGenerationScopedPreClearReport = await captureCase(async () => {
+          mountComposer("pretext8");
+          await delay(120);
+          unmountComposer();
+          await delay(120);
+          mountComposer("pretext8");
+          await delay(120);
+          mountComposer("scopeold");
+          await dispatchFullClearDelete("Delete");
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("");
+          window.__MICA_TEST_CONTROLS__.forceStaleComposerRecoveryTimeoutForTests("WAITING_FOR_REMOUNT");
+          await waitForFinalClearStable(1200);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryLateSettlingExpiryRaceReport = await captureCase(async () => {
+          mountComposer("race old");
+          await dispatchFullClearDelete("Delete");
+          await waitForGuardAge(860, 1200);
+          unmountComposer();
+          await delay(60);
+          mountComposer("ra");
+          await delay(172);
+          unmountComposer();
+          await waitForGuardAge(2105, 3000);
+          mountComposer("race old");
+          await waitFor(() => window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()?.phase === "SETTLING", 1200, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()));
+          window.__MICA_TEST_CONTROLS__.forceStaleComposerRecoveryTimeoutForTests("WAITING_FOR_REMOUNT");
+          await delay(44);
+          await waitForRecoverySucceeded(1800);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoverySettlingNewInputReport = await captureCase(async () => {
+          mountComposer("type old");
+          await dispatchFullClearDelete("Delete");
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("type old");
+          await waitFor(() => window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()?.phase === "SETTLING", 1200);
+          await dispatchUserInsert("fresh input");
+          await delay(620);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryMismatchTimeoutReport = await captureCase(async () => {
+          mountComposer("miss old");
+          await dispatchFullClearDelete("Delete");
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("different");
+          await waitFor(() => {
+            const state = window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState();
+            return state?.expired === true && state?.guardActive === false;
+          }, 3400);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryOldGenerationTimerReport = await captureCase(async () => {
+          mountComposer("first gen");
+          await dispatchFullClearDelete("Delete");
+          await waitForGuardAge(500, 900);
+          mountComposer("next gen");
+          await dispatchFullClearDelete("Delete");
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("next gen");
+          await waitForRecoverySucceeded(2600);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoverySettledPayloadReport = await captureCase(async () => {
+          mountComposer("full old");
+          await dispatchFullClearDelete("Delete");
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("fu");
+          await delay(120);
+          setEditorText("full old");
+          await waitForRecoverySucceeded(2600);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryNewInputReport = await captureCase(async () => {
+          mountComposer("cancel old");
+          await dispatchFullClearDelete("Delete");
+          await delay(80);
+          await dispatchUserInsert("fresh input");
+          await delay(620);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryPendingCancelledByInputReport = await captureCase(async () => {
+          mountComposer("pending old");
+          await dispatchFullClearIntentOnly("Delete");
+          await delay(40);
+          await dispatchUserInsert("fresh input");
+          await delay(420);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryMismatchReport = await captureCase(async () => {
+          mountComposer("old payload");
+          await dispatchFullClearDelete("Delete");
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("new payload");
+          await delay(780);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryEmptyRemountReport = await captureCase(async () => {
+          mountComposer("empty remount old");
+          await dispatchFullClearDelete("Delete");
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("");
+          await delay(780);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryRepeatedRemountReport = await captureCase(async () => {
+          mountComposer("loop old");
+          await dispatchFullClearDelete("Delete");
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("loop old");
+          await waitForRecoverySucceeded(2600);
+          await delay(120);
+          unmountComposer();
+          await delay(120);
+          mountComposer("loop old");
+          await waitFor(() => window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()?.attemptCount >= 2, 2200);
+          await delay(460);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryPersistentMultiRemountReport = await captureCase(async () => {
+          mountComposer("oldloop8");
+          await dispatchFullClearDelete("Delete");
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("ol");
+          await delay(74);
+          setEditorText("oldloop8");
+          await waitForRecoverySucceeded(2600);
+          await delay(120);
+          unmountComposer();
+          await delay(780);
+          mountComposer("ol");
+          await delay(71);
+          setEditorText("oldloop8");
+          await delay(77);
+          unmountComposer();
+          await delay(1385);
+          mountComposer("oldloop8");
+          await waitForRecoverySucceeded(2600);
+          window.__MICA_TEST_CONTROLS__.completeStaleComposerRecoveryTombstoneForTests();
+          await waitForFinalClearStable(1200);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryTombstoneCancelAfterAttemptReport = await captureCase(async () => {
+          mountComposer("keep old");
+          await dispatchFullClearDelete("Delete");
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("keep old");
+          await waitForRecoverySucceeded(2600);
+          await dispatchUserInsert("fresh input");
+          await delay(780);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryTombstoneMismatchAfterAttemptReport = await captureCase(async () => {
+          mountComposer("same old");
+          await dispatchFullClearDelete("Delete");
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("same old");
+          await waitForRecoverySucceeded(2600);
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("other new");
+          await delay(780);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryAttemptsExhaustedReport = await captureCase(async () => {
+          mountComposer("max old");
+          await dispatchFullClearDelete("Delete");
+          for (let index = 0; index < 3; index += 1) {
+            await delay(120);
+            unmountComposer();
+            await delay(120);
+            mountComposer("max old");
+            await waitForRecoverySucceeded(2600);
+          }
+          await delay(120);
+          unmountComposer();
+          await delay(120);
+          mountComposer("max old");
+          await waitFor(() => window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()?.attemptsExhausted === true, 1600);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryRearmAfterExpiredReport = await captureCase(async () => {
+          mountComposer("first old");
+          await dispatchFullClearDelete("Delete");
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("first old");
+          await waitForRecoverySucceeded(2600);
+          window.__MICA_TEST_CONTROLS__.forceStaleComposerRecoveryTimeoutForTests(null);
+          await waitFor(() => window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()?.guardActive === false, 1200);
+          mountComposer("second old");
+          await dispatchFullClearDelete("Backspace");
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("second old");
+          await waitForRecoverySucceeded(2600);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryEarlyDeleteThenFullClearReport = await captureCase(async () => {
+          mountComposer("early oldx");
+          await dispatchSingleBackspace();
+          await delay(120);
+          await dispatchFullClearDelete("Delete");
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("early old");
+          await waitForRecoverySucceeded(2600);
+        });
+
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryCutReport = await captureCase(async () => {
+          mountComposer("cut text");
+          await dispatchFullSelectionCut();
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("cut text");
+          await waitForRecoverySucceeded(2600);
+        });
+
+        window.__MICA_TEST_CONTROLS__.setSettings({ enabled: true, staleClearRecovery: false });
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryFeatureDisabledReport = await captureCase(async () => {
+          mountComposer("feature off");
+          await dispatchFullClearDelete("Delete");
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("feature off");
+          await delay(780);
+        });
+
+        window.__MICA_TEST_CONTROLS__.setSettings({ enabled: false });
         await waitFor(() => {
-          window.__MICA_TEST_CONTROLS__.refreshNativeSafeMountedStatus();
-          return window.__MICA_LONG_THREAD_STATUS__?.mountedTurns === 7;
-        }, 2500);
-        conversation.lastElementChild.remove();
-        await waitFor(() => {
-          window.__MICA_TEST_CONTROLS__.refreshNativeSafeMountedStatus();
-          return window.__MICA_LONG_THREAD_STATUS__?.mountedTurns === 6;
-        }, 2500);
-        const churnReport = window.__MICA_TEST_CONTROLS__.getDiagnosticsReport();
+          const report = window.__MICA_TEST_CONTROLS__.getDiagnosticsReport();
+          return report?.status?.name === "Disabled" && report?.runtime?.nativeSafeMode === true;
+        }, 3500);
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        const recoveryDisabledReport = await captureCase(async () => {
+          mountComposer("disabled old");
+          await dispatchFullClearDelete("Delete");
+          await delay(120);
+          unmountComposer();
+          await delay(220);
+          mountComposer("disabled old");
+          await delay(780);
+        });
+        const micaOffReport = await captureCase(async () => {
+          mountComposer("off mode");
+          await delay(220);
+          unmountComposer();
+          await delay(220);
+          mountComposer("off mode");
+          await delay(420);
+        });
 
-        const compact = await waitForOverlay((overlay) => isBottomRight(overlay.hostRect), 4200);
-        const compactReport = window.__MICA_TEST_CONTROLS__.getDiagnosticsReport();
-
-        window.__MICA_TEST_CONTROLS__.startComposerGuidedDiagnostics();
-        await delay(260);
-        setEditorText("abc test");
-        await delay(260);
-        setEditorText("");
-        await delay(260);
-        window.__MICA_TEST_CONTROLS__.nextComposerGuidedDiagnosticsStep();
-
-        setMentionLikeComposer();
-        await delay(260);
-        setEditorText("");
-        await delay(260);
-        window.__MICA_TEST_CONTROLS__.nextComposerGuidedDiagnosticsStep();
-
-        setEditorText("fixture secret prompt");
-        await delay(260);
-        appendTurn(7, "user", "fixture prompt should not leak");
-        appendTurn(8, "assistant", "fixture answer should not leak");
-        remountComposer("fixture secret prompt");
-        await delay(260);
-        setEditorText("");
-        await delay(260);
-        window.__MICA_TEST_CONTROLS__.nextComposerGuidedDiagnosticsStep();
-        await delay(120);
-
-        const guidedReport = window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport();
-        const guidedState = window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsState();
-        const reportText = JSON.stringify(guidedReport);
-        const statusAfter = window.__MICA_TEST_CONTROLS__.getDiagnosticsReport();
-        window.__MICA_TEST_CONTROLS__.stopComposerGuidedDiagnostics();
-
+        const samplerAfter = window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsState();
+        const reportText = JSON.stringify({
+          remountWithTextReport,
+          nativeLikeReport,
+          restoredAfterPresentZeroReport,
+          restoredAfterDeleteClearReport,
+          staleAfterUserTurnReport,
+          cleanDeleteReport,
+          recoverySingleBackspaceReport,
+          recoveryDelayedConfirmationReport,
+          recoveryBlurConfirmationReport,
+          recoveryFocusoutConfirmationReport,
+          recoveryOrdinaryBlurReport,
+          recoveryUnrelatedBlurReport,
+          recoveryDirectUnmountNoConfirmationReport,
+          recoverySamePayloadReport,
+          recoveryNativeStayedEmptyReport,
+          recoveryGenerationScopedPreClearReport,
+          recoveryLateSettlingExpiryRaceReport,
+          recoverySettlingNewInputReport,
+          recoveryMismatchTimeoutReport,
+          recoveryOldGenerationTimerReport,
+          recoverySettledPayloadReport,
+          recoveryNewInputReport,
+          recoveryPendingCancelledByInputReport,
+          recoveryMismatchReport,
+          recoveryEmptyRemountReport,
+          recoveryRepeatedRemountReport,
+          recoveryPersistentMultiRemountReport,
+          recoveryTombstoneCancelAfterAttemptReport,
+          recoveryTombstoneMismatchAfterAttemptReport,
+          recoveryAttemptsExhaustedReport,
+          recoveryRearmAfterExpiredReport,
+          recoveryEarlyDeleteThenFullClearReport,
+          recoveryCutReport,
+          recoveryFeatureDisabledReport,
+          recoveryDisabledReport,
+          micaOffReport
+        });
         const checks = [
           ["diagnostics sampler off before start", samplerBefore && samplerBefore.sampleCount === 0 && samplerBefore.samplerActive === false],
-          ["initial status is native-safe 0", statusBeforeTurns.runtime.nativeSafeMode === true && statusBeforeTurns.status.mountedTurns === 0],
-          ["delayed status updates to 6", delayedReport.status.mountedTurns === 6 && delayedReport.mountedTurns.current === 6 && delayedReport.mountedTurns.lastObserved === 6],
+          ["delayed status updates to 6", delayedReport.status.mountedTurns === 6 && delayedReport.mountedTurns.current === 6],
           ["delayed status remains native-safe", delayedReport.runtime.nativeSafeMode === true],
           ["delayed status has no document observer", delayedReport.runtime.documentMutationObserverActive === false],
           ["delayed status has no composer listeners", delayedReport.runtime.composerLifecycleListenersAttached === false],
-          ["churn status updates back to 6", churnReport.status.mountedTurns === 6 && churnReport.mountedTurns.current === 6 && churnReport.mountedTurns.lastObserved === 6],
-          ["compact status is bottom-right static", compactReport.overlay.placement === "bottom-right-static" && isBottomRight(compact.hostRect)],
-          ["guided sampler ran only after start", guidedState.sampleCount > 0],
-          ["guided normal delete cleared text", guidedReport.steps[0].zeroTextSeen === true && guidedReport.steps[0].nonZeroTextSeen === true],
-          ["guided mention replacement observed", guidedReport.steps[1].mentionSignalSeen === true && guidedReport.steps[1].editableIdentityChanges > 0],
-          ["guided manual send observed user turn", guidedReport.steps[2].newUserTurnObserved === true],
-          ["guided stale send surrogate observed", guidedReport.summary.staleTextAfterSend === true],
-          ["guided report says no prompt text", guidedReport.privacy.promptTextIncluded === false],
-          ["guided report says no answer text", guidedReport.privacy.answerTextIncluded === false],
-          ["guided report excludes fixture prompt", !reportText.includes("fixture secret prompt")],
-          ["guided report excludes fixture answer", !reportText.includes("fixture answer should not leak")],
-          ["native-safe stayed enabled", statusAfter.runtime.nativeSafeMode === true],
-          ["native-safe document observer false", statusAfter.runtime.documentMutationObserverActive === false],
-          ["native-safe composer listeners false", statusAfter.runtime.composerLifecycleListenersAttached === false]
+          ["remount with text is not stale restoration", remountWithTextReport.summary.staleTextRestoredAfterClear === false && remountWithTextReport.summary.classification === "REMOUNT_WITH_TEXT" && remountWithTextReport.summary.clearAnchor.type === null],
+          ["native-like connector remount classified", nativeLikeReport.connectorLifecycle.classification === "EXPECTED_NATIVE_LIKE_REMOUNT"],
+          ["native-like connector source captured", nativeLikeReport.connectorLifecycle.mentionSeen === true && nativeLikeReport.connectorLifecycle.mentionSignalSource === "chip"],
+          ["native-like connector remount not stale", nativeLikeReport.summary.staleTextRestoredAfterClear === false && nativeLikeReport.summary.staleTextAfterUserTurn === false],
+          ["stale restoration after present-zero clear detected", restoredAfterPresentZeroReport.summary.staleTextRestoredAfterClear === true && restoredAfterPresentZeroReport.summary.clearAnchor.type === "present_zero"],
+          ["stale restoration after delete clear detected", restoredAfterDeleteClearReport.summary.staleTextRestoredAfterClear === true && restoredAfterDeleteClearReport.summary.clearAnchor.type === "delete_then_present_zero"],
+          ["stale restoration carries runtime flags", !!restoredAfterDeleteClearReport.staleRestoration?.runtime && typeof restoredAfterDeleteClearReport.staleRestoration.restoredLength === "number"],
+          ["stale after user turn detected", staleAfterUserTurnReport.summary.staleTextAfterUserTurn === true && staleAfterUserTurnReport.summary.userTurnDelta > 0],
+          ["clean delete/remount has no stale false positive", cleanDeleteReport.summary.deleteClearObserved === true && cleanDeleteReport.summary.staleTextRestoredAfterClear === false && cleanDeleteReport.summary.finalTextLength === 0],
+          ["single-character backspace does not start confirmation monitor", recoverySingleBackspaceReport.staleRecovery?.fullClearIntentObserved === false && recoverySingleBackspaceReport.staleRecovery?.clearConfirmationMonitorStarted === false && recoverySingleBackspaceReport.staleRecovery?.attempted === false],
+          ["delayed present-zero confirmation monitor catches clear", recoveryDelayedConfirmationReport.staleRecovery?.fullClearIntentObserved === true && recoveryDelayedConfirmationReport.staleRecovery?.clearConfirmationMonitorStarted === true && recoveryDelayedConfirmationReport.staleRecovery?.clearConfirmationChecks > 0 && recoveryDelayedConfirmationReport.staleRecovery?.clearConfirmed === true],
+          ["same-editable blur confirms clear", recoveryBlurConfirmationReport.staleRecovery?.clearConfirmed === true && recoveryBlurConfirmationReport.staleRecovery?.clearConfirmationSource === "blur" && recoveryBlurConfirmationReport.staleRecovery?.clearConfirmedTargetMatched === true],
+          ["same-editable focusout confirms clear", recoveryFocusoutConfirmationReport.staleRecovery?.clearConfirmed === true && recoveryFocusoutConfirmationReport.staleRecovery?.clearConfirmationSource === "focusout" && recoveryFocusoutConfirmationReport.staleRecovery?.clearConfirmedTargetMatched === true],
+          ["ordinary blur does not confirm clear", recoveryOrdinaryBlurReport.staleRecovery?.fullClearIntentObserved === false && recoveryOrdinaryBlurReport.staleRecovery?.clearConfirmed === false],
+          ["unrelated blur does not confirm pending clear", recoveryUnrelatedBlurReport.staleRecovery?.fullClearIntentObserved === true && recoveryUnrelatedBlurReport.staleRecovery?.clearConfirmed === false && recoveryUnrelatedBlurReport.staleRecovery?.attempted === false],
+          ["direct unmount without present-zero is not clear confirmed", recoveryDirectUnmountNoConfirmationReport.staleRecovery?.fullClearIntentObserved === true && recoveryDirectUnmountNoConfirmationReport.staleRecovery?.clearConfirmationMonitorStarted === true && recoveryDirectUnmountNoConfirmationReport.staleRecovery?.clearConfirmed === false && recoveryDirectUnmountNoConfirmationReport.staleRecovery?.attempted === false],
+          ["ctrl+a delete snapshots full old payload", recoverySamePayloadReport.staleRecovery?.fullClearIntentObserved === true && recoverySamePayloadReport.staleRecovery?.preClearOldLength === 8 && recoverySamePayloadReport.staleRecovery?.clearConfirmed === true],
+          ["recovery clears same stale payload", recoverySamePayloadReport.staleRecovery?.attempted === true && recoverySamePayloadReport.staleRecovery?.succeeded === true && recoverySamePayloadReport.staleRecovery?.fingerprintMatched === true && recoverySamePayloadReport.summary.finalTextLength === 0],
+          ["native empty remount is final clear stable without recovery", recoveryNativeStayedEmptyReport.staleRecovery?.finalClearStable === true && recoveryNativeStayedEmptyReport.staleRecovery?.successMode === "native_stayed_empty" && recoveryNativeStayedEmptyReport.staleRecovery?.attempted === false && recoveryNativeStayedEmptyReport.summary.finalTextLength === 0 && recoveryNativeStayedEmptyReport.currentClearGeneration?.recoveryAttemptCount === 0],
+          ["current clear generation ignores pre-clear remount-with-text", recoveryGenerationScopedPreClearReport.summary.remountWithTextObserved === true && recoveryGenerationScopedPreClearReport.currentClearGeneration?.remountWithTextObserved === false && recoveryGenerationScopedPreClearReport.currentClearGeneration?.staleFingerprintReappeared === false && recoveryGenerationScopedPreClearReport.currentClearGeneration?.finalClearStable === true && recoveryGenerationScopedPreClearReport.currentClearGeneration?.finalTextLength === 0],
+          ["late settling expiry race recovers successfully", recoveryLateSettlingExpiryRaceReport.staleRecovery?.fingerprintMatched === true && recoveryLateSettlingExpiryRaceReport.staleRecovery?.attempted === true && recoveryLateSettlingExpiryRaceReport.staleRecovery?.succeeded === true && recoveryLateSettlingExpiryRaceReport.summary.finalTextLength === 0],
+          ["settling new user input cancels recovery", recoverySettlingNewInputReport.staleRecovery?.cancelledByUserInput === true && recoverySettlingNewInputReport.staleRecovery?.attempted === false && recoverySettlingNewInputReport.summary.finalTextLength === 11],
+          ["fingerprint mismatch expires waiting phase", recoveryMismatchTimeoutReport.staleRecovery?.fingerprintMatched === false && recoveryMismatchTimeoutReport.staleRecovery?.attempted === false && recoveryMismatchTimeoutReport.staleRecovery?.expired === true],
+          ["old generation timer cannot expire new generation", recoveryOldGenerationTimerReport.staleRecovery?.generationId >= 2 && recoveryOldGenerationTimerReport.staleRecovery?.attempted === true && recoveryOldGenerationTimerReport.staleRecovery?.succeeded === true && recoveryOldGenerationTimerReport.summary.finalTextLength === 0],
+          ["recovery waits for settled stale payload", recoverySettledPayloadReport.staleRecovery?.attempted === true && recoverySettledPayloadReport.staleRecovery?.succeeded === true && recoverySettledPayloadReport.staleRecovery?.preClearOldLength === 8 && recoverySettledPayloadReport.summary.finalTextLength === 0],
+          ["recovery cancels on new user input", recoveryNewInputReport.staleRecovery?.cancelledByUserInput === true && recoveryNewInputReport.staleRecovery?.attempted === false && recoveryNewInputReport.summary.finalTextLength === 11],
+          ["pending confirmation cancels on new user input", recoveryPendingCancelledByInputReport.staleRecovery?.fullClearIntentObserved === true && recoveryPendingCancelledByInputReport.staleRecovery?.clearConfirmed === false && recoveryPendingCancelledByInputReport.staleRecovery?.cancelledByUserInput === true && recoveryPendingCancelledByInputReport.staleRecovery?.attempted === false && recoveryPendingCancelledByInputReport.summary.finalTextLength === 11],
+          ["recovery does not delete fingerprint mismatch", recoveryMismatchReport.staleRecovery?.attempted === false && recoveryMismatchReport.summary.finalTextLength === 11],
+          ["recovery does not run on empty remount", recoveryEmptyRemountReport.staleRecovery?.attempted === false && recoveryEmptyRemountReport.summary.finalTextLength === 0],
+          ["recovery attempts are bounded", recoveryRepeatedRemountReport.staleRecovery?.attemptCount <= 3 && recoveryRepeatedRemountReport.events.filter((event) => event.type === "stale_recovery_attempt").length <= 3],
+          ["persistent multi-remount stale payload is cleared stably", recoveryPersistentMultiRemountReport.staleRecovery?.attemptCount >= 2 && recoveryPersistentMultiRemountReport.staleRecovery?.localClearObserved === true && recoveryPersistentMultiRemountReport.staleRecovery?.sameStalePayloadReappeared === true && recoveryPersistentMultiRemountReport.staleRecovery?.finalClearStable === true && recoveryPersistentMultiRemountReport.summary.finalTextLength === 0],
+          ["tombstone cancels after new user input following recovery", recoveryTombstoneCancelAfterAttemptReport.staleRecovery?.cancelledByUserInput === true && recoveryTombstoneCancelAfterAttemptReport.staleRecovery?.attemptCount === 1 && recoveryTombstoneCancelAfterAttemptReport.summary.finalTextLength === 11],
+          ["tombstone does not delete different later fingerprint", recoveryTombstoneMismatchAfterAttemptReport.staleRecovery?.attemptCount === 1 && recoveryTombstoneMismatchAfterAttemptReport.staleRecovery?.sameStalePayloadReappeared === false && recoveryTombstoneMismatchAfterAttemptReport.summary.finalTextLength === 9],
+          ["tombstone attempts exhaust without looping", recoveryAttemptsExhaustedReport.staleRecovery?.attemptsExhausted === true && recoveryAttemptsExhaustedReport.staleRecovery?.attemptCount === 3 && recoveryAttemptsExhaustedReport.summary.finalTextLength === 7],
+          ["recovery can arm again after expiration", recoveryRearmAfterExpiredReport.staleRecovery?.generationId >= 2 && recoveryRearmAfterExpiredReport.staleRecovery?.attempted === true && recoveryRearmAfterExpiredReport.staleRecovery?.succeeded === true && recoveryRearmAfterExpiredReport.summary.finalTextLength === 0],
+          ["early ordinary delete does not consume full-clear guard", recoveryEarlyDeleteThenFullClearReport.staleRecovery?.preClearOldLength === 9 && recoveryEarlyDeleteThenFullClearReport.staleRecovery?.attempted === true && recoveryEarlyDeleteThenFullClearReport.staleRecovery?.succeeded === true && recoveryEarlyDeleteThenFullClearReport.summary.finalTextLength === 0],
+          ["full-selection cut arms recovery", recoveryCutReport.staleRecovery?.fullClearIntentType === "selection_cut" && recoveryCutReport.staleRecovery?.preClearOldLength === 8 && recoveryCutReport.staleRecovery?.attempted === true && recoveryCutReport.staleRecovery?.succeeded === true],
+          ["stale clear recovery feature toggle disables recovery only", recoveryFeatureDisabledReport.runtime.micaEnabled === true && recoveryFeatureDisabledReport.staleRecovery?.enabled === false && recoveryFeatureDisabledReport.staleRecovery?.attempted === false && recoveryFeatureDisabledReport.summary.finalTextLength === 11],
+          ["mica disabled recovery does not start", recoveryDisabledReport.staleRecovery?.enabled === false && recoveryDisabledReport.staleRecovery?.attempted === false && recoveryDisabledReport.summary.finalTextLength === 12],
+          ["mica off diagnostics capture works", micaOffReport.runtime.micaEnabled === false && micaOffReport.events.length > 0],
+          ["mica off keeps runtime disabled", micaOffReport.runtime.nativeSafeMode === true && micaOffReport.runtime.documentMutationObserverActive === false && micaOffReport.runtime.composerLifecycleListenersAttached === false && micaOffReport.runtime.optimizedTurns === 0 && micaOffReport.staleRecovery?.enabled === false],
+          ["bounded events present", nativeLikeReport.session.eventLimit === 180 && nativeLikeReport.events.length <= 180],
+          ["session listeners stopped", samplerAfter && samplerAfter.samplerActive === false && samplerAfter.listenersActive === false],
+          ["report says no prompt text", nativeLikeReport.privacy.promptTextIncluded === false],
+          ["report says no answer text", nativeLikeReport.privacy.answerTextIncluded === false],
+          ["report says no raw DOM", nativeLikeReport.privacy.rawDomIncluded === false],
+          ["report excludes fixture draft text", !reportText.includes("stable ten") && !reportText.includes("stale draft one") && !reportText.includes("stale draft two") && !reportText.includes("manual send draft") && !reportText.includes("clearable draft") && !reportText.includes("single x") && !reportText.includes("delay old") && !reportText.includes("blur old") && !reportText.includes("focus old") && !reportText.includes("plain old") && !reportText.includes("other old") && !reportText.includes("vanish old") && !reportText.includes("old text") && !reportText.includes("native0x") && !reportText.includes("pretext8") && !reportText.includes("scopeold") && !reportText.includes("race old") && !reportText.includes("type old") && !reportText.includes("miss old") && !reportText.includes("different") && !reportText.includes("first gen") && !reportText.includes("next gen") && !reportText.includes("full old") && !reportText.includes("fresh input") && !reportText.includes("pending old") && !reportText.includes("new payload") && !reportText.includes("loop old") && !reportText.includes("oldloop8") && !reportText.includes("keep old") && !reportText.includes("same old") && !reportText.includes("other new") && !reportText.includes("max old") && !reportText.includes("first old") && !reportText.includes("second old") && !reportText.includes("early old") && !reportText.includes("cut text") && !reportText.includes("feature off") && !reportText.includes("disabled old") && !reportText.includes("off mode")]
         ].map(([name, passed]) => ({ name, passed: !!passed }));
 
         resultNode.textContent = JSON.stringify({
           passed: checks.every((check) => check.passed),
           checks,
+          caseSummaries: {
+            recoverySamePayload: summarizeCase(recoverySamePayloadReport),
+            recoverySettledPayload: summarizeCase(recoverySettledPayloadReport),
+            recoveryNewInput: summarizeCase(recoveryNewInputReport),
+            recoveryMismatch: summarizeCase(recoveryMismatchReport),
+            recoveryEmptyRemount: summarizeCase(recoveryEmptyRemountReport),
+            recoveryRepeatedRemount: summarizeCase(recoveryRepeatedRemountReport),
+            recoveryPersistentMultiRemount: summarizeCase(recoveryPersistentMultiRemountReport),
+            recoveryTombstoneCancelAfterAttempt: summarizeCase(recoveryTombstoneCancelAfterAttemptReport),
+            recoveryTombstoneMismatchAfterAttempt: summarizeCase(recoveryTombstoneMismatchAfterAttemptReport),
+            recoveryAttemptsExhausted: summarizeCase(recoveryAttemptsExhaustedReport),
+            recoverySingleBackspace: summarizeCase(recoverySingleBackspaceReport),
+            recoveryDelayedConfirmation: summarizeCase(recoveryDelayedConfirmationReport),
+            recoveryBlurConfirmation: summarizeCase(recoveryBlurConfirmationReport),
+            recoveryFocusoutConfirmation: summarizeCase(recoveryFocusoutConfirmationReport),
+            recoveryOrdinaryBlur: summarizeCase(recoveryOrdinaryBlurReport),
+            recoveryUnrelatedBlur: summarizeCase(recoveryUnrelatedBlurReport),
+            recoveryDirectUnmountNoConfirmation: summarizeCase(recoveryDirectUnmountNoConfirmationReport),
+            recoveryLateSettlingExpiryRace: summarizeCase(recoveryLateSettlingExpiryRaceReport),
+            recoveryNativeStayedEmpty: summarizeCase(recoveryNativeStayedEmptyReport),
+            recoveryGenerationScopedPreClear: summarizeCase(recoveryGenerationScopedPreClearReport),
+            recoverySettlingNewInput: summarizeCase(recoverySettlingNewInputReport),
+            recoveryMismatchTimeout: summarizeCase(recoveryMismatchTimeoutReport),
+            recoveryOldGenerationTimer: summarizeCase(recoveryOldGenerationTimerReport),
+            recoveryRearmAfterExpired: summarizeCase(recoveryRearmAfterExpiredReport),
+            recoveryEarlyDeleteThenFullClear: summarizeCase(recoveryEarlyDeleteThenFullClearReport),
+            recoveryPendingCancelledByInput: summarizeCase(recoveryPendingCancelledByInputReport),
+            recoveryCut: summarizeCase(recoveryCutReport),
+            recoveryFeatureDisabled: summarizeCase(recoveryFeatureDisabledReport),
+            recoveryDisabled: summarizeCase(recoveryDisabledReport),
+            micaOff: summarizeCase(micaOffReport)
+          },
           delayedReport,
-          churnReport,
-          guidedReport
+          guidedReport: nativeLikeReport,
+          cases: {
+            remountWithTextReport,
+            nativeLikeReport,
+            restoredAfterPresentZeroReport,
+            restoredAfterDeleteClearReport,
+            staleAfterUserTurnReport,
+            cleanDeleteReport,
+            recoverySingleBackspaceReport,
+            recoveryDelayedConfirmationReport,
+            recoveryBlurConfirmationReport,
+            recoveryFocusoutConfirmationReport,
+            recoveryOrdinaryBlurReport,
+            recoveryUnrelatedBlurReport,
+            recoveryDirectUnmountNoConfirmationReport,
+            recoverySamePayloadReport,
+            recoveryNativeStayedEmptyReport,
+            recoveryGenerationScopedPreClearReport,
+            recoveryLateSettlingExpiryRaceReport,
+            recoverySettlingNewInputReport,
+            recoveryMismatchTimeoutReport,
+            recoveryOldGenerationTimerReport,
+            recoverySettledPayloadReport,
+            recoveryNewInputReport,
+            recoveryPendingCancelledByInputReport,
+            recoveryMismatchReport,
+            recoveryEmptyRemountReport,
+            recoveryRepeatedRemountReport,
+            recoveryPersistentMultiRemountReport,
+            recoveryTombstoneCancelAfterAttemptReport,
+            recoveryTombstoneMismatchAfterAttemptReport,
+            recoveryAttemptsExhaustedReport,
+            recoveryRearmAfterExpiredReport,
+            recoveryEarlyDeleteThenFullClearReport,
+            recoveryCutReport,
+            recoveryFeatureDisabledReport,
+            recoveryDisabledReport,
+            micaOffReport
+          }
         }, null, 2);
+      }
+
+      function summarizeCase(report) {
+        return {
+          classification: report?.summary?.classification || null,
+          finalTextLength: report?.summary?.finalTextLength ?? null,
+          currentClearGeneration: report?.currentClearGeneration || null,
+          staleRecovery: report?.staleRecovery || null,
+          recoveryEvents: (report?.events || [])
+            .filter((event) => event.type.startsWith("stale_recovery_"))
+            .map((event) => ({
+              type: event.type,
+              oldLength: event.oldLength,
+              newLength: event.newLength,
+              fingerprintMatched: event.fingerprintMatched,
+              attemptCount: event.attemptCount,
+              reason: event.reason || null
+            }))
+        };
+      }
+
+      let captureCaseCounter = 0;
+
+      async function captureCase(action) {
+        const caseId = ++captureCaseCounter;
+        resultNode.textContent = `Running captureCase ${caseId}`;
+        unmountComposer();
+        await delay(60);
+        window.__MICA_TEST_CONTROLS__.startComposerGuidedDiagnostics();
+        try {
+          await delay(260);
+          await action();
+          await delay(260);
+          return window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport();
+        } catch (error) {
+          throw new Error(`captureCase ${caseId}: ${error?.message || String(error)}`);
+        } finally {
+          window.__MICA_TEST_CONTROLS__.stopComposerGuidedDiagnostics();
+          await delay(60);
+        }
       }
 
       function appendTurns(start, count) {
@@ -206,8 +790,39 @@
         return article;
       }
 
+      function mountComposer(text) {
+        unmountComposer();
+        const form = document.createElement("form");
+        form.className = "composer";
+        form.dataset.testid = "composer";
+        form.dataset.serial = String(++composerSerial);
+        form.setAttribute("aria-label", "Message composer");
+        form.innerHTML = `
+          <div id="editor" role="textbox" contenteditable="plaintext-only" aria-label="Message Mica"></div>
+          <button type="submit" data-testid="send-button" aria-label="Send message">Send</button>
+        `;
+        dock.appendChild(form);
+        composer = form;
+        editor = form.querySelector("[role='textbox']");
+        setEditorText(text);
+        editor.focus();
+      }
+
+      function unmountComposer() {
+        if (!composer) return;
+        composer.remove();
+        composer = null;
+        editor = null;
+      }
+
+      function setEditorText(value) {
+        if (!editor) return;
+        editor.textContent = value;
+      }
+
       function setMentionLikeComposer() {
-        replaceEditor();
+        if (!editor) return;
+        editor.textContent = "";
         const chip = document.createElement("span");
         chip.className = "mention-chip";
         chip.dataset.mention = "GitHub";
@@ -216,60 +831,130 @@
         editor.appendChild(chip);
       }
 
-      function remountComposer(text) {
-        const form = document.querySelector("[data-testid='composer']");
-        form.remove();
-        const next = document.createElement("form");
-        next.className = "composer";
-        next.dataset.testid = "composer";
-        next.setAttribute("aria-label", "Message composer");
-        next.innerHTML = `
-          <div id="editor" role="textbox" contenteditable="plaintext-only" aria-label="Message Mica"></div>
-          <button type="submit" data-testid="send-button" aria-label="Send message">Send</button>
-        `;
-        document.body.appendChild(next);
-        editor = next.querySelector("[role='textbox']");
-        setEditorText(text);
+      async function dispatchDeleteClear() {
+        editor.focus();
+        editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "deleteByCut", data: null }));
+        setEditorText("");
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteByCut", data: null }));
+        await delay(220);
       }
 
-      function replaceEditor() {
-        const next = document.createElement("div");
-        next.id = "editor";
-        next.setAttribute("role", "textbox");
-        next.setAttribute("contenteditable", "plaintext-only");
-        next.setAttribute("aria-label", "Message Mica");
-        editor.replaceWith(next);
-        editor = next;
+      async function dispatchSingleBackspace() {
+        editor.focus();
+        collapseSelectionAtEnd();
+        editor.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Backspace" }));
+        editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "deleteContentBackward", data: null }));
+        setEditorText((editor.textContent || "").slice(0, -1));
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteContentBackward", data: null }));
+        await delay(220);
       }
 
-      function setEditorText(value) {
-        editor.textContent = value;
+      async function dispatchFullClearDelete(key) {
+        editor.focus();
+        editor.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "a", ctrlKey: true }));
+        selectAllEditor();
+        editor.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key }));
+        const inputType = key === "Backspace" ? "deleteContentBackward" : "deleteContentForward";
+        editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType, data: null }));
+        setEditorText("");
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType, data: null }));
+        await delay(220);
       }
 
-      function readOverlay() {
-        const host = document.querySelector("[data-mica-root='true']");
-        const shadowPlacement = host?.shadowRoot?.getElementById("mica-overlay")?.dataset?.placement || null;
-        const debug = window.__MICA_OVERLAY_DEBUG__ || {};
-        return {
-          placement: debug.placement || shadowPlacement,
-          hostRect: debug.rect || toRect(host.getBoundingClientRect())
-        };
+      async function dispatchFullClearIntentOnly(key) {
+        editor.focus();
+        editor.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "a", ctrlKey: true }));
+        selectAllEditor();
+        editor.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key }));
+        const inputType = key === "Backspace" ? "deleteContentBackward" : "deleteContentForward";
+        editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType, data: null }));
       }
 
-      function waitForOverlay(predicate, timeout) {
-        let lastOverlay = null;
+      async function dispatchFullSelectionCut() {
+        editor.focus();
+        selectAllEditor();
+        editor.dispatchEvent(new ClipboardEvent("cut", { bubbles: true, cancelable: true }));
+        setEditorText("");
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteByCut", data: null }));
+        await delay(220);
+      }
+
+      function dispatchEditorBlur() {
+        editor.dispatchEvent(new FocusEvent("blur", { bubbles: false, cancelable: false }));
+      }
+
+      function dispatchEditorFocusout() {
+        editor.dispatchEvent(new FocusEvent("focusout", { bubbles: true, cancelable: false }));
+      }
+
+      function dispatchUnrelatedBlur() {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "other";
+        document.body.appendChild(button);
+        button.dispatchEvent(new FocusEvent("blur", { bubbles: false, cancelable: false }));
+        button.remove();
+      }
+
+      function selectAllEditor() {
+        const selection = getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(editor);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+
+      function collapseSelectionAtEnd() {
+        const selection = getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(editor);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+
+      async function dispatchUserInsert(value) {
+        editor.focus();
+        editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertText", data: "x" }));
+        setEditorText(value);
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "x" }));
+        await delay(220);
+      }
+
+      function getEditorLength() {
+        return (editor?.textContent ?? editor?.innerText ?? "").length;
+      }
+
+      function waitForEditorLength(length, timeout) {
+        return waitFor(() => editor && getEditorLength() === length, timeout, () => `editor length ${getEditorLength()}`);
+      }
+
+      function waitForRecoverySucceeded(timeout) {
         return waitFor(() => {
-          lastOverlay = readOverlay();
-          return predicate(lastOverlay) ? lastOverlay : null;
-        }, timeout, () => `last overlay ${JSON.stringify(lastOverlay)}`);
+          const state = window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState();
+          return state?.succeeded === true && editor && getEditorLength() === 0;
+        }, timeout, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()));
       }
 
-      function isBottomRight(rect) {
-        return Math.abs(window.innerWidth - rect.right - 12) <= 3 && Math.abs(window.innerHeight - rect.bottom - 12) <= 3;
+      function waitForFinalClearStable(timeout) {
+        return waitFor(() => {
+          const state = window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState();
+          return state?.finalClearStable === true && editor && getEditorLength() === 0;
+        }, timeout, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()));
       }
 
-      function toRect(rect) {
-        return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+      function waitForGuardAge(ageMs, timeout) {
+        return waitFor(() => {
+          const state = window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState();
+          return state?.armed === true && state?.clearAnchorElapsedMs >= ageMs;
+        }, timeout, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()));
+      }
+
+      function waitForClearConfirmed(timeout) {
+        return waitFor(() => {
+          const state = window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState();
+          return state?.clearConfirmed === true;
+        }, timeout, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()));
       }
 
       function waitFor(fn, timeout, describeTimeout) {
@@ -281,17 +966,15 @@
               if (value) {
                 clearInterval(timer);
                 resolve(value);
-                return;
+              } else if (Date.now() - started > timeout) {
+                clearInterval(timer);
+                reject(new Error(describeTimeout ? describeTimeout() : "Timed out"));
               }
-            } catch (_error) {
-              // Keep polling until timeout so late extension init can still pass.
-            }
-            if (Date.now() - started > timeout) {
+            } catch (error) {
               clearInterval(timer);
-              const detail = typeof describeTimeout === "function" ? `: ${describeTimeout()}` : "";
-              reject(new Error(`Timed out waiting for guided fixture condition${detail}`));
+              reject(error);
             }
-          }, 50);
+          }, 40);
         });
       }
 

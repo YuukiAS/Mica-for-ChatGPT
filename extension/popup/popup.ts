@@ -1,6 +1,7 @@
 const DEFAULT_SETTINGS = {
   enabled: true,
   showStatus: true,
+  staleClearRecovery: true,
   autoDismissKnownInterruptions: true,
   recentTurnKeepCount: 8
 };
@@ -21,6 +22,7 @@ const elements = {
   version: document.getElementById("version"),
   enabled: document.getElementById("enabled"),
   showStatus: document.getElementById("showStatus"),
+  staleClearRecovery: document.getElementById("staleClearRecovery"),
   autoDismissKnownInterruptions: document.getElementById("autoDismissKnownInterruptions"),
   recentTurnKeepCount: document.getElementById("recentTurnKeepCount"),
   startDiagnostics: document.getElementById("startDiagnostics"),
@@ -29,7 +31,6 @@ const elements = {
   resetDiagnostics: document.getElementById("resetDiagnostics"),
   diagnosticsStatus: document.getElementById("diagnosticsStatus"),
   runComposerCheck: document.getElementById("runComposerCheck"),
-  nextComposerCheck: document.getElementById("nextComposerCheck"),
   stopComposerCheck: document.getElementById("stopComposerCheck"),
   copyComposerReport: document.getElementById("copyComposerReport"),
   composerCheckStatus: document.getElementById("composerCheckStatus")
@@ -39,6 +40,7 @@ load();
 
 elements.enabled.addEventListener("change", save);
 elements.showStatus.addEventListener("change", save);
+elements.staleClearRecovery.addEventListener("change", save);
 elements.autoDismissKnownInterruptions.addEventListener("change", save);
 elements.recentTurnKeepCount.addEventListener("change", save);
 elements.startDiagnostics.addEventListener("click", () => diagnosticsAction("MICA_DIAGNOSTICS_START"));
@@ -46,7 +48,6 @@ elements.stopDiagnostics.addEventListener("click", () => diagnosticsAction("MICA
 elements.copyReport.addEventListener("click", copyReport);
 elements.resetDiagnostics.addEventListener("click", () => diagnosticsAction("MICA_DIAGNOSTICS_RESET"));
 elements.runComposerCheck.addEventListener("click", () => composerCheckAction("MICA_COMPOSER_GUIDED_START"));
-elements.nextComposerCheck.addEventListener("click", () => composerCheckAction("MICA_COMPOSER_GUIDED_NEXT"));
 elements.stopComposerCheck.addEventListener("click", () => composerCheckAction("MICA_COMPOSER_GUIDED_STOP"));
 elements.copyComposerReport.addEventListener("click", copyComposerReport);
 
@@ -56,6 +57,7 @@ async function load() {
   const settings = await getStorage(DEFAULT_SETTINGS);
   elements.enabled.checked = settings.enabled;
   elements.showStatus.checked = settings.showStatus;
+  elements.staleClearRecovery.checked = settings.staleClearRecovery;
   elements.autoDismissKnownInterruptions.checked = settings.autoDismissKnownInterruptions;
   elements.recentTurnKeepCount.value = String(settings.recentTurnKeepCount);
 
@@ -63,6 +65,7 @@ async function load() {
   if (response?.settings) {
     elements.enabled.checked = response.settings.enabled;
     elements.showStatus.checked = response.settings.showStatus;
+    elements.staleClearRecovery.checked = response.settings.staleClearRecovery;
     elements.autoDismissKnownInterruptions.checked = response.settings.autoDismissKnownInterruptions;
     elements.recentTurnKeepCount.value = String(response.settings.recentTurnKeepCount);
   }
@@ -73,6 +76,7 @@ async function save() {
   const next = {
     enabled: elements.enabled.checked,
     showStatus: elements.showStatus.checked,
+    staleClearRecovery: elements.staleClearRecovery.checked,
     autoDismissKnownInterruptions: elements.autoDismissKnownInterruptions.checked,
     recentTurnKeepCount: clamp(Number(elements.recentTurnKeepCount.value), 4, 20)
   };
@@ -186,7 +190,6 @@ function renderComposerCheck(composerGuided) {
   const running = !!composerGuided?.running;
   const available = composerGuided?.available !== false;
   elements.runComposerCheck.disabled = running || !available;
-  elements.nextComposerCheck.disabled = !running;
   elements.stopComposerCheck.disabled = !running;
   elements.copyComposerReport.disabled = !available || (!running && !composerGuided?.lastReport);
   if (!available) {
@@ -194,12 +197,12 @@ function renderComposerCheck(composerGuided) {
     return;
   }
   if (running) {
-    elements.composerCheckStatus.textContent = `Running · step ${(composerGuided.stepIndex || 0) + 1}/${composerGuided.stepCount || 4} · ${composerGuided.sampleCount || 0} samples`;
+    elements.composerCheckStatus.textContent = `Recording · ${composerGuided.sampleCount || 0} samples · ${composerGuided.eventCount || 0} events`;
     return;
   }
   const summary = composerGuided?.lastReport?.summary;
   elements.composerCheckStatus.textContent = summary
-    ? `Ready · max missing ${Math.round(summary.maxMissingDurationMs || 0)} ms · stale after send ${summary.staleTextAfterSend ? "yes" : "no"}`
+    ? `Captured · stale clear ${summary.staleTextRestoredAfterClear ? "yes" : "no"} · stale send ${summary.staleTextAfterUserTurn ? "yes" : "no"}`
     : "Idle";
 }
 

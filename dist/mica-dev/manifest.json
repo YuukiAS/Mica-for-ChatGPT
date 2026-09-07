@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Mica for ChatGPT",
   "short_name": "Mica",
-  "version": "0.1.4",
-  "version_name": "0.1.4",
+  "version": "0.1.5",
+  "version_name": "0.1.5",
   "description": "Local diagnostics and low-risk render fallback for long ChatGPT threads.",
   "icons": {
     "16": "icons/icon16.png",
@@ -38,6 +38,7 @@
       "js": [
         "known-interruptions.js",
         "composer-diagnostics.js",
+        "stale-composer-recovery.js",
         "content.js"
       ],
       "run_at": "document_idle"

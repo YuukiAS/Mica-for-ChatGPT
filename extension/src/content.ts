@@ -5,6 +5,7 @@
   const DEFAULT_SETTINGS = {
     enabled: true,
     showStatus: true,
+    staleClearRecovery: true,
     autoDismissKnownInterruptions: true,
     recentTurnKeepCount: 8,
     nativeOnlyTurnThreshold: 14,
@@ -169,6 +170,7 @@
     settings = { ...DEFAULT_SETTINGS, ...(await readSettings()) };
     setupBadge();
     setupComposerGuidedDiagnostics();
+    setupStaleComposerRecovery();
     setupObservers();
     setupMessages();
     setupFixtureTestHooks();
@@ -209,6 +211,7 @@
     const next = {};
     if (typeof value.enabled === "boolean") next.enabled = value.enabled;
     if (typeof value.showStatus === "boolean") next.showStatus = value.showStatus;
+    if (typeof value.staleClearRecovery === "boolean") next.staleClearRecovery = value.staleClearRecovery;
     if (typeof value.autoDismissKnownInterruptions === "boolean") next.autoDismissKnownInterruptions = value.autoDismissKnownInterruptions;
     if (Number.isFinite(value.recentTurnKeepCount)) next.recentTurnKeepCount = clamp(Math.round(value.recentTurnKeepCount), 4, 20);
     if (Number.isFinite(value.nativeOnlyTurnThreshold)) next.nativeOnlyTurnThreshold = clamp(Math.round(value.nativeOnlyTurnThreshold), 6, 40);
@@ -259,10 +262,23 @@
     setInterval(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
+        updateStaleComposerRecoveryEnabled();
+        if (!settings.enabled) {
+          clearOptimization();
+          enterNativeSafeMode("disabled");
+          setStatus(STATUS.DISABLED, "Disabled by user", []);
+          return;
+        }
         exitNativeSafeMode();
         clearOptimization();
         turnWindow.previousKeys = new Set();
         scheduleScan();
+        return;
+      }
+      if (!settings.enabled) {
+        clearOptimization();
+        enterNativeSafeMode("disabled");
+        setStatusIfChanged(STATUS.DISABLED, "Disabled by user", []);
         return;
       }
       if (runtimeState.nativeSafeMode) {
@@ -304,23 +320,31 @@
 
   function handleComposerSubmit(event) {
     if (isComposerEventTarget(event.target)) {
+      recordComposerDiagnosticRuntimeCallback("lifecycle_callback", { event: "submit" });
       composerState.submitEvents += 1;
       markComposerSendActivity();
     }
   }
 
   function handleComposerEditEvent(event) {
-    if (isComposerEventTarget(event.target)) markComposerEditActivity();
+    if (isComposerEventTarget(event.target)) {
+      recordComposerDiagnosticRuntimeCallback("lifecycle_callback", { event: event.type || "edit" });
+      markComposerEditActivity();
+    }
   }
 
   function handleComposerKeydown(event) {
-    if (isComposerEventTarget(event.target) && isEditingKey(event)) markComposerEditActivity();
+    if (isComposerEventTarget(event.target) && isEditingKey(event)) {
+      recordComposerDiagnosticRuntimeCallback("lifecycle_callback", { event: "keydown", key: event.key || "" });
+      markComposerEditActivity();
+    }
   }
 
   function handleComposerClick(event) {
     const target = event.target instanceof Element ? event.target : null;
     const button = target?.closest("button, [role='button']");
     if (button instanceof HTMLElement && isComposerEventTarget(button) && isLikelySendButton(button)) {
+      recordComposerDiagnosticRuntimeCallback("lifecycle_callback", { event: "send_click" });
       composerState.sendClickEvents += 1;
       markComposerSendActivity();
     }
@@ -337,9 +361,7 @@
         const next = sanitizeSettings(message.settings || {});
         settings = { ...settings, ...next };
         writeSettings(next).then(() => {
-          exitNativeSafeMode();
-          scheduleScan("settings");
-          processKnownInterruptions();
+          applySettingsChange();
           sendResponse({ status: currentStatus, settings, diagnostics: summarizeDiagnostics(), composerGuided: summarizeComposerGuidedDiagnostics() });
         });
         return true;
@@ -402,10 +424,22 @@
         }
       }
       settings = { ...settings, ...sanitizeSettings(next) };
-      exitNativeSafeMode();
-      scheduleScan("settings");
+      applySettingsChange();
       renderBadge();
     });
+  }
+
+  function applySettingsChange() {
+    updateStaleComposerRecoveryEnabled();
+    if (!settings.enabled) {
+      clearOptimization();
+      enterNativeSafeMode("disabled");
+      setStatus(STATUS.DISABLED, "Disabled by user", []);
+      return;
+    }
+    exitNativeSafeMode();
+    scheduleScan("settings");
+    processKnownInterruptions();
   }
 
   function setupComposerGuidedDiagnostics() {
@@ -435,12 +469,30 @@
           nativeSafeReason: runtimeState.nativeSafeReason,
           documentMutationObserverActive: runtimeState.documentMutationsObserved,
           composerLifecycleListenersAttached: runtimeState.composerLifecycleListenersAttached,
+          micaEnabled: settings.enabled,
           nativeSafeModeEntries: globalCounters.nativeSafeModeEntries
+        },
+        settings: {
+          enabled: settings.enabled,
+          staleClearRecovery: settings.staleClearRecovery
         }
       }),
+      getStaleRecoverySnapshot: () => getStaleComposerRecoveryState(),
       countMountedTurns: () => collectMountedTurnStatusProbe().length,
       countUserTurns: () => collectMountedTurnStatusProbe().filter((turn) => hasTurnRole(turn, "user")).length
     });
+  }
+
+  function setupStaleComposerRecovery() {
+    const api = globalThis.MicaStaleComposerRecovery;
+    if (!api || typeof api.configure !== "function") return;
+    api.configure({ enabled: settings.enabled && settings.staleClearRecovery });
+  }
+
+  function updateStaleComposerRecoveryEnabled() {
+    const api = globalThis.MicaStaleComposerRecovery;
+    if (!api || typeof api.setEnabled !== "function") return;
+    api.setEnabled(settings.enabled && settings.staleClearRecovery);
   }
 
   function startComposerGuidedDiagnostics() {
@@ -473,15 +525,34 @@
     return api?.getReport?.() || null;
   }
 
+  function recordComposerDiagnosticRuntimeCallback(name, details = {}) {
+    const api = globalThis.MicaComposerDiagnostics;
+    if (!api || typeof api.recordRuntimeCallback !== "function" || api.isActive?.() !== true) return;
+    try {
+      api.recordRuntimeCallback(name, {
+        ...details,
+        nativeSafeMode: runtimeState.nativeSafeMode,
+        documentMutationObserverActive: runtimeState.documentMutationsObserved,
+        composerLifecycleListenersAttached: runtimeState.composerLifecycleListenersAttached,
+        micaEnabled: settings.enabled,
+          optimizedTurns: currentStatus.optimizedTurns || 0
+      });
+    } catch (_error) {
+      // Diagnostics must never affect ChatGPT or Mica runtime behavior.
+    }
+  }
+
+  function getStaleComposerRecoveryState() {
+    return globalThis.MicaStaleComposerRecovery?.getState?.() || null;
+  }
+
   function setupFixtureTestHooks() {
     if (document.documentElement.dataset.micaFixture !== "true") return;
     globalThis.__MICA_TEST_CONTROLS__ = {
       setSettings(next) {
         settings = { ...settings, ...sanitizeSettings(next || {}) };
+        applySettingsChange();
         renderBadge();
-        exitNativeSafeMode();
-        scheduleScan("settings");
-        processKnownInterruptions();
       },
       getSettings() {
         return { ...settings };
@@ -510,6 +581,18 @@
       getComposerGuidedDiagnosticsState() {
         return globalThis.MicaComposerDiagnostics?.getDebugState?.() || null;
       },
+      getStaleComposerRecoveryState() {
+        return getStaleComposerRecoveryState();
+      },
+      resetStaleComposerRecoveryForTests() {
+        return globalThis.MicaStaleComposerRecovery?.resetForTests?.();
+      },
+      forceStaleComposerRecoveryTimeoutForTests(expectedPhase) {
+        return globalThis.MicaStaleComposerRecovery?.forceExpireForTests?.(expectedPhase);
+      },
+      completeStaleComposerRecoveryTombstoneForTests() {
+        return globalThis.MicaStaleComposerRecovery?.completeTombstoneForTests?.();
+      },
       refreshNativeSafeMountedStatus() {
         return refreshNativeSafeMountedStatus("fixture");
       }
@@ -532,6 +615,7 @@
   }
 
   function scanAndApply() {
+    recordComposerDiagnosticRuntimeCallback("scan");
     if (isComposerEditWindowActive()) {
       globalCounters.composerEditScansSkipped += 1;
       updateComposerTextLengthOnly();
@@ -815,6 +899,7 @@
   }
 
   function applyOptimization(turn) {
+    recordComposerDiagnosticRuntimeCallback("turn_optimization_update", { action: "apply" });
     if (isComposerProtectedElement(turn)) {
       globalCounters.composerProtectionSkips += 1;
       removeOptimization(turn);
@@ -830,6 +915,7 @@
   }
 
   function removeOptimization(turn) {
+    recordComposerDiagnosticRuntimeCallback("turn_optimization_update", { action: "remove" });
     const wasOptimized = optimizedTurns.has(turn);
     turn.classList.remove("mica-turn-optimized");
     delete turn.dataset.micaOptimized;
@@ -1153,6 +1239,7 @@
   }
 
   function setStatus(name, reason, turns, optimizedCount = 0, protectedCount = 0) {
+    recordComposerDiagnosticRuntimeCallback("status_update", { status: name, optimizedTurns: optimizedCount });
     const mountedCount = turns.length;
     const previousName = currentStatus.name;
     currentStatus = {
@@ -1236,6 +1323,8 @@
   }
 
   function processKnownInterruptions() {
+    if (!settings.enabled) return;
+    recordComposerDiagnosticRuntimeCallback("known_interruption_check");
     const api = globalThis.MicaKnownInterruptions;
     if (!api || typeof api.scan !== "function") return;
     api.scan({
@@ -1427,10 +1516,12 @@
         nativeSafeReason: runtimeState.nativeSafeReason,
         documentMutationObserverActive: runtimeState.documentMutationsObserved,
         composerLifecycleListenersAttached: runtimeState.composerLifecycleListenersAttached,
+        micaEnabled: settings.enabled,
         nativeSafeModeEntries: current.nativeSafeModeEntries,
         nativeSafeMountedStatusProbes: current.nativeSafeMountedStatusProbes,
         nativeSafeMountedStatusUpdates: current.nativeSafeMountedStatusUpdates
       },
+      staleRecovery: getStaleComposerRecoveryState(),
       diagnostics: {
         running: diagnostics.running,
         startedAt: diagnostics.startedAt ? new Date(diagnostics.startedAt).toISOString() : null,

@@ -33,6 +33,14 @@
 
       <label class="row row-with-detail">
         <span>
+          <strong>Stale clear recovery</strong>
+          <small>Keep explicitly cleared composer text cleared after native remounts.</small>
+        </span>
+        <input id="staleClearRecovery" type="checkbox" checked>
+      </label>
+
+      <label class="row row-with-detail">
+        <span>
           <strong>Auto-dismiss known interruptions</strong>
           <small>Dismiss safe, known ChatGPT notices automatically.</small>
         </span>
@@ -59,7 +67,6 @@
         <div class="section-title">Composer check</div>
         <div class="button-grid">
           <button id="runComposerCheck" type="button">Run composer check</button>
-          <button id="nextComposerCheck" type="button">Next step</button>
           <button id="stopComposerCheck" type="button">Stop check</button>
           <button id="copyComposerReport" type="button">Copy report</button>
         </div>

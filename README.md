@@ -53,7 +53,7 @@ Chrome / Edge 手动安装：
 - `Degraded`：疑似 conversation 页面，但 Mica 无法安全识别 mounted turn 结构，已停止优化并保持原生页面。
 - `Disabled`：用户在 popup 或页面状态条中关闭了 Mica。
 
-当前本地运行版本是 `0.1.4`，`BUILD_LABEL` 是 `composer-guided-diagnostics.1`。页面上的常驻状态入口默认只是 viewport 右下角的小圆点，不再默认显示右上角文字 pill，也不会因初始化或状态变化自动展开。用户点击小圆点后，状态文字会从同一个底部锚点临时展开，约 2–3 秒后自动收回为小圆点；状态与 toast 都使用静态 viewport 布局，不读取 composer geometry 来避让输入框。
+当前本地运行版本是 `0.1.5`，`BUILD_LABEL` 是 `stale-composer-recovery.6`。页面上的常驻状态入口默认只是 viewport 右下角的小圆点，不再默认显示右上角文字 pill，也不会因初始化或状态变化自动展开。用户点击小圆点后，状态文字会从同一个底部锚点临时展开，约 2–3 秒后自动收回为小圆点；状态与 toast 都使用静态 viewport 布局，不读取 composer geometry 来避让输入框。
 
 最短诊断路径：
 
@@ -70,13 +70,9 @@ popup 可切换启用状态、状态条显示、保留原生渲染的最近 turn
 - `Copy report`
 - `Reset`
 
-popup 还提供 `Run composer check`，用于替代手工 Console probe。启动后页面右上角会出现引导卡，用户按提示手动完成三步：
+popup 还提供 `Run composer check`，用于替代手工 Console probe。启动后页面右上角会出现一个很小的 recording 卡片，用户只需手动复现一个短动作，然后用 `Copy report` 复制 privacy-safe report。
 
-1. 在输入框输入 `abc test`，然后 Ctrl+A -> Delete，不发送。
-2. 输入 `@GitHub`，从 ChatGPT 候选中手动选择 GitHub，然后 Ctrl+A -> Delete，不发送。
-3. 输入一条很短的测试消息，并由用户自己点击发送。
-
-Mica 只记录 composer 是否存在、文本长度、DOM identity、mounted turn/user turn 数等结构证据；不记录 prompt/answer 原文，不点击 connector，不自动发送，不 retry/reload/regenerate，不读取请求 body/header/token。完成后用 `Copy report` 复制 privacy-safe report。
+Mica 只在 check session active 时记录 composer 是否存在、文本长度、DOM identity、focus、mention signal、mounted turn/user turn 数、bounded lifecycle events 和关键 Mica runtime callback 时间；不记录 prompt/answer 原文，不点击 connector，不自动发送，不 retry/reload/regenerate，不读取请求 body/header/token。
 
 diagnostics report 只统计 mounted turn 数、DOM node 数、mutation/long task/frame stall/heap/complexity、overlay placement 和已知提示 dismiss count 等指标，不复制聊天正文或附件内容，不上传 telemetry。
 
@@ -86,7 +82,7 @@ Reliability 仅处理显式 allowlist 中的纯 acknowledgement 提示。当前 
 
 - 默认不修改 ChatGPT 私有 API response，也不阻止 network request。
 - 不删除 React 管理的消息节点；这一版只用 `content-visibility:auto`、containment 和 intrinsic-size 降低离屏历史 turn 的渲染成本。
-- 真实登录态 Edge 已确认当前 ChatGPT 已经原生 virtualize conversation；Mica 的 containment 现在只是低风险 fallback，`0.1.4` 主要用于真实长 thread runtime diagnostics、native-safe 状态修正、guided composer diagnostics，并保留低干扰 overlay 与严格 allowlist 的已知提示自动 dismiss。
+- 真实登录态 Edge 已确认当前 ChatGPT 已经原生 virtualize conversation；Mica 的 containment 现在只是低风险 fallback，`0.1.5` 主要用于真实长 thread runtime diagnostics、native-safe 状态修正、bounded composer capture diagnostics、stale composer clear recovery，并保留低干扰 overlay 与严格 allowlist 的已知提示自动 dismiss。
 - 工具卡片、文件/授权类 UI、正在编辑的内容、viewport 附近内容和最近 turn 会保持原生渲染。
 - Codex 当前只能访问未登录 ChatGPT 首页，不能在本机完成真实 authenticated long thread 回归；真实验收需要在目标 Chrome / Edge / MacBook Neo 上完成。
 - 旧 LightSession 失效调查见 [`docs/investigations/2026-09-01-lightsession-current-chatgpt.md`](docs/investigations/2026-09-01-lightsession-current-chatgpt.md)。

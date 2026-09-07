@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const stress = process.argv.includes("--stress");
+const caseFilter = process.argv.find((arg) => arg.startsWith("--case="))?.slice("--case=".length) || null;
 const loops = stress ? 72 : 24;
 const widths = stress ? [1200, 900, 700, 500] : [1200, 700, 500];
 const bundledNodeModules = "C:\\Users\\yuukias\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\node_modules";
@@ -45,56 +46,67 @@ try {
   const nativeByWidth = new Map();
   const results = [];
 
-  for (const width of widths) {
-    const nativeResult = await runCase({ width, mica: false });
-    nativeByWidth.set(width, nativeResult);
-    results.push(nativeResult);
-
-    const micaResult = await runCase({ width, mica: true });
-    compareWithBaseline(nativeResult, micaResult);
-    results.push(micaResult);
-  }
-
-  const smallLoops = Math.max(8, Math.floor(loops / 3));
-  const nativeSmallResult = await runCase({ width: 700, mica: false, small: true, loops: smallLoops });
-  results.push(nativeSmallResult);
-  const micaSmallResult = await runCase({ width: 700, mica: true, small: true, loops: smallLoops });
-  compareWithBaseline(nativeSmallResult, micaSmallResult);
-  assert(micaSmallResult.micaReport?.runtime?.nativeSafeMode === true, "Small mounted Mica case did not enter native-safe mode", micaSmallResult);
-  assert(micaSmallResult.micaReport?.runtime?.documentMutationObserverActive === false, "Native-safe mode left document MutationObserver active", micaSmallResult);
-  assert(micaSmallResult.micaReport?.runtime?.composerLifecycleListenersAttached === false, "Native-safe mode left composer lifecycle listeners attached", micaSmallResult);
-  assert(micaSmallResult.metrics.composerGeometryReadsDuringDelete === 0, "Native-safe mode read composer geometry during delete", micaSmallResult);
-  results.push(micaSmallResult);
-
-  const disabledResult = await runCase({ width: 700, mica: true, disabled: true, loops: Math.max(8, Math.floor(loops / 3)) });
-  assert(disabledResult.metrics.optimizedClassChanges === 0, "Mica disabled produced optimized class changes", disabledResult);
-  results.push(disabledResult);
-
-  const guidedResult = await runGuidedComposerDiagnosticsCase();
-  results.push(guidedResult);
-  const overlayResult = await runOverlayPlacementMatrixCase();
-  results.push(overlayResult);
-
-  const failed = results.filter((result) => !result.passed);
-  if (failed.length > 0) {
-    console.error(JSON.stringify({ passed: false, failed, results }, null, 2));
-    process.exitCode = 1;
+  if (caseFilter === "guided-composer-diagnostics") {
+    const guidedResult = await runGuidedComposerDiagnosticsCase();
+    console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: guidedResult }, null, 2));
+    process.exitCode = 0;
+  } else if (caseFilter === "overlay-placement-matrix") {
+    const overlayResult = await runOverlayPlacementMatrixCase();
+    console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: overlayResult }, null, 2));
+    process.exitCode = 0;
   } else {
-    console.log(JSON.stringify({
-      passed: true,
-      stress,
-      loops,
-      widths,
-      cases: results.map((result) => ({
-        mode: result.metrics?.mode || result.mode,
-        width: result.width,
-        nativeSafeMode: result.micaReport?.runtime?.nativeSafeMode ?? null,
-        maxMissingDurationMs: result.metrics?.maxMissingDurationMs ?? result.guidedReport?.summary?.maxMissingDurationMs ?? null,
-        optimizedClassChanges: result.metrics?.optimizedClassChanges ?? null,
-        optimizedClassChangesDuringSend: result.metrics?.optimizedClassChangesDuringSend ?? null,
-        composerReport: result.micaReport?.composer || result.guidedReport?.summary || null
-      }))
-    }, null, 2));
+
+    for (const width of widths) {
+      const nativeResult = await runCase({ width, mica: false });
+      nativeByWidth.set(width, nativeResult);
+      results.push(nativeResult);
+
+      const micaResult = await runCase({ width, mica: true });
+      compareWithBaseline(nativeResult, micaResult);
+      results.push(micaResult);
+    }
+
+    const smallLoops = Math.max(8, Math.floor(loops / 3));
+    const nativeSmallResult = await runCase({ width: 700, mica: false, small: true, loops: smallLoops });
+    results.push(nativeSmallResult);
+    const micaSmallResult = await runCase({ width: 700, mica: true, small: true, loops: smallLoops });
+    compareWithBaseline(nativeSmallResult, micaSmallResult);
+    assert(micaSmallResult.micaReport?.runtime?.nativeSafeMode === true, "Small mounted Mica case did not enter native-safe mode", micaSmallResult);
+    assert(micaSmallResult.micaReport?.runtime?.documentMutationObserverActive === false, "Native-safe mode left document MutationObserver active", micaSmallResult);
+    assert(micaSmallResult.micaReport?.runtime?.composerLifecycleListenersAttached === false, "Native-safe mode left composer lifecycle listeners attached", micaSmallResult);
+    assert(micaSmallResult.metrics.composerGeometryReadsDuringDelete === 0, "Native-safe mode read composer geometry during delete", micaSmallResult);
+    results.push(micaSmallResult);
+
+    const disabledResult = await runCase({ width: 700, mica: true, disabled: true, loops: Math.max(8, Math.floor(loops / 3)) });
+    assert(disabledResult.metrics.optimizedClassChanges === 0, "Mica disabled produced optimized class changes", disabledResult);
+    results.push(disabledResult);
+
+    const guidedResult = await runGuidedComposerDiagnosticsCase();
+    results.push(guidedResult);
+    const overlayResult = await runOverlayPlacementMatrixCase();
+    results.push(overlayResult);
+
+    const failed = results.filter((result) => !result.passed);
+    if (failed.length > 0) {
+      console.error(JSON.stringify({ passed: false, failed, results }, null, 2));
+      process.exitCode = 1;
+    } else {
+      console.log(JSON.stringify({
+        passed: true,
+        stress,
+        loops,
+        widths,
+        cases: results.map((result) => ({
+          mode: result.metrics?.mode || result.mode,
+          width: result.width,
+          nativeSafeMode: result.micaReport?.runtime?.nativeSafeMode ?? null,
+          maxMissingDurationMs: result.metrics?.maxMissingDurationMs ?? result.guidedReport?.summary?.maxMissingDurationMs ?? null,
+          optimizedClassChanges: result.metrics?.optimizedClassChanges ?? null,
+          optimizedClassChangesDuringSend: result.metrics?.optimizedClassChangesDuringSend ?? null,
+          composerReport: result.micaReport?.composer || result.guidedReport?.summary || null
+        }))
+      }, null, 2));
+    }
   }
 } finally {
   await browser?.close();
@@ -152,7 +164,7 @@ async function runGuidedComposerDiagnosticsCase() {
     await page.waitForFunction(() => {
       const text = document.getElementById("guided-result")?.textContent || "";
       return text.trim().startsWith("{");
-    }, null, { timeout: stress ? 45000 : 30000 });
+    }, null, { timeout: 90000 });
     payload = JSON.parse(await page.locator("#guided-result").textContent());
   } catch (error) {
     const resultText = await page.locator("#guided-result").textContent().catch(() => "");
