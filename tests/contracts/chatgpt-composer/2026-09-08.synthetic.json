@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "contractId": "chatgpt-composer.synthetic.2026-09-08",
+  "source": "synthetic-fixture-seed",
+  "capturedAt": "2026-09-08T00:00:00.000Z",
+  "privacy": {
+    "promptTextIncluded": false,
+    "conversationTextIncluded": false,
+    "answerTextIncluded": false,
+    "requestDataIncluded": false,
+    "rawDomIncluded": false,
+    "authDataIncluded": false
+  },
+  "page": {
+    "host": "chatgpt.com",
+    "pathKind": "conversation"
+  },
+  "composer": {
+    "editable": {
+      "tag": "div",
+      "role": "textbox",
+      "contenteditable": "plaintext-only",
+      "ariaLabelPresent": true
+    },
+    "root": {
+      "tag": "form",
+      "role": null,
+      "testId": "composer",
+      "ariaLabelPresent": true
+    },
+    "surface": {
+      "tag": "div",
+      "role": null,
+      "data": {
+        "composerSurface": "true"
+      }
+    },
+    "relationship": {
+      "editableInsideRoot": true,
+      "editableInsideSurface": true,
+      "rootInsideSurface": false
+    },
+    "rects": {
+      "surface": {
+        "x": 40,
+        "y": 748,
+        "width": 820,
+        "height": 56
+      },
+      "editable": {
+        "x": 94,
+        "y": 758,
+        "width": 510,
+        "height": 36
+      }
+    },
+    "connectorSignals": {
+      "selectors": [
+        "[data-inline-selection-pill][data-symbol='ecosystemMention'][data-id^='plugin:']",
+        "[data-system-hint-type^='plugin:']"
+      ]
+    }
+  },
+  "nodes": [
+    {
+      "depth": 0,
+      "tag": "div",
+      "role": null,
+      "data": {
+        "composerSurface": "true"
+      },
+      "style": {
+        "display": "grid",
+        "boxSizing": "border-box",
+        "overflow": "clip",
+        "borderRadius": "28px",
+        "minHeight": "52px"
+      },
+      "childElementCount": 1
+    },
+    {
+      "depth": 1,
+      "tag": "div",
+      "role": null,
+      "data": {
+        "composerBody": "true"
+      },
+      "style": {
+        "display": "grid"
+      },
+      "childElementCount": 3
+    },
+    {
+      "depth": 2,
+      "tag": "button",
+      "role": null,
+      "testId": "composer-plus-btn",
+      "ariaLabelPresent": true,
+      "childElementCount": 0
+    },
+    {
+      "depth": 2,
+      "tag": "div",
+      "role": "textbox",
+      "contenteditable": "plaintext-only",
+      "ariaLabelPresent": true,
+      "childElementCount": 0
+    },
+    {
+      "depth": 2,
+      "tag": "button",
+      "role": null,
+      "testId": "send-button",
+      "ariaLabelPresent": true,
+      "childElementCount": 0
+    }
+  ],
+  "mica": {
+    "runtimeStateIncluded": true
+  }
+}

@@ -1,6 +1,6 @@
-export const MACHINE_VERSION = "0.1.7";
-export const VERSION_NAME = "0.1.7";
-export const BUILD_LABEL = "typing-hotpath-fix.1";
+export const MACHINE_VERSION = "0.2.0";
+export const VERSION_NAME = "0.2.0";
+export const BUILD_LABEL = "v020-convergence.rc1";
 export const RELEASE_TAG = `v${VERSION_NAME}`;
 export const DEV_DIST_DIR_NAME = "mica-dev";
 export const RELEASE_BASENAME = `mica-for-chatgpt-v${VERSION_NAME}`;
@@ -13,6 +13,7 @@ export const REQUIRED_EXTENSION_FILES = [
   "stale-composer-recovery.js",
   "connector-continuity.js",
   "send-residual-recovery.js",
+  "markdown-copy.js",
   "content.js",
   "popup/index.html",
   "popup/popup.css",

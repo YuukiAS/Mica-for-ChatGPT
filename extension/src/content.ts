@@ -9,6 +9,7 @@
     staleClearRecovery: true,
     sendResidualRecovery: true,
     connectorContinuity: true,
+    micaMarkdownCopy: true,
     autoDismissKnownInterruptions: true,
     recentTurnKeepCount: 8,
     nativeOnlyTurnThreshold: 14,
@@ -84,7 +85,12 @@
     overlayStaticPlacements: 0,
     nativeSafeModeEntries: 0,
     nativeSafeMountedStatusProbes: 0,
-    nativeSafeMountedStatusUpdates: 0
+    nativeSafeMountedStatusUpdates: 0,
+    fullTurnScans: 0,
+    markdownCopySyncs: 0,
+    idleIntervalTicks: 0,
+    throttledNativeSafeTicks: 0,
+    knownInterruptionScans: 0
   };
   const composerState = {
     currentElement: null,
@@ -149,6 +155,12 @@
     documentMutationsObserved: false,
     composerLifecycleListenersAttached: false
   };
+  const idleBudget = {
+    lastNativeSafeProbeAt: 0,
+    lastKnownInterruptionScanAt: 0,
+    nativeSafeProbeIntervalMs: 6000,
+    knownInterruptionIntervalMs: 6000
+  };
   const overlayState = {
     expanded: false,
     expandedByUser: false,
@@ -177,6 +189,7 @@
     setupStaleComposerRecovery();
     setupConnectorContinuity();
     setupSendResidualRecovery();
+    setupMarkdownCopy();
     setupObservers();
     setupMessages();
     setupFixtureTestHooks();
@@ -221,6 +234,7 @@
     if (typeof value.staleClearRecovery === "boolean") next.staleClearRecovery = value.staleClearRecovery;
     if (typeof value.sendResidualRecovery === "boolean") next.sendResidualRecovery = value.sendResidualRecovery;
     if (typeof value.connectorContinuity === "boolean") next.connectorContinuity = value.connectorContinuity;
+    if (typeof value.micaMarkdownCopy === "boolean") next.micaMarkdownCopy = value.micaMarkdownCopy;
     if (typeof value.autoDismissKnownInterruptions === "boolean") next.autoDismissKnownInterruptions = value.autoDismissKnownInterruptions;
     if (Number.isFinite(value.recentTurnKeepCount)) next.recentTurnKeepCount = clamp(Math.round(value.recentTurnKeepCount), 4, 20);
     if (Number.isFinite(value.nativeOnlyTurnThreshold)) next.nativeOnlyTurnThreshold = clamp(Math.round(value.nativeOnlyTurnThreshold), 6, 40);
@@ -305,8 +319,7 @@
         return;
       }
       if (runtimeState.nativeSafeMode) {
-        processKnownInterruptions();
-        refreshNativeSafeMountedStatus("interval");
+        handleNativeSafeIdleTick();
         return;
       }
       if (!isComposerLifecycleUnstable()) {
@@ -435,6 +448,10 @@
         sendResponse({ status: currentStatus, composerGuided: resetComposerGuidedDiagnostics() });
         return true;
       }
+      if (message.type === "MICA_PREPARE_FINAL_SEND_CHECK") {
+        sendResponse({ status: currentStatus, composerGuided: summarizeComposerGuidedDiagnostics(), oneShot: prepareFinalSendCheck() });
+        return true;
+      }
       return false;
     });
 
@@ -503,14 +520,23 @@
           longThreadOptimizationEnabled: settings.enabled && settings.longThreadOptimization,
           connectorContinuityEnabled: settings.enabled && settings.connectorContinuity,
           sendResidualRecoveryEnabled: settings.enabled && settings.sendResidualRecovery,
-          nativeSafeModeEntries: globalCounters.nativeSafeModeEntries
+          micaMarkdownCopyEnabled: settings.enabled && settings.micaMarkdownCopy,
+          nativeSafeModeEntries: globalCounters.nativeSafeModeEntries,
+          nativeSafeMountedStatusProbes: globalCounters.nativeSafeMountedStatusProbes,
+          nativeSafeMountedStatusUpdates: globalCounters.nativeSafeMountedStatusUpdates,
+          fullTurnScans: globalCounters.fullTurnScans,
+          markdownCopySyncs: globalCounters.markdownCopySyncs,
+          idleIntervalTicks: globalCounters.idleIntervalTicks,
+          throttledNativeSafeTicks: globalCounters.throttledNativeSafeTicks,
+          knownInterruptionScans: globalCounters.knownInterruptionScans
         },
         settings: {
           enabled: settings.enabled,
           longThreadOptimization: settings.longThreadOptimization,
           staleClearRecovery: settings.staleClearRecovery,
           sendResidualRecovery: settings.sendResidualRecovery,
-          connectorContinuity: settings.connectorContinuity
+          connectorContinuity: settings.connectorContinuity,
+          micaMarkdownCopy: settings.micaMarkdownCopy
         }
       }),
       getStaleRecoverySnapshot: () => getStaleComposerRecoveryState(),
@@ -552,11 +578,18 @@
     });
   }
 
+  function setupMarkdownCopy() {
+    const api = globalThis.MicaMarkdownCopy;
+    if (!api || typeof api.configure !== "function") return;
+    api.configure({ enabled: settings.enabled && settings.micaMarkdownCopy });
+  }
+
   function updateFeatureModulesEnabled() {
     updateConnectorLifecycleSignalEnabled();
     updateStaleComposerRecoveryEnabled();
     updateConnectorContinuityEnabled();
     updateSendResidualRecoveryEnabled();
+    updateMarkdownCopyEnabled();
   }
 
   function updateConnectorLifecycleSignalEnabled() {
@@ -583,9 +616,17 @@
     api.setEnabled(settings.enabled && settings.sendResidualRecovery);
   }
 
+  function updateMarkdownCopyEnabled() {
+    const api = globalThis.MicaMarkdownCopy;
+    if (!api || typeof api.setEnabled !== "function") return;
+    api.setEnabled(settings.enabled && settings.micaMarkdownCopy);
+  }
+
   function startComposerGuidedDiagnostics() {
     const api = globalThis.MicaComposerDiagnostics;
-    return api?.start?.() || { available: false, running: false };
+    const result = api?.start?.() || { available: false, running: false };
+    renderBadge();
+    return result;
   }
 
   function nextComposerGuidedDiagnosticsStep() {
@@ -595,12 +636,16 @@
 
   function stopComposerGuidedDiagnostics() {
     const api = globalThis.MicaComposerDiagnostics;
-    return api?.stop?.() || { available: false, running: false };
+    const result = api?.stop?.() || { available: false, running: false };
+    renderBadge();
+    return result;
   }
 
   function resetComposerGuidedDiagnostics() {
     const api = globalThis.MicaComposerDiagnostics;
-    return api?.reset?.() || { available: false, running: false };
+    const result = api?.reset?.() || { available: false, running: false };
+    renderBadge();
+    return result;
   }
 
   function summarizeComposerGuidedDiagnostics() {
@@ -716,8 +761,30 @@
       },
       refreshNativeSafeMountedStatus() {
         return refreshNativeSafeMountedStatus("fixture");
+      },
+      prepareFinalSendCheck() {
+        return prepareFinalSendCheck();
+      },
+      serializeFirstAssistantTurnForTests() {
+        const turn = collectMountedTurnStatusProbe().find((node) => hasTurnRole(node, "assistant"));
+        return globalThis.MicaMarkdownCopy?.serializeTurn?.(turn) || "";
       }
     };
+  }
+
+  function handleNativeSafeIdleTick() {
+    const now = Date.now();
+    globalCounters.idleIntervalTicks += 1;
+    if (diagnostics.running || now - idleBudget.lastKnownInterruptionScanAt >= idleBudget.knownInterruptionIntervalMs) {
+      idleBudget.lastKnownInterruptionScanAt = now;
+      processKnownInterruptions();
+    }
+    if (diagnostics.running || now - idleBudget.lastNativeSafeProbeAt >= idleBudget.nativeSafeProbeIntervalMs) {
+      idleBudget.lastNativeSafeProbeAt = now;
+      refreshNativeSafeMountedStatus("interval-throttled");
+      return;
+    }
+    globalCounters.throttledNativeSafeTicks += 1;
   }
 
   function scheduleScan(reason = "auto") {
@@ -750,6 +817,7 @@
       return;
     }
     recordComposerDiagnosticRuntimeCallback("scan");
+    globalCounters.fullTurnScans += 1;
     if (isComposerEditWindowActive()) {
       globalCounters.composerEditScansSkipped += 1;
       updateComposerTextLengthOnly();
@@ -764,6 +832,7 @@
     }
 
     const turns = collectConversationTurns();
+    syncMarkdownCopy(turns);
     updateTurnWindowStats(turns);
     if (turns.length === 0) {
       clearOptimization();
@@ -899,6 +968,17 @@
       if (a === b) return 0;
       return a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
     });
+  }
+
+  function syncMarkdownCopy(turns) {
+    const api = globalThis.MicaMarkdownCopy;
+    if (!api || typeof api.sync !== "function" || !settings.enabled || !settings.micaMarkdownCopy) return;
+    globalCounters.markdownCopySyncs += 1;
+    try {
+      api.sync(turns);
+    } catch (_error) {
+      // Copy is an enhancement; failure leaves ChatGPT's native UI untouched.
+    }
   }
 
   function refreshNativeSafeMountedStatus(reason) {
@@ -1165,6 +1245,54 @@
     if (!element) return 0;
     if (element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement) return element.value.length;
     return (element.innerText || element.textContent || "").length;
+  }
+
+  function prepareFinalSendCheck() {
+    const area = findComposerProtectionArea();
+    const editable = area?.element;
+    if (!(editable instanceof HTMLElement)) {
+      return { prepared: false, reason: "COMPOSER_NOT_FOUND", composerTextModified: false };
+    }
+    if (getComposerTextLength(editable) > 0) {
+      const guided = startComposerGuidedDiagnostics();
+      return { prepared: false, reason: "COMPOSER_NOT_EMPTY", composerTextModified: false, diagnostics: guided };
+    }
+    const prompt = getFinalAcceptancePrompt();
+    const guided = startComposerGuidedDiagnostics();
+    setComposerText(editable, prompt);
+    return {
+      prepared: true,
+      reason: "Ready — send manually when you choose",
+      composerTextModified: true,
+      promptLength: prompt.length,
+      diagnostics: guided
+    };
+  }
+
+  function getFinalAcceptancePrompt() {
+    return [
+      "Please reply with a compact Markdown test answer containing exactly:",
+      "1. one heading;",
+      "2. one bullet list item;",
+      "3. one short prose sentence with inline math $a^2+b^2=c^2$;",
+      "4. one display equation for the quadratic formula;",
+      "5. one fenced JavaScript code block;",
+      "6. one two-column Markdown table.",
+      "Keep it harmless and do not use any private context."
+    ].join("\n");
+  }
+
+  function setComposerText(editable, text) {
+    if (editable instanceof HTMLTextAreaElement || editable instanceof HTMLInputElement) {
+      editable.value = text;
+    } else {
+      editable.textContent = text;
+    }
+    try {
+      editable.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+    } catch (_error) {
+      editable.dispatchEvent(new Event("input", { bubbles: true }));
+    }
   }
 
   function isComposerProtectedElement(element) {
@@ -1466,6 +1594,7 @@
   function processKnownInterruptions() {
     if (!settings.enabled) return;
     recordComposerDiagnosticRuntimeCallback("known_interruption_check");
+    globalCounters.knownInterruptionScans += 1;
     const api = globalThis.MicaKnownInterruptions;
     if (!api || typeof api.scan !== "function") return;
     api.scan({
@@ -1595,6 +1724,11 @@
       nativeSafeModeEntries: globalCounters.nativeSafeModeEntries,
       nativeSafeMountedStatusProbes: globalCounters.nativeSafeMountedStatusProbes,
       nativeSafeMountedStatusUpdates: globalCounters.nativeSafeMountedStatusUpdates,
+      fullTurnScans: globalCounters.fullTurnScans,
+      markdownCopySyncs: globalCounters.markdownCopySyncs,
+      idleIntervalTicks: globalCounters.idleIntervalTicks,
+      throttledNativeSafeTicks: globalCounters.throttledNativeSafeTicks,
+      knownInterruptionScans: globalCounters.knownInterruptionScans,
       composer: snapshotComposerState(),
       domNodes: countDomNodes()
     };
@@ -1661,9 +1795,15 @@
         longThreadOptimizationEnabled: settings.enabled && settings.longThreadOptimization,
         connectorContinuityEnabled: settings.enabled && settings.connectorContinuity,
         sendResidualRecoveryEnabled: settings.enabled && settings.sendResidualRecovery,
+        micaMarkdownCopyEnabled: settings.enabled && settings.micaMarkdownCopy,
         nativeSafeModeEntries: current.nativeSafeModeEntries,
         nativeSafeMountedStatusProbes: current.nativeSafeMountedStatusProbes,
-        nativeSafeMountedStatusUpdates: current.nativeSafeMountedStatusUpdates
+        nativeSafeMountedStatusUpdates: current.nativeSafeMountedStatusUpdates,
+        fullTurnScans: current.fullTurnScans,
+        markdownCopySyncs: current.markdownCopySyncs,
+        idleIntervalTicks: current.idleIntervalTicks,
+        throttledNativeSafeTicks: current.throttledNativeSafeTicks,
+        knownInterruptionScans: current.knownInterruptionScans
       },
       staleRecovery: getStaleComposerRecoveryState(),
       diagnostics: {
@@ -1884,6 +2024,7 @@
   function renderBadge() {
     if (!badgeRoot) return;
     const statusVisible = !!settings.showStatus;
+    const recording = globalThis.MicaComposerDiagnostics?.isActive?.() === true;
     const expanded = statusVisible && shouldShowExpandedStatus();
     const toastVisible = overlayState.toastVisible;
     badgeHost.hidden = !statusVisible && !toastVisible;
@@ -1936,6 +2077,10 @@
     flex: 0 0 auto;
     box-shadow: 0 0 0 3px ${statusGlowColor(currentStatus.name)};
   }
+  .mica-dot.recording {
+    background: #7c3aed;
+    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.2);
+  }
   .mica-label {
     min-width: 0;
     overflow-wrap: anywhere;
@@ -1976,8 +2121,8 @@
 <div id="mica-overlay" class="mica-overlay" data-placement="${escapeHtml(overlayState.placement)}">
   <div class="mica-toast${toastVisible ? "" : " mica-hidden"}" role="status" aria-live="polite">${escapeHtml(getToastText())}</div>
   <button class="mica-status ${expanded ? "expanded" : "compact"}${statusVisible ? "" : " mica-hidden"}" type="button" title="${escapeHtml(getCompactTooltip())}" aria-label="Mica status">
-    <span class="mica-dot" aria-hidden="true"></span>
-    <span class="mica-label">${escapeHtml(formatExpandedStatusLabel(currentStatus.name, currentStatus.mountedTurns, currentStatus.optimizedTurns))}</span>
+    <span class="mica-dot${recording ? " recording" : ""}" aria-hidden="true"></span>
+    <span class="mica-label">${escapeHtml(recording ? "Recording" : formatExpandedStatusLabel(currentStatus.name, currentStatus.mountedTurns, currentStatus.optimizedTurns))}</span>
   </button>
 </div>`;
     badgeRoot.querySelector(".mica-status")?.addEventListener("click", () => {

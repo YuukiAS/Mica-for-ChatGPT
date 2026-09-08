@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <title>Mica Markdown copy fixture</title>
+  </head>
+  <body>
+    <pre id="copy-result">Idle</pre>
+    <main>
+      <article id="answer" data-testid="conversation-turn-1">
+        <div data-message-author-role="assistant" class="markdown">
+          <h2>Result</h2>
+          <p>Plain prose with <strong>bold</strong>, <em>emphasis</em>, <code>a`b</code>, <a href="https://example.com/a)b">a link</a>, price $5, and inline <span class="math-inline" data-latex="a^2+b^2=c^2"><span aria-hidden="true">visual</span></span>.</p>
+          <ul>
+            <li>first</li>
+            <li>second
+              <ol>
+                <li>nested</li>
+              </ol>
+            </li>
+          </ul>
+          <blockquote><p>quoted line</p></blockquote>
+          <pre><code class="language-js">const price = "$5";
+console.log(price);</code></pre>
+          <table>
+            <thead><tr><th>Name</th><th>Value</th></tr></thead>
+            <tbody><tr><td>alpha</td><td>1</td></tr></tbody>
+          </table>
+          <div class="katex-display">
+            <span aria-hidden="true">visual duplicate</span>
+            <math><semantics><mrow></mrow><annotation encoding="application/x-tex">\begin{aligned} x&=1\\ y&=2 \end{aligned}</annotation></semantics></math>
+          </div>
+          <div class="math-display">\[\begin{cases}x&=1\\y&=2\end{cases}\]</div>
+          <button type="button" aria-label="Copy">Native Copy</button>
+        </div>
+      </article>
+    </main>
+    <script src="../../dist/mica-dev/markdown-copy.js"></script>
+    <script>
+      const expected = [
+        "## Result",
+        "",
+        "Plain prose with **bold**, *emphasis*, " + "``a`b``" + ", [a link](https://example.com/a%29b), price $5, and inline $a^2+b^2=c^2$.",
+        "",
+        "- first",
+        "- second",
+        "  1. nested",
+        "",
+        "> quoted line",
+        "",
+        "```js",
+        "const price = \"$5\";",
+        "console.log(price);",
+        "```",
+        "",
+        "| Name | Value |",
+        "| --- | --- |",
+        "| alpha | 1 |",
+        "",
+        "$$",
+        "\\begin{aligned} x&=1\\\\ y&=2 \\end{aligned}",
+        "$$",
+        "",
+        "$$",
+        "\\begin{cases}x&=1\\\\y&=2\\end{cases}",
+        "$$",
+        ""
+      ].join("\n");
+
+      const resultNode = document.getElementById("copy-result");
+      try {
+        const actual = window.MicaMarkdownCopy.serializeTurn(document.getElementById("answer"));
+        const checks = [
+          ["golden string", actual === expected],
+          ["display math uses dollars", actual.includes("$$\n\\begin{aligned}") && !actual.includes("\\[")],
+          ["inline math uses single dollars", actual.includes("$a^2+b^2=c^2$")],
+          ["code preserves dollars", actual.includes('const price = "$5";')],
+          ["math not duplicated", (actual.match(/\\begin\{aligned\}/g) || []).length === 1],
+          ["ui button excluded", !actual.includes("Native Copy")]
+        ].map(([name, passed]) => ({ name, passed }));
+        resultNode.textContent = JSON.stringify({ passed: checks.every((check) => check.passed), checks, actual, expected }, null, 2);
+      } catch (error) {
+        resultNode.textContent = JSON.stringify({ passed: false, error: String(error?.stack || error) }, null, 2);
+      }
+    </script>
+  </body>
+</html>

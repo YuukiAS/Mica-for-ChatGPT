@@ -25,7 +25,8 @@ assert(manifest.content_scripts?.[0]?.js?.[2] === "composer-diagnostics.js", "co
 assert(manifest.content_scripts?.[0]?.js?.[3] === "stale-composer-recovery.js", "stale composer recovery script must run before content.js");
 assert(manifest.content_scripts?.[0]?.js?.[4] === "connector-continuity.js", "connector continuity script must run before content.js");
 assert(manifest.content_scripts?.[0]?.js?.[5] === "send-residual-recovery.js", "send residual recovery script must run before content.js");
-assert(manifest.content_scripts?.[0]?.js?.[6] === "content.js", "content.js must remain a content script");
+assert(manifest.content_scripts?.[0]?.js?.[6] === "markdown-copy.js", "markdown copy script must run before content.js");
+assert(manifest.content_scripts?.[0]?.js?.[7] === "content.js", "content.js must remain a content script");
 
 for (const size of [16, 32, 48, 128]) {
   assert(manifest.icons?.[size] === `icons/icon${size}.png`, `manifest icon${size} missing`);
@@ -52,11 +53,14 @@ for (const token of [
   "longThreadOptimization",
   "connectorContinuity",
   "sendResidualRecovery",
+  "micaMarkdownCopy",
+  "MICA_PREPARE_FINAL_SEND_CHECK",
   "knownInterruptions",
   "MicaConnectorLifecycleSignal",
   "MicaStaleComposerRecovery",
   "MicaConnectorContinuity",
-  "MicaSendResidualRecovery"
+  "MicaSendResidualRecovery",
+  "MicaMarkdownCopy"
 ]) {
   assert(content.includes(token), `content.js missing ${token}`);
 }
@@ -120,6 +124,7 @@ for (const token of [
   assert(composerDiagnostics.includes(token), `composer-diagnostics.js missing ${token}`);
 }
 assert(!/dispatchEvent\(|\.click\(|fetch\(|XMLHttpRequest|new\s+MutationObserver/.test(composerDiagnostics), "composer diagnostics must stay passive and local");
+assert(!/dataset\.micaComposerDiagnosticsRoot|createElement\(\"div\"\)[\s\S]{0,240}micaComposerDiagnosticsRoot/.test(composerDiagnostics), "composer diagnostics must not create an independent page panel");
 const connectorLifecycleSignal = await readFile(path.join(distDir, "connector-lifecycle-signal.js"), "utf8");
 for (const token of [
   "MicaConnectorLifecycleSignal",
@@ -212,14 +217,27 @@ for (const token of [
   assert(sendResidualRecovery.includes(token), `send-residual-recovery.js missing ${token}`);
 }
 assert(!/preventDefault\(|fetch\(|XMLHttpRequest|new\s+MutationObserver|location\.reload|innerHTML\s*=/.test(sendResidualRecovery), "send residual recovery must stay bounded and avoid invasive DOM/network behavior");
+const markdownCopy = await readFile(path.join(distDir, "markdown-copy.js"), "utf8");
+for (const token of [
+  "MicaMarkdownCopy",
+  "serializeTurn",
+  "DISPLAY_MATH_DELIMITER",
+  "data-mica-copy-action",
+  "annotation[encoding='application/x-tex']",
+  "$$"
+]) {
+  assert(markdownCopy.includes(token), `markdown-copy.js missing ${token}`);
+}
+assert(!/setInterval\(|new\s+MutationObserver|addEventListener\(\"(?:beforeinput|input|keydown|compositionstart|compositionupdate|compositionend)\"|requestSubmit|form\.submit|fetch\(|XMLHttpRequest/.test(markdownCopy), "markdown copy must run only on explicit copy action and avoid send/network hooks");
 for (const forbidden of ["radix-_", "btn-primary", "[role=\"dialog\"] button", "location.reload", "fetch(", "XMLHttpRequest"]) {
   assert(!interruptions.includes(forbidden), `known-interruptions.js contains forbidden dependency or behavior: ${forbidden}`);
 }
 
 const popupHtml = await readFile(path.join(distDir, "popup", "index.html"), "utf8");
-for (const token of ["Start diagnostics", "Stop diagnostics", "Copy report", "Reset", "Long-thread optimization", "Stale clear recovery", "Connector continuity", "Send residual recovery", "Auto-dismiss known interruptions", "Run composer check"]) {
+for (const token of ["Performance", "Copy", "Reliability", "Run one-shot diagnostics", "Copy report", "Reset", "Advanced", "Prepare final send check", "Display equations as $$...$$"]) {
   assert(popupHtml.includes(token), `popup missing ${token}`);
 }
+assert(!popupHtml.includes("Start diagnostics"), "popup should not expose the old engineering diagnostics grid");
 
 console.log("Build validation passed");
 

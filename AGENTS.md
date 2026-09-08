@@ -74,6 +74,15 @@ Authenticated ChatGPT acceptance is manual, but the diagnostic burden must live 
 - When a new recurring real-site bug cannot be diagnosed from the existing report, improve Mica's built-in report first; do not shift the complexity to the user via Console instructions.
 - The user's manual acceptance loop should normally be: reload `dist/mica-dev` if needed -> reproduce one short action -> click `Copy report` -> paste/report the result. Keep each requested manual step small and explicit.
 
+### Manual acceptance budget
+
+For the same bug / goal, default to at most one final manual real-site acceptance request.
+
+- Do not run a normal loop of `fix -> ask user -> fail -> patch -> ask user -> fail`.
+- If the first real-site acceptance fails, first use the existing diagnostic evidence, improve real-site capture, update the contract/fixture, reproduce locally, and verify automatically.
+- Ask for a second user action only when the failure reveals a previously unknown real-site behavior that cannot be inferred from the existing evidence. State the exact new evidence needed.
+- The user is not the routine QA runner. A real ChatGPT bug should flow through `real-site evidence -> reproducible contract/fixture -> affected tests -> CI/full regression as appropriate -> at most one user acceptance`.
+
 ### Runtime typing performance invariant
 
 Mica's composer input path is the highest-priority runtime performance path. Reliability, diagnostics, connector, virtualization, overlay, and recovery features must fail native rather than add visible typing latency.
@@ -172,6 +181,28 @@ Automated development and regression testing must not depend on the user's norma
 - Before a real-site acceptance pass, leave the repository and unpacked build ready for manual testing and report exactly what the user should refresh or verify.
 - The user performs the final authenticated ChatGPT acceptance manually by refreshing/reloading the local unpacked Mica extension in their existing Edge environment and exercising the relevant real conversation flow.
 - Real-device checks remain necessary for behavior that depends on actual ChatGPT DOM/runtime behavior or lower-power hardware performance, but they are explicit manual acceptance steps rather than Codex-controlled browser automation.
+
+### Real Edge Safe Probe boundary
+
+Real Edge Safe Probe is a narrow, separately authorized diagnostic path for the user's current authenticated Edge tab. It is not a general browser automation channel and must fail closed.
+
+Allowed only after explicit current-task authorization:
+
+- read-only page and DOM inspection;
+- Mica runtime state inspection;
+- composer structure, attributes, geometry, selected computed visual styles, and performance counters;
+- privacy-safe composer contract capture;
+- temporary composer text modification only when the composer is originally empty, followed by restoring the original empty state.
+
+Forbidden even inside Safe Probe:
+
+- clicking Send or any control that may submit;
+- pressing Enter or synthesizing a submit-capable key path;
+- form submit or ChatGPT mutating API calls;
+- `POST`, `PUT`, `PATCH`, `DELETE`, conversation creation, file upload, connector execution, OAuth/auth action, account settings mutation, deleting/editing real conversations, navigation to other real conversations, or page reload;
+- arbitrary selector automation such as `click(selector)`, `press("Enter")`, `submit()`, or unconstrained page evaluation.
+
+Safe Probe APIs must stay narrow, for example `inspectPage`, `inspectComposer`, `inspectMicaRuntime`, `captureComposerContract`, `measureTyping`, `setTemporaryComposerText`, and `restoreComposer`. If a safe connection cannot be established, implement or update the architecture and capture boundary, but do not silently start side-effecting authenticated automation.
 
 ## Implementation preference
 

@@ -1,6 +1,6 @@
 {
   "name": "mica-for-chatgpt",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "private": true,
   "description": "Local Chromium extension for ChatGPT long-thread render recovery.",
   "type": "module",
@@ -11,12 +11,19 @@
     "test:interruptions": "node scripts/known-interruptions-fixture-smoke.mjs",
     "test:overlay": "node scripts/overlay-fixture-smoke.mjs",
     "test:build": "node scripts/validate-build.mjs",
-    "test": "npm run build && npm run test:fixture && npm run test:interruptions && npm run test:overlay && npm run test:build",
-    "test:e2e": "npm run build && node scripts/run-e2e.mjs",
-    "test:e2e:stress": "npm run build && node scripts/run-e2e.mjs --stress",
+    "test:contract": "node scripts/validate-composer-contract.mjs",
+    "test:fast": "node scripts/test-candidate.mjs --tier=fast",
+    "test:affected": "node scripts/test-affected.mjs",
+    "test:integration": "node scripts/test-candidate.mjs --tier=integration",
+    "test": "npm run test:fast",
+    "test:e2e": "node scripts/test-candidate.mjs --tier=full",
+    "test:e2e:stress": "node scripts/test-candidate.mjs --tier=stress",
     "package:release": "npm run build && node scripts/package-release.mjs && node scripts/validate-release.mjs"
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "playwright": "^1.55.0"
   }
 }

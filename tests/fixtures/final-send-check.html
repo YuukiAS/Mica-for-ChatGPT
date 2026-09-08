@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mica final send check fixture</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 1200px;
+        margin: 0;
+        background: #f7f7f8;
+        color: #171717;
+        font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        width: min(820px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 24px 0 180px;
+      }
+
+      article {
+        margin: 14px 0;
+        padding: 14px;
+        border: 1px solid #d9d9e3;
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      form[data-testid="composer-form"] {
+        position: fixed;
+        left: 50%;
+        bottom: 14px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        width: min(820px, calc(100vw - 24px));
+        min-height: 82px;
+        padding: 12px;
+        border: 1px solid #cfcfd6;
+        border-radius: 18px;
+        background: #ffffff;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+        transform: translateX(-50%);
+      }
+
+      [role="textbox"] {
+        min-height: 46px;
+        padding: 10px 12px;
+        border: 1px solid #dddddd;
+        border-radius: 12px;
+        white-space: pre-wrap;
+      }
+
+      #final-send-result {
+        position: fixed;
+        left: 8px;
+        top: 8px;
+        z-index: 1;
+        max-width: 48vw;
+        white-space: pre-wrap;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <pre id="final-send-result">Idle</pre>
+    <main>
+      <section id="conversation" aria-label="Synthetic ChatGPT conversation">
+        <article data-message-author-role="assistant">fixture answer should not leak</article>
+      </section>
+    </main>
+    <div id="composer-dock"></div>
+
+    <script>
+      const guard = {
+        totalSubmitEvents: 0,
+        totalSendClicks: 0,
+        totalEnterKeydowns: 0,
+        totalCtrlEnterKeydowns: 0,
+        totalRequestSubmitCalls: 0,
+        totalFormSubmitCalls: 0
+      };
+
+      const nativeRequestSubmit = HTMLFormElement.prototype.requestSubmit;
+      const nativeFormSubmit = HTMLFormElement.prototype.submit;
+      HTMLFormElement.prototype.requestSubmit = function requestSubmitGuard(...args) {
+        guard.totalRequestSubmitCalls += 1;
+        return nativeRequestSubmit.apply(this, args);
+      };
+      HTMLFormElement.prototype.submit = function submitGuard(...args) {
+        guard.totalFormSubmitCalls += 1;
+        return nativeFormSubmit.apply(this, args);
+      };
+      window.__MICA_FINAL_SEND_GUARD__ = guard;
+
+      document.addEventListener("submit", (event) => {
+        guard.totalSubmitEvents += 1;
+        event.preventDefault();
+      }, true);
+      document.addEventListener("click", (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        if (target?.closest?.("[data-testid='send-button'], [aria-label='Send message']")) {
+          guard.totalSendClicks += 1;
+        }
+      }, true);
+      document.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        guard.totalEnterKeydowns += 1;
+        if (event.ctrlKey || event.metaKey) guard.totalCtrlEnterKeydowns += 1;
+      }, true);
+    </script>
+    <script src="../../dist/mica-dev/known-interruptions.js"></script>
+    <script src="../../dist/mica-dev/connector-lifecycle-signal.js"></script>
+    <script src="../../dist/mica-dev/composer-diagnostics.js"></script>
+    <script src="../../dist/mica-dev/stale-composer-recovery.js"></script>
+    <script src="../../dist/mica-dev/connector-continuity.js"></script>
+    <script src="../../dist/mica-dev/send-residual-recovery.js"></script>
+    <script src="../../dist/mica-dev/markdown-copy.js"></script>
+    <script src="../../dist/mica-dev/content.js"></script>
+    <script>
+      const resultNode = document.getElementById("final-send-result");
+      const dock = document.getElementById("composer-dock");
+      let composer = null;
+      let editor = null;
+
+      run().catch((error) => {
+        resultNode.textContent = JSON.stringify({ passed: false, error: String(error?.stack || error), guard }, null, 2);
+      });
+
+      async function run() {
+        await waitFor(() => window.__MICA_TEST_CONTROLS__, 3000);
+
+        mountComposer("");
+        await delay(100);
+        const emptyResult = window.__MICA_TEST_CONTROLS__.prepareFinalSendCheck();
+        await delay(140);
+        const emptyText = editor.textContent || "";
+        const emptyReport = window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport();
+        const emptyStatus = window.__MICA_TEST_CONTROLS__.getDiagnosticsReport();
+        window.__MICA_TEST_CONTROLS__.stopComposerGuidedDiagnostics();
+
+        setEditorText("existing user draft");
+        await delay(100);
+        const nonEmptyResult = window.__MICA_TEST_CONTROLS__.prepareFinalSendCheck();
+        await delay(120);
+        const nonEmptyText = editor.textContent || "";
+        const nonEmptyReport = window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport();
+        window.__MICA_TEST_CONTROLS__.stopComposerGuidedDiagnostics();
+
+        unmountComposer();
+        await delay(100);
+        const missingResult = window.__MICA_TEST_CONTROLS__.prepareFinalSendCheck();
+
+        const payload = {
+          passed: true,
+          empty: {
+            prepared: emptyResult?.prepared === true,
+            reason: emptyResult?.reason || null,
+            composerTextModified: emptyResult?.composerTextModified === true,
+            promptLength: emptyResult?.promptLength || 0,
+            finalTextLength: emptyText.length,
+            hasHeadingInstruction: emptyText.includes("one heading"),
+            hasPrivateContextGuard: emptyText.includes("do not use any private context"),
+            diagnosticsRunning: emptyReport?.session?.diagnosticTimerActive === true,
+            reportTextSafe: !JSON.stringify(emptyReport || {}).includes("one heading"),
+            submitEventsInReport: emptyStatus?.composer?.submitEvents || 0,
+            sendClickEventsInReport: emptyStatus?.composer?.sendClickEvents || 0
+          },
+          nonEmpty: {
+            prepared: nonEmptyResult?.prepared === true,
+            reason: nonEmptyResult?.reason || null,
+            composerTextModified: nonEmptyResult?.composerTextModified === true,
+            preservedDraft: nonEmptyText === "existing user draft",
+            diagnosticsRunning: nonEmptyReport?.session?.diagnosticTimerActive === true
+          },
+          missing: {
+            prepared: missingResult?.prepared === true,
+            reason: missingResult?.reason || null,
+            composerTextModified: missingResult?.composerTextModified === true
+          },
+          guard: { ...guard }
+        };
+
+        const checks = [
+          payload.empty.prepared,
+          payload.empty.composerTextModified,
+          payload.empty.finalTextLength === payload.empty.promptLength,
+          payload.empty.hasHeadingInstruction,
+          payload.empty.hasPrivateContextGuard,
+          payload.empty.diagnosticsRunning,
+          payload.empty.reportTextSafe,
+          payload.empty.submitEventsInReport === 0,
+          payload.empty.sendClickEventsInReport === 0,
+          payload.nonEmpty.prepared === false,
+          payload.nonEmpty.reason === "COMPOSER_NOT_EMPTY",
+          payload.nonEmpty.composerTextModified === false,
+          payload.nonEmpty.preservedDraft,
+          payload.nonEmpty.diagnosticsRunning,
+          payload.missing.prepared === false,
+          payload.missing.reason === "COMPOSER_NOT_FOUND",
+          payload.missing.composerTextModified === false,
+          guard.totalSubmitEvents === 0,
+          guard.totalSendClicks === 0,
+          guard.totalEnterKeydowns === 0,
+          guard.totalCtrlEnterKeydowns === 0,
+          guard.totalRequestSubmitCalls === 0,
+          guard.totalFormSubmitCalls === 0
+        ];
+        payload.passed = checks.every(Boolean);
+        resultNode.textContent = JSON.stringify(payload, null, 2);
+      }
+
+      function mountComposer(initialText) {
+        dock.innerHTML = "";
+        composer = document.createElement("form");
+        composer.dataset.testid = "composer-form";
+        composer.setAttribute("aria-label", "Message composer");
+        editor = document.createElement("div");
+        editor.setAttribute("role", "textbox");
+        editor.setAttribute("contenteditable", "true");
+        editor.setAttribute("aria-label", "Message ChatGPT");
+        editor.textContent = initialText;
+        const send = document.createElement("button");
+        send.type = "submit";
+        send.dataset.testid = "send-button";
+        send.setAttribute("aria-label", "Send message");
+        send.textContent = "Send";
+        composer.append(editor, send);
+        dock.append(composer);
+        editor.focus();
+      }
+
+      function unmountComposer() {
+        dock.innerHTML = "";
+        composer = null;
+        editor = null;
+      }
+
+      function setEditorText(value) {
+        editor.textContent = value;
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: value }));
+      }
+
+      function delay(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+
+      async function waitFor(predicate, timeout = 1000) {
+        const started = performance.now();
+        while (performance.now() - started < timeout) {
+          if (predicate()) return;
+          await delay(20);
+        }
+        throw new Error("Timed out waiting for condition");
+      }
+    </script>
+  </body>
+</html>

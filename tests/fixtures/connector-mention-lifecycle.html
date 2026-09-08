@@ -164,6 +164,7 @@
         }
       });
     </script>
+    <script src="./virtual-clock.js"></script>
     <script src="../../dist/mica-dev/known-interruptions.js"></script>
     <script src="../../dist/mica-dev/connector-lifecycle-signal.js"></script>
     <script src="../../dist/mica-dev/composer-diagnostics.js"></script>
@@ -238,6 +239,7 @@
 
         resultNode.textContent = JSON.stringify({
           passed: checks.every((check) => check.passed),
+          clock: window.__MICA_VIRTUAL_CLOCK__?.enabled === true ? "virtual" : "real",
           checks,
           caseSummaries: {
             connectorLatch,
@@ -1066,6 +1068,19 @@
       }
 
       function waitFor(fn, timeout, describeTimeout) {
+        if (window.__MICA_VIRTUAL_CLOCK__?.enabled === true) {
+          const started = Date.now();
+          return (async () => {
+            for (;;) {
+              const value = fn();
+              if (value) return value;
+              if (Date.now() - started > timeout) {
+                throw new Error(describeTimeout ? describeTimeout() : "Timed out");
+              }
+              await delay(40);
+            }
+          })();
+        }
         const started = Date.now();
         return new Promise((resolve, reject) => {
           const timer = setInterval(() => {
@@ -1087,6 +1102,15 @@
       }
 
       function delay(ms) {
+        const clock = window.__MICA_VIRTUAL_CLOCK__;
+        if (clock?.enabled === true) {
+          return (async () => {
+            await Promise.resolve();
+            clock.flushTimers();
+            clock.advanceBy(ms);
+            await clock.flushAsync();
+          })();
+        }
         return new Promise((resolve) => setTimeout(resolve, ms));
       }
     </script>

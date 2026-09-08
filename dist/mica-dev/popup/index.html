@@ -8,99 +8,99 @@
   </head>
   <body>
     <main>
-      <header>
-        <strong>Mica</strong>
-        <span id="version">v0.1</span>
+      <header class="topbar">
+        <div class="brand">
+          <img src="../icons/icon32.png" alt="" width="24" height="24">
+          <div>
+            <strong>Mica</strong>
+            <span id="version">v0.2.0</span>
+          </div>
+        </div>
+        <label class="switch" aria-label="Enable Mica">
+          <input id="enabled" type="checkbox" checked>
+          <span></span>
+        </label>
       </header>
 
-      <section class="status">
+      <section class="status-card" aria-label="Runtime status">
         <span id="dot"></span>
         <div>
-          <div id="state">Native only</div>
+          <div id="state">Native windowed</div>
           <p id="reason">Open a ChatGPT conversation.</p>
+          <small id="counts">0 mounted</small>
         </div>
       </section>
 
-      <label class="row">
-        <span>Enabled</span>
-        <input id="enabled" type="checkbox" checked>
-      </label>
-
-      <label class="row">
-        <span>Status dot</span>
-        <input id="showStatus" type="checkbox" checked>
-      </label>
-
-      <section class="features" aria-label="Features">
-        <div class="section-title">Features</div>
-        <label class="row row-with-detail">
+      <section class="feature-list" aria-label="Core features">
+        <label class="feature-row">
           <span>
-            <strong>Long-thread optimization</strong>
-            <small>Apply render containment to safe offscreen turns.</small>
+            <strong>Performance</strong>
+            <small>Reduce long-thread rendering overhead</small>
           </span>
           <input id="longThreadOptimization" type="checkbox" checked>
         </label>
-
-        <label class="row row-with-detail">
+        <label class="feature-row">
           <span>
-            <strong>Stale clear recovery</strong>
-            <small>Keep explicitly cleared composer text cleared after native remounts.</small>
+            <strong>Copy</strong>
+            <small>Display equations as $$...$$</small>
           </span>
-          <input id="staleClearRecovery" type="checkbox" checked>
+          <input id="micaMarkdownCopy" type="checkbox" checked>
         </label>
-
-        <label class="row row-with-detail">
+        <label class="feature-row">
           <span>
-            <strong>Connector continuity</strong>
-            <small>Keep the composer area visually stable during connector remounts.</small>
+            <strong>Reliability</strong>
+            <small>Safe interruption and composer recovery</small>
           </span>
-          <input id="connectorContinuity" type="checkbox" checked>
-        </label>
-
-        <label class="row row-with-detail">
-          <span>
-            <strong>Send residual recovery</strong>
-            <small>Clear matching stale connector-send payloads after commit.</small>
-          </span>
-          <input id="sendResidualRecovery" type="checkbox" checked>
+          <input id="reliabilityEnabled" type="checkbox" checked>
         </label>
       </section>
-
-      <label class="row row-with-detail">
-        <span>
-          <strong>Auto-dismiss known interruptions</strong>
-          <small>Dismiss safe, known ChatGPT notices automatically.</small>
-        </span>
-        <input id="autoDismissKnownInterruptions" type="checkbox" checked>
-      </label>
-
-      <label class="field">
-        <span>Recent turns kept native</span>
-        <input id="recentTurnKeepCount" type="number" min="4" max="20" step="1" value="8">
-      </label>
 
       <section class="diagnostics" aria-label="Diagnostics">
-        <div class="section-title">Diagnostics</div>
-        <div class="button-grid">
-          <button id="startDiagnostics" type="button">Start diagnostics</button>
-          <button id="stopDiagnostics" type="button">Stop diagnostics</button>
-          <button id="copyReport" type="button">Copy report</button>
-          <button id="resetDiagnostics" type="button">Reset</button>
+        <div class="section-heading">
+          <strong>Diagnostics</strong>
+          <span id="diagnosticsStatus">Idle</span>
         </div>
-        <p id="diagnosticsStatus">Idle</p>
-      </section>
-
-      <section class="diagnostics" aria-label="Composer check">
-        <div class="section-title">Composer check</div>
-        <div class="button-grid">
-          <button id="runComposerCheck" type="button">Run composer check</button>
-          <button id="stopComposerCheck" type="button">Stop check</button>
+        <div class="actions">
+          <button id="runComposerCheck" class="primary" type="button">Run one-shot diagnostics</button>
           <button id="copyComposerReport" type="button">Copy report</button>
+          <button id="stopComposerCheck" type="button">Stop</button>
+          <button id="resetDiagnostics" type="button">Reset</button>
         </div>
         <p id="composerCheckStatus">Idle</p>
       </section>
 
-      <footer id="counts">0 mounted</footer>
+      <details>
+        <summary>Advanced</summary>
+        <div class="advanced">
+          <label class="feature-row compact">
+            <span>Status dot</span>
+            <input id="showStatus" type="checkbox" checked>
+          </label>
+          <label class="field">
+            <span>Recent native turns</span>
+            <input id="recentTurnKeepCount" type="number" min="4" max="20" step="1" value="8">
+          </label>
+          <label class="feature-row compact">
+            <span>Auto-dismiss known interruptions</span>
+            <input id="autoDismissKnownInterruptions" type="checkbox" checked>
+          </label>
+          <label class="feature-row compact">
+            <span>Composer recovery</span>
+            <input id="staleClearRecovery" type="checkbox" checked>
+          </label>
+          <label class="feature-row compact">
+            <span>Connector continuity</span>
+            <input id="connectorContinuity" type="checkbox" checked>
+          </label>
+          <label class="feature-row compact">
+            <span>Send residual recovery</span>
+            <input id="sendResidualRecovery" type="checkbox" checked>
+          </label>
+          <button id="prepareFinalSendCheck" class="wide" type="button">Prepare final send check</button>
+        </div>
+      </details>
+
+      <footer id="buildLabel">v020-convergence.rc1</footer>
     </main>
     <script src="popup.js"></script>
   </body>

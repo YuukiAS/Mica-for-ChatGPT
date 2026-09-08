@@ -53,8 +53,8 @@ for (const forbidden of [
 }
 
 for (const snippet of [
-  "Auto-dismiss known interruptions",
-  "Dismiss safe, known ChatGPT notices automatically."
+  "Reliability",
+  "Auto-dismiss known interruptions"
 ]) {
   assert(popup.includes(snippet), `popup missing ${snippet}`);
 }

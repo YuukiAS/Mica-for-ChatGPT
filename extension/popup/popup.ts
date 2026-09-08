@@ -5,6 +5,7 @@ const DEFAULT_SETTINGS = {
   staleClearRecovery: true,
   connectorContinuity: true,
   sendResidualRecovery: true,
+  micaMarkdownCopy: true,
   autoDismissKnownInterruptions: true,
   recentTurnKeepCount: 8
 };
@@ -23,23 +24,24 @@ const elements = {
   reason: document.getElementById("reason"),
   counts: document.getElementById("counts"),
   version: document.getElementById("version"),
+  buildLabel: document.getElementById("buildLabel"),
   enabled: document.getElementById("enabled"),
   showStatus: document.getElementById("showStatus"),
   longThreadOptimization: document.getElementById("longThreadOptimization"),
+  micaMarkdownCopy: document.getElementById("micaMarkdownCopy"),
+  reliabilityEnabled: document.getElementById("reliabilityEnabled"),
   staleClearRecovery: document.getElementById("staleClearRecovery"),
   connectorContinuity: document.getElementById("connectorContinuity"),
   sendResidualRecovery: document.getElementById("sendResidualRecovery"),
   autoDismissKnownInterruptions: document.getElementById("autoDismissKnownInterruptions"),
   recentTurnKeepCount: document.getElementById("recentTurnKeepCount"),
-  startDiagnostics: document.getElementById("startDiagnostics"),
-  stopDiagnostics: document.getElementById("stopDiagnostics"),
-  copyReport: document.getElementById("copyReport"),
   resetDiagnostics: document.getElementById("resetDiagnostics"),
   diagnosticsStatus: document.getElementById("diagnosticsStatus"),
   runComposerCheck: document.getElementById("runComposerCheck"),
   stopComposerCheck: document.getElementById("stopComposerCheck"),
   copyComposerReport: document.getElementById("copyComposerReport"),
-  composerCheckStatus: document.getElementById("composerCheckStatus")
+  composerCheckStatus: document.getElementById("composerCheckStatus"),
+  prepareFinalSendCheck: document.getElementById("prepareFinalSendCheck")
 };
 
 load();
@@ -47,30 +49,33 @@ load();
 elements.enabled.addEventListener("change", save);
 elements.showStatus.addEventListener("change", save);
 elements.longThreadOptimization.addEventListener("change", save);
+elements.micaMarkdownCopy.addEventListener("change", save);
+elements.reliabilityEnabled.addEventListener("change", saveReliabilityGroup);
 elements.staleClearRecovery.addEventListener("change", save);
 elements.connectorContinuity.addEventListener("change", save);
 elements.sendResidualRecovery.addEventListener("change", save);
 elements.autoDismissKnownInterruptions.addEventListener("change", save);
 elements.recentTurnKeepCount.addEventListener("change", save);
-elements.startDiagnostics.addEventListener("click", () => diagnosticsAction("MICA_DIAGNOSTICS_START"));
-elements.stopDiagnostics.addEventListener("click", () => diagnosticsAction("MICA_DIAGNOSTICS_STOP"));
-elements.copyReport.addEventListener("click", copyReport);
 elements.resetDiagnostics.addEventListener("click", () => diagnosticsAction("MICA_DIAGNOSTICS_RESET"));
 elements.runComposerCheck.addEventListener("click", () => composerCheckAction("MICA_COMPOSER_GUIDED_START"));
 elements.stopComposerCheck.addEventListener("click", () => composerCheckAction("MICA_COMPOSER_GUIDED_STOP"));
 elements.copyComposerReport.addEventListener("click", copyComposerReport);
+elements.prepareFinalSendCheck.addEventListener("click", prepareFinalSendCheck);
 
 async function load() {
   const manifest = chrome.runtime.getManifest();
   elements.version.textContent = `v${manifest.version_name || manifest.version}`;
+  elements.buildLabel.textContent = "__MICA_BUILD_LABEL__";
   const settings = await getStorage(DEFAULT_SETTINGS);
   elements.enabled.checked = settings.enabled;
   elements.showStatus.checked = settings.showStatus;
   elements.longThreadOptimization.checked = settings.longThreadOptimization;
+  elements.micaMarkdownCopy.checked = settings.micaMarkdownCopy;
   elements.staleClearRecovery.checked = settings.staleClearRecovery;
   elements.connectorContinuity.checked = settings.connectorContinuity;
   elements.sendResidualRecovery.checked = settings.sendResidualRecovery;
   elements.autoDismissKnownInterruptions.checked = settings.autoDismissKnownInterruptions;
+  elements.reliabilityEnabled.checked = settings.staleClearRecovery && settings.connectorContinuity && settings.sendResidualRecovery && settings.autoDismissKnownInterruptions;
   elements.recentTurnKeepCount.value = String(settings.recentTurnKeepCount);
 
   const response = await requestStatus();
@@ -78,10 +83,12 @@ async function load() {
     elements.enabled.checked = response.settings.enabled;
     elements.showStatus.checked = response.settings.showStatus;
     elements.longThreadOptimization.checked = response.settings.longThreadOptimization;
+    elements.micaMarkdownCopy.checked = response.settings.micaMarkdownCopy;
     elements.staleClearRecovery.checked = response.settings.staleClearRecovery;
     elements.connectorContinuity.checked = response.settings.connectorContinuity;
     elements.sendResidualRecovery.checked = response.settings.sendResidualRecovery;
     elements.autoDismissKnownInterruptions.checked = response.settings.autoDismissKnownInterruptions;
+    elements.reliabilityEnabled.checked = response.settings.staleClearRecovery && response.settings.connectorContinuity && response.settings.sendResidualRecovery && response.settings.autoDismissKnownInterruptions;
     elements.recentTurnKeepCount.value = String(response.settings.recentTurnKeepCount);
   }
   renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
@@ -92,6 +99,7 @@ async function save() {
     enabled: elements.enabled.checked,
     showStatus: elements.showStatus.checked,
     longThreadOptimization: elements.longThreadOptimization.checked,
+    micaMarkdownCopy: elements.micaMarkdownCopy.checked,
     staleClearRecovery: elements.staleClearRecovery.checked,
     connectorContinuity: elements.connectorContinuity.checked,
     sendResidualRecovery: elements.sendResidualRecovery.checked,
@@ -102,6 +110,15 @@ async function save() {
   await setStorage(next);
   const response = await sendToActiveTab({ type: "MICA_SET_SETTINGS", settings: next });
   renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
+}
+
+async function saveReliabilityGroup() {
+  const checked = elements.reliabilityEnabled.checked;
+  elements.staleClearRecovery.checked = checked;
+  elements.connectorContinuity.checked = checked;
+  elements.sendResidualRecovery.checked = checked;
+  elements.autoDismissKnownInterruptions.checked = checked;
+  await save();
 }
 
 async function requestStatus() {
@@ -126,6 +143,21 @@ async function copyReport() {
   } catch (_error) {
     elements.diagnosticsStatus.textContent = "Clipboard copy failed.";
   }
+}
+
+async function prepareFinalSendCheck() {
+  const response = await sendToActiveTab({ type: "MICA_PREPARE_FINAL_SEND_CHECK" });
+  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
+  const result = response?.oneShot;
+  if (!result) {
+    elements.composerCheckStatus.textContent = "Open a supported ChatGPT page.";
+    return;
+  }
+  elements.composerCheckStatus.textContent = result.prepared
+    ? result.reason
+    : result.reason === "COMPOSER_NOT_EMPTY"
+      ? "Composer not empty."
+      : "Composer not found.";
 }
 
 async function composerCheckAction(type) {
@@ -197,8 +229,6 @@ function formatCounts(status) {
 
 function renderDiagnostics(diagnostics) {
   const running = !!diagnostics?.running;
-  elements.startDiagnostics.disabled = running;
-  elements.stopDiagnostics.disabled = !running;
   elements.diagnosticsStatus.textContent = running
     ? `Running · ${Math.round((diagnostics.durationMs || 0) / 1000)}s · ${diagnostics.longTaskCount || 0} long tasks`
     : `Idle · ${diagnostics?.longTaskCount || 0} long tasks · ${diagnostics?.frameStallCount || 0} stalls`;
@@ -209,6 +239,7 @@ function renderComposerCheck(composerGuided) {
   const available = composerGuided?.available !== false;
   elements.runComposerCheck.disabled = running || !available;
   elements.stopComposerCheck.disabled = !running;
+  elements.prepareFinalSendCheck.disabled = running || !available;
   elements.copyComposerReport.disabled = !available || (!running && !composerGuided?.lastReport);
   if (!available) {
     elements.composerCheckStatus.textContent = "Open a supported ChatGPT page.";

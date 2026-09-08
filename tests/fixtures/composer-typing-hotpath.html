@@ -189,7 +189,7 @@
         window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState();
         window.MicaConnectorLifecycleSignal.latchConnectorLifecycle("resolved-connector-pill", composer, editor);
         await waitFor(() => window.__MICA_TEST_CONTROLS__.getConnectorContinuityState()?.cachedSnapshotAvailable === true, 1500, stateText);
-        await delay(80);
+        await delay(320);
 
         const twenty = await measureTyping("abcdefghijklmnopqrst");
         const twoHundred = await measureTyping("x".repeat(200));

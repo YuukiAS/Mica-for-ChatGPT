@@ -2,7 +2,6 @@
   const GLOBAL_KEY = "MicaComposerDiagnostics";
   const SESSION_VERSION = "composer-capture-diagnostics.v3";
   const SAMPLE_INTERVAL_MS = 150;
-  const PANEL_MARGIN = 12;
   const MAX_EVENTS = 180;
   const USER_TURN_STALE_GRACE_MS = 600;
   const CORRELATION_WINDOW_MS = 250;
@@ -21,9 +20,6 @@
   let bridge = { ...defaultBridge };
   let session = null;
   let lastReport = null;
-  let panelHost = null;
-  let panelRoot = null;
-  let panelDelegatedListenerAttached = false;
 
   function configure(nextBridge) {
     bridge = { ...bridge, ...(nextBridge || {}) };
@@ -32,12 +28,10 @@
   function start() {
     stop({ keepPanel: false });
     session = createSession();
-    ensurePanel();
     attachSessionListeners();
     startSampler();
     const snapshot = sample();
     addEvent("session_start", snapshot);
-    renderPanel();
     return summarize();
   }
 
@@ -55,7 +49,6 @@
       lastReport = buildReport();
       session = null;
     }
-    if (!options.keepPanel) removePanel();
     return summarize();
   }
 
@@ -78,7 +71,8 @@
       stepCount: 1,
       sampleCount: session?.sampleCount || 0,
       eventCount: session?.events.length || report?.events?.length || 0,
-      lastReport: report ? summarizeReport(report) : null
+      lastReport: report ? summarizeReport(report) : null,
+      pagePanelVisible: false
     };
   }
 
@@ -103,7 +97,7 @@
       listenersActive: !!session?.listenersActive,
       sampleCount: session?.sampleCount || 0,
       eventCount: session?.events.length || 0,
-      panelVisible: !!panelHost,
+      panelVisible: false,
       stepId: session ? "capture" : null
     };
   }
@@ -387,7 +381,6 @@
     const snapshot = readSnapshot();
     session.sampleCount += 1;
     processSnapshotTransitions(snapshot);
-    renderPanel();
     return snapshot;
   }
 
@@ -1331,190 +1324,6 @@
 
   function getSharedConnectorLifecycleState() {
     return globalThis.MicaConnectorLifecycleSignal?.getState?.() || null;
-  }
-
-  function ensurePanel() {
-    if (panelHost) return;
-    panelHost = document.createElement("div");
-    panelHost.dataset.micaComposerDiagnosticsRoot = "true";
-    panelHost.style.position = "fixed";
-    panelHost.style.top = `${PANEL_MARGIN}px`;
-    panelHost.style.right = `${PANEL_MARGIN}px`;
-    panelHost.style.zIndex = "2147483645";
-    panelHost.style.width = `min(300px, calc(100vw - ${PANEL_MARGIN * 2}px))`;
-    panelHost.style.pointerEvents = "auto";
-    panelRoot = panelHost;
-    attachPanelDelegatedListener();
-    document.documentElement.appendChild(panelHost);
-  }
-
-  function attachPanelDelegatedListener() {
-    if (panelDelegatedListenerAttached) {
-      if (session) session.overlayHandlerAttached = true;
-      return;
-    }
-    document.addEventListener("click", handlePanelDelegatedAction, true);
-    panelDelegatedListenerAttached = true;
-    if (session) session.overlayHandlerAttached = true;
-  }
-
-  function removePanel() {
-    panelHost?.remove();
-    panelHost = null;
-    panelRoot = null;
-  }
-
-  function renderPanel() {
-    if (!panelRoot || !session) return;
-    const report = buildReport();
-    const summary = report.summary;
-    const copyButton = canCopyReport()
-      ? `<button type="button" data-action="copy">Copy report</button>`
-      : "";
-    panelRoot.innerHTML = `
-<style>
-  :host { all: initial; }
-  .card {
-    display: grid;
-    gap: 8px;
-    padding: 10px;
-    border: 1px solid rgba(23, 23, 23, 0.16);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.97);
-    color: #171717;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
-    font: 12px/1.35 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    pointer-events: auto;
-  }
-  h2 {
-    margin: 0;
-    font-size: 13px;
-    line-height: 1.25;
-  }
-  p { margin: 0; }
-  .summary {
-    display: grid;
-    gap: 3px;
-    color: #374151;
-  }
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  button {
-    min-height: 30px;
-    padding: 5px 9px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    background: #f9fafb;
-    color: #111827;
-    cursor: pointer;
-    font: inherit;
-  }
-  button:hover { background: #f3f4f6; }
-  @media (prefers-color-scheme: dark) {
-    .card {
-      border-color: rgba(255, 255, 255, 0.18);
-      background: rgba(32, 33, 35, 0.96);
-      color: #f7f7f8;
-    }
-    .summary { color: #d1d5db; }
-    button {
-      border-color: rgba(255, 255, 255, 0.2);
-      background: #2f3033;
-      color: #f7f7f8;
-    }
-    button:hover { background: #3a3b3f; }
-  }
-</style>
-<section class="card" role="status" aria-live="polite">
-  <h2>Composer check recording</h2>
-  <p>Reproduce one short composer issue, then copy the report.</p>
-  <div class="summary">
-    <div>Events: ${summary.composerUnmountCount} unmounts, ${summary.editableIdentityChanges}/${summary.rootIdentityChanges} identity changes</div>
-    <div>Mention: ${summary.mentionSignalObserved ? "seen" : "not seen"}; final length: ${summary.finalTextLength}</div>
-    <div>Stale after clear: ${summary.staleTextRestoredAfterClear ? "yes" : "no"}</div>
-    <div>Stale after user turn: ${summary.staleTextAfterUserTurn ? "yes" : "no"}</div>
-  </div>
-  <div class="actions">
-    ${copyButton}
-    <button type="button" data-action="stop">Stop</button>
-  </div>
-</section>`;
-  }
-
-  function handlePanelDelegatedAction(event) {
-    const target = event.target instanceof Element ? event.target : null;
-    const button = target?.closest?.("[data-mica-composer-diagnostics-root='true'] button[data-action]");
-    if (!(button instanceof HTMLButtonElement)) return;
-    const action = button.dataset.action;
-    if (action !== "stop" && action !== "copy") return;
-    recordOverlayAction(action, "received");
-    if (action === "stop") {
-      recordOverlayAction(action, "stopped");
-      stop({ keepPanel: false });
-      return;
-    }
-    if (action === "copy") {
-      copyReportFromPanel().then((result) => {
-        recordOverlayAction(action, result);
-        renderPanel();
-      });
-    }
-  }
-
-  async function copyReportFromPanel() {
-    const text = getReportText();
-    if (!text) return "no_report";
-    try {
-      await copyText(text);
-      return "copied";
-    } catch (_error) {
-      // Popup copy remains available if page clipboard access is denied.
-      return "copy_failed";
-    }
-  }
-
-  function recordOverlayAction(action, result) {
-    if (!session) return;
-    session.overlayHandlerAttached = panelDelegatedListenerAttached;
-    session.lastOverlayActionReceived = action;
-    session.lastOverlayActionSessionId = session.id;
-    session.lastOverlayActionResult = result;
-    addEvent("overlay_action_result", readSnapshot(), {
-      action,
-      sessionId: session.id,
-      result
-    });
-  }
-
-  function canCopyReport() {
-    return !!navigator.clipboard?.writeText
-      || document.queryCommandSupported?.("copy") === true
-      || document.documentElement.dataset.micaFixture === "true";
-  }
-
-  async function copyText(text) {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-    if (document.queryCommandSupported?.("copy") !== true && document.documentElement.dataset.micaFixture !== "true") return false;
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.setAttribute("readonly", "true");
-    Object.assign(textarea.style, {
-      position: "fixed",
-      left: "-9999px",
-      top: "0",
-      opacity: "0"
-    });
-    document.documentElement.appendChild(textarea);
-    textarea.select();
-    const copied = document.execCommand?.("copy") === true;
-    textarea.remove();
-    return copied;
   }
 
   function findComposerEditable() {
