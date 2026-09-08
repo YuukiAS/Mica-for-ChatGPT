@@ -78,6 +78,18 @@ Authenticated ChatGPT acceptance is manual, but the diagnostic burden must live 
 
 Testing should be proportional to the change. Do not run the heaviest suite after every small edit merely because it exists.
 
+### Development testing budget
+
+Each Mica development iteration should minimize repeated human waiting and avoid using full E2E as the normal discovery loop.
+
+- Before making changes, perform an impact audit and list every fixture, validator, and runtime module that the iteration is expected to affect. Do not wait for full E2E to reveal old fixture drift one case at a time.
+- During implementation, run only the smallest focused case that covers the current risk. If the same focused case fails twice in a row, statically inspect the source, fixture, and validator contract before a third run; do not continue trial-and-error reruns.
+- If an architecture change affects multiple focused fixtures, run each affected focused case successfully before starting full E2E.
+- Run full E2E only after all related focused tests pass. The target is at most one final full E2E run per candidate.
+- If full E2E fails because an old fixture or validator no longer matches the new architecture, stop and audit all similar old fixtures at once. Run all affected focused cases successfully before one final full E2E rerun.
+- Do not repeat `npm build`, `npm test`, or full E2E merely to confirm. Build only before dist-dependent focused tests or final build validation; otherwise batch edits first.
+- Every iteration report must include elapsed time for focused tests, `npm test`, full E2E, and `npm run build` / `npm run test:build`, even when a category was not run.
+
 ### Test tiers
 
 **Tier 0 — docs / task only**
