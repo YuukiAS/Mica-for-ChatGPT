@@ -1,7 +1,8 @@
 (() => {
   const GLOBAL_KEY = "MicaStaleComposerRecovery";
   const GUARD_DURATION_MS = 2600;
-  const HARD_GUARD_CAP_MS = 5500;
+  const HARD_GUARD_CAP_MS = 12000;
+  const QUIET_WINDOW_MS = 1400;
   const SAMPLE_INTERVAL_MS = 80;
   const SETTLE_MS = 180;
   const VERIFY_MS = 350;
@@ -335,10 +336,14 @@
       successMode: null,
       attemptsExhausted: false,
       lastLocalClearAttemptCount: 0,
+      quietSinceAt: now,
+      lastRemountAt: 0,
+      lastStaleReappearanceAt: 0,
       cancelledByUserInput: false,
       expired: false,
       timer: 0,
       phaseTimer: 0,
+      quietTimer: 0,
       hardTimer: 0
     };
     lastReport = reportFromGuard(guard);
@@ -362,6 +367,14 @@
       editableId: guard.anchorEditableId,
       rootId: guard.anchorRootId
     });
+    record("stale_recovery_quiet_window_started", {
+      generationId: guard.generationId,
+      oldLength: guard.oldLength,
+      newLength: guard.previousSnapshot.textLength,
+      attemptCount: guard.attemptCount,
+      quietWindowMs: QUIET_WINDOW_MS
+    });
+    scheduleQuietCompletion(guard);
     guard.timer = setInterval(tickGuard, SAMPLE_INTERVAL_MS);
     guard.phaseTimer = setTimeout(() => expireGuardIfCurrent(guard.generationId, "WAITING_FOR_REMOUNT", "WAITING_FOR_REMOUNT_TIMEOUT"), GUARD_DURATION_MS);
     guard.hardTimer = setTimeout(() => completeTombstoneIfCurrent(guard.generationId), HARD_GUARD_CAP_MS);
@@ -377,6 +390,7 @@
     }
     if (!previous?.exists && snapshot.exists) {
       guard.remountObserved = true;
+      resetQuietWindow("remount", snapshot);
     }
     guard.previousSnapshot = snapshot;
 
@@ -385,6 +399,7 @@
         markLocalClearObserved(snapshot);
       }
       if (guard.phase !== "SETTLING") guard.firstNonZeroAt = 0;
+      maybeCompleteQuietStable(snapshot);
       lastReport = reportFromGuard(guard, snapshot);
       return;
     }
@@ -522,6 +537,7 @@
   function markLocalClearObserved(snapshot) {
     if (!guard) return;
     if (guard.lastLocalClearAttemptCount === guard.attemptCount) {
+      scheduleQuietCompletion(guard);
       lastReport = reportFromGuard(guard, snapshot);
       return;
     }
@@ -529,6 +545,7 @@
     guard.lastLocalClearAttemptCount = guard.attemptCount;
     guard.lastCandidateLength = 0;
     guard.lastFingerprintMatched = false;
+    startQuietWindow(snapshot);
     record("stale_recovery_local_clear_observed", {
       generationId: guard.generationId,
       oldLength: guard.oldLength,
@@ -557,6 +574,7 @@
   function markSamePayloadReappeared(snapshot) {
     if (!guard) return;
     guard.sameStalePayloadReappeared = true;
+    resetQuietWindow("stale_reappeared", snapshot);
     record("stale_recovery_same_payload_reappeared", {
       generationId: guard.generationId,
       oldLength: guard.oldLength,
@@ -592,11 +610,11 @@
       markAttemptsExhausted(snapshot);
       return;
     }
-    if (guard.localClearObserved && !matched) {
+    if (guard.localClearObserved && !matched && hasQuietWindowElapsed()) {
       markFinalClearStable(snapshot, "local_clear_stable");
       return;
     }
-    if (!guard.localClearObserved && snapshot.exists && snapshot.textLength === 0 && !matched) {
+    if (!guard.localClearObserved && snapshot.exists && snapshot.textLength === 0 && !matched && hasQuietWindowElapsed()) {
       markFinalClearStable(snapshot, "native_stayed_empty");
       return;
     }
@@ -616,7 +634,9 @@
       newLength: snapshot.textLength,
       attemptCount: guard.attemptCount,
       maxAttempts: MAX_ATTEMPTS,
-      successMode
+      successMode,
+      quietWindowMs: QUIET_WINDOW_MS,
+      quietElapsedMs: quietElapsedMs()
     });
     finishGuard();
   }
@@ -666,6 +686,7 @@
     if (!guard) return;
     clearInterval(guard.timer);
     clearPhaseTimer(guard);
+    clearQuietTimer(guard);
     if (guard.hardTimer) clearTimeout(guard.hardTimer);
     guard.timer = 0;
     guard.hardTimer = 0;
@@ -679,7 +700,7 @@
     if (reason === "WAITING_FOR_REMOUNT_TIMEOUT") {
       const snapshot = readComposerSnapshot();
       const matched = snapshot.exists && snapshot.textLength > 0 && matchesOldPayload(snapshot.text, guard);
-      if (snapshot.exists && snapshot.textLength === 0 && !matched) {
+      if (snapshot.exists && snapshot.textLength === 0 && !matched && hasQuietWindowElapsed()) {
         markFinalClearStable(snapshot, guard.localClearObserved ? "local_clear_stable" : "native_stayed_empty");
         return;
       }
@@ -692,7 +713,10 @@
   function scheduleWaitingExpiry(activeGuard) {
     if (!activeGuard || activeGuard.phase !== "WAITING_FOR_REMOUNT") return;
     clearPhaseTimer(activeGuard);
-    if (activeGuard.localClearObserved) return;
+    if (activeGuard.localClearObserved) {
+      scheduleQuietCompletion(activeGuard);
+      return;
+    }
     const remainingMs = Math.max(0, activeGuard.waitExpiresAt - Date.now());
     if (remainingMs <= 0) {
       expireGuardIfCurrent(activeGuard.generationId, "WAITING_FOR_REMOUNT", "WAITING_FOR_REMOUNT_TIMEOUT");
@@ -705,6 +729,76 @@
     if (!activeGuard?.phaseTimer) return;
     clearTimeout(activeGuard.phaseTimer);
     activeGuard.phaseTimer = 0;
+  }
+
+  function startQuietWindow(snapshot) {
+    if (!guard) return;
+    guard.quietSinceAt = Date.now();
+    record("stale_recovery_quiet_window_started", {
+      generationId: guard.generationId,
+      oldLength: guard.oldLength,
+      newLength: snapshot.textLength,
+      attemptCount: guard.attemptCount,
+      quietWindowMs: QUIET_WINDOW_MS
+    });
+    scheduleQuietCompletion(guard);
+  }
+
+  function resetQuietWindow(reason, snapshot = readComposerSnapshot()) {
+    if (!guard || !guard.clearConfirmed) return;
+    guard.quietSinceAt = Date.now();
+    if (reason === "remount") guard.lastRemountAt = guard.quietSinceAt;
+    if (reason === "stale_reappeared") guard.lastStaleReappearanceAt = guard.quietSinceAt;
+    record("stale_recovery_quiet_window_reset", {
+      generationId: guard.generationId,
+      reason,
+      oldLength: guard.oldLength,
+      newLength: snapshot.textLength,
+      attemptCount: guard.attemptCount,
+      quietWindowMs: QUIET_WINDOW_MS
+    });
+    scheduleQuietCompletion(guard);
+  }
+
+  function scheduleQuietCompletion(activeGuard) {
+    if (!activeGuard || !activeGuard.clearConfirmed || !activeGuard.quietSinceAt) return;
+    clearQuietTimer(activeGuard);
+    const dueIn = Math.max(0, activeGuard.quietSinceAt + QUIET_WINDOW_MS - Date.now());
+    activeGuard.quietTimer = setTimeout(() => {
+      if (!guard || guard.generationId !== activeGuard.generationId) return;
+      const snapshot = readComposerSnapshot();
+      maybeCompleteQuietStable(snapshot);
+    }, dueIn);
+  }
+
+  function maybeCompleteQuietStable(snapshot = readComposerSnapshot()) {
+    if (!guard || !guard.clearConfirmed || !hasQuietWindowElapsed()) return false;
+    const matched = snapshot.exists && snapshot.textLength > 0 && matchesOldPayload(snapshot.text, guard);
+    guard.lastCandidateLength = snapshot.textLength;
+    guard.lastFingerprintMatched = matched;
+    if (matched) {
+      guard.fingerprintMatchedEver = true;
+      return false;
+    }
+    if (!snapshot.exists || snapshot.textLength === 0) {
+      markFinalClearStable(snapshot, guard.localClearObserved ? "local_clear_stable" : "native_stayed_empty");
+      return true;
+    }
+    return false;
+  }
+
+  function hasQuietWindowElapsed() {
+    return !!guard?.quietSinceAt && Date.now() - guard.quietSinceAt >= QUIET_WINDOW_MS;
+  }
+
+  function quietElapsedMs() {
+    return guard?.quietSinceAt ? Math.max(0, Date.now() - guard.quietSinceAt) : 0;
+  }
+
+  function clearQuietTimer(activeGuard) {
+    if (!activeGuard?.quietTimer) return;
+    clearTimeout(activeGuard.quietTimer);
+    activeGuard.quietTimer = 0;
   }
 
   function nativeDeleteComposerContents(editable) {
@@ -805,6 +899,11 @@
       tombstoneHardDeadlineMs: Math.max(0, activeGuard.hardExpiresAt - Date.now()),
       tombstoneActive: !!activeGuard.timer && !activeGuard.finalClearStable && !activeGuard.attemptsExhausted && !activeGuard.cancelledByUserInput,
       maxAttempts: MAX_ATTEMPTS,
+      quietWindowMs: QUIET_WINDOW_MS,
+      quietSinceElapsedMs: activeGuard.quietSinceAt ? Math.max(0, Date.now() - activeGuard.quietSinceAt) : null,
+      quietWindowElapsed: activeGuard.quietSinceAt ? Date.now() - activeGuard.quietSinceAt >= QUIET_WINDOW_MS : false,
+      lastRemountQuietResetElapsedMs: activeGuard.lastRemountAt ? Math.max(0, Date.now() - activeGuard.lastRemountAt) : null,
+      lastStaleReappearanceQuietResetElapsedMs: activeGuard.lastStaleReappearanceAt ? Math.max(0, Date.now() - activeGuard.lastStaleReappearanceAt) : null,
       fullClearIntentObserved: activeGuard.fullClearIntentObserved,
       fullClearIntentType: activeGuard.fullClearIntentType,
       fullClearIntentElapsedMs: activeGuard.fullClearIntentElapsedMs,
@@ -851,6 +950,11 @@
       tombstoneHardDeadlineMs: null,
       tombstoneActive: false,
       maxAttempts: MAX_ATTEMPTS,
+      quietWindowMs: QUIET_WINDOW_MS,
+      quietSinceElapsedMs: null,
+      quietWindowElapsed: false,
+      lastRemountQuietResetElapsedMs: null,
+      lastStaleReappearanceQuietResetElapsedMs: null,
       fullClearIntentObserved: true,
       fullClearIntentType: activePending.intentType,
       fullClearIntentElapsedMs: activePending.fullClearIntentElapsedMs,
@@ -897,6 +1001,11 @@
       tombstoneHardDeadlineMs: null,
       tombstoneActive: false,
       maxAttempts: MAX_ATTEMPTS,
+      quietWindowMs: QUIET_WINDOW_MS,
+      quietSinceElapsedMs: null,
+      quietWindowElapsed: false,
+      lastRemountQuietResetElapsedMs: null,
+      lastStaleReappearanceQuietResetElapsedMs: null,
       fullClearIntentObserved: false,
       fullClearIntentType: null,
       fullClearIntentElapsedMs: null,

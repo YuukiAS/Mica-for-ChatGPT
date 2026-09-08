@@ -20,9 +20,12 @@ assert(manifest.permissions?.includes("storage"), "storage permission missing");
 assert(manifest.permissions?.includes("activeTab"), "activeTab permission missing");
 assert(!manifest.host_permissions?.some((host) => !/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(host)), "unexpected host permission");
 assert(manifest.content_scripts?.[0]?.js?.[0] === "known-interruptions.js", "known interruptions script must run before content.js");
-assert(manifest.content_scripts?.[0]?.js?.[1] === "composer-diagnostics.js", "composer diagnostics script must run before content.js");
-assert(manifest.content_scripts?.[0]?.js?.[2] === "stale-composer-recovery.js", "stale composer recovery script must run before content.js");
-assert(manifest.content_scripts?.[0]?.js?.[3] === "content.js", "content.js must remain a content script");
+assert(manifest.content_scripts?.[0]?.js?.[1] === "connector-lifecycle-signal.js", "connector lifecycle signal script must run before dependent reliability scripts");
+assert(manifest.content_scripts?.[0]?.js?.[2] === "composer-diagnostics.js", "composer diagnostics script must run before content.js");
+assert(manifest.content_scripts?.[0]?.js?.[3] === "stale-composer-recovery.js", "stale composer recovery script must run before content.js");
+assert(manifest.content_scripts?.[0]?.js?.[4] === "connector-continuity.js", "connector continuity script must run before content.js");
+assert(manifest.content_scripts?.[0]?.js?.[5] === "send-residual-recovery.js", "send residual recovery script must run before content.js");
+assert(manifest.content_scripts?.[0]?.js?.[6] === "content.js", "content.js must remain a content script");
 
 for (const size of [16, 32, 48, 128]) {
   assert(manifest.icons?.[size] === `icons/icon${size}.png`, `manifest icon${size} missing`);
@@ -46,8 +49,14 @@ for (const token of [
   "conversationTextIncluded: false",
   "attachmentContentIncluded: false",
   "autoDismissKnownInterruptions",
+  "longThreadOptimization",
+  "connectorContinuity",
+  "sendResidualRecovery",
   "knownInterruptions",
-  "MicaStaleComposerRecovery"
+  "MicaConnectorLifecycleSignal",
+  "MicaStaleComposerRecovery",
+  "MicaConnectorContinuity",
+  "MicaSendResidualRecovery"
 ]) {
   assert(content.includes(token), `content.js missing ${token}`);
 }
@@ -68,11 +77,39 @@ for (const token of [
 const composerDiagnostics = await readFile(path.join(distDir, "composer-diagnostics.js"), "utf8");
 for (const token of [
   "MicaComposerDiagnostics",
-  "composer-capture-diagnostics.v2",
+  "composer-capture-diagnostics.v3",
+  "sendLifecycle",
+  "userTurnCommittedLatched",
+  "userTurnCommitSignalObserved",
+  "userTurnDeltaHistory",
+  "SEND_CLEARED_STABLE",
+  "SEND_STALE_PAYLOAD_REAPPEARED",
+  "SEND_NONMATCHING_TEXT_PRESENT",
+  "SEND_NOT_COMMITTED",
+  "INSUFFICIENT_SEND_EVIDENCE",
   "staleTextRestoredAfterClear",
   "staleTextAfterUserTurn",
   "clearAnchor",
   "mentionSignalSource",
+  "connectorContinuityActivated",
+  "sendResidualRecoveryAttemptCount",
+  "connectorLifecycleLatched",
+  "connectorContextLatched",
+  "chooserActiveNow",
+  "selectionWindowActive",
+  "send_candidate_created",
+  "send_candidate_promoted",
+  "send_candidate_discarded",
+  "CONNECTOR_SELECTION",
+  "overlayHandlerAttached",
+  "lastOverlayActionReceived",
+  "lastOverlayActionSessionId",
+  "lastOverlayActionResult",
+  "sendResidualRecoverySkippedReason",
+  "sendResidualRecoveryStaleProvenanceMatched",
+  "coalescedLowPriorityEvents",
+  "droppedLowPriorityEvents",
+  "isHighPriorityEvent",
   "EXPECTED_NATIVE_LIKE_REMOUNT",
   "REMOUNT_WITH_TEXT",
   "promptTextIncluded: false",
@@ -83,6 +120,22 @@ for (const token of [
   assert(composerDiagnostics.includes(token), `composer-diagnostics.js missing ${token}`);
 }
 assert(!/dispatchEvent\(|\.click\(|fetch\(|XMLHttpRequest|new\s+MutationObserver/.test(composerDiagnostics), "composer diagnostics must stay passive and local");
+const connectorLifecycleSignal = await readFile(path.join(distDir, "connector-lifecycle-signal.js"), "utf8");
+for (const token of [
+  "MicaConnectorLifecycleSignal",
+  "connectorLifecycleLatched",
+  "mica-connector-lifecycle-latched",
+  "chooserActiveNow",
+  "connectorContextLatched",
+  "selectionWindowActive",
+  "mention-trigger",
+  "findActiveMentionChooser",
+  "latchConnectorLifecycle",
+  "LATCH_TTL_MS"
+]) {
+  assert(connectorLifecycleSignal.includes(token), `connector-lifecycle-signal.js missing ${token}`);
+}
+assert(!/preventDefault\(|fetch\(|XMLHttpRequest|new\s+MutationObserver|document\.execCommand|\.click\(/.test(connectorLifecycleSignal), "connector lifecycle signal must stay observational and non-invasive");
 const staleRecovery = await readFile(path.join(distDir, "stale-composer-recovery.js"), "utf8");
 for (const token of [
   "MicaStaleComposerRecovery",
@@ -100,20 +153,70 @@ for (const token of [
   "stale_recovery_cancelled_new_input",
   "stale_recovery_attempt",
   "stale_recovery_success",
+  "stale_recovery_quiet_window_started",
+  "stale_recovery_quiet_window_reset",
   "stale_recovery_failed",
   "stale_recovery_expired",
+  "QUIET_WINDOW_MS",
   "GUARD_DURATION_MS",
   "MAX_ATTEMPTS"
 ]) {
   assert(staleRecovery.includes(token), `stale-composer-recovery.js missing ${token}`);
 }
 assert(!/fetch\(|XMLHttpRequest|new\s+MutationObserver|location\.reload|innerHTML\s*=|textContent\s*=/.test(staleRecovery), "stale recovery must stay bounded and avoid invasive DOM/network behavior");
+
+const connectorContinuity = await readFile(path.join(distDir, "connector-continuity.js"), "utf8");
+for (const token of [
+  "MicaConnectorContinuity",
+  "connector_continuity_activation_candidate",
+  "connector_continuity_shell_shown",
+  "connector_continuity_shell_removed",
+  "createSanitizedComposerClone",
+  "micaConnectorContinuityClone",
+  "selectionWindowOnly",
+  "SHELL_HARD_CAP_MS",
+  "WATCH_WINDOW_MS",
+  "skippedReason",
+  "pointerEvents",
+  "detectMentionSignal",
+  "findActiveMentionChooser",
+  "setEnabled"
+]) {
+  assert(connectorContinuity.includes(token), `connector-continuity.js missing ${token}`);
+}
+assert(!/preventDefault\(|fetch\(|XMLHttpRequest|new\s+MutationObserver|document\.execCommand|\.click\(/.test(connectorContinuity), "connector continuity must stay visual-only and non-invasive");
+
+const sendResidualRecovery = await readFile(path.join(distDir, "send-residual-recovery.js"), "utf8");
+for (const token of [
+  "MicaSendResidualRecovery",
+  "send_residual_pre_send_captured",
+  "send_residual_commit_latched",
+  "send_residual_same_payload_reappeared",
+  "send_residual_recovery_attempt",
+  "send_residual_recovery_success",
+  "send_residual_cancelled_new_input",
+  "send_residual_armed",
+  "MAX_ATTEMPTS",
+  "HARD_LIFETIME_MS",
+  "NONMATCHING_GRACE_MS",
+  "MIN_PARTIAL_RESIDUAL_LENGTH",
+  "waiting_for_clear_or_remount",
+  "observedComposerClearPath",
+  "postSendRemountPath",
+  "recoveryEvidencePath",
+  "partial_substring",
+  "connector_body_subset",
+  "detectMentionSignal"
+]) {
+  assert(sendResidualRecovery.includes(token), `send-residual-recovery.js missing ${token}`);
+}
+assert(!/preventDefault\(|fetch\(|XMLHttpRequest|new\s+MutationObserver|location\.reload|innerHTML\s*=/.test(sendResidualRecovery), "send residual recovery must stay bounded and avoid invasive DOM/network behavior");
 for (const forbidden of ["radix-_", "btn-primary", "[role=\"dialog\"] button", "location.reload", "fetch(", "XMLHttpRequest"]) {
   assert(!interruptions.includes(forbidden), `known-interruptions.js contains forbidden dependency or behavior: ${forbidden}`);
 }
 
 const popupHtml = await readFile(path.join(distDir, "popup", "index.html"), "utf8");
-for (const token of ["Start diagnostics", "Stop diagnostics", "Copy report", "Reset", "Auto-dismiss known interruptions", "Run composer check"]) {
+for (const token of ["Start diagnostics", "Stop diagnostics", "Copy report", "Reset", "Long-thread optimization", "Stale clear recovery", "Connector continuity", "Send residual recovery", "Auto-dismiss known interruptions", "Run composer check"]) {
   assert(popupHtml.includes(token), `popup missing ${token}`);
 }
 

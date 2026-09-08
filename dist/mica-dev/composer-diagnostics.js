@@ -1,15 +1,19 @@
 (() => {
   const GLOBAL_KEY = "MicaComposerDiagnostics";
-  const SESSION_VERSION = "composer-capture-diagnostics.v2";
+  const SESSION_VERSION = "composer-capture-diagnostics.v3";
   const SAMPLE_INTERVAL_MS = 150;
   const PANEL_MARGIN = 12;
   const MAX_EVENTS = 180;
   const USER_TURN_STALE_GRACE_MS = 600;
   const CORRELATION_WINDOW_MS = 250;
+  const SEND_CANDIDATE_WINDOW_MS = 3200;
 
   const defaultBridge = {
     getRuntimeSnapshot: () => ({}),
     getStaleRecoverySnapshot: () => null,
+    getConnectorLifecycleSnapshot: () => getSharedConnectorLifecycleState(),
+    getConnectorContinuitySnapshot: () => null,
+    getSendResidualRecoverySnapshot: () => null,
     countMountedTurns: () => countMountedTurns(),
     countUserTurns: () => countUserTurns()
   };
@@ -19,6 +23,7 @@
   let lastReport = null;
   let panelHost = null;
   let panelRoot = null;
+  let panelDelegatedListenerAttached = false;
 
   function configure(nextBridge) {
     bridge = { ...bridge, ...(nextBridge || {}) };
@@ -117,6 +122,16 @@
     addSafeEvent(type, details || {});
   }
 
+  function recordConnectorContinuityEvent(type, details = {}) {
+    if (!session || typeof type !== "string" || !/^connector_continuity_/.test(type)) return;
+    addSafeEvent(type, details || {});
+  }
+
+  function recordSendResidualRecoveryEvent(type, details = {}) {
+    if (!session || typeof type !== "string" || !/^send_residual_/.test(type)) return;
+    addSafeEvent(type, details || {});
+  }
+
   function addSafeEvent(type, details = {}) {
     if (!session || typeof type !== "string" || !type) return;
     const safeDetails = {};
@@ -143,6 +158,8 @@
       lastSampleKey: "",
       lastSnapshot: null,
       events: [],
+      coalescedLowPriorityEvents: 0,
+      droppedLowPriorityEvents: 0,
       missingSince: 0,
       maxMissingDurationMs: 0,
       composerUnmountCount: 0,
@@ -162,17 +179,27 @@
       userTurnLastCount: null,
       userTurnDelta: 0,
       lastUserTurnChangeAt: null,
+      sendCandidateId: 0,
+      sendCandidate: null,
+      sendLifecycle: createSendLifecycle(),
       deleteFlow: null,
       lastNonZeroTextSnapshot: null,
       missingFromSnapshot: null,
-      connectorLifecycle: createConnectorLifecycle()
+      connectorLifecycle: createConnectorLifecycle(),
+      overlayHandlerAttached: false,
+      lastOverlayActionReceived: null,
+      lastOverlayActionSessionId: null,
+      lastOverlayActionResult: null
     };
   }
 
   function createConnectorLifecycle() {
     return {
       mentionSeen: false,
+      detected: false,
+      latched: false,
       mentionSignalSource: null,
+      source: null,
       composerUnmounted: false,
       composerRemounted: false,
       editableChanged: false,
@@ -183,10 +210,49 @@
     };
   }
 
+  function createSendLifecycle() {
+    return {
+      observed: false,
+      preSendLength: 0,
+      preSendCanonicalLength: 0,
+      preSendBodyLength: 0,
+      preSendBodyCanonicalLength: 0,
+      preSendBodyHash: null,
+      preSendHash: null,
+      preSendFingerprintCaptured: false,
+      userTurnCommitted: false,
+      userTurnCommitSignalObserved: false,
+      userTurnCommittedLatched: false,
+      userTurnDelta: 0,
+      userTurnDeltaHistory: [],
+      firstUserTurnChangeAt: null,
+      firstComposerZeroElapsedMs: null,
+      composerUnmountBaseline: 0,
+      composerMountBaseline: 0,
+      composerUnmountCountAfterSend: 0,
+      composerMountCountAfterSend: 0,
+      stalePayloadReappeared: false,
+      staleFingerprintMatched: false,
+      staleReappearanceElapsedMs: null,
+      newTrustedUserInputAfterSend: false,
+      staleClearRecoveryEnabled: null,
+      staleClearRecoveryAttemptedDuringSend: false,
+      staleClearRecoveryEventCountAfterSend: 0,
+      finalTextLength: 0,
+      finalEditableBodyLength: 0,
+      finalConnectorPillTextLength: 0,
+      finalComposerPresent: false,
+      classification: "INSUFFICIENT_SEND_EVIDENCE"
+    };
+  }
+
   function attachSessionListeners() {
     if (!session || session.listenersActive) return;
     document.addEventListener("focusin", handleFocus, true);
     document.addEventListener("focusout", handleBlur, true);
+    document.addEventListener("submit", handleSubmit, true);
+    document.addEventListener("click", handleClick, true);
+    document.addEventListener("keydown", handleKeydown, true);
     document.addEventListener("beforeinput", handleBeforeInput, true);
     document.addEventListener("input", handleInput, true);
     document.addEventListener("cut", handleCut, true);
@@ -197,6 +263,9 @@
     if (!session?.listenersActive) return;
     document.removeEventListener("focusin", handleFocus, true);
     document.removeEventListener("focusout", handleBlur, true);
+    document.removeEventListener("submit", handleSubmit, true);
+    document.removeEventListener("click", handleClick, true);
+    document.removeEventListener("keydown", handleKeydown, true);
     document.removeEventListener("beforeinput", handleBeforeInput, true);
     document.removeEventListener("input", handleInput, true);
     document.removeEventListener("cut", handleCut, true);
@@ -224,11 +293,32 @@
     addEvent("blur", sample());
   }
 
+  function handleSubmit(event) {
+    if (!isComposerEventTarget(event.target)) return;
+    const snapshot = sample();
+    captureSendCandidate(snapshot, "submit");
+  }
+
+  function handleClick(event) {
+    if (!isComposerEventTarget(event.target)) return;
+    const button = getEventElement(event.target)?.closest?.("button, [role='button']");
+    if (!(button instanceof HTMLElement) || !isLikelySendButton(button)) return;
+    const snapshot = sample();
+    captureSendCandidate(snapshot, "click");
+  }
+
+  function handleKeydown(event) {
+    if (!isComposerEventTarget(event.target) || !isLikelySendKey(event)) return;
+    const snapshot = sample();
+    captureSendCandidate(snapshot, "enter");
+  }
+
   function handleBeforeInput(event) {
     if (!isComposerEventTarget(event.target)) return;
     const inputType = getInputType(event);
     const snapshot = sample();
     if (isDeleteLikeInputType(inputType)) beginDeleteFlow(snapshot, "beforeinput", inputType);
+    if (isTrustedInputEvent(event) && isInsertLikeInputType(inputType)) markTrustedUserInputAfterSend(snapshot, inputType);
     addEvent("beforeinput", snapshot, inputType ? { inputType } : {});
     if (isDeleteLikeInputType(inputType)) addEvent("delete_like_inputType", snapshot, { inputType });
   }
@@ -238,6 +328,7 @@
     const inputType = getInputType(event);
     const snapshot = sample();
     if (isDeleteLikeInputType(inputType)) beginDeleteFlow(snapshot, "input", inputType);
+    if (isTrustedInputEvent(event) && isInsertLikeInputType(inputType)) markTrustedUserInputAfterSend(snapshot, inputType);
     addEvent("input", snapshot, inputType ? { inputType } : {});
     if (isDeleteLikeInputType(inputType)) addEvent("delete_like_inputType", snapshot, { inputType });
   }
@@ -255,6 +346,10 @@
 
   function isDeleteLikeInputType(inputType) {
     return typeof inputType === "string" && /delete|cut|clear/i.test(inputType);
+  }
+
+  function isInsertLikeInputType(inputType) {
+    return typeof inputType === "string" && /^insert|paste|composition/i.test(inputType);
   }
 
   function beginDeleteFlow(snapshot, source, inputType) {
@@ -344,6 +439,9 @@
       };
       if (session.clearAnchor) session.clearAnchor.unmountAfter = true;
       if (session.connectorLifecycle.mentionSeen) session.connectorLifecycle.composerUnmounted = true;
+      if (Number.isFinite(session.sendLifecycle.firstUserTurnChangeAt) && snapshot.elapsedMs >= session.sendLifecycle.firstUserTurnChangeAt) {
+        session.sendLifecycle.composerUnmountCountAfterSend += 1;
+      }
       addEvent("composer_unmount", snapshot);
       return;
     }
@@ -357,6 +455,9 @@
         session.nativeLikeRemountObserved = true;
       }
       if (session.clearAnchor) session.clearAnchor.remountAfter = true;
+      if (Number.isFinite(session.sendLifecycle.firstUserTurnChangeAt) && snapshot.elapsedMs >= session.sendLifecycle.firstUserTurnChangeAt) {
+        session.sendLifecycle.composerMountCountAfterSend += 1;
+      }
       if (!session.clearAnchor && session.missingFromSnapshot?.textLength > 0 && snapshot.textLength > 0) {
         session.remountWithTextObserved = true;
       }
@@ -408,8 +509,221 @@
       session.userTurnLastCount = snapshot.userTurns;
       session.userTurnDelta = snapshot.userTurns - session.userTurnBaseline;
       session.lastUserTurnChangeAt = snapshot.elapsedMs;
+      if (delta > 0 && session.sendCandidate) promoteSendCandidate(snapshot);
+      recordSendUserTurnDelta(delta, snapshot);
+      if (delta > 0 && session.sendLifecycle.observed) beginSendLifecycle(previous, snapshot, delta);
       addEvent("user_turn_count_change", snapshot, { delta, totalDelta: session.userTurnDelta });
     }
+    trackSendCandidate(previous, snapshot);
+  }
+
+  function captureSendCandidate(snapshot, source) {
+    if (!session || !snapshot?.exists || snapshot.composerEditableBodyLength <= 0) return;
+    session.lastNonZeroTextSnapshot = privateTextSnapshot(snapshot);
+    const connectorLifecycle = safeCall(bridge.getConnectorLifecycleSnapshot, getSharedConnectorLifecycleState());
+    const mentionSignal = detectMentionSignal(snapshot.root, snapshot.editable);
+    session.sendCandidateId += 1;
+    session.sendCandidate = {
+      id: session.sendCandidateId,
+      source,
+      createdAtMs: snapshot.elapsedMs,
+      preSend: privateTextSnapshot(snapshot),
+      connectorContextLatched: !!(connectorLifecycle?.connectorContextLatched || connectorLifecycle?.latched || mentionSignal.seen),
+      chooserActiveNow: !!connectorLifecycle?.chooserActiveNow,
+      selectionWindowActive: !!connectorLifecycle?.selectionWindowActive,
+      mentionSignalObserved: mentionSignal.seen || !!connectorLifecycle?.detected,
+      mentionSignalSource: mentionSignal.source || connectorLifecycle?.source || null,
+      previousComposerExists: !!snapshot.exists,
+      unmountSeen: false,
+      remountSeen: false
+    };
+    addEvent("send_candidate_created", snapshot, {
+      candidateId: session.sendCandidate.id,
+      source,
+      preSendLength: session.sendCandidate.preSend?.textLength || 0,
+      connectorContextLatched: session.sendCandidate.connectorContextLatched,
+      chooserActiveNow: session.sendCandidate.chooserActiveNow,
+      selectionWindowActive: session.sendCandidate.selectionWindowActive,
+      mentionSignalObserved: session.sendCandidate.mentionSignalObserved,
+      mentionSignalSource: session.sendCandidate.mentionSignalSource
+    });
+  }
+
+  function promoteSendCandidate(snapshot) {
+    if (!session?.sendCandidate) return;
+    const candidate = session.sendCandidate;
+    const flow = session.sendLifecycle;
+    flow.observed = true;
+    flow.preSendLength = candidate.preSend?.textLength || 0;
+    flow.preSendCanonicalLength = candidate.preSend?.textCanonicalLength || 0;
+    flow.preSendBodyLength = candidate.preSend?.composerEditableBodyLength || 0;
+    flow.preSendBodyCanonicalLength = candidate.preSend?.composerEditableBodyCanonicalLength || 0;
+    flow.preSendBodyHash = candidate.preSend?.composerEditableBodyHash || null;
+    flow.preSendHash = candidate.preSend?.textHash || null;
+    flow.preSendFingerprintCaptured = !!flow.preSendHash;
+    flow.staleClearRecoveryEnabled = safeCall(bridge.getStaleRecoverySnapshot, null)?.enabled ?? null;
+    session.sendCandidate = null;
+    addEvent("send_candidate_promoted", snapshot, {
+      candidateId: candidate.id,
+      source: candidate.source,
+      preSendLength: flow.preSendLength,
+      preSendFingerprintCaptured: flow.preSendFingerprintCaptured,
+      connectorContextLatched: candidate.connectorContextLatched
+    });
+    addEvent("send_intent", snapshot, {
+      source: candidate.source,
+      candidateId: candidate.id,
+      promotedBy: "user_turn_commit"
+    });
+    addEvent("send_lifecycle_pre_send_captured", snapshot, {
+      source: candidate.source,
+      preSendLength: flow.preSendLength,
+      preSendFingerprintCaptured: flow.preSendFingerprintCaptured
+    });
+  }
+
+  function trackSendCandidate(previous, snapshot) {
+    const candidate = session?.sendCandidate;
+    if (!candidate || !previous || !snapshot) return;
+    if (previous.exists && !snapshot.exists) candidate.unmountSeen = true;
+    if (!previous.exists && snapshot.exists) candidate.remountSeen = true;
+    candidate.previousComposerExists = !!snapshot.exists;
+    if ((candidate.remountSeen || candidate.unmountSeen) && hasResolvedConnectorContext(snapshot.root, snapshot.editable)) {
+      finishSendCandidate("CONNECTOR_SELECTION", snapshot);
+      return;
+    }
+    if (snapshot.elapsedMs - candidate.createdAtMs >= SEND_CANDIDATE_WINDOW_MS) {
+      finishSendCandidate("INSUFFICIENT_SEND_EVIDENCE", snapshot);
+    }
+  }
+
+  function finishSendCandidate(classification, snapshot) {
+    const candidate = session?.sendCandidate;
+    if (!session || !candidate) return;
+    if (classification !== "CONNECTOR_SELECTION") {
+      const flow = session.sendLifecycle;
+      flow.observed = true;
+      flow.preSendLength = candidate.preSend?.textLength || 0;
+      flow.preSendCanonicalLength = candidate.preSend?.textCanonicalLength || 0;
+      flow.preSendBodyLength = candidate.preSend?.composerEditableBodyLength || 0;
+      flow.preSendBodyCanonicalLength = candidate.preSend?.composerEditableBodyCanonicalLength || 0;
+      flow.preSendBodyHash = candidate.preSend?.composerEditableBodyHash || null;
+      flow.preSendHash = candidate.preSend?.textHash || null;
+      flow.preSendFingerprintCaptured = !!flow.preSendHash;
+      flow.staleClearRecoveryEnabled = safeCall(bridge.getStaleRecoverySnapshot, null)?.enabled ?? null;
+      updateSendLifecycle(snapshot);
+    }
+    addEvent("send_candidate_discarded", snapshot, {
+      candidateId: candidate.id,
+      source: candidate.source,
+      classification,
+      unmountSeen: !!candidate.unmountSeen,
+      remountSeen: !!candidate.remountSeen,
+      resolvedConnectorContext: hasResolvedConnectorContext(snapshot.root, snapshot.editable)
+    });
+    session.sendCandidate = null;
+  }
+
+  function recordSendUserTurnDelta(delta, snapshot) {
+    const flow = session?.sendLifecycle;
+    if (!flow?.observed || !snapshot) return;
+    flow.userTurnDelta = session.userTurnDelta;
+    flow.userTurnDeltaHistory.push({
+      elapsedMs: Math.round(snapshot.elapsedMs),
+      delta,
+      totalDelta: session.userTurnDelta
+    });
+    if (flow.userTurnDeltaHistory.length > 12) flow.userTurnDeltaHistory.shift();
+    if (delta > 0) {
+      flow.userTurnCommitSignalObserved = true;
+      flow.userTurnCommittedLatched = true;
+      flow.userTurnCommitted = true;
+    }
+  }
+
+  function beginSendLifecycle(previous, snapshot, delta = 0) {
+    if (!session) return;
+    const flow = session.sendLifecycle;
+    const alreadyLatched = !!flow.userTurnCommittedLatched;
+    const firstCommitAnchor = !Number.isFinite(flow.firstUserTurnChangeAt);
+    const preSend = previous?.textLength > 0 ? privateTextSnapshot(previous) : session.lastNonZeroTextSnapshot;
+    flow.observed = true;
+    if (!flow.preSendFingerprintCaptured) {
+      flow.preSendLength = preSend?.textLength || 0;
+      flow.preSendCanonicalLength = preSend?.textCanonicalLength || 0;
+      flow.preSendBodyLength = preSend?.composerEditableBodyLength || 0;
+      flow.preSendBodyCanonicalLength = preSend?.composerEditableBodyCanonicalLength || 0;
+      flow.preSendBodyHash = preSend?.composerEditableBodyHash || null;
+      flow.preSendHash = preSend?.textHash || null;
+      flow.preSendFingerprintCaptured = !!flow.preSendHash;
+    }
+    flow.userTurnCommitSignalObserved = true;
+    flow.userTurnCommittedLatched = true;
+    flow.userTurnCommitted = true;
+    flow.userTurnDelta = session.userTurnDelta;
+    if (!alreadyLatched || firstCommitAnchor) {
+      flow.firstUserTurnChangeAt = snapshot.elapsedMs;
+      flow.composerUnmountBaseline = session.composerUnmountCount;
+      flow.composerMountBaseline = session.composerMountCount;
+    }
+    flow.staleClearRecoveryEnabled = safeCall(bridge.getStaleRecoverySnapshot, null)?.enabled ?? null;
+    updateSendLifecycle(snapshot);
+    if (!alreadyLatched || firstCommitAnchor) {
+      addEvent("send_lifecycle_user_turn_committed", snapshot, {
+        preSendLength: flow.preSendLength,
+        preSendFingerprintCaptured: flow.preSendFingerprintCaptured,
+        userTurnDelta: flow.userTurnDelta,
+        delta
+      });
+    }
+  }
+
+  function updateSendLifecycle(snapshot) {
+    const flow = session?.sendLifecycle;
+    if (!flow?.observed || !snapshot) return;
+    if (flow.userTurnCommitSignalObserved || flow.userTurnCommittedLatched) {
+      flow.userTurnCommittedLatched = true;
+      flow.userTurnCommitted = true;
+    }
+    flow.userTurnDelta = session.userTurnDelta;
+    flow.finalTextLength = snapshot.textLength;
+    flow.finalEditableBodyLength = snapshot.composerEditableBodyLength;
+    flow.finalConnectorPillTextLength = snapshot.connectorPillTextLength;
+    flow.finalComposerPresent = !!snapshot.exists;
+    flow.composerUnmountCountAfterSend = Math.max(flow.composerUnmountCountAfterSend, session.composerUnmountCount - flow.composerUnmountBaseline);
+    flow.composerMountCountAfterSend = Math.max(flow.composerMountCountAfterSend, session.composerMountCount - flow.composerMountBaseline);
+    const staleRecovery = safeCall(bridge.getStaleRecoverySnapshot, null);
+    if (flow.staleClearRecoveryEnabled === null) flow.staleClearRecoveryEnabled = staleRecovery?.enabled ?? null;
+    const hasCommitAnchor = Number.isFinite(flow.firstUserTurnChangeAt);
+    flow.staleClearRecoveryEventCountAfterSend = hasCommitAnchor
+      ? session.events.filter((event) => event.elapsedMs >= flow.firstUserTurnChangeAt && event.type.startsWith("stale_recovery_")).length
+      : 0;
+    flow.staleClearRecoveryAttemptedDuringSend = flow.staleClearRecoveryEventCountAfterSend > 0
+      && session.events.some((event) => event.elapsedMs >= flow.firstUserTurnChangeAt && event.type === "stale_recovery_attempt");
+    if (hasCommitAnchor && snapshot.exists && snapshot.composerEditableBodyLength === 0 && flow.firstComposerZeroElapsedMs === null) {
+      flow.firstComposerZeroElapsedMs = snapshot.elapsedMs - flow.firstUserTurnChangeAt;
+    }
+    if (hasCommitAnchor && snapshot.exists && snapshot.composerEditableBodyLength > 0 && snapshot.elapsedMs - flow.firstUserTurnChangeAt >= USER_TURN_STALE_GRACE_MS) {
+      const matched = matchesPreSendFingerprint(snapshot, flow);
+      if (matched) {
+        flow.stalePayloadReappeared = true;
+        flow.staleFingerprintMatched = true;
+        if (flow.staleReappearanceElapsedMs === null) {
+          flow.staleReappearanceElapsedMs = snapshot.elapsedMs - flow.firstUserTurnChangeAt;
+          addEvent("send_lifecycle_stale_payload_reappeared", snapshot, {
+            staleReappearanceElapsedMs: Math.round(flow.staleReappearanceElapsedMs),
+            staleFingerprintMatched: true
+          });
+        }
+      }
+    }
+  }
+
+  function markTrustedUserInputAfterSend(snapshot, inputType) {
+    const flow = session?.sendLifecycle;
+    if (!flow?.observed || !flow.userTurnCommittedLatched || !snapshot || snapshot.elapsedMs < flow.firstUserTurnChangeAt) return;
+    flow.newTrustedUserInputAfterSend = true;
+    addEvent("trusted_user_input_after_send", snapshot, { inputType: inputType || null });
   }
 
   function trackReliableClearAnchor(snapshot) {
@@ -418,6 +732,8 @@
       session.lastNonZeroTextSnapshot = {
         elapsedMs: snapshot.elapsedMs,
         textLength: snapshot.textLength,
+        textCanonicalLength: snapshot.textCanonicalLength,
+        textHash: snapshot.textHash,
         editableId: snapshot.editableId,
         rootId: snapshot.rootId
       };
@@ -491,15 +807,22 @@
   }
 
   function trackManualSendStale(snapshot) {
-    if (!session?.lastUserTurnChangeAt || session.staleTextAfterUserTurn) return;
+    const flow = session?.sendLifecycle;
+    if (!session?.lastUserTurnChangeAt || !flow?.observed) return;
+    updateSendLifecycle(snapshot);
+    if (session.staleTextAfterUserTurn) return;
     const delay = snapshot.elapsedMs - session.lastUserTurnChangeAt;
     if (delay < USER_TURN_STALE_GRACE_MS) return;
-    if (snapshot.exists && snapshot.textLength > 0) {
+    if (snapshot.exists && snapshot.composerEditableBodyLength > 0) {
+      const matched = matchesPreSendFingerprint(snapshot, flow);
       session.staleTextAfterUserTurn = true;
       session.staleAfterUserTurn = {
         delayMs: Math.round(delay),
         textLength: snapshot.textLength,
+        editableBodyLength: snapshot.composerEditableBodyLength,
+        connectorPillTextLength: snapshot.connectorPillTextLength,
         userTurnDelta: session.userTurnDelta,
+        preSendFingerprintMatched: matched,
         editableId: snapshot.editableId,
         rootId: snapshot.rootId,
         editableIdentityChanges: session.editableIdentityChanges,
@@ -509,7 +832,8 @@
       addEvent("stale_text_suspected", snapshot, {
         reason: "text_after_user_turn",
         delayMs: Math.round(delay),
-        userTurnDelta: session.userTurnDelta
+        userTurnDelta: session.userTurnDelta,
+        preSendFingerprintMatched: matched
       });
     }
   }
@@ -517,9 +841,15 @@
   function readSnapshot() {
     const editable = findComposerEditable();
     const root = findComposerRoot(editable);
-    const textLength = getComposerTextLength(editable);
+    const textParts = extractComposerText(editable, root);
+    const text = textParts.rawText;
+    const canonical = canonicalize(text);
+    const bodyCanonical = canonicalize(textParts.editableBodyText);
+    const textLength = text.length;
     const runtime = safeCall(bridge.getRuntimeSnapshot, {});
     const mentionSignal = detectMentionSignal(root, editable);
+    const connectorSignal = safeCall(bridge.getConnectorLifecycleSnapshot, getSharedConnectorLifecycleState());
+    const hasMentionSignal = mentionSignal.seen || !!connectorSignal?.latched;
     const now = Date.now();
     return {
       elapsedMs: session ? now - session.startedAt : 0,
@@ -534,8 +864,22 @@
       rootTag: root?.tagName?.toLowerCase() || null,
       rootTestId: root?.getAttribute?.("data-testid") || null,
       textLength,
-      hasMentionSignal: mentionSignal.seen,
-      mentionSignalSource: mentionSignal.source,
+      composerRawTextLength: textParts.rawText.length,
+      composerEditableBodyLength: textParts.editableBodyText.length,
+      composerEditableBodyCanonicalLength: bodyCanonical.length,
+      composerEditableBodyHash: bodyCanonical.length > 0 ? fingerprintCanonical(bodyCanonical) : null,
+      connectorPillTextLength: textParts.connectorPillTextLength,
+      attachmentOrNonEditableTokenLength: textParts.attachmentOrNonEditableTokenLength,
+      nonEditableTokenLength: textParts.attachmentOrNonEditableTokenLength,
+      textCanonicalLength: canonical.length,
+      textHash: canonical.length > 0 ? fingerprintCanonical(canonical) : null,
+      hasMentionSignal,
+      mentionSignalSource: mentionSignal.source || connectorSignal?.source || null,
+      connectorLifecycleDetected: !!connectorSignal?.detected,
+      connectorLifecycleLatched: !!connectorSignal?.latched,
+      connectorContextLatched: !!connectorSignal?.connectorContextLatched,
+      chooserActiveNow: !!connectorSignal?.chooserActiveNow,
+      selectionWindowActive: !!connectorSignal?.selectionWindowActive,
       focused: !!editable && (document.activeElement === editable || editable.contains(document.activeElement)),
       mountedTurns: safeCall(bridge.countMountedTurns, countMountedTurns()),
       userTurns: safeCall(bridge.countUserTurns, countUserTurns()),
@@ -557,9 +901,18 @@
       editableId: snapshot.editableId,
       rootId: snapshot.rootId,
       textLength: snapshot.textLength,
+      composerRawTextLength: snapshot.composerRawTextLength,
+      composerEditableBodyLength: snapshot.composerEditableBodyLength,
+      connectorPillTextLength: snapshot.connectorPillTextLength,
+      attachmentOrNonEditableTokenLength: snapshot.attachmentOrNonEditableTokenLength,
       focused: !!snapshot.focused,
       mentionSignal: !!snapshot.hasMentionSignal,
       mentionSignalSource: snapshot.mentionSignalSource || null,
+      connectorLifecycleDetected: !!snapshot.connectorLifecycleDetected,
+      connectorLifecycleLatched: !!snapshot.connectorLifecycleLatched,
+      connectorContextLatched: !!snapshot.connectorContextLatched,
+      chooserActiveNow: !!snapshot.chooserActiveNow,
+      selectionWindowActive: !!snapshot.selectionWindowActive,
       mountedTurns: snapshot.mountedTurns,
       userTurns: snapshot.userTurns,
       nativeSafeMode: !!snapshot.nativeSafeMode,
@@ -568,20 +921,72 @@
       optimizedTurns: snapshot.optimizedTurns,
       ...data
     };
+    if (maybeCoalesceEvent(event)) return;
     session.events.push(event);
     if (session.events.length > MAX_EVENTS) {
-      session.events.splice(0, session.events.length - MAX_EVENTS);
+      trimEventBuffer();
     }
+  }
+
+  function maybeCoalesceEvent(event) {
+    if (!isLowPriorityEvent(event)) return false;
+    const previous = session.events[session.events.length - 1];
+    if (!previous || !isLowPriorityEvent(previous)) return false;
+    if (previous.type !== event.type || previous.callback !== event.callback || previous.status !== event.status) return false;
+    previous.elapsedMs = event.elapsedMs;
+    previous.textLength = event.textLength;
+    previous.mountedTurns = event.mountedTurns;
+    previous.userTurns = event.userTurns;
+    previous.optimizedTurns = event.optimizedTurns;
+    previous.repeatCount = (previous.repeatCount || 1) + 1;
+    session.coalescedLowPriorityEvents += 1;
+    return true;
+  }
+
+  function trimEventBuffer() {
+    while (session.events.length > MAX_EVENTS) {
+      const removableIndex = session.events.findIndex((event) => !isHighPriorityEvent(event));
+      if (removableIndex >= 0) {
+        if (isLowPriorityEvent(session.events[removableIndex])) session.droppedLowPriorityEvents += 1;
+        session.events.splice(removableIndex, 1);
+      } else {
+        session.events.shift();
+      }
+    }
+  }
+
+  function isHighPriorityEvent(event) {
+    if (!event?.type) return false;
+    if (/^(connector_continuity_|send_residual_|stale_recovery_|send_lifecycle_|send_candidate_|overlay_action_)/.test(event.type)) return true;
+    return [
+      "send_intent",
+      "user_turn_count_change",
+      "composer_unmount",
+      "composer_mount",
+      "mention_signal_on",
+      "mention_signal_off",
+      "stale_text_suspected",
+      "trusted_user_input_after_send"
+    ].includes(event.type);
+  }
+
+  function isLowPriorityEvent(event) {
+    return event?.type === "mica_callback" && /^(scan|status_update|turn_optimization_update|known_interruption_check)$/.test(event.callback || "");
   }
 
   function buildReport() {
     if (!session) return lastReport;
     const runtime = safeCall(bridge.getRuntimeSnapshot, {});
     const staleRecovery = safeCall(bridge.getStaleRecoverySnapshot, null);
+    const connectorLifecycleSignal = safeCall(bridge.getConnectorLifecycleSnapshot, getSharedConnectorLifecycleState());
+    const connectorContinuity = safeCall(bridge.getConnectorContinuitySnapshot, null);
+    const sendResidualRecovery = safeCall(bridge.getSendResidualRecoverySnapshot, null);
     const snapshot = session.lastSnapshot || readSnapshot();
+    updateSendLifecycle(snapshot);
     const connectorLifecycle = buildConnectorLifecycle(snapshot);
     const summary = buildSummary(snapshot, connectorLifecycle);
     const currentClearGeneration = buildCurrentClearGeneration(staleRecovery, snapshot);
+    const sendLifecycle = buildPublicSendLifecycle(snapshot);
     return {
       schemaVersion: 2,
       probe: SESSION_VERSION,
@@ -617,12 +1022,22 @@
         sampleCount: session.sampleCount,
         eventLimit: MAX_EVENTS,
         eventCount: session.events.length,
+        coalescedLowPriorityEvents: session.coalescedLowPriorityEvents,
+        droppedLowPriorityEvents: session.droppedLowPriorityEvents,
         diagnosticTimerActive: !!session.timer,
-        diagnosticListenersActive: !!session.listenersActive
+        diagnosticListenersActive: !!session.listenersActive,
+        overlayHandlerAttached: !!session.overlayHandlerAttached,
+        lastOverlayActionReceived: session.lastOverlayActionReceived,
+        lastOverlayActionSessionId: session.lastOverlayActionSessionId,
+        lastOverlayActionResult: session.lastOverlayActionResult
       },
       summary,
+      sendLifecycle,
       currentClearGeneration,
       connectorLifecycle,
+      connectorLifecycleSignal,
+      connectorContinuity,
+      sendResidualRecovery,
       clearAnchor: publicClearAnchor(session.clearAnchor),
       staleRecovery,
       staleRestoration: session.staleRestoration,
@@ -647,10 +1062,86 @@
       maxMissingDurationMs: Math.round(session.maxMissingDurationMs),
       mentionSignalObserved: session.mentionSignalObserved,
       mentionSignalSource: session.connectorLifecycle.mentionSignalSource || null,
+      connectorLifecycleDetected: !!connectorLifecycle.detected,
+      connectorLifecycleLatched: !!connectorLifecycle.latched,
+      connectorLifecycleSource: connectorLifecycle.source || connectorLifecycle.mentionSignalSource || null,
       userTurnDelta: session.userTurnDelta,
+      userTurnCommittedLatched: !!session.sendLifecycle.userTurnCommittedLatched,
       finalTextLength: snapshot?.textLength ?? 0,
+      composerRawTextLength: snapshot?.composerRawTextLength ?? snapshot?.textLength ?? 0,
+      composerEditableBodyLength: snapshot?.composerEditableBodyLength ?? snapshot?.textLength ?? 0,
+      connectorPillTextLength: snapshot?.connectorPillTextLength ?? 0,
+      attachmentOrNonEditableTokenLength: snapshot?.attachmentOrNonEditableTokenLength ?? 0,
       finalComposerPresent: !!snapshot?.exists,
+      sendClassification: classifySendLifecycle(session.sendLifecycle, snapshot),
       classification: classifySummary(connectorLifecycle)
+    };
+  }
+
+  function buildPublicSendLifecycle(snapshot) {
+    const flow = session?.sendLifecycle || createSendLifecycle();
+    if (session && snapshot) updateSendLifecycle(snapshot);
+    const sendResidualRecovery = safeCall(bridge.getSendResidualRecoverySnapshot, null);
+    const connectorContinuity = safeCall(bridge.getConnectorContinuitySnapshot, null);
+    const connectorLifecycleSignal = safeCall(bridge.getConnectorLifecycleSnapshot, getSharedConnectorLifecycleState());
+    const mergedForClassification = {
+      ...flow,
+      stalePayloadReappeared: !!(flow.stalePayloadReappeared || sendResidualRecovery?.stalePayloadReappeared),
+      staleFingerprintMatched: !!(flow.staleFingerprintMatched || sendResidualRecovery?.staleFingerprintMatched)
+    };
+    const classification = classifySendLifecycle(mergedForClassification, snapshot);
+    flow.classification = classification;
+    return {
+      observed: !!flow.observed,
+      sendCandidateActive: !!session?.sendCandidate,
+      sendCandidateId: session?.sendCandidate?.id || null,
+      sendCandidateSource: session?.sendCandidate?.source || null,
+      sendCandidateConnectorContextLatched: !!session?.sendCandidate?.connectorContextLatched,
+      preSendLength: flow.preSendLength || 0,
+      preSendBodyLength: flow.preSendBodyLength || 0,
+      preSendFingerprintCaptured: !!flow.preSendFingerprintCaptured,
+      userTurnCommitted: !!flow.userTurnCommittedLatched,
+      userTurnCommitSignalObserved: !!flow.userTurnCommitSignalObserved,
+      userTurnCommittedLatched: !!flow.userTurnCommittedLatched,
+      userTurnDelta: flow.userTurnDelta || 0,
+      userTurnDeltaHistory: Array.isArray(flow.userTurnDeltaHistory) ? flow.userTurnDeltaHistory.slice() : [],
+      firstComposerZeroElapsedMs: roundNullable(flow.firstComposerZeroElapsedMs),
+      composerUnmountCountAfterSend: flow.composerUnmountCountAfterSend || 0,
+      composerMountCountAfterSend: flow.composerMountCountAfterSend || 0,
+      stalePayloadReappeared: !!(flow.stalePayloadReappeared || sendResidualRecovery?.stalePayloadReappeared),
+      staleFingerprintMatched: !!(flow.staleFingerprintMatched || sendResidualRecovery?.staleFingerprintMatched),
+      staleReappearanceElapsedMs: roundNullable(flow.staleReappearanceElapsedMs ?? sendResidualRecovery?.staleReappearanceElapsedMs),
+      finalTextLength: snapshot?.textLength ?? flow.finalTextLength ?? 0,
+      composerRawTextLength: snapshot?.composerRawTextLength ?? snapshot?.textLength ?? flow.finalTextLength ?? 0,
+      composerEditableBodyLength: snapshot?.composerEditableBodyLength ?? flow.finalEditableBodyLength ?? 0,
+      connectorPillTextLength: snapshot?.connectorPillTextLength ?? flow.finalConnectorPillTextLength ?? 0,
+      attachmentOrNonEditableTokenLength: snapshot?.attachmentOrNonEditableTokenLength ?? 0,
+      finalComposerPresent: !!(snapshot?.exists ?? flow.finalComposerPresent),
+      mentionSignalObserved: !!(session?.mentionSignalObserved || sendResidualRecovery?.mentionSignalObserved || connectorLifecycleSignal?.detected),
+      mentionSignalSource: session?.connectorLifecycle?.mentionSignalSource || sendResidualRecovery?.mentionSignalSource || connectorLifecycleSignal?.source || null,
+      connectorLifecycleDetected: !!connectorLifecycleSignal?.detected,
+      connectorLifecycleLatched: !!connectorLifecycleSignal?.latched,
+      newTrustedUserInputAfterSend: !!flow.newTrustedUserInputAfterSend,
+      staleClearRecoveryEnabled: flow.staleClearRecoveryEnabled,
+      staleClearRecoveryAttemptedDuringSend: !!flow.staleClearRecoveryAttemptedDuringSend,
+      staleClearRecoveryEventCountAfterSend: flow.staleClearRecoveryEventCountAfterSend || 0,
+      connectorContinuityActivated: !!connectorContinuity?.activated,
+      connectorContinuitySkippedReason: connectorContinuity?.skippedReason || null,
+      connectorContinuityDurationMs: Number(connectorContinuity?.shellDurationMs || 0),
+      sendResidualRecoveryEnabled: sendResidualRecovery?.enabled ?? null,
+      sendResidualRecoveryArmed: !!sendResidualRecovery?.armed,
+      sendResidualRecoverySkippedReason: sendResidualRecovery?.skippedReason || null,
+      sendResidualRecoveryConnectorLifecycleLatched: !!sendResidualRecovery?.connectorLifecycleLatched,
+      sendResidualRecoveryUserTurnCommittedLatched: !!sendResidualRecovery?.userTurnCommittedLatched,
+      sendResidualRecoveryPreSendFingerprintCaptured: !!sendResidualRecovery?.preSendFingerprintCaptured,
+      sendResidualRecoveryStaleFingerprintMatched: !!sendResidualRecovery?.staleFingerprintMatched,
+      sendResidualRecoveryStaleProvenanceMatched: !!sendResidualRecovery?.staleProvenanceMatched,
+      sendResidualRecoveryStaleProvenanceReason: sendResidualRecovery?.staleProvenanceReason || null,
+      sendResidualRecoveryAttemptCount: Number(sendResidualRecovery?.attemptCount || 0),
+      sendResidualRecoverySucceeded: !!sendResidualRecovery?.succeeded,
+      sendResidualRecoveryCancelledByUserInput: !!sendResidualRecovery?.cancelledByUserInput,
+      sendResidualRecoveryAttemptsExhausted: !!sendResidualRecovery?.attemptsExhausted,
+      classification
     };
   }
 
@@ -691,9 +1182,18 @@
 
   function buildConnectorLifecycle(snapshot) {
     const flow = { ...session.connectorLifecycle };
+    const shared = safeCall(bridge.getConnectorLifecycleSnapshot, getSharedConnectorLifecycleState());
+    if (shared?.detected || shared?.latched) {
+      flow.detected = !!shared.detected;
+      flow.latched = !!shared.latched;
+      flow.mentionSeen = true;
+      flow.mentionSignalSource ||= shared.source || "unknown";
+      flow.source = shared.source || flow.source || null;
+    }
     flow.finalTextLength = snapshot?.textLength ?? flow.finalTextLength ?? 0;
     flow.staleRestorationObserved = !!session.staleTextRestoredAfterClear;
     flow.mentionSignalSource = flow.mentionSignalSource || null;
+    flow.source = flow.source || flow.mentionSignalSource || null;
     const lifecycleObserved = flow.composerUnmounted
       || flow.composerRemounted
       || flow.editableChanged
@@ -715,6 +1215,19 @@
       flow.classification = "MENTION_OBSERVED_NO_REMOUNT";
     }
     return flow;
+  }
+
+  function classifySendLifecycle(flow, snapshot) {
+    if (!flow?.observed) return "INSUFFICIENT_SEND_EVIDENCE";
+    if (!flow.userTurnCommittedLatched) return "SEND_NOT_COMMITTED";
+    const finalTextLength = snapshot?.textLength ?? flow.finalTextLength ?? 0;
+    const finalBodyLength = snapshot?.composerEditableBodyLength ?? flow.finalEditableBodyLength ?? finalTextLength;
+    const connectorPillTextLength = snapshot?.connectorPillTextLength ?? flow.finalConnectorPillTextLength ?? 0;
+    if (flow.staleFingerprintMatched || flow.stalePayloadReappeared) return "SEND_STALE_PAYLOAD_REAPPEARED";
+    if (finalBodyLength === 0 && connectorPillTextLength > 0) return "SEND_BODY_CLEARED_CONNECTOR_CONTEXT_RETAINED";
+    if (finalBodyLength > 0) return "SEND_NONMATCHING_TEXT_PRESENT";
+    if (flow.firstComposerZeroElapsedMs !== null && finalBodyLength === 0) return "SEND_CLEARED_STABLE";
+    return "INSUFFICIENT_SEND_EVIDENCE";
   }
 
   function classifySummary(connectorLifecycle) {
@@ -749,6 +1262,7 @@
       generatedAt: report.generatedAt,
       probe: report.probe,
       summary: report.summary,
+      sendLifecycle: report.sendLifecycle,
       connectorLifecycle: report.connectorLifecycle
     };
   }
@@ -780,6 +1294,44 @@
     };
   }
 
+  function privateTextSnapshot(snapshot) {
+    if (!snapshot || snapshot.textLength <= 0 || !snapshot.textHash) return null;
+    return {
+      elapsedMs: snapshot.elapsedMs,
+      textLength: snapshot.textLength,
+      textCanonicalLength: snapshot.textCanonicalLength,
+      textHash: snapshot.textHash,
+      composerRawTextLength: snapshot.composerRawTextLength,
+      composerEditableBodyLength: snapshot.composerEditableBodyLength,
+      composerEditableBodyCanonicalLength: snapshot.composerEditableBodyCanonicalLength,
+      composerEditableBodyHash: snapshot.composerEditableBodyHash,
+      connectorPillTextLength: snapshot.connectorPillTextLength,
+      attachmentOrNonEditableTokenLength: snapshot.attachmentOrNonEditableTokenLength,
+      editableId: snapshot.editableId,
+      rootId: snapshot.rootId
+    };
+  }
+
+  function matchesPreSendFingerprint(snapshot, flow) {
+    if (!snapshot || !flow) return false;
+    if (snapshot.composerEditableBodyHash && flow.preSendBodyHash) {
+      return snapshot.composerEditableBodyCanonicalLength === flow.preSendBodyCanonicalLength
+        && snapshot.composerEditableBodyHash === flow.preSendBodyHash;
+    }
+    return !!snapshot.textHash
+      && !!flow.preSendHash
+      && snapshot.textCanonicalLength === flow.preSendCanonicalLength
+      && snapshot.textHash === flow.preSendHash;
+  }
+
+  function roundNullable(value) {
+    return Number.isFinite(value) ? Math.round(value) : null;
+  }
+
+  function getSharedConnectorLifecycleState() {
+    return globalThis.MicaConnectorLifecycleSignal?.getState?.() || null;
+  }
+
   function ensurePanel() {
     if (panelHost) return;
     panelHost = document.createElement("div");
@@ -789,9 +1341,20 @@
     panelHost.style.right = `${PANEL_MARGIN}px`;
     panelHost.style.zIndex = "2147483645";
     panelHost.style.width = `min(300px, calc(100vw - ${PANEL_MARGIN * 2}px))`;
-    panelHost.style.pointerEvents = "none";
-    panelRoot = panelHost.attachShadow({ mode: "open" });
+    panelHost.style.pointerEvents = "auto";
+    panelRoot = panelHost;
+    attachPanelDelegatedListener();
     document.documentElement.appendChild(panelHost);
+  }
+
+  function attachPanelDelegatedListener() {
+    if (panelDelegatedListenerAttached) {
+      if (session) session.overlayHandlerAttached = true;
+      return;
+    }
+    document.addEventListener("click", handlePanelDelegatedAction, true);
+    panelDelegatedListenerAttached = true;
+    if (session) session.overlayHandlerAttached = true;
   }
 
   function removePanel() {
@@ -804,6 +1367,9 @@
     if (!panelRoot || !session) return;
     const report = buildReport();
     const summary = report.summary;
+    const copyButton = canCopyReport()
+      ? `<button type="button" data-action="copy">Copy report</button>`
+      : "";
     panelRoot.innerHTML = `
 <style>
   :host { all: initial; }
@@ -871,22 +1437,83 @@
     <div>Stale after user turn: ${summary.staleTextAfterUserTurn ? "yes" : "no"}</div>
   </div>
   <div class="actions">
-    <button type="button" data-action="copy">Copy report</button>
+    ${copyButton}
     <button type="button" data-action="stop">Stop</button>
   </div>
 </section>`;
-    panelRoot.querySelector("[data-action='stop']")?.addEventListener("click", () => stop({ keepPanel: false }));
-    panelRoot.querySelector("[data-action='copy']")?.addEventListener("click", copyReportFromPanel);
+  }
+
+  function handlePanelDelegatedAction(event) {
+    const target = event.target instanceof Element ? event.target : null;
+    const button = target?.closest?.("[data-mica-composer-diagnostics-root='true'] button[data-action]");
+    if (!(button instanceof HTMLButtonElement)) return;
+    const action = button.dataset.action;
+    if (action !== "stop" && action !== "copy") return;
+    recordOverlayAction(action, "received");
+    if (action === "stop") {
+      recordOverlayAction(action, "stopped");
+      stop({ keepPanel: false });
+      return;
+    }
+    if (action === "copy") {
+      copyReportFromPanel().then((result) => {
+        recordOverlayAction(action, result);
+        renderPanel();
+      });
+    }
   }
 
   async function copyReportFromPanel() {
     const text = getReportText();
-    if (!text || !navigator.clipboard?.writeText) return;
+    if (!text) return "no_report";
     try {
-      await navigator.clipboard.writeText(text);
+      await copyText(text);
+      return "copied";
     } catch (_error) {
       // Popup copy remains available if page clipboard access is denied.
+      return "copy_failed";
     }
+  }
+
+  function recordOverlayAction(action, result) {
+    if (!session) return;
+    session.overlayHandlerAttached = panelDelegatedListenerAttached;
+    session.lastOverlayActionReceived = action;
+    session.lastOverlayActionSessionId = session.id;
+    session.lastOverlayActionResult = result;
+    addEvent("overlay_action_result", readSnapshot(), {
+      action,
+      sessionId: session.id,
+      result
+    });
+  }
+
+  function canCopyReport() {
+    return !!navigator.clipboard?.writeText
+      || document.queryCommandSupported?.("copy") === true
+      || document.documentElement.dataset.micaFixture === "true";
+  }
+
+  async function copyText(text) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+    if (document.queryCommandSupported?.("copy") !== true && document.documentElement.dataset.micaFixture !== "true") return false;
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "true");
+    Object.assign(textarea.style, {
+      position: "fixed",
+      left: "-9999px",
+      top: "0",
+      opacity: "0"
+    });
+    document.documentElement.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand?.("copy") === true;
+    textarea.remove();
+    return copied;
   }
 
   function findComposerEditable() {
@@ -927,6 +1554,28 @@
     return !!element.closest("#prompt-textarea, [data-testid*='composer'], textarea, [contenteditable][role='textbox'], [role='textbox']");
   }
 
+  function isTrustedInputEvent(event) {
+    return event?.isTrusted === true || document.documentElement.dataset.micaFixture === "true";
+  }
+
+  function isLikelySendButton(button) {
+    const signal = [
+      button.getAttribute("aria-label"),
+      button.getAttribute("data-testid"),
+      button.textContent
+    ].filter(Boolean).join(" ");
+    return /send|submit|发送|送出/i.test(signal);
+  }
+
+  function isLikelySendKey(event) {
+    return event?.key === "Enter" && !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey && !event.isComposing;
+  }
+
+  function isConnectorChooserActiveNow() {
+    const signal = safeCall(bridge.getConnectorLifecycleSnapshot, getSharedConnectorLifecycleState());
+    return signal?.chooserActiveNow === true;
+  }
+
   function getEventElement(target) {
     if (target instanceof HTMLElement) return target;
     if (target instanceof Element) return target.closest("*");
@@ -935,9 +1584,73 @@
   }
 
   function getComposerTextLength(element) {
-    if (!element) return 0;
-    if (element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement) return (element.value || "").length;
-    return (element.textContent ?? element.innerText ?? "").length;
+    return readComposerText(element).length;
+  }
+
+  function extractComposerText(editable, root) {
+    const rawText = readComposerText(editable);
+    if (!(editable instanceof HTMLElement)) {
+      return {
+        rawText,
+        editableBodyText: "",
+        connectorPillTextLength: 0,
+        attachmentOrNonEditableTokenLength: 0
+      };
+    }
+    const clone = editable.cloneNode(true);
+    if (!(clone instanceof HTMLElement)) {
+      return {
+        rawText,
+        editableBodyText: rawText,
+        connectorPillTextLength: 0,
+        attachmentOrNonEditableTokenLength: 0
+      };
+    }
+    const sourceRoot = root instanceof Element ? root : editable;
+    const connectorPillTextLength = sumTextLength(sourceRoot, "[data-inline-selection-pill][data-symbol='ecosystemMention'][data-id^='plugin:'], [data-inline-selection-pill][data-id^='plugin:'], [data-system-hint-type^='plugin:']");
+    const nonEditableTextLength = sumTextLength(sourceRoot, "[contenteditable='false'], [data-inline-selection-pill], [data-system-hint-type]");
+    for (const node of clone.querySelectorAll("[data-inline-selection-pill][data-symbol='ecosystemMention'][data-id^='plugin:'], [data-inline-selection-pill][data-id^='plugin:'], [data-system-hint-type^='plugin:'], [contenteditable='false']")) {
+      node.remove();
+    }
+    const editableBodyText = canonicalize(readComposerText(clone)).trim();
+    return {
+      rawText,
+      editableBodyText,
+      connectorPillTextLength,
+      attachmentOrNonEditableTokenLength: Math.max(0, nonEditableTextLength - connectorPillTextLength)
+    };
+  }
+
+  function sumTextLength(root, selector) {
+    if (!(root instanceof Element)) return 0;
+    let total = 0;
+    const seen = new Set();
+    if (root.matches?.(selector)) seen.add(root);
+    for (const node of root.querySelectorAll(selector)) seen.add(node);
+    for (const node of seen) total += String(node.textContent || "").length;
+    return total;
+  }
+
+  function readComposerText(element) {
+    if (!element) return "";
+    if (element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement) return element.value || "";
+    return element.textContent ?? element.innerText ?? "";
+  }
+
+  function canonicalize(value) {
+    return String(value)
+      .replace(/\r\n?/g, "\n")
+      .replace(/\u00a0/g, " ")
+      .replace(/[\u200b\u200c\u200d\ufeff]/g, "");
+  }
+
+  function fingerprintCanonical(value) {
+    let hash = 2166136261;
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 16777619) >>> 0;
+    }
+    return hash.toString(16).padStart(8, "0");
   }
 
   function detectMentionSignal(root, editable) {
@@ -953,6 +1666,7 @@
 
   function detectMentionSignalInRoot(root) {
     if (!(root instanceof Element)) return { seen: false, source: null };
+    if (hasResolvedConnectorContext(root)) return { seen: true, source: "resolved-connector-pill" };
     if (root.matches?.("[data-mention], [data-token-type], [data-entity]")) return { seen: true, source: "chip" };
     if (root.querySelector?.("[data-mention], [data-token-type], [data-entity]")) return { seen: true, source: "chip" };
     const marked = root.querySelectorAll?.("[aria-label], [data-testid], [data-type], [role], [aria-controls], [aria-expanded]") || [];
@@ -966,6 +1680,7 @@
 
   function mentionSourceFromAttributes(node) {
     if (!(node instanceof Element)) return null;
+    if (isResolvedConnectorPill(node)) return "resolved-connector-pill";
     if (node.hasAttribute("data-mention") || node.hasAttribute("data-entity") || node.hasAttribute("data-token-type")) return "chip";
     const signal = [
       node.getAttribute("aria-label"),
@@ -974,9 +1689,24 @@
       node.getAttribute("role")
     ].filter(Boolean).join(" ");
     if (/connector|mention/i.test(signal)) return "structural-marker";
-    if (/github/i.test(signal)) return "chip";
     if (node.getAttribute("aria-expanded") === "true" && node.hasAttribute("aria-controls")) return "chooser";
     return null;
+  }
+
+  function hasResolvedConnectorContext(root, editable) {
+    return hasResolvedConnectorPill(root) || hasResolvedConnectorPill(editable);
+  }
+
+  function hasResolvedConnectorPill(root) {
+    if (!(root instanceof Element)) return false;
+    if (isResolvedConnectorPill(root)) return true;
+    return !!root.querySelector?.("[data-inline-selection-pill][data-symbol='ecosystemMention'][data-id^='plugin:'], [data-inline-selection-pill][data-id^='plugin:'], [data-system-hint-type^='plugin:']");
+  }
+
+  function isResolvedConnectorPill(node) {
+    return node instanceof Element
+      && node.hasAttribute("data-inline-selection-pill")
+      && (node.getAttribute("data-symbol") === "ecosystemMention" || String(node.getAttribute("data-id") || "").startsWith("plugin:"));
   }
 
   function hasComposerControlledChooser(root, editable) {
@@ -1013,7 +1743,9 @@
       node.getAttribute("aria-label"),
       node.getAttribute("data-testid")
     ].filter(Boolean).join(" ");
-    return /listbox|menu|dialog|connector|mention/i.test(signal);
+    return /listbox|menu|dialog/i.test(signal)
+      || (node.getAttribute("aria-expanded") === "true" && node.hasAttribute("aria-controls"))
+      || node.hasAttribute("data-radix-collection-item");
   }
 
   function countMountedTurns() {
@@ -1078,6 +1810,8 @@
     getDebugState,
     isActive,
     recordRuntimeCallback,
-    recordStaleRecoveryEvent
+    recordStaleRecoveryEvent,
+    recordConnectorContinuityEvent,
+    recordSendResidualRecoveryEvent
   };
 })();

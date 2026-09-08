@@ -1,7 +1,10 @@
 const DEFAULT_SETTINGS = {
   enabled: true,
   showStatus: true,
+  longThreadOptimization: true,
   staleClearRecovery: true,
+  connectorContinuity: true,
+  sendResidualRecovery: true,
   autoDismissKnownInterruptions: true,
   recentTurnKeepCount: 8
 };
@@ -22,7 +25,10 @@ const elements = {
   version: document.getElementById("version"),
   enabled: document.getElementById("enabled"),
   showStatus: document.getElementById("showStatus"),
+  longThreadOptimization: document.getElementById("longThreadOptimization"),
   staleClearRecovery: document.getElementById("staleClearRecovery"),
+  connectorContinuity: document.getElementById("connectorContinuity"),
+  sendResidualRecovery: document.getElementById("sendResidualRecovery"),
   autoDismissKnownInterruptions: document.getElementById("autoDismissKnownInterruptions"),
   recentTurnKeepCount: document.getElementById("recentTurnKeepCount"),
   startDiagnostics: document.getElementById("startDiagnostics"),
@@ -40,7 +46,10 @@ load();
 
 elements.enabled.addEventListener("change", save);
 elements.showStatus.addEventListener("change", save);
+elements.longThreadOptimization.addEventListener("change", save);
 elements.staleClearRecovery.addEventListener("change", save);
+elements.connectorContinuity.addEventListener("change", save);
+elements.sendResidualRecovery.addEventListener("change", save);
 elements.autoDismissKnownInterruptions.addEventListener("change", save);
 elements.recentTurnKeepCount.addEventListener("change", save);
 elements.startDiagnostics.addEventListener("click", () => diagnosticsAction("MICA_DIAGNOSTICS_START"));
@@ -57,7 +66,10 @@ async function load() {
   const settings = await getStorage(DEFAULT_SETTINGS);
   elements.enabled.checked = settings.enabled;
   elements.showStatus.checked = settings.showStatus;
+  elements.longThreadOptimization.checked = settings.longThreadOptimization;
   elements.staleClearRecovery.checked = settings.staleClearRecovery;
+  elements.connectorContinuity.checked = settings.connectorContinuity;
+  elements.sendResidualRecovery.checked = settings.sendResidualRecovery;
   elements.autoDismissKnownInterruptions.checked = settings.autoDismissKnownInterruptions;
   elements.recentTurnKeepCount.value = String(settings.recentTurnKeepCount);
 
@@ -65,7 +77,10 @@ async function load() {
   if (response?.settings) {
     elements.enabled.checked = response.settings.enabled;
     elements.showStatus.checked = response.settings.showStatus;
+    elements.longThreadOptimization.checked = response.settings.longThreadOptimization;
     elements.staleClearRecovery.checked = response.settings.staleClearRecovery;
+    elements.connectorContinuity.checked = response.settings.connectorContinuity;
+    elements.sendResidualRecovery.checked = response.settings.sendResidualRecovery;
     elements.autoDismissKnownInterruptions.checked = response.settings.autoDismissKnownInterruptions;
     elements.recentTurnKeepCount.value = String(response.settings.recentTurnKeepCount);
   }
@@ -76,7 +91,10 @@ async function save() {
   const next = {
     enabled: elements.enabled.checked,
     showStatus: elements.showStatus.checked,
+    longThreadOptimization: elements.longThreadOptimization.checked,
     staleClearRecovery: elements.staleClearRecovery.checked,
+    connectorContinuity: elements.connectorContinuity.checked,
+    sendResidualRecovery: elements.sendResidualRecovery.checked,
     autoDismissKnownInterruptions: elements.autoDismissKnownInterruptions.checked,
     recentTurnKeepCount: clamp(Number(elements.recentTurnKeepCount.value), 4, 20)
   };
@@ -201,8 +219,9 @@ function renderComposerCheck(composerGuided) {
     return;
   }
   const summary = composerGuided?.lastReport?.summary;
+  const send = composerGuided?.lastReport?.sendLifecycle;
   elements.composerCheckStatus.textContent = summary
-    ? `Captured · stale clear ${summary.staleTextRestoredAfterClear ? "yes" : "no"} · stale send ${summary.staleTextAfterUserTurn ? "yes" : "no"}`
+    ? `Captured · stale clear ${summary.staleTextRestoredAfterClear ? "yes" : "no"} · send ${send?.classification || "not observed"}`
     : "Idle";
 }
 

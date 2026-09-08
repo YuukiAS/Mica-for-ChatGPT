@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mica composer body vs connector pill diagnostics fixture</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        min-height: 900px;
+        margin: 0;
+        background: #f7f7f8;
+        color: #171717;
+        font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main {
+        width: min(840px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 24px 0 180px;
+      }
+      article {
+        margin: 14px 0;
+        padding: 14px;
+        border: 1px solid #d9d9e3;
+        border-radius: 8px;
+        background: #ffffff;
+      }
+      .composer {
+        position: fixed;
+        left: 50%;
+        bottom: 14px;
+        width: min(820px, calc(100vw - 24px));
+        transform: translateX(-50%);
+      }
+      [data-composer-surface="true"] {
+        display: grid;
+        min-height: 52px;
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 28px;
+        background: #ffffff;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.12);
+      }
+      .composer-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+      }
+      [role="textbox"] {
+        min-height: 34px;
+        padding: 6px 4px;
+        outline: none;
+        white-space: pre-wrap;
+      }
+      .mention-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 7px;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #202123;
+      }
+      button {
+        min-width: 32px;
+        height: 32px;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 999px;
+        background: #171717;
+        color: #ffffff;
+      }
+      #body-pill-result {
+        position: fixed;
+        left: 8px;
+        top: 8px;
+        z-index: 1;
+        max-width: 48vw;
+        white-space: pre-wrap;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <pre id="body-pill-result">Idle</pre>
+    <main>
+      <section id="conversation" aria-label="Synthetic ChatGPT conversation"></section>
+    </main>
+    <div id="composer-dock"></div>
+
+    <script src="../../dist/mica-dev/known-interruptions.js"></script>
+    <script src="../../dist/mica-dev/connector-lifecycle-signal.js"></script>
+    <script src="../../dist/mica-dev/composer-diagnostics.js"></script>
+    <script src="../../dist/mica-dev/stale-composer-recovery.js"></script>
+    <script src="../../dist/mica-dev/connector-continuity.js"></script>
+    <script src="../../dist/mica-dev/send-residual-recovery.js"></script>
+    <script src="../../dist/mica-dev/content.js"></script>
+    <script>
+      const resultNode = document.getElementById("body-pill-result");
+      const conversation = document.getElementById("conversation");
+      const dock = document.getElementById("composer-dock");
+      let composer = null;
+      let editor = null;
+      let serial = 0;
+      let turnSerial = 0;
+
+      run().catch((error) => {
+        resultNode.textContent = JSON.stringify({ passed: false, error: String(error?.stack || error) }, null, 2);
+      });
+
+      async function run() {
+        await waitFor(() => window.__MICA_TEST_CONTROLS__, 3000);
+        window.__MICA_TEST_CONTROLS__.setSettings({
+          enabled: true,
+          longThreadOptimization: true,
+          staleClearRecovery: true,
+          connectorContinuity: true,
+          sendResidualRecovery: true
+        });
+        window.__MICA_TEST_CONTROLS__.resetConnectorLifecycleSignalForTests();
+        window.__MICA_TEST_CONTROLS__.resetSendResidualRecoveryForTests();
+        window.__MICA_TEST_CONTROLS__.startComposerGuidedDiagnostics();
+        try {
+          await delay(180);
+          mountComposer();
+          setResolvedConnectorBody("typed body", { emitInput: true });
+          await waitFor(() => window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState()?.connectorContextLatched === true, 1200);
+          await delay(180);
+          await dispatchSubmitIntent();
+          appendTurn("user");
+          await delay(120);
+          unmountComposer();
+          await delay(180);
+          mountComposer();
+          setResolvedConnectorBody("", { emitInput: false });
+          await delay(820);
+          const report = window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport();
+          const recovery = window.__MICA_TEST_CONTROLS__.getSendResidualRecoveryState();
+          const reportText = JSON.stringify(report);
+          const checks = [
+            ["classified connector context retained", report?.sendLifecycle?.classification === "SEND_BODY_CLEARED_CONNECTOR_CONTEXT_RETAINED"],
+            ["raw text remains from pill", report?.sendLifecycle?.composerRawTextLength > 0],
+            ["editable body cleared", report?.sendLifecycle?.composerEditableBodyLength === 0],
+            ["connector pill counted separately", report?.sendLifecycle?.connectorPillTextLength > 0],
+            ["not stale body residual", report?.sendLifecycle?.classification !== "SEND_NONMATCHING_TEXT_PRESENT" && report?.sendLifecycle?.stalePayloadReappeared === false],
+            ["send residual did not delete pill", recovery?.attemptCount === 0 && recovery?.succeeded === false],
+            ["privacy excludes submitted body", !reportText.includes("typed body")]
+          ].map(([name, passed]) => ({ name, passed: !!passed }));
+          resultNode.textContent = JSON.stringify({
+            passed: checks.every((check) => check.passed),
+            checks,
+            sendLifecycle: report?.sendLifecycle || null,
+            summary: report?.summary || null,
+            recovery
+          }, null, 2);
+        } finally {
+          window.__MICA_TEST_CONTROLS__.stopComposerGuidedDiagnostics();
+        }
+      }
+
+      function mountComposer() {
+        unmountComposer();
+        const form = document.createElement("form");
+        form.className = "composer";
+        form.dataset.testid = "composer";
+        form.dataset.type = "unified-composer";
+        form.dataset.serial = String(++serial);
+        form.innerHTML = `
+          <div id="thread-bottom-container">
+            <div data-composer-surface="true">
+              <div class="composer-body">
+                <div id="editor" role="textbox" contenteditable="plaintext-only" aria-label="Message Mica"></div>
+                <button type="submit" data-testid="send-button" aria-label="Send message">Send</button>
+              </div>
+            </div>
+          </div>
+        `;
+        dock.appendChild(form);
+        composer = form;
+        editor = form.querySelector("[role='textbox']");
+        editor.focus();
+      }
+
+      function setResolvedConnectorBody(text, options = {}) {
+        editor.textContent = "";
+        const chip = document.createElement("span");
+        chip.className = "mention-chip";
+        chip.dataset.inlineSelectionPill = "";
+        chip.dataset.symbol = "ecosystemMention";
+        chip.dataset.id = "plugin:connector_fixture";
+        chip.setAttribute("aria-label", "Selected connector");
+        chip.setAttribute("contenteditable", "false");
+        chip.textContent = "Connector";
+        editor.append(chip, document.createTextNode(text ? ` ${text}` : " "));
+        if (options.emitInput !== false) {
+          editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "@" }));
+        }
+      }
+
+      async function dispatchSubmitIntent() {
+        const event = typeof SubmitEvent === "function"
+          ? new SubmitEvent("submit", { bubbles: true, cancelable: true })
+          : new Event("submit", { bubbles: true, cancelable: true });
+        composer.dispatchEvent(event);
+        await delay(0);
+      }
+
+      function appendTurn(role) {
+        const article = document.createElement("article");
+        article.dataset.testid = `conversation-turn-${++turnSerial}`;
+        const marker = document.createElement("div");
+        marker.dataset.messageAuthorRole = role;
+        marker.textContent = `${role} turn ${turnSerial}`;
+        article.append(marker);
+        conversation.appendChild(article);
+      }
+
+      function unmountComposer() {
+        composer?.remove();
+        composer = null;
+        editor = null;
+      }
+
+      function waitFor(fn, timeout) {
+        const started = Date.now();
+        return new Promise((resolve, reject) => {
+          const timer = setInterval(() => {
+            try {
+              const value = fn();
+              if (value) {
+                clearInterval(timer);
+                resolve(value);
+              } else if (Date.now() - started > timeout) {
+                clearInterval(timer);
+                reject(new Error("Timed out"));
+              }
+            } catch (error) {
+              clearInterval(timer);
+              reject(error);
+            }
+          }, 40);
+        });
+      }
+
+      function delay(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+    </script>
+  </body>
+</html>

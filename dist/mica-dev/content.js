@@ -1,11 +1,14 @@
 (() => {
-  const VERSION = "0.1.5";
-  const VERSION_NAME = "0.1.5";
-  const BUILD_LABEL = "stale-composer-recovery.6";
+  const VERSION = "0.1.6";
+  const VERSION_NAME = "0.1.6";
+  const BUILD_LABEL = "connector-continuity-shadow-cache.1";
   const DEFAULT_SETTINGS = {
     enabled: true,
     showStatus: true,
+    longThreadOptimization: true,
     staleClearRecovery: true,
+    sendResidualRecovery: true,
+    connectorContinuity: true,
     autoDismissKnownInterruptions: true,
     recentTurnKeepCount: 8,
     nativeOnlyTurnThreshold: 14,
@@ -170,11 +173,14 @@
     settings = { ...DEFAULT_SETTINGS, ...(await readSettings()) };
     setupBadge();
     setupComposerGuidedDiagnostics();
+    setupConnectorLifecycleSignal();
     setupStaleComposerRecovery();
+    setupConnectorContinuity();
+    setupSendResidualRecovery();
     setupObservers();
     setupMessages();
     setupFixtureTestHooks();
-    scheduleScan();
+    applySettingsChange();
   }
 
   function isSupportedPage() {
@@ -211,7 +217,10 @@
     const next = {};
     if (typeof value.enabled === "boolean") next.enabled = value.enabled;
     if (typeof value.showStatus === "boolean") next.showStatus = value.showStatus;
+    if (typeof value.longThreadOptimization === "boolean") next.longThreadOptimization = value.longThreadOptimization;
     if (typeof value.staleClearRecovery === "boolean") next.staleClearRecovery = value.staleClearRecovery;
+    if (typeof value.sendResidualRecovery === "boolean") next.sendResidualRecovery = value.sendResidualRecovery;
+    if (typeof value.connectorContinuity === "boolean") next.connectorContinuity = value.connectorContinuity;
     if (typeof value.autoDismissKnownInterruptions === "boolean") next.autoDismissKnownInterruptions = value.autoDismissKnownInterruptions;
     if (Number.isFinite(value.recentTurnKeepCount)) next.recentTurnKeepCount = clamp(Math.round(value.recentTurnKeepCount), 4, 20);
     if (Number.isFinite(value.nativeOnlyTurnThreshold)) next.nativeOnlyTurnThreshold = clamp(Math.round(value.nativeOnlyTurnThreshold), 6, 40);
@@ -251,10 +260,10 @@
     }
     addEventListener("scroll", () => {
       recordScrollSample();
-      if (!runtimeState.nativeSafeMode && !isComposerLifecycleUnstable()) scheduleScan();
+      if (settings.enabled && settings.longThreadOptimization && !runtimeState.nativeSafeMode && !isComposerLifecycleUnstable()) scheduleScan();
     }, { passive: true, capture: true });
     addEventListener("resize", () => {
-      if (!runtimeState.nativeSafeMode && !isComposerLifecycleUnstable()) {
+      if (settings.enabled && settings.longThreadOptimization && !runtimeState.nativeSafeMode && !isComposerLifecycleUnstable()) {
         scheduleScan();
         scheduleOverlayPlacement();
       }
@@ -262,11 +271,18 @@
     setInterval(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
-        updateStaleComposerRecoveryEnabled();
+        updateFeatureModulesEnabled();
         if (!settings.enabled) {
           clearOptimization();
           enterNativeSafeMode("disabled");
           setStatus(STATUS.DISABLED, "Disabled by user", []);
+          return;
+        }
+        if (!settings.longThreadOptimization) {
+          clearOptimization();
+          enterNativeSafeMode("long-thread optimization disabled");
+          refreshLongThreadDisabledStatus("url");
+          processKnownInterruptions();
           return;
         }
         exitNativeSafeMode();
@@ -279,6 +295,13 @@
         clearOptimization();
         enterNativeSafeMode("disabled");
         setStatusIfChanged(STATUS.DISABLED, "Disabled by user", []);
+        return;
+      }
+      if (!settings.longThreadOptimization) {
+        clearOptimization();
+        enterNativeSafeMode("long-thread optimization disabled");
+        refreshLongThreadDisabledStatus("interval");
+        processKnownInterruptions();
         return;
       }
       if (runtimeState.nativeSafeMode) {
@@ -430,11 +453,18 @@
   }
 
   function applySettingsChange() {
-    updateStaleComposerRecoveryEnabled();
+    updateFeatureModulesEnabled();
     if (!settings.enabled) {
       clearOptimization();
       enterNativeSafeMode("disabled");
       setStatus(STATUS.DISABLED, "Disabled by user", []);
+      return;
+    }
+    if (!settings.longThreadOptimization) {
+      clearOptimization();
+      enterNativeSafeMode("long-thread optimization disabled");
+      refreshLongThreadDisabledStatus("settings");
+      processKnownInterruptions();
       return;
     }
     exitNativeSafeMode();
@@ -470,14 +500,23 @@
           documentMutationObserverActive: runtimeState.documentMutationsObserved,
           composerLifecycleListenersAttached: runtimeState.composerLifecycleListenersAttached,
           micaEnabled: settings.enabled,
+          longThreadOptimizationEnabled: settings.enabled && settings.longThreadOptimization,
+          connectorContinuityEnabled: settings.enabled && settings.connectorContinuity,
+          sendResidualRecoveryEnabled: settings.enabled && settings.sendResidualRecovery,
           nativeSafeModeEntries: globalCounters.nativeSafeModeEntries
         },
         settings: {
           enabled: settings.enabled,
-          staleClearRecovery: settings.staleClearRecovery
+          longThreadOptimization: settings.longThreadOptimization,
+          staleClearRecovery: settings.staleClearRecovery,
+          sendResidualRecovery: settings.sendResidualRecovery,
+          connectorContinuity: settings.connectorContinuity
         }
       }),
       getStaleRecoverySnapshot: () => getStaleComposerRecoveryState(),
+      getConnectorLifecycleSnapshot: () => getConnectorLifecycleSignalState(),
+      getConnectorContinuitySnapshot: () => getConnectorContinuityState(),
+      getSendResidualRecoverySnapshot: () => getSendResidualRecoveryState(),
       countMountedTurns: () => collectMountedTurnStatusProbe().length,
       countUserTurns: () => collectMountedTurnStatusProbe().filter((turn) => hasTurnRole(turn, "user")).length
     });
@@ -489,10 +528,59 @@
     api.configure({ enabled: settings.enabled && settings.staleClearRecovery });
   }
 
+  function setupConnectorLifecycleSignal() {
+    const api = globalThis.MicaConnectorLifecycleSignal;
+    if (!api || typeof api.configure !== "function") return;
+    api.configure({ enabled: settings.enabled });
+  }
+
+  function setupConnectorContinuity() {
+    const api = globalThis.MicaConnectorContinuity;
+    if (!api || typeof api.configure !== "function") return;
+    api.configure({ enabled: settings.enabled && settings.connectorContinuity });
+  }
+
+  function setupSendResidualRecovery() {
+    const api = globalThis.MicaSendResidualRecovery;
+    if (!api || typeof api.configure !== "function") return;
+    api.configure({
+      enabled: settings.enabled && settings.sendResidualRecovery,
+      bridge: {
+        getConnectorLifecycleSnapshot: () => getConnectorLifecycleSignalState(),
+        countUserTurns: () => collectMountedTurnStatusProbe().filter((turn) => hasTurnRole(turn, "user")).length
+      }
+    });
+  }
+
+  function updateFeatureModulesEnabled() {
+    updateConnectorLifecycleSignalEnabled();
+    updateStaleComposerRecoveryEnabled();
+    updateConnectorContinuityEnabled();
+    updateSendResidualRecoveryEnabled();
+  }
+
+  function updateConnectorLifecycleSignalEnabled() {
+    const api = globalThis.MicaConnectorLifecycleSignal;
+    if (!api || typeof api.setEnabled !== "function") return;
+    api.setEnabled(settings.enabled);
+  }
+
   function updateStaleComposerRecoveryEnabled() {
     const api = globalThis.MicaStaleComposerRecovery;
     if (!api || typeof api.setEnabled !== "function") return;
     api.setEnabled(settings.enabled && settings.staleClearRecovery);
+  }
+
+  function updateConnectorContinuityEnabled() {
+    const api = globalThis.MicaConnectorContinuity;
+    if (!api || typeof api.setEnabled !== "function") return;
+    api.setEnabled(settings.enabled && settings.connectorContinuity);
+  }
+
+  function updateSendResidualRecoveryEnabled() {
+    const api = globalThis.MicaSendResidualRecovery;
+    if (!api || typeof api.setEnabled !== "function") return;
+    api.setEnabled(settings.enabled && settings.sendResidualRecovery);
   }
 
   function startComposerGuidedDiagnostics() {
@@ -546,6 +634,18 @@
     return globalThis.MicaStaleComposerRecovery?.getState?.() || null;
   }
 
+  function getConnectorLifecycleSignalState() {
+    return globalThis.MicaConnectorLifecycleSignal?.getState?.() || null;
+  }
+
+  function getConnectorContinuityState() {
+    return globalThis.MicaConnectorContinuity?.getState?.() || null;
+  }
+
+  function getSendResidualRecoveryState() {
+    return globalThis.MicaSendResidualRecovery?.getState?.() || null;
+  }
+
   function setupFixtureTestHooks() {
     if (document.documentElement.dataset.micaFixture !== "true") return;
     globalThis.__MICA_TEST_CONTROLS__ = {
@@ -587,6 +687,27 @@
       resetStaleComposerRecoveryForTests() {
         return globalThis.MicaStaleComposerRecovery?.resetForTests?.();
       },
+      resetConnectorLifecycleSignalForTests() {
+        return globalThis.MicaConnectorLifecycleSignal?.resetForTests?.();
+      },
+      getConnectorLifecycleSignalState() {
+        return getConnectorLifecycleSignalState();
+      },
+      latchConnectorLifecycleForTests(source) {
+        return globalThis.MicaConnectorLifecycleSignal?.latchConnectorLifecycle?.(source || "structural-marker");
+      },
+      resetConnectorContinuityForTests() {
+        return globalThis.MicaConnectorContinuity?.resetForTests?.();
+      },
+      getConnectorContinuityState() {
+        return getConnectorContinuityState();
+      },
+      resetSendResidualRecoveryForTests() {
+        return globalThis.MicaSendResidualRecovery?.resetForTests?.();
+      },
+      getSendResidualRecoveryState() {
+        return getSendResidualRecoveryState();
+      },
       forceStaleComposerRecoveryTimeoutForTests(expectedPhase) {
         return globalThis.MicaStaleComposerRecovery?.forceExpireForTests?.(expectedPhase);
       },
@@ -600,6 +721,7 @@
   }
 
   function scheduleScan(reason = "auto") {
+    if (!settings.enabled || !settings.longThreadOptimization) return;
     if (runtimeState.nativeSafeMode && reason !== "settings" && reason !== "url" && reason !== "manual") return;
     if (scheduled) return;
     scheduled = true;
@@ -615,16 +737,22 @@
   }
 
   function scanAndApply() {
-    recordComposerDiagnosticRuntimeCallback("scan");
-    if (isComposerEditWindowActive()) {
-      globalCounters.composerEditScansSkipped += 1;
-      updateComposerTextLengthOnly();
-      return;
-    }
     if (!settings.enabled) {
       clearOptimization();
       enterNativeSafeMode("disabled");
       setStatus(STATUS.DISABLED, "Disabled by user", []);
+      return;
+    }
+    if (!settings.longThreadOptimization) {
+      clearOptimization();
+      enterNativeSafeMode("long-thread optimization disabled");
+      refreshLongThreadDisabledStatus("scan");
+      return;
+    }
+    recordComposerDiagnosticRuntimeCallback("scan");
+    if (isComposerEditWindowActive()) {
+      globalCounters.composerEditScansSkipped += 1;
+      updateComposerTextLengthOnly();
       return;
     }
     processKnownInterruptions();
@@ -775,6 +903,9 @@
 
   function refreshNativeSafeMountedStatus(reason) {
     if (!runtimeState.nativeSafeMode) return currentStatus;
+    if (!settings.longThreadOptimization) {
+      return refreshLongThreadDisabledStatus(reason);
+    }
     globalCounters.nativeSafeMountedStatusProbes += 1;
     const turns = collectMountedTurnStatusProbe();
     updateTurnWindowStats(turns);
@@ -810,6 +941,15 @@
 
     exitNativeSafeMode();
     scheduleScan(`native-safe-mounted-probe:${reason || "unknown"}`);
+    return currentStatus;
+  }
+
+  function refreshLongThreadDisabledStatus(_reason) {
+    globalCounters.nativeSafeMountedStatusProbes += 1;
+    const turns = collectMountedTurnStatusProbe();
+    updateTurnWindowStats(turns);
+    runtimeState.nativeSafeReason = "long-thread optimization disabled";
+    setStatusIfChanged(STATUS.NATIVE_ONLY, "Long-thread optimization disabled", turns);
     return currentStatus;
   }
 
@@ -1517,6 +1657,9 @@
         documentMutationObserverActive: runtimeState.documentMutationsObserved,
         composerLifecycleListenersAttached: runtimeState.composerLifecycleListenersAttached,
         micaEnabled: settings.enabled,
+        longThreadOptimizationEnabled: settings.enabled && settings.longThreadOptimization,
+        connectorContinuityEnabled: settings.enabled && settings.connectorContinuity,
+        sendResidualRecoveryEnabled: settings.enabled && settings.sendResidualRecovery,
         nativeSafeModeEntries: current.nativeSafeModeEntries,
         nativeSafeMountedStatusProbes: current.nativeSafeMountedStatusProbes,
         nativeSafeMountedStatusUpdates: current.nativeSafeMountedStatusUpdates

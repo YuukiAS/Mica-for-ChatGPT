@@ -1,0 +1,1091 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mica connector mention lifecycle fixture</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 1600px;
+        margin: 0;
+        background: #f7f7f8;
+        color: #171717;
+        font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        width: min(840px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 24px 0 180px;
+      }
+
+      article {
+        margin: 14px 0;
+        padding: 14px;
+        border: 1px solid #d9d9e3;
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      .composer {
+        position: fixed;
+        left: 50%;
+        bottom: 14px;
+        z-index: 10;
+        width: min(820px, calc(100vw - 24px));
+        transform: translateX(-50%);
+      }
+
+      .composer-layout {
+        width: 100%;
+      }
+
+      [data-composer-surface="true"] {
+        --composer-surface-primary: #ffffff;
+        --composer-container-height: auto;
+        --composer-blue-bg: #daeeff;
+        display: grid;
+        min-height: 52px;
+        width: 100%;
+        padding: 8px 10px;
+        overflow: clip;
+        border: 0 solid transparent;
+        border-radius: 28px;
+        background: #ffffff;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.12);
+      }
+
+      .composer-body {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        min-height: 36px;
+      }
+
+      #composer-plus-btn,
+      [data-testid="send-button"],
+      .model-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 32px;
+        height: 32px;
+        padding: 0 10px;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 999px;
+        background: #f7f7f8;
+        color: #171717;
+        font: inherit;
+      }
+
+      [data-testid="send-button"] {
+        background: #171717;
+        color: #ffffff;
+      }
+
+      [role="textbox"] {
+        min-height: 32px;
+        padding: 6px 4px;
+        outline: none;
+        white-space: pre-wrap;
+      }
+
+      .mention-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin-right: 4px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #202123;
+        line-height: 1.45;
+      }
+
+      .mention-chip a {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .mention-chip img,
+      .connector-icon {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+        background: #10a37f;
+      }
+
+      #connector-chooser {
+        position: fixed;
+        left: 50%;
+        bottom: 112px;
+        width: 240px;
+        padding: 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        background: #ffffff;
+        transform: translateX(-50%);
+      }
+
+      #connector-result {
+        position: fixed;
+        left: 8px;
+        top: 8px;
+        z-index: 1;
+        max-width: 48vw;
+        white-space: pre-wrap;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <pre id="connector-result">Idle</pre>
+    <main>
+      <section id="conversation" aria-label="Synthetic ChatGPT conversation"></section>
+    </main>
+    <div id="composer-dock"></div>
+
+    <script>
+      window.__MICA_CLIPBOARD_TEXT__ = "";
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: {
+          writeText: async (text) => {
+            window.__MICA_CLIPBOARD_TEXT__ = String(text);
+          }
+        }
+      });
+    </script>
+    <script src="../../dist/mica-dev/known-interruptions.js"></script>
+    <script src="../../dist/mica-dev/connector-lifecycle-signal.js"></script>
+    <script src="../../dist/mica-dev/composer-diagnostics.js"></script>
+    <script src="../../dist/mica-dev/stale-composer-recovery.js"></script>
+    <script src="../../dist/mica-dev/connector-continuity.js"></script>
+    <script src="../../dist/mica-dev/send-residual-recovery.js"></script>
+    <script src="../../dist/mica-dev/content.js"></script>
+    <script>
+      const resultNode = document.getElementById("connector-result");
+      const conversation = document.getElementById("conversation");
+      const dock = document.getElementById("composer-dock");
+
+      let composer = null;
+      let editor = null;
+      let composerSerial = 0;
+      let turnSerial = 0;
+      const PAYLOAD_34 = "abcdefghijklmnopqrstuvwxyz12345678";
+      const PAYLOAD_28 = "abcdefghijklmnopqrstuvwxyz12";
+      const PAYLOAD_30 = "ABCDEFGHIJ1234567890klmnopqrst";
+      const PARTIAL_PAYLOAD_15 = "1234567890klmno";
+      const PARTIAL_PAYLOAD_9 = "123456789";
+      const DIFFERENT_PAYLOAD = "zyxwvutsrqponmlkjihgfedcba87654321";
+
+      if (!new URLSearchParams(location.search).has("manual")) {
+        run().catch((error) => {
+          resultNode.textContent = JSON.stringify({ passed: false, currentCase: window.__MICA_CURRENT_CASE__ || null, error: String(error?.stack || error) }, null, 2);
+        });
+      }
+
+      async function run() {
+        await waitFor(() => window.__MICA_TEST_CONTROLS__, 3000);
+        await waitFor(() => window.__MICA_LONG_THREAD_STATUS__, 3000);
+        appendTurn("assistant", "initial");
+
+        const connectorLatch = await runNamedCase("connectorLatch", runConnectorLatchCase);
+        const twoEnter = await runNamedCase("twoEnter", runTwoEnterConnectorFlowCase);
+        const continuityOn = await runNamedCase("continuityOn", runContinuityOnCase);
+        const continuityOff = await runNamedCase("continuityOff", runContinuityOffCase);
+        const continuityScope = await runNamedCase("continuityScope", runContinuityScopeCase);
+        const staleSnapshot = await runNamedCase("staleSnapshot", runStaleSnapshotCase);
+        const sendStable = await runNamedCase("sendStable", runSendStableCase);
+        const sendResidual = await runNamedCase("sendResidual", runSendResidualCase);
+        const multiResidual = await runNamedCase("multiResidual", runMultiResidualCase);
+        const newInput = await runNamedCase("newInput", runNewInputCase);
+        const nonmatching = await runNamedCase("nonmatching", runNonmatchingCase);
+        const repeatedStaleClear = await runNamedCase("repeatedStaleClear", runRepeatedStaleClearCase);
+        const eventBuffer = await runNamedCase("eventBuffer", runEventBufferCase);
+        const toggleIsolation = await runNamedCase("toggleIsolation", runToggleIsolationCase);
+
+        const reports = [sendStable.report, sendResidual.report, multiResidual.report, newInput.report, nonmatching.report];
+        const reportText = JSON.stringify({ reports, connectorLatch, continuityOn, continuityOff, eventBuffer, toggleIsolation });
+        const checks = [
+          ["connector latch survives chooser chip disappearance and remount", connectorLatch.signal?.latched === true && connectorLatch.report?.connectorLifecycle?.latched === true],
+          ["enter one selects connector without send generation", twoEnter.firstEnterSendGeneration === false && twoEnter.firstEnterSendIntent === false && twoEnter.firstEnterDiscarded === true],
+          ["enter two creates real send generation", twoEnter.secondEnterSendGeneration === true && twoEnter.secondEnterPreSendLength === twoEnter.secondEnterExpectedPreSendLength && twoEnter.secondEnterCommitted === true],
+          ["no-chooser continuity cache masks selection disappearance", continuityOn.shellDuringMissing === true && continuityOn.shellAfterReturn === false && continuityOn.cachedBeforeUnmount === true && continuityOn.state?.activated === true && continuityOn.state?.sanitizedCloneAvailable === true && continuityOn.state?.cachedSnapshotAvailable === true && continuityOn.clonePresent === true && continuityOn.visualComparison?.passed === true && continuityOn.chooserActiveNow === false && continuityOn.selectionWindowActive === false && continuityOn.sendGenerationCreated === false],
+          ["continuity off inert", continuityOff.shellDuringMissing === false && continuityOff.state?.activated === false],
+          ["continuity skips send and stale-clear remounts", continuityScope.sendMissingShell === false && continuityScope.clearMissingShell === false],
+          ["stale snapshot fails open", staleSnapshot.shellDuringMissing === false && staleSnapshot.state?.skippedReason === "stale_snapshot"],
+          ["stable send commit latch survives mounted +1 then -1", sendStable.report?.sendLifecycle?.userTurnCommittedLatched === true && sendStable.report?.sendLifecycle?.userTurnDeltaHistory?.some((item) => item.delta > 0) && sendStable.report?.sendLifecycle?.userTurnDeltaHistory?.some((item) => item.delta < 0) && sendStable.report?.sendLifecycle?.classification === "SEND_CLEARED_STABLE"],
+          ["stable send does not start recovery", sendStable.recovery?.attemptCount === 0 && sendStable.recovery?.succeeded === false],
+          ["partial residual provenance recovered", sendResidual.report?.sendLifecycle?.classification === "SEND_STALE_PAYLOAD_REAPPEARED" && sendResidual.recovery?.armed === true && sendResidual.recovery?.attemptCount >= 1 && sendResidual.recovery?.succeeded === true && sendResidual.recovery?.observedComposerClearPath === false && sendResidual.recovery?.postSendRemountPath === true && sendResidual.recovery?.recoveryEvidencePath === "post_send_remount" && sendResidual.recovery?.staleProvenanceMatched === true && sendResidual.recovery?.staleProvenanceReason === "partial_substring" && sendResidual.finalTextLength === 0],
+          ["multi remount bounded retry", multiResidual.recovery?.succeeded === true && multiResidual.recovery?.attemptCount >= 2 && multiResidual.recovery?.attemptCount <= multiResidual.recovery?.maxAttempts && multiResidual.finalTextLength === 0],
+          ["new user input preserved", newInput.recovery?.cancelledByUserInput === true && newInput.finalTextLength === newInput.expectedLength],
+          ["nonmatching text preserved", nonmatching.recovery?.nonmatchingTextObserved === true && nonmatching.recovery?.attemptCount === 0 && nonmatching.finalTextLength === nonmatching.expectedLength],
+          ["repeated remount stale clear waits for quiet window", repeatedStaleClear.finalClearStable === true && repeatedStaleClear.prematureStable === false && repeatedStaleClear.elapsedMs >= 6000],
+          ["event buffer preserves reliability timeline", eventBuffer.preserved === true],
+          ["toggle isolation pass", toggleIsolation.passed === true],
+          ["stale clear not triggered by send", !reports.some((report) => report?.sendLifecycle?.staleClearRecoveryAttemptedDuringSend === true)],
+          ["privacy excludes raw fixture text", !reportText.includes(PAYLOAD_34) && !reportText.includes(PAYLOAD_28) && !reportText.includes(PAYLOAD_30) && !reportText.includes(PARTIAL_PAYLOAD_15) && !reportText.includes(PARTIAL_PAYLOAD_9) && !reportText.includes(DIFFERENT_PAYLOAD) && !reportText.includes("connector user replacement")]
+        ].map(([name, passed]) => ({ name, passed: !!passed }));
+
+        resultNode.textContent = JSON.stringify({
+          passed: checks.every((check) => check.passed),
+          checks,
+          caseSummaries: {
+            connectorLatch,
+            twoEnter,
+            continuityOn,
+            continuityOff,
+            continuityScope,
+            staleSnapshot,
+            sendStable: summarizeSend(sendStable.report, sendStable.recovery, sendStable.finalTextLength),
+            sendResidual: summarizeSend(sendResidual.report, sendResidual.recovery, sendResidual.finalTextLength),
+            multiResidual: summarizeSend(multiResidual.report, multiResidual.recovery, multiResidual.finalTextLength),
+            newInput: summarizeSend(newInput.report, newInput.recovery, newInput.finalTextLength),
+            nonmatching: summarizeSend(nonmatching.report, nonmatching.recovery, nonmatching.finalTextLength),
+            repeatedStaleClear,
+            eventBuffer,
+            toggleIsolation
+          }
+        }, null, 2);
+      }
+
+      async function runNamedCase(name, fn) {
+        window.__MICA_CURRENT_CASE__ = name;
+        return fn();
+      }
+
+      async function runConnectorLatchCase() {
+        resetRuntimeFeatures({ enabled: true, connectorContinuity: true, sendResidualRecovery: true, staleClearRecovery: true, longThreadOptimization: true });
+        window.__MICA_TEST_CONTROLS__.resetConnectorLifecycleSignalForTests();
+        window.__MICA_TEST_CONTROLS__.startComposerGuidedDiagnostics();
+        try {
+          await prepareLatchedConnectorFlow(PAYLOAD_34);
+          removeConnectorChooser();
+          mountConnectorComposer(PAYLOAD_34);
+          await delay(140);
+          unmountComposer();
+          await delay(240);
+          mountConnectorComposer("");
+          await delay(360);
+          return {
+            signal: window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState(),
+            report: window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport()
+          };
+        } finally {
+          window.__MICA_TEST_CONTROLS__.stopComposerGuidedDiagnostics();
+          await delay(80);
+        }
+      }
+
+      async function runTwoEnterConnectorFlowCase() {
+        const result = await captureSendCase(async () => {
+          mountComposer("@");
+          showConnectorChooser();
+          dispatchMentionSignal();
+          await waitFor(() => window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState()?.chooserActiveNow === true, 1200, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState()));
+          await dispatchEnterKey();
+          unmountComposer();
+          await delay(240);
+          removeConnectorChooser();
+          mountConnectorComposer("");
+          await waitFor(() => window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState()?.chooserActiveNow === false, 1200, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState()));
+          await waitFor(() => composerReportHasEvent("send_residual_candidate_discarded", (event) => event.classification === "CONNECTOR_SELECTION"), 1200, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport()?.events || []));
+          await delay(260);
+          const firstEnterState = window.__MICA_TEST_CONTROLS__.getSendResidualRecoveryState();
+          const firstEnterReport = window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport();
+          setConnectorBodyText(PAYLOAD_30);
+          const expectedSecondLength = getEditorLength();
+          await delay(120);
+          await dispatchEnterKey();
+          window.__MICA_TWO_ENTER_DEBUG__ = {
+            signal: window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState(),
+            sendResidual: window.__MICA_TEST_CONTROLS__.getSendResidualRecoveryState(),
+            eventTypes: (window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport()?.events || []).map((event) => ({
+              type: event.type,
+              source: event.source || null,
+              textLength: event.textLength,
+              chooserActiveNow: event.chooserActiveNow
+            }))
+          };
+          appendTurn("user", "committed two enter turn");
+          await waitFor(() => window.__MICA_TEST_CONTROLS__.getSendResidualRecoveryState()?.userTurnCommittedLatched === true, 1400, () => JSON.stringify(window.__MICA_TWO_ENTER_DEBUG__));
+          setEditorText("");
+          await delay(360);
+          const secondEnterState = window.__MICA_TEST_CONTROLS__.getSendResidualRecoveryState();
+          const secondEnterReport = window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport();
+          window.__MICA_TWO_ENTER_RESULT__ = {
+            firstEnterSendGeneration: firstEnterState?.generationId > 0,
+            firstEnterSendIntent: (firstEnterReport?.events || []).some((event) => event.type === "send_intent"),
+            firstEnterDiscarded: (firstEnterReport?.events || []).some((event) => event.type === "send_residual_candidate_discarded" && event.classification === "CONNECTOR_SELECTION"),
+            secondEnterSendGeneration: secondEnterState?.generationId > 0,
+            secondEnterPreSendLength: secondEnterState?.preSendLength || 0,
+            secondEnterExpectedPreSendLength: expectedSecondLength,
+            secondEnterCommitted: secondEnterState?.userTurnCommittedLatched === true,
+            secondEnterReportClassification: secondEnterReport?.sendLifecycle?.classification || null
+          };
+        });
+        return {
+          ...window.__MICA_TWO_ENTER_RESULT__,
+          finalRecovery: result.recovery,
+          finalReport: result.report
+        };
+      }
+
+      async function runContinuityOnCase() {
+        resetRuntimeFeatures({ enabled: true, connectorContinuity: true, sendResidualRecovery: true, staleClearRecovery: true, longThreadOptimization: true });
+        window.__MICA_TEST_CONTROLS__.resetConnectorLifecycleSignalForTests();
+        window.__MICA_TEST_CONTROLS__.resetConnectorContinuityForTests();
+        window.__MICA_TEST_CONTROLS__.startComposerGuidedDiagnostics();
+        mountComposer("@");
+        dispatchMentionSignal();
+        await waitFor(() => window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState()?.connectorContextLatched === true, 1200, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState()));
+        await delay(1300);
+        addResolvedConnectorPillToCurrentComposer(PAYLOAD_30);
+        await delay(220);
+        const signalBeforeUnmount = window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState();
+        const continuityBeforeUnmount = window.__MICA_TEST_CONTROLS__.getConnectorContinuityState();
+        const nativeMetrics = captureNativeComposerVisualMetrics();
+        unmountComposer();
+        await waitFor(() => !!document.querySelector("[data-mica-connector-continuity-shell='true']"), 900, connectorStateText);
+        const shellDuringMissing = !!document.querySelector("[data-mica-connector-continuity-shell='true']");
+        const clonePresent = !!document.querySelector("[data-mica-connector-continuity-clone='true']");
+        const snapshotMetrics = captureContinuityVisualMetrics();
+        const visualComparison = compareContinuityMetrics(nativeMetrics, snapshotMetrics);
+        await delay(900);
+        mountConnectorComposer("");
+        await waitFor(() => !document.querySelector("[data-mica-connector-continuity-shell='true']"), 900, connectorStateText);
+        const diagnosticReport = window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport();
+        window.__MICA_TEST_CONTROLS__.stopComposerGuidedDiagnostics();
+        return {
+          shellDuringMissing,
+          shellAfterReturn: !!document.querySelector("[data-mica-connector-continuity-shell='true']"),
+          clonePresent,
+          state: window.__MICA_TEST_CONTROLS__.getConnectorContinuityState(),
+          cachedBeforeUnmount: continuityBeforeUnmount?.cachedSnapshotAvailable === true,
+          chooserActiveNow: signalBeforeUnmount?.chooserActiveNow === true,
+          selectionWindowActive: signalBeforeUnmount?.selectionWindowActive === true,
+          sendGenerationCreated: (diagnosticReport?.events || []).some((event) => event.type === "send_intent"),
+          nativeMetrics,
+          snapshotMetrics,
+          visualComparison
+        };
+      }
+
+      async function runContinuityOffCase() {
+        resetRuntimeFeatures({ enabled: true, connectorContinuity: false, sendResidualRecovery: true, staleClearRecovery: true, longThreadOptimization: true });
+        window.__MICA_TEST_CONTROLS__.resetConnectorLifecycleSignalForTests();
+        window.__MICA_TEST_CONTROLS__.resetConnectorContinuityForTests();
+        await prepareLatchedConnectorFlow(PAYLOAD_34);
+        await delay(140);
+        unmountComposer();
+        await delay(360);
+        const shellDuringMissing = !!document.querySelector("[data-mica-connector-continuity-shell='true']");
+        mountComposer("");
+        await delay(180);
+        return {
+          shellDuringMissing,
+          state: window.__MICA_TEST_CONTROLS__.getConnectorContinuityState()
+        };
+      }
+
+      async function runContinuityScopeCase() {
+        resetRuntimeFeatures({ enabled: true, connectorContinuity: true, sendResidualRecovery: true, staleClearRecovery: true, longThreadOptimization: true });
+        window.__MICA_TEST_CONTROLS__.resetConnectorLifecycleSignalForTests();
+        window.__MICA_TEST_CONTROLS__.resetConnectorContinuityForTests();
+        await prepareConnectorSelectionWithEnter("");
+        await delay(2300);
+        setEditorText(PAYLOAD_30);
+        await dispatchEnterKey();
+        appendTurn("user", "committed continuity scope turn");
+        await delay(120);
+        unmountComposer();
+        await delay(380);
+        const sendMissingShell = !!document.querySelector("[data-mica-connector-continuity-shell='true']");
+        mountComposer("");
+        await delay(160);
+        setEditorText(PARTIAL_PAYLOAD_15);
+        await clearComposerAsUser();
+        await delay(160);
+        unmountComposer();
+        await delay(360);
+        const clearMissingShell = !!document.querySelector("[data-mica-connector-continuity-shell='true']");
+        mountComposer("");
+        return {
+          sendMissingShell,
+          clearMissingShell,
+          state: window.__MICA_TEST_CONTROLS__.getConnectorContinuityState()
+        };
+      }
+
+      async function runStaleSnapshotCase() {
+        resetRuntimeFeatures({ enabled: true, connectorContinuity: true, sendResidualRecovery: true, staleClearRecovery: true, longThreadOptimization: true });
+        window.__MICA_TEST_CONTROLS__.resetConnectorLifecycleSignalForTests();
+        window.__MICA_TEST_CONTROLS__.resetConnectorContinuityForTests();
+        mountComposer("@");
+        dispatchMentionSignal();
+        await waitFor(() => window.__MICA_TEST_CONTROLS__.getConnectorContinuityState()?.cachedSnapshotAvailable === true, 1200, connectorStateText);
+        await delay(2700);
+        unmountComposer();
+        await delay(360);
+        const shellDuringMissing = !!document.querySelector("[data-mica-connector-continuity-shell='true']");
+        const state = window.__MICA_TEST_CONTROLS__.getConnectorContinuityState();
+        mountComposer("");
+        await delay(120);
+        return {
+          shellDuringMissing,
+          state
+        };
+      }
+
+      async function runSendStableCase() {
+        return captureSendCase(async () => {
+          await prepareConnectorSelectionWithEnter(PAYLOAD_34);
+          await delay(180);
+          await dispatchEnterKey();
+          const committed = appendTurn("user", "committed mounted turn");
+          await delay(160);
+          setEditorText("");
+          await delay(140);
+          committed.remove();
+          await delay(220);
+          unmountComposer();
+          await delay(160);
+          mountComposer("");
+          await delay(760);
+        });
+      }
+
+      async function runSendResidualCase() {
+        return captureSendCase(async () => {
+          await prepareConnectorSelectionWithEnter(PAYLOAD_30);
+          await delay(180);
+          await dispatchEnterKey();
+          const committed = appendTurn("user", "committed residual turn");
+          await delay(160);
+          unmountComposer();
+          await delay(80);
+          committed.remove();
+          await delay(180);
+          mountComposer(PARTIAL_PAYLOAD_9);
+          await delay(180);
+          setEditorText(PARTIAL_PAYLOAD_15);
+          await waitForSendRecoverySucceeded(2200);
+        });
+      }
+
+      async function runMultiResidualCase() {
+        return captureSendCase(async () => {
+          await prepareConnectorSelectionWithEnter(PAYLOAD_34);
+          await delay(180);
+          await dispatchEnterKey();
+          appendTurn("user", "committed multi turn");
+          await delay(160);
+          setEditorText("");
+          await delay(120);
+          unmountComposer();
+          await delay(160);
+          mountComposer(PAYLOAD_34);
+          await waitForSendRecoverySucceeded(2200);
+          await delay(120);
+          unmountComposer();
+          await delay(160);
+          mountComposer(PAYLOAD_34);
+          await waitFor(() => window.__MICA_TEST_CONTROLS__.getSendResidualRecoveryState()?.attemptCount >= 2 && getEditorLength() === 0, 2600, sendStateText);
+        });
+      }
+
+      async function runNewInputCase() {
+        const expected = "connector user replacement";
+        const result = await captureSendCase(async () => {
+          await prepareConnectorSelectionWithEnter(PAYLOAD_34);
+          await delay(180);
+          await dispatchEnterKey();
+          appendTurn("user", "committed cancel turn");
+          await delay(160);
+          setEditorText("");
+          await delay(140);
+          await dispatchUserInsert(expected);
+          await delay(500);
+        });
+        result.expectedLength = expected.length;
+        return result;
+      }
+
+      async function runNonmatchingCase() {
+        const expected = DIFFERENT_PAYLOAD;
+        const result = await captureSendCase(async () => {
+          await prepareConnectorSelectionWithEnter(PAYLOAD_34);
+          await delay(180);
+          await dispatchEnterKey();
+          appendTurn("user", "committed nonmatching turn");
+          await delay(160);
+          setEditorText("");
+          await delay(120);
+          unmountComposer();
+          await delay(160);
+          mountComposer(DIFFERENT_PAYLOAD);
+          await delay(980);
+        });
+        result.expectedLength = expected.length;
+        return result;
+      }
+
+      async function runRepeatedStaleClearCase() {
+        resetRuntimeFeatures({ enabled: true, connectorContinuity: true, sendResidualRecovery: true, staleClearRecovery: true, longThreadOptimization: true });
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        window.__MICA_TEST_CONTROLS__.resetConnectorContinuityForTests();
+        mountComposer(PARTIAL_PAYLOAD_15);
+        const startedAt = Date.now();
+        await clearComposerAsUser();
+        await waitFor(() => window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()?.armed === true, 1400, staleStateText);
+
+        await delay(900);
+        unmountComposer();
+        await delay(120);
+        mountComposer(PARTIAL_PAYLOAD_15);
+        await waitFor(() => window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()?.attemptCount >= 1 && getEditorLength() === 0, 2200, staleStateText);
+
+        await delay(900);
+        unmountComposer();
+        await delay(120);
+        mountComposer(PARTIAL_PAYLOAD_15);
+        await waitFor(() => window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()?.attemptCount >= 2 && getEditorLength() === 0, 2200, staleStateText);
+
+        while (Date.now() - startedAt < 6100) {
+          await delay(850);
+          unmountComposer();
+          await delay(120);
+          mountComposer("");
+          await delay(80);
+          if (window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()?.finalClearStable === true) break;
+        }
+        const prematureStable = window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()?.finalClearStable === true;
+
+        await delay(860);
+        unmountComposer();
+        await delay(120);
+        mountComposer(PARTIAL_PAYLOAD_15);
+        await waitFor(() => window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()?.attemptCount >= 3 && getEditorLength() === 0, 2400, staleStateText);
+        await waitFor(() => window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()?.finalClearStable === true, 2600, staleStateText);
+        const finalState = window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState();
+        return {
+          finalClearStable: finalState?.finalClearStable === true,
+          prematureStable,
+          elapsedMs: Date.now() - startedAt,
+          attemptCount: finalState?.attemptCount || 0,
+          quietWindowElapsed: finalState?.quietWindowElapsed === true,
+          successMode: finalState?.successMode || null
+        };
+      }
+
+      async function runEventBufferCase() {
+        const result = await captureSendCase(async () => {
+          await prepareConnectorSelectionWithEnter(PAYLOAD_34);
+          await delay(120);
+          await dispatchEnterKey();
+          const committed = appendTurn("user", "committed event buffer turn");
+          await delay(140);
+          unmountComposer();
+          await delay(80);
+          committed.remove();
+          await delay(160);
+          mountComposer(PAYLOAD_28);
+          await delay(150);
+          setEditorText(PAYLOAD_34);
+          await waitForSendRecoverySucceeded(2200);
+          for (let index = 0; index < 320; index += 1) {
+            window.MicaComposerDiagnostics?.recordRuntimeCallback?.(index % 2 === 0 ? "scan" : "status_update", {
+              optimizedTurns: index % 5,
+              micaEnabled: true
+            });
+          }
+        });
+        const types = new Set((result.report?.events || []).map((event) => event.type));
+        const callbacks = (result.report?.events || []).filter((event) => event.type === "mica_callback").length;
+        const required = [
+          "mention_signal_on",
+          "send_intent",
+          "send_lifecycle_user_turn_committed",
+          "user_turn_count_change",
+          "composer_unmount",
+          "composer_mount",
+          "send_residual_same_payload_reappeared",
+          "send_residual_recovery_attempt",
+          "send_residual_recovery_success"
+        ];
+        return {
+          eventCount: result.report?.events?.length || 0,
+          eventLimit: result.report?.session?.eventLimit || null,
+          callbacks,
+          coalescedLowPriorityEvents: result.report?.session?.coalescedLowPriorityEvents || 0,
+          droppedLowPriorityEvents: result.report?.session?.droppedLowPriorityEvents || 0,
+          missing: required.filter((type) => !types.has(type)),
+          preserved: required.every((type) => types.has(type))
+        };
+      }
+
+      async function runToggleIsolationCase() {
+        const snapshots = {};
+        resetRuntimeFeatures({
+          enabled: true,
+          longThreadOptimization: true,
+          staleClearRecovery: true,
+          connectorContinuity: true,
+          sendResidualRecovery: true
+        });
+        window.__MICA_TEST_CONTROLS__.setSettings({ enabled: false });
+        snapshots.masterOff = runtimeFeatureSnapshot();
+        window.__MICA_TEST_CONTROLS__.setSettings({ enabled: true });
+        snapshots.masterOn = runtimeFeatureSnapshot();
+
+        resetRuntimeFeatures({ enabled: true, longThreadOptimization: false, staleClearRecovery: true, connectorContinuity: true, sendResidualRecovery: true });
+        snapshots.longThreadOff = runtimeFeatureSnapshot();
+
+        resetRuntimeFeatures({ enabled: true, longThreadOptimization: true, staleClearRecovery: false, connectorContinuity: true, sendResidualRecovery: true });
+        snapshots.staleClearOff = runtimeFeatureSnapshot();
+
+        resetRuntimeFeatures({ enabled: true, longThreadOptimization: true, staleClearRecovery: true, connectorContinuity: false, sendResidualRecovery: true });
+        snapshots.connectorOff = runtimeFeatureSnapshot();
+
+        resetRuntimeFeatures({ enabled: true, longThreadOptimization: true, staleClearRecovery: true, connectorContinuity: true, sendResidualRecovery: false });
+        snapshots.sendResidualOff = runtimeFeatureSnapshot();
+
+        resetRuntimeFeatures({ enabled: true, longThreadOptimization: true, staleClearRecovery: true, connectorContinuity: true, sendResidualRecovery: true });
+        return {
+          snapshots,
+          passed:
+            snapshots.masterOff.settings.longThreadOptimization === true
+            && snapshots.masterOff.settings.staleClearRecovery === true
+            && snapshots.masterOff.settings.connectorContinuity === true
+            && snapshots.masterOff.settings.sendResidualRecovery === true
+            && snapshots.masterOff.stale?.enabled === false
+            && snapshots.masterOff.connector?.enabled === false
+            && snapshots.masterOff.sendResidual?.enabled === false
+            && snapshots.masterOff.status?.status?.name === "Disabled"
+            && snapshots.masterOn.stale?.enabled === true
+            && snapshots.masterOn.connector?.enabled === true
+            && snapshots.masterOn.sendResidual?.enabled === true
+            && snapshots.longThreadOff.settings.longThreadOptimization === false
+            && snapshots.longThreadOff.stale?.enabled === true
+            && snapshots.longThreadOff.connector?.enabled === true
+            && snapshots.longThreadOff.sendResidual?.enabled === true
+            && snapshots.longThreadOff.status?.runtime?.nativeSafeMode === true
+            && snapshots.staleClearOff.stale?.enabled === false
+            && snapshots.staleClearOff.connector?.enabled === true
+            && snapshots.staleClearOff.sendResidual?.enabled === true
+            && snapshots.connectorOff.connector?.enabled === false
+            && snapshots.connectorOff.stale?.enabled === true
+            && snapshots.connectorOff.sendResidual?.enabled === true
+            && snapshots.sendResidualOff.sendResidual?.enabled === false
+            && snapshots.sendResidualOff.stale?.enabled === true
+            && snapshots.sendResidualOff.connector?.enabled === true
+        };
+      }
+
+      async function captureSendCase(action) {
+        window.__MICA_TEST_CONTROLS__.setSettings({
+          enabled: true,
+          longThreadOptimization: true,
+          staleClearRecovery: true,
+          connectorContinuity: true,
+          sendResidualRecovery: true
+        });
+        window.__MICA_TEST_CONTROLS__.resetConnectorContinuityForTests();
+        window.__MICA_TEST_CONTROLS__.resetSendResidualRecoveryForTests();
+        window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
+        window.__MICA_TEST_CONTROLS__.resetConnectorLifecycleSignalForTests();
+        unmountComposer();
+        await delay(80);
+        window.__MICA_TEST_CONTROLS__.startComposerGuidedDiagnostics();
+        try {
+          await delay(260);
+          await action();
+          await delay(420);
+          return {
+            report: window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport(),
+            recovery: window.__MICA_TEST_CONTROLS__.getSendResidualRecoveryState(),
+            finalTextLength: getEditorLength()
+          };
+        } finally {
+          window.__MICA_TEST_CONTROLS__.stopComposerGuidedDiagnostics();
+          await delay(80);
+        }
+      }
+
+      function runtimeFeatureSnapshot() {
+        return {
+          settings: window.__MICA_TEST_CONTROLS__.getSettings(),
+          status: window.__MICA_TEST_CONTROLS__.getDiagnosticsReport(),
+          stale: window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState(),
+          connector: window.__MICA_TEST_CONTROLS__.getConnectorContinuityState(),
+          sendResidual: window.__MICA_TEST_CONTROLS__.getSendResidualRecoveryState()
+        };
+      }
+
+      function resetRuntimeFeatures(settings) {
+        window.__MICA_TEST_CONTROLS__.setSettings(settings);
+      }
+
+      function mountComposer(text) {
+        unmountComposer();
+        const form = document.createElement("form");
+        form.className = "composer";
+        form.dataset.testid = "composer";
+        form.dataset.type = "unified-composer";
+        form.dataset.serial = String(++composerSerial);
+        form.setAttribute("aria-label", "Message composer");
+        form.innerHTML = `
+          <div class="composer-layout" id="thread-bottom-container">
+            <div class="native-composer-surface" data-composer-surface="true">
+              <div class="composer-body" data-composer-body="true">
+                <button type="button" id="composer-plus-btn" data-testid="composer-plus-btn" aria-label="Add files">+</button>
+                <div class="editor-wrap">
+                  <div id="editor" role="textbox" contenteditable="plaintext-only" aria-label="Message Mica"></div>
+                </div>
+                <div class="trailing-controls" data-composer-transition-slot="trailing">
+                  <button type="button" class="model-button" aria-label="Model and reasoning">Mica</button>
+                  <button type="submit" data-testid="send-button" aria-label="Send message">Send</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        dock.appendChild(form);
+        composer = form;
+        editor = form.querySelector("[role='textbox']");
+        setEditorText(text);
+        editor.focus();
+      }
+
+      function mountConnectorComposer(text) {
+        mountComposer("");
+        addResolvedConnectorPillToCurrentComposer(text);
+      }
+
+      function addResolvedConnectorPillToCurrentComposer(text) {
+        if (!editor) return;
+        editor.textContent = "";
+        const chip = document.createElement("span");
+        chip.className = "mention-chip";
+        chip.dataset.inlineSelectionPill = "";
+        chip.dataset.symbol = "ecosystemMention";
+        chip.dataset.id = "plugin:connector_fixture";
+        chip.setAttribute("aria-label", "Selected connector");
+        chip.setAttribute("contenteditable", "false");
+        const link = document.createElement("a");
+        link.setAttribute("data-testid", "plugin-connector-pill-link");
+        link.href = "/plugins/plugin_connector_fixture?plugin_detail_origin=inline_selection_pill";
+        const icon = document.createElement("span");
+        icon.className = "connector-icon";
+        const label = document.createElement("span");
+        label.className = "connector-label";
+        label.textContent = "Connector";
+        link.append(icon, label);
+        chip.append(link);
+        editor.append(chip, document.createTextNode(text ? ` ${text}` : " "));
+        editor.focus();
+      }
+
+      async function prepareLatchedConnectorFlow(text) {
+        mountComposer("@");
+        showConnectorChooser();
+        dispatchMentionSignal();
+        clickConnectorChooserOption();
+        await waitFor(() => window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState()?.latched === true, 1200, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState()));
+        removeConnectorChooser();
+        mountConnectorComposer(text);
+      }
+
+      async function prepareConnectorSelectionWithEnter(text) {
+        mountComposer("@");
+        showConnectorChooser();
+        dispatchMentionSignal();
+        await waitFor(() => window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState()?.chooserActiveNow === true, 1200, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState()));
+        await dispatchEnterKey();
+        unmountComposer();
+        await delay(260);
+        removeConnectorChooser();
+        mountConnectorComposer(text);
+        await waitFor(() => window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState()?.connectorContextLatched === true, 1200, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState()));
+        await waitFor(() => window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState()?.chooserActiveNow === false, 1200, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState()));
+        await waitFor(() => !window.__MICA_TEST_CONTROLS__.getSendResidualRecoveryState()?.sendCandidateActive, 1200, sendStateText);
+      }
+
+      function showConnectorChooser() {
+        removeConnectorChooser();
+        const chooser = document.createElement("div");
+        chooser.id = "connector-chooser";
+        chooser.setAttribute("role", "listbox");
+        chooser.setAttribute("aria-label", "Connector options");
+        chooser.innerHTML = `<button type="button" role="option" data-radix-collection-item>Connector option</button>`;
+        document.body.appendChild(chooser);
+      }
+
+      function clickConnectorChooserOption() {
+        const option = document.querySelector("#connector-chooser [role='option']");
+        option?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true }));
+        option?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      }
+
+      function removeConnectorChooser() {
+        document.getElementById("connector-chooser")?.remove();
+      }
+
+      function unmountComposer() {
+        if (!composer) return;
+        composer.remove();
+        composer = null;
+        editor = null;
+      }
+
+      function setEditorText(value) {
+        if (!editor) return;
+        editor.textContent = value;
+      }
+
+      function setConnectorBodyText(value) {
+        if (!editor) return;
+        const chip = editor.querySelector("[data-inline-selection-pill]");
+        if (!chip) {
+          setEditorText(value);
+          return;
+        }
+        while (chip.nextSibling) chip.nextSibling.remove();
+        editor.append(document.createTextNode(value ? ` ${value}` : " "));
+      }
+
+      function dispatchMentionSignal() {
+        if (!editor) return;
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "@" }));
+      }
+
+      async function dispatchEnterKey() {
+        if (!editor) return;
+        editor.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Enter" }));
+        await delay(0);
+      }
+
+      async function dispatchSubmitIntent() {
+        if (!composer) return;
+        const event = typeof SubmitEvent === "function"
+          ? new SubmitEvent("submit", { bubbles: true, cancelable: true })
+          : new Event("submit", { bubbles: true, cancelable: true });
+        composer.dispatchEvent(event);
+        await delay(0);
+      }
+
+      async function clearComposerAsUser() {
+        if (!editor) return;
+        editor.focus();
+        editor.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "a", ctrlKey: true }));
+        const selection = getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(editor);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        editor.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Backspace" }));
+        setEditorText("");
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteContentBackward" }));
+        await delay(120);
+      }
+
+      async function dispatchUserInsert(value) {
+        editor.focus();
+        editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertText", data: "x" }));
+        setEditorText(value);
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "x" }));
+        await delay(220);
+      }
+
+      function appendTurn(role, body) {
+        const article = document.createElement("article");
+        article.dataset.testid = `conversation-turn-${++turnSerial}`;
+        const marker = document.createElement("div");
+        marker.dataset.messageAuthorRole = role;
+        marker.textContent = `${role} turn ${turnSerial}`;
+        const paragraph = document.createElement("p");
+        paragraph.textContent = body;
+        article.append(marker, paragraph);
+        conversation.appendChild(article);
+        return article;
+      }
+
+      function getEditorLength() {
+        return (editor?.textContent ?? editor?.innerText ?? "").length;
+      }
+
+      function captureNativeComposerVisualMetrics() {
+        return captureComposerVisualMetrics(document.querySelector("[data-composer-surface='true']"));
+      }
+
+      function captureContinuityVisualMetrics() {
+        const shell = document.querySelector("[data-mica-connector-continuity-shell='true']");
+        const clone = shell?.querySelector("[data-mica-connector-continuity-clone='true']");
+        const metrics = captureComposerVisualMetrics(clone);
+        return metrics ? { ...metrics, shell: rectMetrics(shell) } : null;
+      }
+
+      function captureComposerVisualMetrics(root) {
+        if (!(root instanceof Element)) return null;
+        const style = getComputedStyle(root);
+        const rootRect = rectMetrics(root);
+        const controls = {};
+        for (const [name, selector] of Object.entries({
+          plus: "#composer-plus-btn, [data-testid='composer-plus-btn']",
+          pill: "[data-inline-selection-pill][data-id^='plugin:']",
+          model: ".model-button, [aria-label*='Model' i]",
+          send: "[data-testid='send-button'], [aria-label*='Send' i]"
+        })) {
+          const node = root.querySelector(selector);
+          controls[name] = rectRelativeTo(node, rootRect);
+        }
+        return {
+          rect: rootRect,
+          background: style.backgroundColor,
+          borderRadius: style.borderRadius,
+          boxShadow: style.boxShadow,
+          controls
+        };
+      }
+
+      function rectMetrics(node) {
+        if (!(node instanceof Element)) return null;
+        const rect = node.getBoundingClientRect();
+        return {
+          x: Math.round(rect.left),
+          y: Math.round(rect.top),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height)
+        };
+      }
+
+      function rectRelativeTo(node, rootRect) {
+        if (!(node instanceof Element) || !rootRect) return null;
+        const rect = node.getBoundingClientRect();
+        return {
+          x: Math.round(rect.left - rootRect.x),
+          y: Math.round(rect.top - rootRect.y),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height)
+        };
+      }
+
+      function compareContinuityMetrics(nativeMetrics, snapshotMetrics) {
+        const failures = [];
+        if (!nativeMetrics || !snapshotMetrics) failures.push("missing_metrics");
+        if (nativeMetrics && snapshotMetrics) {
+          for (const field of ["x", "y", "width", "height"]) {
+            if (Math.abs(nativeMetrics.rect[field] - (snapshotMetrics.shell?.[field] ?? snapshotMetrics.rect[field])) > 3) failures.push(`rect_${field}`);
+          }
+          if (nativeMetrics.background !== snapshotMetrics.background) failures.push("background");
+          if (nativeMetrics.borderRadius !== snapshotMetrics.borderRadius) failures.push("radius");
+          if (nativeMetrics.boxShadow === "none" || snapshotMetrics.boxShadow === "none") failures.push("shadow");
+          for (const key of ["plus", "pill", "model", "send"]) {
+            if (!nativeMetrics.controls[key] || !snapshotMetrics.controls[key]) {
+              failures.push(`${key}_missing`);
+              continue;
+            }
+            for (const field of ["x", "y", "width", "height"]) {
+              if (Math.abs(nativeMetrics.controls[key][field] - snapshotMetrics.controls[key][field]) > 8) failures.push(`${key}_${field}`);
+            }
+          }
+        }
+        return { passed: failures.length === 0, failures };
+      }
+
+      function summarizeSend(report, recovery, finalTextLength) {
+        return {
+          classification: report?.sendLifecycle?.classification || null,
+          userTurnCommittedLatched: report?.sendLifecycle?.userTurnCommittedLatched ?? null,
+          userTurnDelta: report?.sendLifecycle?.userTurnDelta ?? null,
+          userTurnDeltaHistory: report?.sendLifecycle?.userTurnDeltaHistory || [],
+          firstComposerZeroElapsedMs: report?.sendLifecycle?.firstComposerZeroElapsedMs ?? null,
+          staleFingerprintMatched: report?.sendLifecycle?.staleFingerprintMatched ?? null,
+          staleClearRecoveryAttemptedDuringSend: report?.sendLifecycle?.staleClearRecoveryAttemptedDuringSend ?? null,
+          connectorLifecycleLatched: report?.sendLifecycle?.connectorLifecycleLatched ?? null,
+          sendResidualRecoveryArmed: report?.sendLifecycle?.sendResidualRecoveryArmed ?? null,
+          sendResidualRecoverySkippedReason: report?.sendLifecycle?.sendResidualRecoverySkippedReason ?? null,
+          recovery,
+          finalTextLength
+        };
+      }
+
+      function getPanelButton(action) {
+        const host = document.querySelector("[data-mica-composer-diagnostics-root='true']");
+        return host?.querySelector(`[data-action='${action}']`) || null;
+      }
+
+      function panelButtonHitTarget(action) {
+        const button = getPanelButton(action);
+        if (!button) return false;
+        const rect = button.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        const hit = document.elementFromPoint(x, y);
+        return hit === button || button.contains(hit);
+      }
+
+      function waitForPanelButton(action, timeout) {
+        return waitFor(() => !!getPanelButton(action), timeout, () => `missing panel button ${action}`);
+      }
+
+      function composerReportHasEvent(type, predicate = null) {
+        const events = window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport()?.events || [];
+        return events.some((event) => event.type === type && (!predicate || predicate(event)));
+      }
+
+      function waitForSendRecoverySucceeded(timeout) {
+        return waitFor(() => {
+          const state = window.__MICA_TEST_CONTROLS__.getSendResidualRecoveryState();
+          return state?.succeeded === true && editor && getEditorLength() === 0;
+        }, timeout, sendStateText);
+      }
+
+      function connectorStateText() {
+        return JSON.stringify(window.__MICA_TEST_CONTROLS__.getConnectorContinuityState());
+      }
+
+      function sendStateText() {
+        return JSON.stringify(window.__MICA_TEST_CONTROLS__.getSendResidualRecoveryState());
+      }
+
+      function staleStateText() {
+        return JSON.stringify(window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState());
+      }
+
+      function waitFor(fn, timeout, describeTimeout) {
+        const started = Date.now();
+        return new Promise((resolve, reject) => {
+          const timer = setInterval(() => {
+            try {
+              const value = fn();
+              if (value) {
+                clearInterval(timer);
+                resolve(value);
+              } else if (Date.now() - started > timeout) {
+                clearInterval(timer);
+                reject(new Error(describeTimeout ? describeTimeout() : "Timed out"));
+              }
+            } catch (error) {
+              clearInterval(timer);
+              reject(error);
+            }
+          }, 40);
+        });
+      }
+
+      function delay(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+    </script>
+  </body>
+</html>

@@ -9,7 +9,7 @@ const stress = process.argv.includes("--stress");
 const caseFilter = process.argv.find((arg) => arg.startsWith("--case="))?.slice("--case=".length) || null;
 const loops = stress ? 72 : 24;
 const widths = stress ? [1200, 900, 700, 500] : [1200, 700, 500];
-const bundledNodeModules = "C:\\Users\\yuukias\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\node_modules";
+const bundledNodeModules = path.join(process.env.USERPROFILE || "C:\\Users\\humc2", ".cache", "codex-runtimes", "codex-primary-runtime", "dependencies", "node", "node_modules");
 const { chromium } = loadPlaywright();
 
 const server = createServer(async (request, response) => {
@@ -50,6 +50,16 @@ try {
     const guidedResult = await runGuidedComposerDiagnosticsCase();
     console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: guidedResult }, null, 2));
     process.exitCode = 0;
+  } else if (caseFilter === "body-vs-pill-diagnostics") {
+    const bodyVsPillResult = await runBodyVsPillDiagnosticsCase();
+    console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: bodyVsPillResult }, null, 2));
+    process.exitCode = 0;
+  } else if (caseFilter === "connector-mention-lifecycle") {
+    const connectorResult = await runConnectorMentionLifecycleCase();
+    connectorResult.pointerOverlayControls = await runOverlayControlsHitTestCase();
+    connectorResult.screenshotRegression = await runConnectorContinuityScreenshotCase();
+    console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: connectorResult }, null, 2));
+    process.exitCode = 0;
   } else if (caseFilter === "overlay-placement-matrix") {
     const overlayResult = await runOverlayPlacementMatrixCase();
     console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: overlayResult }, null, 2));
@@ -81,8 +91,21 @@ try {
     assert(disabledResult.metrics.optimizedClassChanges === 0, "Mica disabled produced optimized class changes", disabledResult);
     results.push(disabledResult);
 
+    const longThreadOffResult = await runCase({ width: 700, mica: true, longThreadOff: true, loops: Math.max(8, Math.floor(loops / 3)) });
+    assert(longThreadOffResult.metrics.optimizedClassChanges === 0, "Long-thread optimization disabled produced optimized class changes", longThreadOffResult);
+    assert(longThreadOffResult.micaReport?.runtime?.longThreadOptimizationEnabled === false, "Long-thread optimization disabled report missing runtime flag", longThreadOffResult);
+    assert(longThreadOffResult.micaReport?.runtime?.nativeSafeMode === true, "Long-thread optimization disabled did not enter native-safe mode", longThreadOffResult);
+    results.push(longThreadOffResult);
+
     const guidedResult = await runGuidedComposerDiagnosticsCase();
     results.push(guidedResult);
+    const bodyVsPillResult = await runBodyVsPillDiagnosticsCase();
+    results.push(bodyVsPillResult);
+    const connectorResult = await runConnectorMentionLifecycleCase();
+    connectorResult.screenshotRegression = await runConnectorContinuityScreenshotCase();
+    results.push(connectorResult);
+    const overlayControlsHitTestResult = await runOverlayControlsHitTestCase();
+    results.push({ ...overlayControlsHitTestResult, mode: "overlay-controls-hit-test", width: 900 });
     const overlayResult = await runOverlayPlacementMatrixCase();
     results.push(overlayResult);
 
@@ -111,6 +134,44 @@ try {
 } finally {
   await browser?.close();
   await new Promise((resolve) => server.close(resolve));
+}
+
+async function runConnectorMentionLifecycleCase() {
+  console.error("Running E2E case connector-mention-lifecycle@900px");
+  const page = await browser.newPage({ viewport: { width: 900, height: 820 } });
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  const url = `${baseUrl}/tests/fixtures/connector-mention-lifecycle.html?t=${Date.now()}`;
+  let payload;
+  try {
+    await page.goto(url, { waitUntil: "load" });
+    await page.waitForFunction(() => {
+      const text = document.getElementById("connector-result")?.textContent || "";
+      return text.trim().startsWith("{");
+    }, null, { timeout: 90000 });
+    payload = JSON.parse(await page.locator("#connector-result").textContent());
+  } catch (error) {
+    const resultText = await page.locator("#connector-result").textContent().catch(() => "");
+    await page.close();
+    throw Object.assign(new Error(`Connector mention lifecycle fixture failed before producing a result: ${error?.message || error}`), {
+      details: { resultText, errors }
+    });
+  }
+  await page.close();
+
+  payload.width = 900;
+  payload.mode = "connector-mention-lifecycle";
+  payload.errors = errors;
+  if (errors.length > 0) payload.passed = false;
+  assert(payload.passed, "Connector mention lifecycle fixture failed", payload);
+  assert(JSON.stringify(payload).includes("stable send commit latch survives mounted +1 then -1"), "Connector fixture did not cover commit latch regression", payload);
+  assert(JSON.stringify(payload).includes("enter one selects connector without send generation"), "Connector fixture did not cover connector selection Enter", payload);
+  assert(JSON.stringify(payload).includes("partial residual provenance recovered"), "Connector fixture did not cover partial residual provenance", payload);
+  assert(JSON.stringify(payload).includes("repeated remount stale clear waits for quiet window"), "Connector fixture did not cover stale-clear quiet-window regression", payload);
+  return payload;
 }
 
 async function runOverlayPlacementMatrixCase() {
@@ -147,6 +208,199 @@ async function runOverlayPlacementMatrixCase() {
   assert(JSON.stringify(payload).includes("expanded stays on bottom-right static placement"), "Overlay matrix did not cover expanded bottom-right placement", payload);
   assert(JSON.stringify(payload).includes("toast stays with bottom-right status anchor"), "Overlay matrix did not cover toast bottom-right placement", payload);
   return payload;
+}
+
+async function runConnectorContinuityScreenshotCase() {
+  console.error("Running E2E case connector-continuity-screenshot@900px");
+  const page = await browser.newPage({ viewport: { width: 900, height: 820 } });
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  try {
+    await page.goto(`${baseUrl}/tests/fixtures/connector-mention-lifecycle.html?manual=1&t=${Date.now()}`, { waitUntil: "load" });
+    await page.waitForFunction(() => !!window.__MICA_TEST_CONTROLS__ && !!window.__MICA_LONG_THREAD_STATUS__, null, { timeout: 5000 });
+    await page.evaluate(async () => {
+      window.__MICA_TEST_CONTROLS__.setSettings({
+        enabled: true,
+        longThreadOptimization: true,
+        staleClearRecovery: true,
+        connectorContinuity: true,
+        sendResidualRecovery: true
+      });
+      window.__MICA_TEST_CONTROLS__.resetConnectorLifecycleSignalForTests();
+      window.__MICA_TEST_CONTROLS__.resetConnectorContinuityForTests();
+      mountConnectorComposer("ABCDEFGHIJ1234567890klmnopqrst");
+      showConnectorChooser();
+      await delay(80);
+    });
+    const nativeMetrics = await page.evaluate(() => captureNativeComposerVisualMetrics());
+    const nativeBuffer = await page.locator("[data-composer-surface='true']").screenshot();
+    await page.evaluate(async () => {
+      await dispatchEnterKey();
+      unmountComposer();
+    });
+    await page.waitForSelector("[data-mica-connector-continuity-shell='true']", { timeout: 1200 });
+    const snapshotMetrics = await page.evaluate(() => captureContinuityVisualMetrics());
+    const visualComparison = compareContinuityMetrics(nativeMetrics, snapshotMetrics);
+    const shellBuffer = await page.locator("[data-mica-connector-continuity-shell='true']").screenshot();
+    const nativePng = pngSize(nativeBuffer);
+    const shellPng = pngSize(shellBuffer);
+    const result = {
+      passed: errors.length === 0
+        && visualComparison?.passed === true
+        && Math.abs(nativePng.width - shellPng.width) <= 1
+        && Math.abs(nativePng.height - shellPng.height) <= 1
+        && Math.abs(nativePng.width - nativeMetrics?.rect?.width) <= 1
+        && Math.abs(nativePng.height - nativeMetrics?.rect?.height) <= 1,
+      nativePng,
+      shellPng,
+      nativeMetrics,
+      snapshotMetrics,
+      visualComparison,
+      errors
+    };
+    assert(result.passed, "Connector continuity screenshot regression failed", result);
+    return result;
+  } finally {
+    await page.close();
+  }
+}
+
+function pngSize(buffer) {
+  return {
+    width: buffer.readUInt32BE(16),
+    height: buffer.readUInt32BE(20)
+  };
+}
+
+function compareContinuityMetrics(nativeMetrics, snapshotMetrics) {
+  const failures = [];
+  if (!nativeMetrics || !snapshotMetrics) failures.push("missing_metrics");
+  if (nativeMetrics && snapshotMetrics) {
+    for (const field of ["x", "y", "width", "height"]) {
+      const snapshotValue = snapshotMetrics.shell?.[field] ?? snapshotMetrics.rect?.[field];
+      if (Math.abs(nativeMetrics.rect[field] - snapshotValue) > 3) failures.push(`rect_${field}`);
+    }
+    if (nativeMetrics.background !== snapshotMetrics.background) failures.push("background");
+    if (nativeMetrics.borderRadius !== snapshotMetrics.borderRadius) failures.push("radius");
+    if (nativeMetrics.boxShadow === "none" || snapshotMetrics.boxShadow === "none") failures.push("shadow");
+    for (const key of ["plus", "pill", "model", "send"]) {
+      if (!nativeMetrics.controls?.[key] || !snapshotMetrics.controls?.[key]) {
+        failures.push(`${key}_missing`);
+        continue;
+      }
+      for (const field of ["x", "y", "width", "height"]) {
+        if (Math.abs(nativeMetrics.controls[key][field] - snapshotMetrics.controls[key][field]) > 8) failures.push(`${key}_${field}`);
+      }
+    }
+  }
+  return { passed: failures.length === 0, failures };
+}
+
+async function runOverlayControlsHitTestCase() {
+  console.error("Running E2E case overlay-controls-hit-test@900px");
+  const page = await browser.newPage({ viewport: { width: 900, height: 820 } });
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  const url = `${baseUrl}/tests/fixtures/overlay-controls-hit-test.html?t=${Date.now()}`;
+  try {
+    await page.goto(url, { waitUntil: "load" });
+    await page.waitForFunction(() => !!window.__MICA_TEST_CONTROLS__, null, { timeout: 5000 });
+
+    await page.evaluate(() => window.__MICA_TEST_CONTROLS__.startComposerGuidedDiagnostics());
+    const stopTarget = await getPanelButtonHitTarget(page, "stop");
+    assert(stopTarget.hitTarget, "Page overlay Stop failed real hit-test", stopTarget);
+    await page.mouse.click(stopTarget.x, stopTarget.y);
+    await page.waitForFunction(() => window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsState()?.running === false, null, { timeout: 2000 });
+    const stopped = await page.evaluate(() => window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsState()?.running === false);
+    const stopReport = await page.evaluate(() => window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport());
+    const stopOverlay = stopReport?.session || {};
+
+    await page.evaluate(() => {
+      window.__MICA_CLIPBOARD_TEXT__ = "";
+      window.__MICA_TEST_CONTROLS__.startComposerGuidedDiagnostics();
+    });
+    const copyTarget = await getPanelButtonHitTarget(page, "copy");
+    assert(copyTarget.hitTarget, "Page overlay Copy failed real hit-test", copyTarget);
+    await page.mouse.click(copyTarget.x, copyTarget.y);
+    await page.waitForFunction(() => String(window.__MICA_CLIPBOARD_TEXT__ || "").trim().startsWith("{"), null, { timeout: 2000 });
+    const copy = await page.evaluate(() => {
+      const copiedReport = JSON.parse(window.__MICA_CLIPBOARD_TEXT__);
+      const popupShapeReport = window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport();
+      const activeSession = popupShapeReport?.session || {};
+      window.__MICA_TEST_CONTROLS__.stopComposerGuidedDiagnostics();
+      return {
+        copied: !!copiedReport?.schemaVersion,
+        sameStructure: copiedReport?.schemaVersion === popupShapeReport?.schemaVersion && copiedReport?.probe === popupShapeReport?.probe,
+        privacySafe: copiedReport?.privacy?.promptTextIncluded === false && copiedReport?.privacy?.answerTextIncluded === false && copiedReport?.privacy?.rawDomIncluded === false,
+        copiedOverlayHandlerAttached: copiedReport?.session?.overlayHandlerAttached === true,
+        copiedOverlayActionReceived: copiedReport?.session?.lastOverlayActionReceived || null,
+        copiedOverlayActionResult: copiedReport?.session?.lastOverlayActionResult || null,
+        activeOverlayHandlerAttached: activeSession.overlayHandlerAttached === true,
+        activeOverlayActionReceived: activeSession.lastOverlayActionReceived || null,
+        activeOverlayActionResult: activeSession.lastOverlayActionResult || null,
+        activeOverlayActionSessionId: activeSession.lastOverlayActionSessionId || null,
+        activeSessionId: activeSession.id || null
+      };
+    });
+
+    const result = {
+      passed: stopped
+        && stopOverlay.overlayHandlerAttached === true
+        && stopOverlay.lastOverlayActionReceived === "stop"
+        && stopOverlay.lastOverlayActionResult === "stopped"
+        && stopOverlay.lastOverlayActionSessionId === stopOverlay.id
+        && copy.copied
+        && copy.sameStructure
+        && copy.privacySafe
+        && copy.activeOverlayHandlerAttached === true
+        && copy.activeOverlayActionReceived === "copy"
+        && copy.activeOverlayActionResult === "copied"
+        && copy.activeOverlayActionSessionId === copy.activeSessionId
+        && errors.length === 0,
+      stop: { ...stopTarget, stopped, overlay: stopOverlay },
+      copy: { ...copyTarget, ...copy },
+      errors
+    };
+    assert(result.passed, "Page overlay pointer controls failed", result);
+    return result;
+  } finally {
+    await page.close();
+  }
+}
+
+async function getPanelButtonHitTarget(page, action) {
+  return page.evaluate((actionName) => {
+    const host = document.querySelector("[data-mica-composer-diagnostics-root='true']");
+    const button = host?.querySelector?.(`[data-action='${actionName}']`);
+    if (!host || !button) {
+      return { action: actionName, hitTarget: false, reason: "missing_button" };
+    }
+    const rect = button.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const hit = document.elementFromPoint(x, y);
+    const hitTarget = hit === button || button.contains(hit);
+    const hostStyle = getComputedStyle(host);
+    const buttonStyle = getComputedStyle(button);
+    return {
+      action: actionName,
+      x,
+      y,
+      hitTarget,
+      hitTag: hit?.tagName?.toLowerCase() || null,
+      hitAction: hit?.getAttribute?.("data-action") || null,
+      pointerEvents: buttonStyle.pointerEvents,
+      hostPointerEvents: hostStyle.pointerEvents,
+      zIndex: hostStyle.zIndex,
+      inert: button.inert === true || button.hasAttribute("inert")
+    };
+  }, action);
 }
 
 async function runGuidedComposerDiagnosticsCase() {
@@ -188,8 +442,51 @@ async function runGuidedComposerDiagnosticsCase() {
   return payload;
 }
 
-async function runCase({ width, mica, disabled = false, small = false, loops: caseLoops = loops }) {
-  const label = `${mica ? (disabled ? "mica-disabled" : "mica") : "native"}${small ? "-small-mounted" : ""}@${width}px/${caseLoops}`;
+async function runBodyVsPillDiagnosticsCase() {
+  console.error("Running E2E case body-vs-pill-diagnostics@900px");
+  const page = await browser.newPage({ viewport: { width: 900, height: 820 } });
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  const url = `${baseUrl}/tests/fixtures/composer-body-vs-pill-diagnostics.html?t=${Date.now()}`;
+  let payload;
+  try {
+    await page.goto(url, { waitUntil: "load" });
+    await page.waitForFunction(() => {
+      const text = document.getElementById("body-pill-result")?.textContent || "";
+      return text.trim().startsWith("{");
+    }, null, { timeout: 12000 });
+    payload = JSON.parse(await page.locator("#body-pill-result").textContent());
+  } catch (error) {
+    const resultText = await page.locator("#body-pill-result").textContent().catch(() => "");
+    await page.close();
+    throw Object.assign(new Error(`Body-vs-pill diagnostics fixture failed before producing a result: ${error?.message || error}`), {
+      details: { resultText, errors }
+    });
+  }
+  await page.close();
+
+  payload.width = 900;
+  payload.mode = "body-vs-pill-diagnostics";
+  payload.errors = errors;
+  if (errors.length > 0) payload.passed = false;
+  assert(payload.passed, "Body-vs-pill diagnostics fixture failed", payload);
+  assert(payload.sendLifecycle?.classification === "SEND_BODY_CLEARED_CONNECTOR_CONTEXT_RETAINED", "Connector pill retention was misclassified", payload);
+  assert(payload.sendLifecycle?.composerRawTextLength > 0, "Raw connector pill text was not counted", payload);
+  assert(payload.sendLifecycle?.composerEditableBodyLength === 0, "Editable body did not clear", payload);
+  assert(payload.sendLifecycle?.connectorPillTextLength > 0, "Connector pill text was not counted separately", payload);
+  assert(JSON.stringify({
+    sendLifecycle: payload.sendLifecycle,
+    summary: payload.summary,
+    recovery: payload.recovery
+  }).includes("typed body") === false, "Body-vs-pill diagnostics leaked typed body text", payload);
+  return payload;
+}
+
+async function runCase({ width, mica, disabled = false, longThreadOff = false, small = false, loops: caseLoops = loops }) {
+  const label = `${mica ? (disabled ? "mica-disabled" : (longThreadOff ? "mica-long-thread-off" : "mica")) : "native"}${small ? "-small-mounted" : ""}@${width}px/${caseLoops}`;
   console.error(`Running E2E case ${label}`);
   const page = await browser.newPage({ viewport: { width, height: 820 } });
   const errors = [];
@@ -197,7 +494,7 @@ async function runCase({ width, mica, disabled = false, small = false, loops: ca
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
   });
-  const url = `${baseUrl}/tests/fixtures/composer-lifecycle.html?mica=${mica ? "1" : "0"}&disabled=${disabled ? "1" : "0"}&small=${small ? "1" : "0"}&loops=${caseLoops}&stress=${stress ? "1" : "0"}`;
+  const url = `${baseUrl}/tests/fixtures/composer-lifecycle.html?mica=${mica ? "1" : "0"}&disabled=${disabled ? "1" : "0"}&longThreadOff=${longThreadOff ? "1" : "0"}&small=${small ? "1" : "0"}&loops=${caseLoops}&stress=${stress ? "1" : "0"}`;
   let payload;
   try {
     await page.goto(url, { waitUntil: "load" });

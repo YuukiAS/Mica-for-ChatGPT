@@ -102,6 +102,7 @@
       const params = new URLSearchParams(location.search);
       const withMica = params.get("mica") === "1";
       const disabled = params.get("disabled") === "1";
+      const longThreadOff = params.get("longThreadOff") === "1";
       const stress = params.get("stress") === "1";
       const smallMounted = params.get("small") === "1";
       const loops = Number(params.get("loops") || (stress ? 72 : 24));
@@ -123,7 +124,7 @@
       let lastComposerRect = null;
 
       const metrics = {
-        mode: `${withMica ? (disabled ? "mica-disabled" : "mica") : "native"}${smallMounted ? "-small-mounted" : ""}`,
+        mode: `${withMica ? (disabled ? "mica-disabled" : (longThreadOff ? "mica-long-thread-off" : "mica")) : "native"}${smallMounted ? "-small-mounted" : ""}`,
         loops,
         composerMounts: 0,
         composerUnmounts: 0,
@@ -160,12 +161,16 @@
 
       if (withMica) {
         loadScript("../../dist/mica-dev/known-interruptions.js")
+          .then(() => loadScript("../../dist/mica-dev/connector-lifecycle-signal.js"))
           .then(() => loadScript("../../dist/mica-dev/composer-diagnostics.js"))
           .then(() => loadScript("../../dist/mica-dev/stale-composer-recovery.js"))
+          .then(() => loadScript("../../dist/mica-dev/connector-continuity.js"))
+          .then(() => loadScript("../../dist/mica-dev/send-residual-recovery.js"))
           .then(() => loadScript("../../dist/mica-dev/content.js"))
           .then(async () => {
             await waitFor(() => window.__MICA_TEST_CONTROLS__, 3000);
             if (disabled) window.__MICA_TEST_CONTROLS__.setSettings({ enabled: false });
+            if (longThreadOff) window.__MICA_TEST_CONTROLS__.setSettings({ enabled: true, longThreadOptimization: false });
             await runFixture();
           })
           .catch(fail);

@@ -82,8 +82,11 @@
     <div id="composer-dock"></div>
 
     <script src="../../dist/mica-dev/known-interruptions.js"></script>
+    <script src="../../dist/mica-dev/connector-lifecycle-signal.js"></script>
     <script src="../../dist/mica-dev/composer-diagnostics.js"></script>
     <script src="../../dist/mica-dev/stale-composer-recovery.js"></script>
+    <script src="../../dist/mica-dev/connector-continuity.js"></script>
+    <script src="../../dist/mica-dev/send-residual-recovery.js"></script>
     <script src="../../dist/mica-dev/content.js"></script>
     <script>
       const resultNode = document.getElementById("guided-result");
@@ -154,12 +157,62 @@
         const staleAfterUserTurnReport = await captureCase(async () => {
           mountComposer("manual send draft");
           await delay(180);
+          await dispatchSubmitIntent();
           appendTurn(20, "user", "sent length 17");
           await delay(80);
           unmountComposer();
           await delay(180);
           mountComposer("manual send draft");
           await delay(820);
+        });
+
+        const sendClearedStableReport = await captureCase(async () => {
+          mountComposer("long stable prompt");
+          await delay(180);
+          await dispatchSubmitIntent();
+          appendTurn(30, "user", "sent stable");
+          await delay(80);
+          setEditorText("");
+          await delay(120);
+          unmountComposer();
+          await delay(180);
+          mountComposer("");
+          await delay(760);
+        });
+
+        const sendStalePayloadReport = await captureCase(async () => {
+          mountComposer("long stale prompt");
+          await delay(180);
+          await dispatchSubmitIntent();
+          appendTurn(31, "user", "sent stale");
+          await delay(80);
+          setEditorText("");
+          await delay(120);
+          unmountComposer();
+          await delay(180);
+          mountComposer("long stale prompt");
+          await delay(820);
+        });
+
+        const sendNonmatchingPayloadReport = await captureCase(async () => {
+          mountComposer("long original prompt");
+          await delay(180);
+          await dispatchSubmitIntent();
+          appendTurn(32, "user", "sent nonmatching");
+          await delay(80);
+          setEditorText("");
+          await delay(120);
+          unmountComposer();
+          await delay(180);
+          mountComposer("different residual");
+          await delay(820);
+        });
+
+        const sendNotCommittedReport = await captureCase(async () => {
+          mountComposer("uncommitted prompt");
+          await delay(180);
+          await dispatchSubmitIntent();
+          await delay(3400);
         });
 
         const cleanDeleteReport = await captureCase(async () => {
@@ -255,8 +308,7 @@
           unmountComposer();
           await delay(220);
           mountComposer("");
-          window.__MICA_TEST_CONTROLS__.forceStaleComposerRecoveryTimeoutForTests("WAITING_FOR_REMOUNT");
-          await waitForFinalClearStable(1200);
+          await waitForFinalClearStable(2200);
         });
 
         window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
@@ -273,8 +325,7 @@
           unmountComposer();
           await delay(220);
           mountComposer("");
-          window.__MICA_TEST_CONTROLS__.forceStaleComposerRecoveryTimeoutForTests("WAITING_FOR_REMOUNT");
-          await waitForFinalClearStable(1200);
+          await waitForFinalClearStable(2200);
         });
 
         window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
@@ -412,24 +463,28 @@
           await dispatchFullClearDelete("Delete");
           await delay(120);
           unmountComposer();
-          await delay(220);
+          await delay(920);
           mountComposer("ol");
           await delay(74);
           setEditorText("oldloop8");
-          await waitForRecoverySucceeded(2600);
+          await waitForRecoveryAttemptCleared(2600, 1);
           await delay(120);
           unmountComposer();
-          await delay(780);
+          await delay(940);
           mountComposer("ol");
           await delay(71);
           setEditorText("oldloop8");
-          await delay(77);
+          await waitForRecoveryAttemptCleared(2600, 2);
+          await delay(120);
           unmountComposer();
-          await delay(1385);
+          await delay(980);
           mountComposer("oldloop8");
-          await waitForRecoverySucceeded(2600);
-          window.__MICA_TEST_CONTROLS__.completeStaleComposerRecoveryTombstoneForTests();
-          await waitForFinalClearStable(1200);
+          await waitForRecoveryAttemptCleared(2600, 3);
+          await delay(120);
+          unmountComposer();
+          await delay(960);
+          mountComposer("");
+          await waitForFinalClearStable(2200);
         });
 
         window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
@@ -470,7 +525,7 @@
             unmountComposer();
             await delay(120);
             mountComposer("max old");
-            await waitForRecoverySucceeded(2600);
+            await waitForRecoveryAttemptCleared(2600, index + 1);
           }
           await delay(120);
           unmountComposer();
@@ -566,6 +621,10 @@
           restoredAfterPresentZeroReport,
           restoredAfterDeleteClearReport,
           staleAfterUserTurnReport,
+          sendClearedStableReport,
+          sendStalePayloadReport,
+          sendNonmatchingPayloadReport,
+          sendNotCommittedReport,
           cleanDeleteReport,
           recoverySingleBackspaceReport,
           recoveryDelayedConfirmationReport,
@@ -612,6 +671,11 @@
           ["stale restoration after delete clear detected", restoredAfterDeleteClearReport.summary.staleTextRestoredAfterClear === true && restoredAfterDeleteClearReport.summary.clearAnchor.type === "delete_then_present_zero"],
           ["stale restoration carries runtime flags", !!restoredAfterDeleteClearReport.staleRestoration?.runtime && typeof restoredAfterDeleteClearReport.staleRestoration.restoredLength === "number"],
           ["stale after user turn detected", staleAfterUserTurnReport.summary.staleTextAfterUserTurn === true && staleAfterUserTurnReport.summary.userTurnDelta > 0],
+          ["send cleared stable classified", sendClearedStableReport.sendLifecycle?.classification === "SEND_CLEARED_STABLE" && sendClearedStableReport.sendLifecycle?.userTurnCommitted === true && sendClearedStableReport.sendLifecycle?.userTurnDelta > 0 && sendClearedStableReport.sendLifecycle?.finalTextLength === 0],
+          ["send stale payload classified", sendStalePayloadReport.sendLifecycle?.classification === "SEND_STALE_PAYLOAD_REAPPEARED" && sendStalePayloadReport.sendLifecycle?.staleFingerprintMatched === true && sendStalePayloadReport.sendLifecycle?.stalePayloadReappeared === true],
+          ["send nonmatching residual classified", sendNonmatchingPayloadReport.sendLifecycle?.classification === "SEND_NONMATCHING_TEXT_PRESENT" && sendNonmatchingPayloadReport.sendLifecycle?.staleFingerprintMatched === false && sendNonmatchingPayloadReport.sendLifecycle?.finalTextLength > 0],
+          ["send not committed classified", sendNotCommittedReport.sendLifecycle?.classification === "SEND_NOT_COMMITTED" && sendNotCommittedReport.sendLifecycle?.observed === true && sendNotCommittedReport.sendLifecycle?.userTurnCommitted === false],
+          ["send does not trigger stale clear recovery", sendClearedStableReport.sendLifecycle?.staleClearRecoveryAttemptedDuringSend === false && sendStalePayloadReport.sendLifecycle?.staleClearRecoveryAttemptedDuringSend === false && sendClearedStableReport.staleRecovery?.attempted === false && sendStalePayloadReport.staleRecovery?.attempted === false],
           ["clean delete/remount has no stale false positive", cleanDeleteReport.summary.deleteClearObserved === true && cleanDeleteReport.summary.staleTextRestoredAfterClear === false && cleanDeleteReport.summary.finalTextLength === 0],
           ["single-character backspace does not start confirmation monitor", recoverySingleBackspaceReport.staleRecovery?.fullClearIntentObserved === false && recoverySingleBackspaceReport.staleRecovery?.clearConfirmationMonitorStarted === false && recoverySingleBackspaceReport.staleRecovery?.attempted === false],
           ["delayed present-zero confirmation monitor catches clear", recoveryDelayedConfirmationReport.staleRecovery?.fullClearIntentObserved === true && recoveryDelayedConfirmationReport.staleRecovery?.clearConfirmationMonitorStarted === true && recoveryDelayedConfirmationReport.staleRecovery?.clearConfirmationChecks > 0 && recoveryDelayedConfirmationReport.staleRecovery?.clearConfirmed === true],
@@ -650,7 +714,7 @@
           ["report says no prompt text", nativeLikeReport.privacy.promptTextIncluded === false],
           ["report says no answer text", nativeLikeReport.privacy.answerTextIncluded === false],
           ["report says no raw DOM", nativeLikeReport.privacy.rawDomIncluded === false],
-          ["report excludes fixture draft text", !reportText.includes("stable ten") && !reportText.includes("stale draft one") && !reportText.includes("stale draft two") && !reportText.includes("manual send draft") && !reportText.includes("clearable draft") && !reportText.includes("single x") && !reportText.includes("delay old") && !reportText.includes("blur old") && !reportText.includes("focus old") && !reportText.includes("plain old") && !reportText.includes("other old") && !reportText.includes("vanish old") && !reportText.includes("old text") && !reportText.includes("native0x") && !reportText.includes("pretext8") && !reportText.includes("scopeold") && !reportText.includes("race old") && !reportText.includes("type old") && !reportText.includes("miss old") && !reportText.includes("different") && !reportText.includes("first gen") && !reportText.includes("next gen") && !reportText.includes("full old") && !reportText.includes("fresh input") && !reportText.includes("pending old") && !reportText.includes("new payload") && !reportText.includes("loop old") && !reportText.includes("oldloop8") && !reportText.includes("keep old") && !reportText.includes("same old") && !reportText.includes("other new") && !reportText.includes("max old") && !reportText.includes("first old") && !reportText.includes("second old") && !reportText.includes("early old") && !reportText.includes("cut text") && !reportText.includes("feature off") && !reportText.includes("disabled old") && !reportText.includes("off mode")]
+          ["report excludes fixture draft text", !reportText.includes("stable ten") && !reportText.includes("stale draft one") && !reportText.includes("stale draft two") && !reportText.includes("manual send draft") && !reportText.includes("long stable prompt") && !reportText.includes("long stale prompt") && !reportText.includes("long original prompt") && !reportText.includes("different residual") && !reportText.includes("typed body") && !reportText.includes("uncommitted prompt") && !reportText.includes("clearable draft") && !reportText.includes("single x") && !reportText.includes("delay old") && !reportText.includes("blur old") && !reportText.includes("focus old") && !reportText.includes("plain old") && !reportText.includes("other old") && !reportText.includes("vanish old") && !reportText.includes("old text") && !reportText.includes("native0x") && !reportText.includes("pretext8") && !reportText.includes("scopeold") && !reportText.includes("race old") && !reportText.includes("type old") && !reportText.includes("miss old") && !reportText.includes("different") && !reportText.includes("first gen") && !reportText.includes("next gen") && !reportText.includes("full old") && !reportText.includes("fresh input") && !reportText.includes("pending old") && !reportText.includes("new payload") && !reportText.includes("loop old") && !reportText.includes("oldloop8") && !reportText.includes("keep old") && !reportText.includes("same old") && !reportText.includes("other new") && !reportText.includes("max old") && !reportText.includes("first old") && !reportText.includes("second old") && !reportText.includes("early old") && !reportText.includes("cut text") && !reportText.includes("feature off") && !reportText.includes("disabled old") && !reportText.includes("off mode")]
         ].map(([name, passed]) => ({ name, passed: !!passed }));
 
         resultNode.textContent = JSON.stringify({
@@ -658,6 +722,10 @@
           checks,
           caseSummaries: {
             recoverySamePayload: summarizeCase(recoverySamePayloadReport),
+            sendClearedStable: summarizeSendCase(sendClearedStableReport),
+            sendStalePayload: summarizeSendCase(sendStalePayloadReport),
+            sendNonmatchingPayload: summarizeSendCase(sendNonmatchingPayloadReport),
+            sendNotCommitted: summarizeSendCase(sendNotCommittedReport),
             recoverySettledPayload: summarizeCase(recoverySettledPayloadReport),
             recoveryNewInput: summarizeCase(recoveryNewInputReport),
             recoveryMismatch: summarizeCase(recoveryMismatchReport),
@@ -696,6 +764,10 @@
             restoredAfterPresentZeroReport,
             restoredAfterDeleteClearReport,
             staleAfterUserTurnReport,
+            sendClearedStableReport,
+            sendStalePayloadReport,
+            sendNonmatchingPayloadReport,
+            sendNotCommittedReport,
             cleanDeleteReport,
             recoverySingleBackspaceReport,
             recoveryDelayedConfirmationReport,
@@ -747,6 +819,22 @@
               attemptCount: event.attemptCount,
               reason: event.reason || null
             }))
+        };
+      }
+
+      function summarizeSendCase(report) {
+        return {
+          classification: report?.sendLifecycle?.classification || null,
+          preSendLength: report?.sendLifecycle?.preSendLength ?? null,
+          preSendFingerprintCaptured: report?.sendLifecycle?.preSendFingerprintCaptured ?? null,
+          userTurnCommitted: report?.sendLifecycle?.userTurnCommitted ?? null,
+          userTurnDelta: report?.sendLifecycle?.userTurnDelta ?? null,
+          finalTextLength: report?.sendLifecycle?.finalTextLength ?? null,
+          composerRawTextLength: report?.sendLifecycle?.composerRawTextLength ?? null,
+          composerEditableBodyLength: report?.sendLifecycle?.composerEditableBodyLength ?? null,
+          connectorPillTextLength: report?.sendLifecycle?.connectorPillTextLength ?? null,
+          staleFingerprintMatched: report?.sendLifecycle?.staleFingerprintMatched ?? null,
+          staleClearRecoveryAttemptedDuringSend: report?.sendLifecycle?.staleClearRecoveryAttemptedDuringSend ?? null
         };
       }
 
@@ -831,6 +919,21 @@
         editor.appendChild(chip);
       }
 
+      function setResolvedConnectorBody(text) {
+        if (!editor) return;
+        editor.textContent = "";
+        const chip = document.createElement("span");
+        chip.className = "mention-chip";
+        chip.dataset.inlineSelectionPill = "";
+        chip.dataset.symbol = "ecosystemMention";
+        chip.dataset.id = "plugin:connector_fixture";
+        chip.setAttribute("aria-label", "Selected connector");
+        chip.setAttribute("contenteditable", "false");
+        chip.textContent = "Connector";
+        editor.append(chip, document.createTextNode(text ? ` ${text}` : " "));
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "@" }));
+      }
+
       async function dispatchDeleteClear() {
         editor.focus();
         editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "deleteByCut", data: null }));
@@ -876,6 +979,15 @@
         editor.dispatchEvent(new ClipboardEvent("cut", { bubbles: true, cancelable: true }));
         setEditorText("");
         editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteByCut", data: null }));
+        await delay(220);
+      }
+
+      async function dispatchSubmitIntent() {
+        if (!composer) return;
+        const event = typeof SubmitEvent === "function"
+          ? new SubmitEvent("submit", { bubbles: true, cancelable: true })
+          : new Event("submit", { bubbles: true, cancelable: true });
+        composer.dispatchEvent(event);
         await delay(220);
       }
 
@@ -929,17 +1041,24 @@
         return waitFor(() => editor && getEditorLength() === length, timeout, () => `editor length ${getEditorLength()}`);
       }
 
-      function waitForRecoverySucceeded(timeout) {
+      function waitForRecoverySucceeded(timeout, minAttemptCount = 1) {
         return waitFor(() => {
           const state = window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState();
-          return state?.succeeded === true && editor && getEditorLength() === 0;
+          return state?.succeeded === true && state?.attemptCount >= minAttemptCount && state?.newLength === 0;
+        }, timeout, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()));
+      }
+
+      function waitForRecoveryAttemptCleared(timeout, minAttemptCount = 1) {
+        return waitFor(() => {
+          const state = window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState();
+          return state?.attemptCount >= minAttemptCount && state?.localClearObserved === true && state?.newLength === 0;
         }, timeout, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()));
       }
 
       function waitForFinalClearStable(timeout) {
         return waitFor(() => {
           const state = window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState();
-          return state?.finalClearStable === true && editor && getEditorLength() === 0;
+          return state?.finalClearStable === true && state?.newLength === 0;
         }, timeout, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState()));
       }
 

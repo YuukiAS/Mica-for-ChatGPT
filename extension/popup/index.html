@@ -31,13 +31,40 @@
         <input id="showStatus" type="checkbox" checked>
       </label>
 
-      <label class="row row-with-detail">
-        <span>
-          <strong>Stale clear recovery</strong>
-          <small>Keep explicitly cleared composer text cleared after native remounts.</small>
-        </span>
-        <input id="staleClearRecovery" type="checkbox" checked>
-      </label>
+      <section class="features" aria-label="Features">
+        <div class="section-title">Features</div>
+        <label class="row row-with-detail">
+          <span>
+            <strong>Long-thread optimization</strong>
+            <small>Apply render containment to safe offscreen turns.</small>
+          </span>
+          <input id="longThreadOptimization" type="checkbox" checked>
+        </label>
+
+        <label class="row row-with-detail">
+          <span>
+            <strong>Stale clear recovery</strong>
+            <small>Keep explicitly cleared composer text cleared after native remounts.</small>
+          </span>
+          <input id="staleClearRecovery" type="checkbox" checked>
+        </label>
+
+        <label class="row row-with-detail">
+          <span>
+            <strong>Connector continuity</strong>
+            <small>Keep the composer area visually stable during connector remounts.</small>
+          </span>
+          <input id="connectorContinuity" type="checkbox" checked>
+        </label>
+
+        <label class="row row-with-detail">
+          <span>
+            <strong>Send residual recovery</strong>
+            <small>Clear matching stale connector-send payloads after commit.</small>
+          </span>
+          <input id="sendResidualRecovery" type="checkbox" checked>
+        </label>
+      </section>
 
       <label class="row row-with-detail">
         <span>
