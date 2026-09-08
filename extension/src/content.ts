@@ -357,7 +357,7 @@
   }
 
   function handleComposerKeydown(event) {
-    if (isComposerEventTarget(event.target) && isEditingKey(event)) {
+    if (isEditingKey(event) && isComposerEventTarget(event.target)) {
       recordComposerDiagnosticRuntimeCallback("lifecycle_callback", { event: "keydown", key: event.key || "" });
       markComposerEditActivity();
     }
@@ -1456,6 +1456,7 @@
   }
 
   function updateComposerTextLengthOnly() {
+    if (!diagnostics.running) return;
     const element = composerState.currentElement;
     if (element instanceof HTMLElement && element.isConnected) {
       composerState.currentTextLength = getComposerTextLength(element);

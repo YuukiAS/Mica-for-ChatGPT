@@ -74,6 +74,18 @@ Authenticated ChatGPT acceptance is manual, but the diagnostic burden must live 
 - When a new recurring real-site bug cannot be diagnosed from the existing report, improve Mica's built-in report first; do not shift the complexity to the user via Console instructions.
 - The user's manual acceptance loop should normally be: reload `dist/mica-dev` if needed -> reproduce one short action -> click `Copy report` -> paste/report the result. Keep each requested manual step small and explicit.
 
+### Runtime typing performance invariant
+
+Mica's composer input path is the highest-priority runtime performance path. Reliability, diagnostics, connector, virtualization, overlay, and recovery features must fail native rather than add visible typing latency.
+
+- Ordinary `keydown`, `beforeinput`, `input`, `compositionstart`, `compositionupdate`, and `compositionend` handlers may only do target checks, cached-reference checks, boolean/state transitions, timestamps/counters, and tiny string checks.
+- Do not run `cloneNode`, broad `querySelectorAll`, document-wide composer discovery, turn enumeration, `getComputedStyle`, geometry/layout reads, CSS variable enumeration, large `textContent` reads, hashing/serialization, DOM reconstruction, synchronous storage I/O, or timer churn in the ordinary typing synchronous call stack.
+- If a reliability feature needs heavy DOM/style/layout work, trigger it from structural events, send gestures, bounded lifecycle transitions, `requestAnimationFrame`, or `requestIdleCallback`, and coalesce repeated events.
+- A connector/context latch TTL is only state validity. It must not cause future ordinary input events during that TTL to rediscover the page, rebuild snapshots, clone composer DOM, or start polling.
+- New document-level input listeners must explicitly prove their hot-path branch is lightweight before Tier 2. New polling below 100ms is high-risk and must be justified as bounded to a real transient lifecycle where event-driven observation is insufficient.
+- Feature correctness tests passing is not enough. Any composer/observer/listener change in Tier 2 must also run the focused typing hot-path regression, including connector-latched typing and composition/IME input.
+- Diagnostics and reliability runtime code both follow this budget. Diagnostics may do heavier observation only while an explicit diagnostic session is active and must still avoid interfering with native input.
+
 ## Testing requirements
 
 Testing should be proportional to the change. Do not run the heaviest suite after every small edit merely because it exists.

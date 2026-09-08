@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Mica for ChatGPT",
   "short_name": "Mica",
-  "version": "0.1.6",
-  "version_name": "0.1.6",
+  "version": "0.1.7",
+  "version_name": "0.1.7",
   "description": "Local diagnostics and low-risk render fallback for long ChatGPT threads.",
   "icons": {
     "16": "icons/icon16.png",

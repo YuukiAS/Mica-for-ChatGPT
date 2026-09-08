@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mica typing hot path fixture</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        min-height: 2400px;
+        margin: 0;
+        background: #f7f7f8;
+        color: #171717;
+        font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main {
+        width: min(840px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 24px 0 180px;
+      }
+      article {
+        margin: 14px 0;
+        padding: 14px;
+        border: 1px solid #d9d9e3;
+        border-radius: 8px;
+        background: #fff;
+      }
+      .composer {
+        position: fixed;
+        left: 50%;
+        bottom: 14px;
+        z-index: 10;
+        width: min(820px, calc(100vw - 24px));
+        transform: translateX(-50%);
+      }
+      [data-composer-surface="true"] {
+        --composer-surface-primary: #fff;
+        --composer-blue-bg: #daeeff;
+        display: grid;
+        min-height: 52px;
+        width: 100%;
+        padding: 8px 10px;
+        overflow: clip;
+        border-radius: 28px;
+        background: #fff;
+        box-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.12);
+      }
+      .composer-body {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        min-height: 36px;
+      }
+      button, .model-button {
+        min-width: 32px;
+        height: 32px;
+        padding: 0 10px;
+        border: 1px solid rgba(0,0,0,.08);
+        border-radius: 999px;
+        background: #f7f7f8;
+        color: #171717;
+        font: inherit;
+      }
+      [data-testid="send-button"] {
+        background: #171717;
+        color: #fff;
+      }
+      [role="textbox"] {
+        min-height: 32px;
+        padding: 6px 4px;
+        outline: none;
+        white-space: pre-wrap;
+      }
+      .mention-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin-right: 4px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #202123;
+        line-height: 1.45;
+      }
+      #typing-result {
+        position: fixed;
+        left: 8px;
+        top: 8px;
+        z-index: 1;
+        max-width: 54vw;
+        white-space: pre-wrap;
+        font-size: 11px;
+      }
+    </style>
+    <script>
+      window.__MICA_HOTPATH_COUNTERS__ = {
+        cloneNode: 0,
+        getComputedStyle: 0,
+        documentQuerySelectorAll: 0,
+        documentQuerySelector: 0,
+        elementQuerySelectorAll: 0,
+        intervalBelow100Created: 0,
+        intervalBelow100Active: 0
+      };
+      const counters = window.__MICA_HOTPATH_COUNTERS__;
+      const originalCloneNode = Node.prototype.cloneNode;
+      Node.prototype.cloneNode = function patchedCloneNode() {
+        counters.cloneNode += 1;
+        return originalCloneNode.apply(this, arguments);
+      };
+      const originalComputedStyle = window.getComputedStyle;
+      window.getComputedStyle = function patchedGetComputedStyle() {
+        counters.getComputedStyle += 1;
+        return originalComputedStyle.apply(this, arguments);
+      };
+      const originalDocumentQsa = Document.prototype.querySelectorAll;
+      Document.prototype.querySelectorAll = function patchedDocumentQsa() {
+        counters.documentQuerySelectorAll += 1;
+        return originalDocumentQsa.apply(this, arguments);
+      };
+      const originalDocumentQs = Document.prototype.querySelector;
+      Document.prototype.querySelector = function patchedDocumentQs() {
+        counters.documentQuerySelector += 1;
+        return originalDocumentQs.apply(this, arguments);
+      };
+      const originalElementQsa = Element.prototype.querySelectorAll;
+      Element.prototype.querySelectorAll = function patchedElementQsa() {
+        counters.elementQuerySelectorAll += 1;
+        return originalElementQsa.apply(this, arguments);
+      };
+      const originalSetInterval = window.setInterval;
+      const originalClearInterval = window.clearInterval;
+      const shortIntervals = new Set();
+      window.setInterval = function patchedSetInterval(handler, timeout) {
+        const id = originalSetInterval.apply(this, arguments);
+        if (Number(timeout) < 100) {
+          counters.intervalBelow100Created += 1;
+          counters.intervalBelow100Active += 1;
+          shortIntervals.add(id);
+        }
+        return id;
+      };
+      window.clearInterval = function patchedClearInterval(id) {
+        if (shortIntervals.delete(id)) counters.intervalBelow100Active = Math.max(0, counters.intervalBelow100Active - 1);
+        return originalClearInterval.apply(this, arguments);
+      };
+      window.__MICA_HOTPATH_SNAPSHOT__ = () => ({ ...counters });
+      window.__MICA_HOTPATH_DELTA__ = (before, after) => Object.fromEntries(Object.keys(after).map((key) => [key, after[key] - (before[key] || 0)]));
+    </script>
+  </head>
+  <body>
+    <pre id="typing-result">Idle</pre>
+    <main id="conversation"></main>
+    <div id="composer-dock"></div>
+
+    <script src="../../dist/mica-dev/known-interruptions.js"></script>
+    <script src="../../dist/mica-dev/connector-lifecycle-signal.js"></script>
+    <script src="../../dist/mica-dev/composer-diagnostics.js"></script>
+    <script src="../../dist/mica-dev/stale-composer-recovery.js"></script>
+    <script src="../../dist/mica-dev/connector-continuity.js"></script>
+    <script src="../../dist/mica-dev/send-residual-recovery.js"></script>
+    <script src="../../dist/mica-dev/content.js"></script>
+    <script>
+      const resultNode = document.getElementById("typing-result");
+      const conversation = document.getElementById("conversation");
+      const dock = document.getElementById("composer-dock");
+      let editor = null;
+      let composer = null;
+
+      run().catch((error) => {
+        resultNode.textContent = JSON.stringify({ passed: false, error: String(error?.stack || error) }, null, 2);
+      });
+
+      async function run() {
+        await waitFor(() => window.__MICA_TEST_CONTROLS__ && window.__MICA_LONG_THREAD_STATUS__, 3000);
+        window.__MICA_TEST_CONTROLS__.setSettings({
+          enabled: true,
+          longThreadOptimization: true,
+          staleClearRecovery: true,
+          connectorContinuity: true,
+          sendResidualRecovery: true
+        });
+        window.__MICA_TEST_CONTROLS__.resetConnectorLifecycleSignalForTests();
+        window.__MICA_TEST_CONTROLS__.resetConnectorContinuityForTests();
+        window.__MICA_TEST_CONTROLS__.resetSendResidualRecoveryForTests();
+        for (let index = 0; index < 80; index += 1) appendTurn(index % 2 ? "assistant" : "user");
+        mountConnectorComposer("");
+        window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState();
+        window.MicaConnectorLifecycleSignal.latchConnectorLifecycle("resolved-connector-pill", composer, editor);
+        await waitFor(() => window.__MICA_TEST_CONTROLS__.getConnectorContinuityState()?.cachedSnapshotAvailable === true, 1500, stateText);
+        await delay(80);
+
+        const twenty = await measureTyping("abcdefghijklmnopqrst");
+        const twoHundred = await measureTyping("x".repeat(200));
+        const composition = await measureComposition("composition");
+        const continuity = window.__MICA_TEST_CONTROLS__.getConnectorContinuityState();
+        const recovery = window.__MICA_TEST_CONTROLS__.getSendResidualRecoveryState();
+        const status = window.__MICA_TEST_CONTROLS__.getDiagnosticsReport();
+        const checks = [
+          ["20 chars no clone", twenty.delta.cloneNode === 0],
+          ["200 chars no clone", twoHundred.delta.cloneNode === 0],
+          ["composition no clone", composition.delta.cloneNode === 0],
+          ["20 chars no computed style", twenty.delta.getComputedStyle === 0],
+          ["200 chars no computed style", twoHundred.delta.getComputedStyle === 0],
+          ["composition no computed style", composition.delta.getComputedStyle === 0],
+          ["document query all not linear", twoHundred.delta.documentQuerySelectorAll <= twenty.delta.documentQuerySelectorAll + 2],
+          ["document query selector not linear", twoHundred.delta.documentQuerySelector <= twenty.delta.documentQuerySelector + 2],
+          ["continuity polling inactive", continuity?.pollingActive === false && continuity?.perf?.activePollingTimer === false],
+          ["send recovery polling inactive", recovery?.guardActive === false && recovery?.sendCandidateActive === false],
+          ["turn scan not linear", (status?.runtime?.nativeSafeMountedStatusProbes || 0) <= 2],
+          ["typing p95 smoke", twoHundred.p95Ms < 12],
+          ["typing total smoke", twoHundred.totalMs < 700]
+        ].map(([name, passed]) => ({ name, passed: !!passed }));
+
+        resultNode.textContent = JSON.stringify({
+          passed: checks.every((check) => check.passed),
+          checks,
+          twenty,
+          twoHundred,
+          composition,
+          continuity,
+          recovery: {
+            guardActive: recovery?.guardActive,
+            sendCandidateActive: recovery?.sendCandidateActive,
+            generationId: recovery?.generationId,
+            phase: recovery?.phase
+          },
+          statusRuntime: status?.runtime || null
+        }, null, 2);
+      }
+
+      async function measureTyping(text) {
+        editor.textContent = "";
+        await delay(20);
+        const before = window.__MICA_HOTPATH_SNAPSHOT__();
+        const durations = [];
+        const started = performance.now();
+        for (const char of text) {
+          const t0 = performance.now();
+          editor.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: char }));
+          editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertText", data: char }));
+          editor.append(document.createTextNode(char));
+          editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: char }));
+          durations.push(performance.now() - t0);
+        }
+        const totalMs = performance.now() - started;
+        await delay(80);
+        const after = window.__MICA_HOTPATH_SNAPSHOT__();
+        return summarizeMeasurement(before, after, durations, totalMs);
+      }
+
+      async function measureComposition(text) {
+        editor.textContent = "";
+        await delay(20);
+        const before = window.__MICA_HOTPATH_SNAPSHOT__();
+        const durations = [];
+        const started = performance.now();
+        editor.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true, data: "" }));
+        for (const char of text) {
+          const t0 = performance.now();
+          editor.dispatchEvent(new CompositionEvent("compositionupdate", { bubbles: true, data: char }));
+          editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertCompositionText", data: char }));
+          editor.append(document.createTextNode(char));
+          editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertCompositionText", data: char }));
+          durations.push(performance.now() - t0);
+        }
+        editor.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true, data: text }));
+        const totalMs = performance.now() - started;
+        await delay(80);
+        const after = window.__MICA_HOTPATH_SNAPSHOT__();
+        return summarizeMeasurement(before, after, durations, totalMs);
+      }
+
+      function summarizeMeasurement(before, after, durations, totalMs) {
+        const sorted = durations.slice().sort((a, b) => a - b);
+        return {
+          delta: window.__MICA_HOTPATH_DELTA__(before, after),
+          totalMs: Math.round(totalMs * 10) / 10,
+          p95Ms: Math.round((sorted[Math.max(0, Math.ceil(sorted.length * 0.95) - 1)] || 0) * 100) / 100,
+          maxMs: Math.round(Math.max(0, ...durations) * 100) / 100
+        };
+      }
+
+      function mountConnectorComposer(text) {
+        const form = document.createElement("form");
+        form.className = "composer";
+        form.dataset.testid = "composer";
+        form.dataset.type = "unified-composer";
+        form.innerHTML = `
+          <div id="thread-bottom-container">
+            <div data-composer-surface="true">
+              <div class="composer-body">
+                <button type="button" aria-label="Add files">+</button>
+                <div class="editor-wrap"><div id="editor" role="textbox" contenteditable="plaintext-only" aria-label="Message Mica"></div></div>
+                <div><button type="button" class="model-button" aria-label="Model and reasoning">Mica</button><button type="submit" data-testid="send-button" aria-label="Send message">Send</button></div>
+              </div>
+            </div>
+          </div>
+        `;
+        dock.appendChild(form);
+        composer = form;
+        editor = form.querySelector("[role='textbox']");
+        const chip = document.createElement("span");
+        chip.className = "mention-chip";
+        chip.dataset.inlineSelectionPill = "";
+        chip.dataset.symbol = "ecosystemMention";
+        chip.dataset.id = "plugin:connector_fixture";
+        chip.setAttribute("contenteditable", "false");
+        chip.textContent = "Connector";
+        editor.append(chip, document.createTextNode(text ? ` ${text}` : " "));
+        editor.focus();
+      }
+
+      function appendTurn(role) {
+        const article = document.createElement("article");
+        article.dataset.testid = `conversation-turn-${conversation.children.length + 1}`;
+        const marker = document.createElement("div");
+        marker.dataset.messageAuthorRole = role;
+        marker.textContent = `${role} turn`;
+        const paragraph = document.createElement("p");
+        paragraph.textContent = "fixture turn body";
+        article.append(marker, paragraph);
+        conversation.appendChild(article);
+      }
+
+      function stateText() {
+        return JSON.stringify(window.__MICA_TEST_CONTROLS__.getConnectorContinuityState());
+      }
+
+      function waitFor(fn, timeout, describeTimeout) {
+        const started = Date.now();
+        return new Promise((resolve, reject) => {
+          const timer = setInterval(() => {
+            try {
+              const value = fn();
+              if (value) {
+                clearInterval(timer);
+                resolve(value);
+              } else if (Date.now() - started > timeout) {
+                clearInterval(timer);
+                reject(new Error(describeTimeout ? describeTimeout() : "Timed out"));
+              }
+            } catch (error) {
+              clearInterval(timer);
+              reject(error);
+            }
+          }, 40);
+        });
+      }
+
+      function delay(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+    </script>
+  </body>
+</html>

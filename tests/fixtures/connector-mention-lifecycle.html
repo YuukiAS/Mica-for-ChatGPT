@@ -217,7 +217,7 @@
         const reportText = JSON.stringify({ reports, connectorLatch, continuityOn, continuityOff, eventBuffer, toggleIsolation });
         const checks = [
           ["connector latch survives chooser chip disappearance and remount", connectorLatch.signal?.latched === true && connectorLatch.report?.connectorLifecycle?.latched === true],
-          ["enter one selects connector without send generation", twoEnter.firstEnterSendGeneration === false && twoEnter.firstEnterSendIntent === false && twoEnter.firstEnterDiscarded === true],
+          ["enter one selects connector without send generation", twoEnter.firstEnterSendGeneration === false && twoEnter.firstEnterSendIntent === false && twoEnter.firstEnterNoResidualCandidate === true],
           ["enter two creates real send generation", twoEnter.secondEnterSendGeneration === true && twoEnter.secondEnterPreSendLength === twoEnter.secondEnterExpectedPreSendLength && twoEnter.secondEnterCommitted === true],
           ["no-chooser continuity cache masks selection disappearance", continuityOn.shellDuringMissing === true && continuityOn.shellAfterReturn === false && continuityOn.cachedBeforeUnmount === true && continuityOn.state?.activated === true && continuityOn.state?.sanitizedCloneAvailable === true && continuityOn.state?.cachedSnapshotAvailable === true && continuityOn.clonePresent === true && continuityOn.visualComparison?.passed === true && continuityOn.chooserActiveNow === false && continuityOn.selectionWindowActive === false && continuityOn.sendGenerationCreated === false],
           ["continuity off inert", continuityOff.shellDuringMissing === false && continuityOff.state?.activated === false],
@@ -298,7 +298,6 @@
           removeConnectorChooser();
           mountConnectorComposer("");
           await waitFor(() => window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState()?.chooserActiveNow === false, 1200, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getConnectorLifecycleSignalState()));
-          await waitFor(() => composerReportHasEvent("send_residual_candidate_discarded", (event) => event.classification === "CONNECTOR_SELECTION"), 1200, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport()?.events || []));
           await delay(260);
           const firstEnterState = window.__MICA_TEST_CONTROLS__.getSendResidualRecoveryState();
           const firstEnterReport = window.__MICA_TEST_CONTROLS__.getComposerGuidedDiagnosticsReport();
@@ -325,7 +324,7 @@
           window.__MICA_TWO_ENTER_RESULT__ = {
             firstEnterSendGeneration: firstEnterState?.generationId > 0,
             firstEnterSendIntent: (firstEnterReport?.events || []).some((event) => event.type === "send_intent"),
-            firstEnterDiscarded: (firstEnterReport?.events || []).some((event) => event.type === "send_residual_candidate_discarded" && event.classification === "CONNECTOR_SELECTION"),
+            firstEnterNoResidualCandidate: firstEnterState?.sendCandidateActive !== true && firstEnterState?.generationId === 0,
             secondEnterSendGeneration: secondEnterState?.generationId > 0,
             secondEnterPreSendLength: secondEnterState?.preSendLength || 0,
             secondEnterExpectedPreSendLength: expectedSecondLength,
@@ -344,6 +343,7 @@
         resetRuntimeFeatures({ enabled: true, connectorContinuity: true, sendResidualRecovery: true, staleClearRecovery: true, longThreadOptimization: true });
         window.__MICA_TEST_CONTROLS__.resetConnectorLifecycleSignalForTests();
         window.__MICA_TEST_CONTROLS__.resetConnectorContinuityForTests();
+        window.__MICA_TEST_CONTROLS__.resetSendResidualRecoveryForTests();
         window.__MICA_TEST_CONTROLS__.startComposerGuidedDiagnostics();
         mountComposer("@");
         dispatchMentionSignal();
@@ -384,6 +384,7 @@
         resetRuntimeFeatures({ enabled: true, connectorContinuity: false, sendResidualRecovery: true, staleClearRecovery: true, longThreadOptimization: true });
         window.__MICA_TEST_CONTROLS__.resetConnectorLifecycleSignalForTests();
         window.__MICA_TEST_CONTROLS__.resetConnectorContinuityForTests();
+        window.__MICA_TEST_CONTROLS__.resetSendResidualRecoveryForTests();
         await prepareLatchedConnectorFlow(PAYLOAD_34);
         await delay(140);
         unmountComposer();
@@ -401,6 +402,7 @@
         resetRuntimeFeatures({ enabled: true, connectorContinuity: true, sendResidualRecovery: true, staleClearRecovery: true, longThreadOptimization: true });
         window.__MICA_TEST_CONTROLS__.resetConnectorLifecycleSignalForTests();
         window.__MICA_TEST_CONTROLS__.resetConnectorContinuityForTests();
+        window.__MICA_TEST_CONTROLS__.resetSendResidualRecoveryForTests();
         await prepareConnectorSelectionWithEnter("");
         await delay(2300);
         setEditorText(PAYLOAD_30);
@@ -430,6 +432,7 @@
         resetRuntimeFeatures({ enabled: true, connectorContinuity: true, sendResidualRecovery: true, staleClearRecovery: true, longThreadOptimization: true });
         window.__MICA_TEST_CONTROLS__.resetConnectorLifecycleSignalForTests();
         window.__MICA_TEST_CONTROLS__.resetConnectorContinuityForTests();
+        window.__MICA_TEST_CONTROLS__.resetSendResidualRecoveryForTests();
         mountComposer("@");
         dispatchMentionSignal();
         await waitFor(() => window.__MICA_TEST_CONTROLS__.getConnectorContinuityState()?.cachedSnapshotAvailable === true, 1200, connectorStateText);

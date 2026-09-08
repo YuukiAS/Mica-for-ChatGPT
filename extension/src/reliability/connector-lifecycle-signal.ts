@@ -74,6 +74,7 @@
 
   function handlePotentialConnectorSignal(event) {
     if (!enabled || !configured || !isTrustedEvent(event)) return;
+    if (!isPotentialConnectorEvent(event)) return;
     const signal = detectSignal(event);
     if (!signal.detected) return;
     latchConnectorLifecycle(signal.source, signal.root, signal.editable);
@@ -112,7 +113,7 @@
     const element = getEventElement(event.target);
     const editable = findComposerEditableFromTarget(event.target) || findComposerEditable();
     const root = findComposerRoot(editable);
-    const chooser = findActiveMentionChooser();
+    const chooser = shouldInspectChooserForEvent(event) ? findActiveMentionChooser() : null;
     if (isChooserSelectionGesture(event, element, chooser)) {
       markChooserActive("chooser-selection");
       const selection = markSelectionWindow("chooser-selection", root, editable);
@@ -247,9 +248,7 @@
     const inputType = typeof event.inputType === "string" ? event.inputType : "";
     const data = typeof event.data === "string" ? event.data : "";
     if (/insert/i.test(inputType) && data === "@") return true;
-    if (!(editable instanceof HTMLElement)) return false;
-    const text = readComposerText(editable);
-    return /(^|\s)@$/.test(text);
+    return false;
   }
 
   function isMentionEnterSelectionCandidate(event, root, editable) {
@@ -286,10 +285,8 @@
 
   function publicLatch() {
     expireIfNeeded();
-    const chooserOpen = !!findActiveMentionChooser();
-    if (chooserOpen) markChooserActive("chooser");
     const now = Date.now();
-    const chooserActiveNow = enabled && (chooserOpen || now <= (latch.chooserActiveUntil || 0));
+    const chooserActiveNow = enabled && now <= (latch.chooserActiveUntil || 0);
     const selectionWindowActive = enabled && now <= (latch.selectionWindowUntil || 0);
     return {
       detected: !!latch.detected,
@@ -376,11 +373,26 @@
   function isComposerEventTarget(target) {
     const element = getEventElement(target);
     if (!element || isMicaNode(element)) return false;
-    const editable = findComposerEditable();
-    const root = findComposerRoot(editable);
-    if (editable && (element === editable || editable.contains(element) || element.contains(editable))) return true;
-    if (root && (element === root || root.contains(element))) return true;
+    if (isEditable(element)) return true;
     return !!element.closest("#prompt-textarea, [data-testid*='composer'], textarea, [contenteditable][role='textbox'], [role='textbox']");
+  }
+
+  function isPotentialConnectorEvent(event) {
+    if (!event) return false;
+    if (event.type === "beforeinput" || event.type === "input") {
+      const data = typeof event.data === "string" ? event.data : "";
+      return data === "@";
+    }
+    if (event.type === "keydown") {
+      return event.key === "Enter" || event.key === "@" || (event.key === "2" && event.shiftKey);
+    }
+    return event.type === "focusin" || event.type === "click" || event.type === "pointerdown";
+  }
+
+  function shouldInspectChooserForEvent(event) {
+    if (!event) return false;
+    if (event.type === "keydown") return event.key === "Enter";
+    return event.type === "click" || event.type === "pointerdown" || event.type === "focusin";
   }
 
   function isEditable(element) {

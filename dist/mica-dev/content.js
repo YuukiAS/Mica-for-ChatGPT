@@ -1,7 +1,7 @@
 (() => {
-  const VERSION = "0.1.6";
-  const VERSION_NAME = "0.1.6";
-  const BUILD_LABEL = "connector-continuity-shadow-cache.1";
+  const VERSION = "0.1.7";
+  const VERSION_NAME = "0.1.7";
+  const BUILD_LABEL = "typing-hotpath-fix.1";
   const DEFAULT_SETTINGS = {
     enabled: true,
     showStatus: true,
@@ -357,7 +357,7 @@
   }
 
   function handleComposerKeydown(event) {
-    if (isComposerEventTarget(event.target) && isEditingKey(event)) {
+    if (isEditingKey(event) && isComposerEventTarget(event.target)) {
       recordComposerDiagnosticRuntimeCallback("lifecycle_callback", { event: "keydown", key: event.key || "" });
       markComposerEditActivity();
     }
@@ -1456,6 +1456,7 @@
   }
 
   function updateComposerTextLengthOnly() {
+    if (!diagnostics.running) return;
     const element = composerState.currentElement;
     if (element instanceof HTMLElement && element.isConnected) {
       composerState.currentTextLength = getComposerTextLength(element);

@@ -308,7 +308,8 @@
   }
 
   function handleKeydown(event) {
-    if (!isComposerEventTarget(event.target) || !isLikelySendKey(event)) return;
+    if (!isLikelySendKey(event) || !isComposerEventTarget(event.target)) return;
+    if (isConnectorSelectionEnter(event)) return;
     const snapshot = sample();
     captureSendCandidate(snapshot, "enter");
   }
@@ -1576,6 +1577,17 @@
     return signal?.chooserActiveNow === true;
   }
 
+  function isConnectorSelectionEnter(event) {
+    if (event?.type !== "keydown" || event.key !== "Enter") return false;
+    if (isConnectorChooserActiveNow()) return true;
+    if (findActiveMentionChooser()) return true;
+    const editable = getEventElement(event.target)?.closest?.("#prompt-textarea, [contenteditable], textarea, [role='textbox']");
+    if (!(editable instanceof HTMLElement)) return false;
+    const root = findComposerRoot(editable);
+    if (hasResolvedConnectorContext(root, editable)) return false;
+    return /(^|\s)@[\p{L}\p{N}_-]{0,64}$/u.test(readComposerText(editable).trimEnd());
+  }
+
   function getEventElement(target) {
     if (target instanceof HTMLElement) return target;
     if (target instanceof Element) return target.closest("*");
@@ -1725,12 +1737,16 @@
       "[aria-label*='mention' i]",
       "[aria-label*='connector' i]",
       "[role='listbox'][aria-activedescendant]",
-      "[role='menu'][aria-activedescendant]"
+      "[role='menu'][aria-activedescendant]",
+      "[role='dialog'] [role='option']",
+      "[role='dialog'] [role='menuitem']",
+      "[data-radix-collection-item]"
     ];
     for (const selector of selectors) {
       for (const node of document.querySelectorAll(selector)) {
         if (!(node instanceof Element) || node.closest("[data-mica-root='true']") || node.closest("[data-mica-composer-diagnostics-root='true']")) continue;
-        if (isLikelyChooser(node)) return node;
+        const owner = node.closest("[role='listbox'], [role='menu'], [role='dialog']") || node;
+        if (isLikelyChooser(owner) || node.hasAttribute("data-radix-collection-item")) return owner;
       }
     }
     return null;

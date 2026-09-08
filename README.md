@@ -53,7 +53,7 @@ Chrome / Edge 手动安装：
 - `Degraded`：疑似 conversation 页面，但 Mica 无法安全识别 mounted turn 结构，已停止优化并保持原生页面。
 - `Disabled`：用户在 popup 或页面状态条中关闭了 Mica。
 
-当前本地运行版本是 `0.1.6`，`BUILD_LABEL` 是 `connector-continuity-shadow-cache.1`。页面上的常驻状态入口默认只是 viewport 右下角的小圆点，不再默认显示右上角文字 pill，也不会因初始化或状态变化自动展开。用户点击小圆点后，状态文字会从同一个底部锚点临时展开，约 2–3 秒后自动收回为小圆点；状态与 toast 都使用静态 viewport 布局，不读取 composer geometry 来避让输入框。
+当前本地运行版本是 `0.1.7`，`BUILD_LABEL` 是 `typing-hotpath-fix.1`。页面上的常驻状态入口默认只是 viewport 右下角的小圆点，不再默认显示右上角文字 pill，也不会因初始化或状态变化自动展开。用户点击小圆点后，状态文字会从同一个底部锚点临时展开，约 2–3 秒后自动收回为小圆点；状态与 toast 都使用静态 viewport 布局，不读取 composer geometry 来避让输入框。
 
 最短诊断路径：
 
@@ -82,7 +82,7 @@ Reliability 仅处理显式 allowlist 中的纯 acknowledgement 提示。当前 
 
 - 默认不修改 ChatGPT 私有 API response，也不阻止 network request。
 - 不删除 React 管理的消息节点；这一版只用 `content-visibility:auto`、containment 和 intrinsic-size 降低离屏历史 turn 的渲染成本。
-- 真实登录态 Edge 已确认当前 ChatGPT 已经原生 virtualize conversation；Mica 的 containment 现在只是低风险 fallback，`0.1.6` 主要用于真实长 thread runtime diagnostics、native-safe 状态修正、bounded composer capture diagnostics、stale composer clear recovery、send-path diagnostics，并保留低干扰 overlay 与严格 allowlist 的已知提示自动 dismiss。
+- 真实登录态 Edge 已确认当前 ChatGPT 已经原生 virtualize conversation；Mica 的 containment 现在只是低风险 fallback，`0.1.7` 主要用于真实长 thread runtime diagnostics、native-safe 状态修正、bounded composer capture diagnostics、stale composer clear recovery、send-path diagnostics，并修复 connector latch 后普通输入事件触发 heavy DOM snapshot 的性能回归。
 - 工具卡片、文件/授权类 UI、正在编辑的内容、viewport 附近内容和最近 turn 会保持原生渲染。
 - Codex 当前只能访问未登录 ChatGPT 首页，不能在本机完成真实 authenticated long thread 回归；真实验收需要在目标 Chrome / Edge / MacBook Neo 上完成。
 - 旧 LightSession 失效调查见 [`docs/investigations/2026-09-01-lightsession-current-chatgpt.md`](docs/investigations/2026-09-01-lightsession-current-chatgpt.md)。

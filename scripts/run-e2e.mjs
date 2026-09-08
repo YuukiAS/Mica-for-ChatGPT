@@ -54,6 +54,10 @@ try {
     const bodyVsPillResult = await runBodyVsPillDiagnosticsCase();
     console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: bodyVsPillResult }, null, 2));
     process.exitCode = 0;
+  } else if (caseFilter === "typing-hotpath") {
+    const typingHotpathResult = await runTypingHotpathCase();
+    console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: typingHotpathResult }, null, 2));
+    process.exitCode = 0;
   } else if (caseFilter === "connector-mention-lifecycle") {
     const connectorResult = await runConnectorMentionLifecycleCase();
     connectorResult.pointerOverlayControls = await runOverlayControlsHitTestCase();
@@ -101,6 +105,8 @@ try {
     results.push(guidedResult);
     const bodyVsPillResult = await runBodyVsPillDiagnosticsCase();
     results.push(bodyVsPillResult);
+    const typingHotpathResult = await runTypingHotpathCase();
+    results.push(typingHotpathResult);
     const connectorResult = await runConnectorMentionLifecycleCase();
     connectorResult.screenshotRegression = await runConnectorContinuityScreenshotCase();
     results.push(connectorResult);
@@ -174,6 +180,47 @@ async function runConnectorMentionLifecycleCase() {
   return payload;
 }
 
+async function runTypingHotpathCase() {
+  console.error("Running E2E case typing-hotpath@900px");
+  const page = await browser.newPage({ viewport: { width: 900, height: 820 } });
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  const url = `${baseUrl}/tests/fixtures/composer-typing-hotpath.html?t=${Date.now()}`;
+  let payload;
+  try {
+    await page.goto(url, { waitUntil: "load" });
+    await page.waitForFunction(() => {
+      const text = document.getElementById("typing-result")?.textContent || "";
+      return text.trim().startsWith("{");
+    }, null, { timeout: 15000 });
+    payload = JSON.parse(await page.locator("#typing-result").textContent());
+  } catch (error) {
+    const resultText = await page.locator("#typing-result").textContent().catch(() => "");
+    await page.close();
+    throw Object.assign(new Error(`Typing hotpath fixture failed before producing a result: ${error?.message || error}`), {
+      details: { resultText, errors }
+    });
+  }
+  await page.close();
+
+  payload.width = 900;
+  payload.mode = "typing-hotpath";
+  payload.errors = errors;
+  if (errors.length > 0) payload.passed = false;
+  assert(payload.passed, "Typing hotpath fixture failed", payload);
+  assert(payload.twenty?.delta?.cloneNode === 0, "20-char typing cloned DOM", payload);
+  assert(payload.twoHundred?.delta?.cloneNode === 0, "200-char typing cloned DOM", payload);
+  assert(payload.composition?.delta?.cloneNode === 0, "Composition typing cloned DOM", payload);
+  assert(payload.twoHundred?.delta?.getComputedStyle === 0, "200-char typing read computed styles", payload);
+  assert(payload.twoHundred?.delta?.documentQuerySelectorAll <= payload.twenty?.delta?.documentQuerySelectorAll + 2, "Document-wide querySelectorAll scaled with typed characters", payload);
+  assert(payload.continuity?.pollingActive === false, "Connector continuity polling is active during ordinary typing", payload);
+  assert(payload.recovery?.guardActive === false && payload.recovery?.sendCandidateActive === false, "Send residual recovery timer is active during ordinary typing", payload);
+  return payload;
+}
+
 async function runOverlayPlacementMatrixCase() {
   console.error("Running E2E case overlay-placement-matrix");
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
@@ -231,10 +278,13 @@ async function runConnectorContinuityScreenshotCase() {
       });
       window.__MICA_TEST_CONTROLS__.resetConnectorLifecycleSignalForTests();
       window.__MICA_TEST_CONTROLS__.resetConnectorContinuityForTests();
+      window.__MICA_TEST_CONTROLS__.resetSendResidualRecoveryForTests();
       mountConnectorComposer("ABCDEFGHIJ1234567890klmnopqrst");
       showConnectorChooser();
+      window.MicaConnectorLifecycleSignal.latchConnectorLifecycle("resolved-connector-pill", composer, editor);
       await delay(80);
     });
+    await page.waitForFunction(() => window.__MICA_TEST_CONTROLS__.getConnectorContinuityState()?.cachedSnapshotAvailable === true, null, { timeout: 1500 });
     const nativeMetrics = await page.evaluate(() => captureNativeComposerVisualMetrics());
     const nativeBuffer = await page.locator("[data-composer-surface='true']").screenshot();
     await page.evaluate(async () => {

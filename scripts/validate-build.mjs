@@ -178,13 +178,14 @@ for (const token of [
   "WATCH_WINDOW_MS",
   "skippedReason",
   "pointerEvents",
-  "detectMentionSignal",
-  "findActiveMentionChooser",
+  "MutationObserver",
+  "scheduleSnapshotRefresh",
+  "activePollingTimer: false",
   "setEnabled"
 ]) {
   assert(connectorContinuity.includes(token), `connector-continuity.js missing ${token}`);
 }
-assert(!/preventDefault\(|fetch\(|XMLHttpRequest|new\s+MutationObserver|document\.execCommand|\.click\(/.test(connectorContinuity), "connector continuity must stay visual-only and non-invasive");
+assert(!/preventDefault\(|fetch\(|XMLHttpRequest|document\.execCommand|\.click\(|setInterval\(|addEventListener\(\"(?:beforeinput|input|keydown|compositionstart|compositionupdate|compositionend)\"/.test(connectorContinuity), "connector continuity must stay visual-only, event-coalesced, and off the typing hot path");
 
 const sendResidualRecovery = await readFile(path.join(distDir, "send-residual-recovery.js"), "utf8");
 for (const token of [

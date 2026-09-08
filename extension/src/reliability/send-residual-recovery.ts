@@ -116,7 +116,8 @@
   }
 
   function handleKeydown(event) {
-    if (!shouldObserveEvent(event) || !isComposerEventTarget(event.target) || !isLikelySendKey(event)) return;
+    if (!shouldObserveEvent(event) || !isLikelySendKey(event) || !isComposerEventTarget(event.target)) return;
+    if (isConnectorSelectionEnter(event)) return;
     captureSendCandidate("enter");
   }
 
@@ -907,16 +908,20 @@
       "[aria-label*='mention' i]",
       "[aria-label*='connector' i]",
       "[role='listbox'][aria-activedescendant]",
-      "[role='menu'][aria-activedescendant]"
+      "[role='menu'][aria-activedescendant]",
+      "[role='dialog'] [role='option']",
+      "[role='dialog'] [role='menuitem']",
+      "[data-radix-collection-item]"
     ];
     for (const selector of selectors) {
       for (const node of document.querySelectorAll(selector)) {
         if (!(node instanceof Element) || isMicaNode(node)) continue;
-        const signal = [node.getAttribute("role"), node.getAttribute("aria-label"), node.getAttribute("data-testid")].filter(Boolean).join(" ");
-        if (/listbox|menu|dialog/i.test(signal)
-          || (node.getAttribute("aria-expanded") === "true" && node.hasAttribute("aria-controls"))) {
-          return node;
-        }
+        const owner = node.closest("[role='listbox'], [role='menu'], [role='dialog']") || node;
+        const signal = [owner.getAttribute("role"), owner.getAttribute("aria-label"), owner.getAttribute("data-testid")].filter(Boolean).join(" ");
+        const chooserRole = /listbox|menu|dialog/i.test(signal);
+        const controlledOpenChooser = owner.getAttribute("aria-expanded") === "true" && owner.hasAttribute("aria-controls");
+        const collectionOption = node.hasAttribute("data-radix-collection-item");
+        if (chooserRole || controlledOpenChooser || collectionOption) return owner;
       }
     }
     return null;
@@ -1018,6 +1023,17 @@
   function isConnectorChooserActiveNow() {
     const signal = safeCall(bridge.getConnectorLifecycleSnapshot, getSharedConnectorLifecycleState());
     return signal?.chooserActiveNow === true;
+  }
+
+  function isConnectorSelectionEnter(event) {
+    if (event?.type !== "keydown" || event.key !== "Enter") return false;
+    if (isConnectorChooserActiveNow()) return true;
+    if (findActiveMentionChooser()) return true;
+    const editable = getEventElement(event.target)?.closest?.("#prompt-textarea, [contenteditable], textarea, [role='textbox']");
+    if (!(editable instanceof HTMLElement)) return false;
+    const root = findComposerRoot(editable);
+    if (hasResolvedConnectorContext(root, editable)) return false;
+    return /(^|\s)@[\p{L}\p{N}_-]{0,64}$/u.test(readComposerText(editable).trimEnd());
   }
 
   function shouldObserveEvent(event) {
