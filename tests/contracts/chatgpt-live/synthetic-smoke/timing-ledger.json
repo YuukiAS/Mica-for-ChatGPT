@@ -1,0 +1,293 @@
+{
+  "passed": true,
+  "input": "D:\\Code\\Mica-for-ChatGPT\\tests\\contracts\\chatgpt-live\\synthetic-smoke",
+  "ledger": {
+    "inputToHandlerProcessingMs": {
+      "n": 1,
+      "min": 2.5,
+      "median": 2.5,
+      "p90": 2.5,
+      "p95": 2.5,
+      "max": 2.5,
+      "mad": 0
+    },
+    "manualSendIntentToUserTurnMountedMs": {
+      "n": 1,
+      "min": 90,
+      "median": 90,
+      "p90": 90,
+      "p95": 90,
+      "max": 90,
+      "mad": 0
+    },
+    "manualSendIntentToComposerBodyZeroMs": {
+      "n": 1,
+      "min": 170,
+      "median": 170,
+      "p90": 170,
+      "p95": 170,
+      "max": 170,
+      "mad": 0
+    },
+    "userTurnToAssistantMountedMs": {
+      "n": 1,
+      "min": 210,
+      "median": 210,
+      "p90": 210,
+      "p95": 210,
+      "max": 210,
+      "mad": 0
+    },
+    "assistantMountedToFirstMutationMs": {
+      "n": 1,
+      "min": 170,
+      "median": 170,
+      "p90": 170,
+      "p95": 170,
+      "max": 170,
+      "mad": 0
+    },
+    "lastMutationToActionBarVisibleMs": {
+      "n": 1,
+      "min": 2250,
+      "median": 2250,
+      "p90": 2250,
+      "p95": 2250,
+      "max": 2250,
+      "mad": 0
+    },
+    "lastMutationToSettledMs": {
+      "n": 1,
+      "min": 2320,
+      "median": 2320,
+      "p90": 2320,
+      "p95": 2320,
+      "max": 2320,
+      "mad": 0
+    }
+  },
+  "constants": [
+    {
+      "file": "extension/src/atlas/atlas-recorder.ts",
+      "name": "ASSISTANT_SETTLED_HARD_CAP_MS",
+      "value": "18000",
+      "classification": "safety hard cap"
+    },
+    {
+      "file": "extension/src/atlas/atlas-recorder.ts",
+      "name": "MUTATION_FLUSH_MS",
+      "value": "120",
+      "classification": "active capture coalescing"
+    },
+    {
+      "file": "extension/src/atlas/atlas-recorder.ts",
+      "name": "SETTLED_IDLE_MS",
+      "value": "1800",
+      "classification": "lifecycle heuristic"
+    },
+    {
+      "file": "extension/src/content.ts",
+      "name": "COMPOSER_EDIT_ACTIVITY_MS",
+      "value": "900",
+      "classification": "composer mutation safety window"
+    },
+    {
+      "file": "extension/src/content.ts",
+      "name": "COMPOSER_PROTECTION_MS",
+      "value": "5000",
+      "classification": "composer mutation safety window"
+    },
+    {
+      "file": "extension/src/content.ts",
+      "name": "COMPOSER_SEND_ACTIVITY_MS",
+      "value": "8000",
+      "classification": "composer mutation safety window"
+    },
+    {
+      "file": "extension/src/content.ts",
+      "name": "FRAME_STALL_MS",
+      "value": "50",
+      "classification": "performance diagnostic threshold"
+    },
+    {
+      "file": "extension/src/content.ts",
+      "name": "OVERLAY_EXPAND_MS",
+      "value": "2600",
+      "classification": "visual animation only"
+    },
+    {
+      "file": "extension/src/content.ts",
+      "name": "TOAST_MERGE_MS",
+      "value": "3000",
+      "classification": "visual animation only"
+    },
+    {
+      "file": "extension/src/content.ts",
+      "name": "TOAST_MS",
+      "value": "2800",
+      "classification": "visual animation only"
+    },
+    {
+      "file": "extension/src/reliability/composer-diagnostics.ts",
+      "name": "CORRELATION_WINDOW_MS",
+      "value": "250",
+      "classification": "lifecycle heuristic"
+    },
+    {
+      "file": "extension/src/reliability/composer-diagnostics.ts",
+      "name": "SAMPLE_INTERVAL_MS",
+      "value": "150",
+      "classification": "sampling/diagnostic cadence"
+    },
+    {
+      "file": "extension/src/reliability/composer-diagnostics.ts",
+      "name": "SEND_CANDIDATE_WINDOW_MS",
+      "value": "3200",
+      "classification": "lifecycle heuristic"
+    },
+    {
+      "file": "extension/src/reliability/composer-diagnostics.ts",
+      "name": "USER_TURN_STALE_GRACE_MS",
+      "value": "600",
+      "classification": "lifecycle heuristic"
+    },
+    {
+      "file": "extension/src/reliability/connector-continuity.ts",
+      "name": "SHELL_HARD_CAP_MS",
+      "value": "2000",
+      "classification": "safety hard cap"
+    },
+    {
+      "file": "extension/src/reliability/connector-continuity.ts",
+      "name": "SNAPSHOT_FRESHNESS_MS",
+      "value": "2500",
+      "classification": "state freshness window"
+    },
+    {
+      "file": "extension/src/reliability/connector-continuity.ts",
+      "name": "WATCH_WINDOW_MS",
+      "value": "4200",
+      "classification": "lifecycle heuristic"
+    },
+    {
+      "file": "extension/src/reliability/connector-lifecycle-signal.ts",
+      "name": "CHOOSER_ACTIVE_GRACE_MS",
+      "value": "300",
+      "classification": "lifecycle heuristic"
+    },
+    {
+      "file": "extension/src/reliability/connector-lifecycle-signal.ts",
+      "name": "LATCH_TTL_MS",
+      "value": "120000",
+      "classification": "lifecycle heuristic"
+    },
+    {
+      "file": "extension/src/reliability/connector-lifecycle-signal.ts",
+      "name": "MENTION_QUERY_MS",
+      "value": "15000",
+      "classification": "state freshness window"
+    },
+    {
+      "file": "extension/src/reliability/connector-lifecycle-signal.ts",
+      "name": "SELECTION_WINDOW_MS",
+      "value": "2200",
+      "classification": "lifecycle heuristic"
+    },
+    {
+      "file": "extension/src/reliability/known-interruptions.ts",
+      "name": "RULE_COOLDOWN_MS",
+      "value": "3000",
+      "classification": "known interruption cooldown"
+    },
+    {
+      "file": "extension/src/reliability/send-residual-recovery.ts",
+      "name": "HARD_LIFETIME_MS",
+      "value": "5600",
+      "classification": "safety hard cap"
+    },
+    {
+      "file": "extension/src/reliability/send-residual-recovery.ts",
+      "name": "NONMATCHING_GRACE_MS",
+      "value": "700",
+      "classification": "lifecycle heuristic"
+    },
+    {
+      "file": "extension/src/reliability/send-residual-recovery.ts",
+      "name": "SAMPLE_INTERVAL_MS",
+      "value": "80",
+      "classification": "sampling/diagnostic cadence"
+    },
+    {
+      "file": "extension/src/reliability/send-residual-recovery.ts",
+      "name": "SEND_CANDIDATE_WINDOW_MS",
+      "value": "3200",
+      "classification": "lifecycle heuristic"
+    },
+    {
+      "file": "extension/src/reliability/send-residual-recovery.ts",
+      "name": "SETTLE_MS",
+      "value": "160",
+      "classification": "lifecycle heuristic"
+    },
+    {
+      "file": "extension/src/reliability/send-residual-recovery.ts",
+      "name": "VERIFY_MS",
+      "value": "240",
+      "classification": "post-action verification delay"
+    },
+    {
+      "file": "extension/src/reliability/stale-composer-recovery.ts",
+      "name": "CLEAR_CONFIRMATION_TIMEOUTS_MS",
+      "value": "[0, 32, 64, 96, 150, 220, 280]",
+      "classification": "safety hard cap"
+    },
+    {
+      "file": "extension/src/reliability/stale-composer-recovery.ts",
+      "name": "CLEAR_CONFIRMATION_WINDOW_MS",
+      "value": "300",
+      "classification": "lifecycle heuristic"
+    },
+    {
+      "file": "extension/src/reliability/stale-composer-recovery.ts",
+      "name": "FULL_SELECTION_INTENT_MS",
+      "value": "1000",
+      "classification": "user selection intent window"
+    },
+    {
+      "file": "extension/src/reliability/stale-composer-recovery.ts",
+      "name": "GUARD_DURATION_MS",
+      "value": "2600",
+      "classification": "safety hard cap"
+    },
+    {
+      "file": "extension/src/reliability/stale-composer-recovery.ts",
+      "name": "HARD_GUARD_CAP_MS",
+      "value": "12000",
+      "classification": "safety hard cap"
+    },
+    {
+      "file": "extension/src/reliability/stale-composer-recovery.ts",
+      "name": "QUIET_WINDOW_MS",
+      "value": "1400",
+      "classification": "lifecycle heuristic"
+    },
+    {
+      "file": "extension/src/reliability/stale-composer-recovery.ts",
+      "name": "SAMPLE_INTERVAL_MS",
+      "value": "80",
+      "classification": "sampling/diagnostic cadence"
+    },
+    {
+      "file": "extension/src/reliability/stale-composer-recovery.ts",
+      "name": "SETTLE_MS",
+      "value": "180",
+      "classification": "lifecycle heuristic"
+    },
+    {
+      "file": "extension/src/reliability/stale-composer-recovery.ts",
+      "name": "VERIFY_MS",
+      "value": "350",
+      "classification": "post-action verification delay"
+    }
+  ]
+}

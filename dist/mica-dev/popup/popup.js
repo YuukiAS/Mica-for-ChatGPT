@@ -65,7 +65,7 @@ elements.prepareFinalSendCheck.addEventListener("click", prepareFinalSendCheck);
 async function load() {
   const manifest = chrome.runtime.getManifest();
   elements.version.textContent = `v${manifest.version_name || manifest.version}`;
-  elements.buildLabel.textContent = "v020-convergence.rc1";
+  elements.buildLabel.textContent = "v020-convergence.atlas.1";
   const settings = await getStorage(DEFAULT_SETTINGS);
   elements.enabled.checked = settings.enabled;
   elements.showStatus.checked = settings.showStatus;

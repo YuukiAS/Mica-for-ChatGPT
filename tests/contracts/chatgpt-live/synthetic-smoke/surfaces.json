@@ -1,0 +1,137 @@
+{
+  "assistantActionBar": {
+    "schemaVersion": 1,
+    "name": "assistantActionBar",
+    "status": "OBSERVED",
+    "source": "synthetic-atlas-smoke",
+    "privacy": {
+      "localOnly": true,
+      "telemetryUploaded": false,
+      "promptTextIncluded": false,
+      "answerTextIncluded": false,
+      "rawDomIncluded": false,
+      "fullPageScreenshotIncluded": false,
+      "headersIncluded": false,
+      "cookiesIncluded": false,
+      "requestBodiesIncluded": false
+    },
+    "contract": {
+      "tag": "div",
+      "role": "toolbar",
+      "rect": {
+        "x": 620,
+        "y": 520,
+        "width": 220,
+        "height": 40
+      }
+    }
+  },
+  "composer": {
+    "schemaVersion": 1,
+    "name": "composer",
+    "status": "OBSERVED",
+    "source": "synthetic-atlas-smoke",
+    "privacy": {
+      "localOnly": true,
+      "telemetryUploaded": false,
+      "promptTextIncluded": false,
+      "answerTextIncluded": false,
+      "rawDomIncluded": false,
+      "fullPageScreenshotIncluded": false,
+      "headersIncluded": false,
+      "cookiesIncluded": false,
+      "requestBodiesIncluded": false
+    },
+    "contract": {
+      "tag": "form",
+      "role": null,
+      "rect": {
+        "x": 40,
+        "y": 730,
+        "width": 820,
+        "height": 72
+      }
+    }
+  },
+  "connectorPill": {
+    "schemaVersion": 1,
+    "name": "connectorPill",
+    "status": "OBSERVED",
+    "source": "synthetic-atlas-smoke",
+    "privacy": {
+      "localOnly": true,
+      "telemetryUploaded": false,
+      "promptTextIncluded": false,
+      "answerTextIncluded": false,
+      "rawDomIncluded": false,
+      "fullPageScreenshotIncluded": false,
+      "headersIncluded": false,
+      "cookiesIncluded": false,
+      "requestBodiesIncluded": false
+    },
+    "contract": {
+      "tag": "span",
+      "role": null,
+      "rect": {
+        "x": 76,
+        "y": 744,
+        "width": 94,
+        "height": 24
+      }
+    }
+  },
+  "mentionChooser": {
+    "schemaVersion": 1,
+    "name": "mentionChooser",
+    "status": "OBSERVED",
+    "source": "synthetic-atlas-smoke",
+    "privacy": {
+      "localOnly": true,
+      "telemetryUploaded": false,
+      "promptTextIncluded": false,
+      "answerTextIncluded": false,
+      "rawDomIncluded": false,
+      "fullPageScreenshotIncluded": false,
+      "headersIncluded": false,
+      "cookiesIncluded": false,
+      "requestBodiesIncluded": false
+    },
+    "contract": {
+      "tag": "div",
+      "role": "listbox",
+      "rect": {
+        "x": 56,
+        "y": 580,
+        "width": 360,
+        "height": 260
+      }
+    }
+  },
+  "micaOverlay": {
+    "schemaVersion": 1,
+    "name": "micaOverlay",
+    "status": "OBSERVED",
+    "source": "synthetic-atlas-smoke",
+    "privacy": {
+      "localOnly": true,
+      "telemetryUploaded": false,
+      "promptTextIncluded": false,
+      "answerTextIncluded": false,
+      "rawDomIncluded": false,
+      "fullPageScreenshotIncluded": false,
+      "headersIncluded": false,
+      "cookiesIncluded": false,
+      "requestBodiesIncluded": false
+    },
+    "contract": {
+      "tag": "mica-overlay",
+      "role": null,
+      "rect": {
+        "x": 812,
+        "y": 760,
+        "width": 56,
+        "height": 44
+      }
+    }
+  }
+}

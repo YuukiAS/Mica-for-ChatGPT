@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "kind": "mica.liveSurfaceAtlas.timings",
+  "source": "synthetic-atlas-smoke",
+  "privacy": {
+    "localOnly": true,
+    "telemetryUploaded": false,
+    "promptTextIncluded": false,
+    "answerTextIncluded": false,
+    "rawDomIncluded": false,
+    "fullPageScreenshotIncluded": false,
+    "headersIncluded": false,
+    "cookiesIncluded": false,
+    "requestBodiesIncluded": false
+  },
+  "safety": {
+    "automatedSend": false,
+    "automatedEnter": false,
+    "automatedUpload": false,
+    "automatedConnectorAction": false,
+    "playwrightRealSiteTraceUsed": false,
+    "computerUseRequired": false
+  },
+  "metrics": {
+    "inputToHandlerProcessingMs": [
+      2.5
+    ],
+    "manualSendIntentToUserTurnMountedMs": 90,
+    "manualSendIntentToComposerBodyZeroMs": 170,
+    "userTurnToAssistantMountedMs": 210,
+    "assistantMountedToFirstMutationMs": 170,
+    "lastMutationToActionBarVisibleMs": 2250,
+    "lastMutationToSettledMs": 2320
+  }
+}

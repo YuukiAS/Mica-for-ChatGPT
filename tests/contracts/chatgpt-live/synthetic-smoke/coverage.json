@@ -1,0 +1,54 @@
+{
+  "composer": {
+    "status": "OBSERVED",
+    "count": 1
+  },
+  "userTurn": {
+    "status": "OBSERVED",
+    "count": 1
+  },
+  "assistantStreaming": {
+    "status": "OBSERVED",
+    "count": 1
+  },
+  "assistantSettled": {
+    "status": "OBSERVED",
+    "count": 1
+  },
+  "assistantActionBar": {
+    "status": "OBSERVED",
+    "count": 1
+  },
+  "nativeCopyArea": {
+    "status": "OBSERVED",
+    "count": 1
+  },
+  "richMarkdown": {
+    "status": "OBSERVED",
+    "count": 1
+  },
+  "mentionChooser": {
+    "status": "OBSERVED",
+    "count": 1
+  },
+  "connectorPill": {
+    "status": "OBSERVED",
+    "count": 1
+  },
+  "micaOverlay": {
+    "status": "OBSERVED",
+    "count": 1
+  },
+  "longThreadMountedWindow": {
+    "status": "OBSERVED",
+    "count": 1
+  },
+  "toolFileAuthSurface": {
+    "status": "MISSING",
+    "count": 0
+  },
+  "micaCopy": {
+    "status": "OBSERVED",
+    "count": 1
+  }
+}

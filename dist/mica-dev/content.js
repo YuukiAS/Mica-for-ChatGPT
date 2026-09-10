@@ -1,7 +1,7 @@
 (() => {
   const VERSION = "0.2.0";
   const VERSION_NAME = "0.2.0";
-  const BUILD_LABEL = "v020-convergence.rc1";
+  const BUILD_LABEL = "v020-convergence.atlas.1";
   const DEFAULT_SETTINGS = {
     enabled: true,
     showStatus: true,
@@ -190,6 +190,7 @@
     setupConnectorContinuity();
     setupSendResidualRecovery();
     setupMarkdownCopy();
+    setupAtlasRecorder();
     setupObservers();
     setupMessages();
     setupFixtureTestHooks();
@@ -452,6 +453,19 @@
         sendResponse({ status: currentStatus, composerGuided: summarizeComposerGuidedDiagnostics(), oneShot: prepareFinalSendCheck() });
         return true;
       }
+      if (message.type === "MICA_ATLAS_START") {
+        sendResponse({ status: currentStatus, atlas: startAtlasRecorder(message.options || {}) });
+        return true;
+      }
+      if (message.type === "MICA_ATLAS_STOP") {
+        sendResponse({ status: currentStatus, atlas: stopAtlasRecorder(message.reason || "message") });
+        return true;
+      }
+      if (message.type === "MICA_ATLAS_GET_REPORT") {
+        const report = getAtlasReport();
+        sendResponse({ status: currentStatus, atlas: summarizeAtlasRecorder(), report, reportText: report ? JSON.stringify(report, null, 2) : "" });
+        return true;
+      }
       return false;
     });
 
@@ -516,6 +530,8 @@
           nativeSafeReason: runtimeState.nativeSafeReason,
           documentMutationObserverActive: runtimeState.documentMutationsObserved,
           composerLifecycleListenersAttached: runtimeState.composerLifecycleListenersAttached,
+          atlasActive: globalThis.MicaAtlasRecorder?.isActive?.() === true,
+          atlasState: summarizeAtlasRecorder(),
           micaEnabled: settings.enabled,
           longThreadOptimizationEnabled: settings.enabled && settings.longThreadOptimization,
           connectorContinuityEnabled: settings.enabled && settings.connectorContinuity,
@@ -581,7 +597,23 @@
   function setupMarkdownCopy() {
     const api = globalThis.MicaMarkdownCopy;
     if (!api || typeof api.configure !== "function") return;
-    api.configure({ enabled: settings.enabled && settings.micaMarkdownCopy });
+    api.configure({
+      enabled: settings.enabled && settings.micaMarkdownCopy,
+      onCopy(result) {
+        recordAtlasRuntimeTransition("mica_copy_result", result || {});
+      }
+    });
+  }
+
+  function setupAtlasRecorder() {
+    const api = globalThis.MicaAtlasRecorder;
+    if (!api || typeof api.recordRuntimeTransition !== "function") return;
+    api.recordRuntimeTransition("mica_runtime_ready", {
+      version: VERSION,
+      versionName: VERSION_NAME,
+      buildLabel: BUILD_LABEL,
+      mountedTurns: currentStatus.mountedTurns || 0
+    });
   }
 
   function updateFeatureModulesEnabled() {
@@ -691,6 +723,40 @@
     return globalThis.MicaSendResidualRecovery?.getState?.() || null;
   }
 
+  function startAtlasRecorder(options = {}) {
+    return globalThis.MicaAtlasRecorder?.start?.(options) || { status: "unavailable", active: false };
+  }
+
+  function stopAtlasRecorder(reason = "manual") {
+    return globalThis.MicaAtlasRecorder?.stop?.(reason) || { status: "unavailable", active: false };
+  }
+
+  function summarizeAtlasRecorder() {
+    return globalThis.MicaAtlasRecorder?.getDebugState?.() || { active: false, available: false };
+  }
+
+  function getAtlasReport() {
+    return globalThis.MicaAtlasRecorder?.getReport?.() || null;
+  }
+
+  function recordAtlasRuntimeTransition(type, details = {}) {
+    const api = globalThis.MicaAtlasRecorder;
+    if (!api || api.isActive?.() !== true) return;
+    try {
+      api.recordRuntimeTransition(type, {
+        ...details,
+        nativeSafeMode: runtimeState.nativeSafeMode,
+        documentMutationObserverActive: runtimeState.documentMutationsObserved,
+        composerLifecycleListenersAttached: runtimeState.composerLifecycleListenersAttached,
+        micaEnabled: settings.enabled,
+        mountedTurns: currentStatus.mountedTurns || 0,
+        optimizedTurns: currentStatus.optimizedTurns || 0
+      });
+    } catch (_error) {
+      // Atlas is diagnostic-only and must never affect runtime behavior.
+    }
+  }
+
   function setupFixtureTestHooks() {
     if (document.documentElement.dataset.micaFixture !== "true") return;
     globalThis.__MICA_TEST_CONTROLS__ = {
@@ -768,6 +834,18 @@
       serializeFirstAssistantTurnForTests() {
         const turn = collectMountedTurnStatusProbe().find((node) => hasTurnRole(node, "assistant"));
         return globalThis.MicaMarkdownCopy?.serializeTurn?.(turn) || "";
+      },
+      startAtlasRecorder(options) {
+        return startAtlasRecorder(options || { sessionId: "fixture-atlas" });
+      },
+      stopAtlasRecorder(reason) {
+        return stopAtlasRecorder(reason || "fixture");
+      },
+      getAtlasReport() {
+        return getAtlasReport();
+      },
+      getAtlasState() {
+        return summarizeAtlasRecorder();
       }
     };
   }
@@ -1530,6 +1608,13 @@
     document.documentElement.dataset.micaMountedTurns = String(mountedCount);
     document.documentElement.dataset.micaOptimizedTurns = String(optimizedCount);
     delete document.documentElement.dataset.micaTurns;
+    recordAtlasRuntimeTransition("mica_status_changed", {
+      name,
+      reason,
+      mountedTurns: mountedCount,
+      optimizedTurns: optimizedCount,
+      protectedTurns: protectedCount
+    });
     maybeExpandForStatus(previousName, name);
     renderBadge();
   }
@@ -1791,6 +1876,8 @@
         nativeSafeReason: runtimeState.nativeSafeReason,
         documentMutationObserverActive: runtimeState.documentMutationsObserved,
         composerLifecycleListenersAttached: runtimeState.composerLifecycleListenersAttached,
+        atlasActive: globalThis.MicaAtlasRecorder?.isActive?.() === true,
+        atlasState: summarizeAtlasRecorder(),
         micaEnabled: settings.enabled,
         longThreadOptimizationEnabled: settings.enabled && settings.longThreadOptimization,
         connectorContinuityEnabled: settings.enabled && settings.connectorContinuity,

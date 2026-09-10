@@ -26,7 +26,8 @@ assert(manifest.content_scripts?.[0]?.js?.[3] === "stale-composer-recovery.js", 
 assert(manifest.content_scripts?.[0]?.js?.[4] === "connector-continuity.js", "connector continuity script must run before content.js");
 assert(manifest.content_scripts?.[0]?.js?.[5] === "send-residual-recovery.js", "send residual recovery script must run before content.js");
 assert(manifest.content_scripts?.[0]?.js?.[6] === "markdown-copy.js", "markdown copy script must run before content.js");
-assert(manifest.content_scripts?.[0]?.js?.[7] === "content.js", "content.js must remain a content script");
+assert(manifest.content_scripts?.[0]?.js?.[7] === "atlas-recorder.js", "atlas recorder must run before content.js");
+assert(manifest.content_scripts?.[0]?.js?.[8] === "content.js", "content.js must remain a content script");
 
 for (const size of [16, 32, 48, 128]) {
   assert(manifest.icons?.[size] === `icons/icon${size}.png`, `manifest icon${size} missing`);
@@ -54,6 +55,10 @@ for (const token of [
   "connectorContinuity",
   "sendResidualRecovery",
   "micaMarkdownCopy",
+  "MICA_ATLAS_START",
+  "MICA_ATLAS_STOP",
+  "MICA_ATLAS_GET_REPORT",
+  "MicaAtlasRecorder",
   "MICA_PREPARE_FINAL_SEND_CHECK",
   "knownInterruptions",
   "MicaConnectorLifecycleSignal",
@@ -229,6 +234,22 @@ for (const token of [
   assert(markdownCopy.includes(token), `markdown-copy.js missing ${token}`);
 }
 assert(!/setInterval\(|new\s+MutationObserver|addEventListener\(\"(?:beforeinput|input|keydown|compositionstart|compositionupdate|compositionend)\"|requestSubmit|form\.submit|fetch\(|XMLHttpRequest/.test(markdownCopy), "markdown copy must run only on explicit copy action and avoid send/network hooks");
+const atlasRecorder = await readFile(path.join(distDir, "atlas-recorder.js"), "utf8");
+for (const token of [
+  "MicaAtlasRecorder",
+  "MICA_ATLAS_CHECKPOINT",
+  "PerformanceObserver",
+  "long-animation-frame",
+  "automatedSend: false",
+  "automatedUpload: false",
+  "promptTextIncluded: false",
+  "answerTextIncluded: false",
+  "rawDomIncluded: false",
+  "fullPageScreenshotIncluded: false"
+]) {
+  assert(atlasRecorder.includes(token), `atlas-recorder.js missing ${token}`);
+}
+assert(!/requestSubmit|form\.submit|Input\.dispatch|Input\.insertText|Page\.navigate|Page\.reload|fetch\(|XMLHttpRequest|navigator\.clipboard/.test(atlasRecorder), "atlas recorder must stay observational and local");
 for (const forbidden of ["radix-_", "btn-primary", "[role=\"dialog\"] button", "location.reload", "fetch(", "XMLHttpRequest"]) {
   assert(!interruptions.includes(forbidden), `known-interruptions.js contains forbidden dependency or behavior: ${forbidden}`);
 }

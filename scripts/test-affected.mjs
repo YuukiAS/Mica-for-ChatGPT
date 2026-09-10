@@ -71,6 +71,9 @@ function buildPlan(files) {
     add("composer-contract", "node", ["scripts/validate-composer-contract.mjs"], reason);
   };
   const addCase = (caseName, reason) => add(`e2e:${caseName}`, "node", ["scripts/run-e2e.mjs", `--case=${caseName}`], reason);
+  const addAtlas = (reason) => {
+    add("test:atlas", "node", ["scripts/test-atlas.mjs"], reason);
+  };
 
   for (const file of files) {
     const normalized = file.replace(/\\/g, "/");
@@ -88,11 +91,17 @@ function buildPlan(files) {
       addCase("typing-hotpath", "copy_change");
       continue;
     }
+    if (/^extension\/src\/atlas\//.test(normalized)) {
+      addStatic("atlas_recorder_change");
+      addAtlas("atlas_recorder_change");
+      continue;
+    }
     if (/^extension\/src\/content\.ts$/.test(normalized)) {
       addStatic("content_cross_cutting");
       addCase("markdown-copy", "content_cross_cutting");
       addCase("final-send-check", "content_cross_cutting");
       addCase("typing-hotpath", "content_cross_cutting");
+      addCase("atlas-hotpath", "content_cross_cutting");
       addCase("guided-composer-diagnostics", "content_cross_cutting");
       addCase("overlay-placement-matrix", "content_cross_cutting");
       continue;
@@ -127,6 +136,11 @@ function buildPlan(files) {
     if (/^tests\/fixtures\/composer-typing-hotpath\.html$/.test(normalized)) {
       addStatic("typing_fixture_change");
       addCase("typing-hotpath", "typing_fixture_change");
+      addCase("atlas-hotpath", "typing_fixture_change");
+      continue;
+    }
+    if (/^tests\/fixtures\/generated\/live-atlas-replay\.html$/.test(normalized) || /^tests\/contracts\/chatgpt-live\//.test(normalized)) {
+      addAtlas("atlas_contract_change");
       continue;
     }
     if (/^tests\/fixtures\/markdown-copy\.html$/.test(normalized)) {
@@ -143,10 +157,15 @@ function buildPlan(files) {
       addContract("composer_contract_change");
       continue;
     }
+    if (/^scripts\/live-atlas-|^scripts\/test-atlas\.mjs$/.test(normalized)) {
+      addAtlas("atlas_script_change");
+      continue;
+    }
     if (/^scripts\/(build|release-config|validate-build)\.mjs$|^package\.json$/.test(normalized)) {
       addStatic("build_or_script_change");
       addCase("markdown-copy", "build_or_script_change");
       addCase("typing-hotpath", "build_or_script_change");
+      addAtlas("build_or_script_change");
       continue;
     }
     if (/^scripts\/run-e2e\.mjs$/.test(normalized)) {

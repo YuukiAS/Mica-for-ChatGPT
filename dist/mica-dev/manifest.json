@@ -43,6 +43,7 @@
         "connector-continuity.js",
         "send-residual-recovery.js",
         "markdown-copy.js",
+        "atlas-recorder.js",
         "content.js"
       ],
       "run_at": "document_idle"

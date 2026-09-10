@@ -6,9 +6,11 @@
 
   let enabled = true;
   let lastResult = null;
+  let onCopy = null;
 
   function configure(options = {}) {
     enabled = options.enabled !== false;
+    onCopy = typeof options.onCopy === "function" ? options.onCopy : onCopy;
     if (!enabled) removeAllButtons();
   }
 
@@ -31,6 +33,11 @@
     if (!markdown.trim()) return { copied: false, reason: "empty_output" };
     await writeClipboard(markdown);
     lastResult = summarizeCopyResult(markdown);
+    try {
+      onCopy?.(lastResult);
+    } catch (_error) {
+      // Copy must not depend on optional diagnostics hooks.
+    }
     return { copied: true, ...lastResult };
   }
 

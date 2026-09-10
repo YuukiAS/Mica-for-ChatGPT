@@ -45,6 +45,7 @@ const manifest = {
         "connector-continuity.js",
         "send-residual-recovery.js",
         "markdown-copy.js",
+        "atlas-recorder.js",
         "content.js"
       ],
       run_at: "document_idle"
@@ -70,6 +71,7 @@ const staleComposerRecovery = render(await readFile(path.join(srcDir, "reliabili
 const connectorContinuity = render(await readFile(path.join(srcDir, "reliability", "connector-continuity.ts"), "utf8"));
 const sendResidualRecovery = render(await readFile(path.join(srcDir, "reliability", "send-residual-recovery.ts"), "utf8"));
 const markdownCopy = render(await readFile(path.join(srcDir, "copy", "markdown-copy.ts"), "utf8"));
+const atlasRecorder = render(await readFile(path.join(srcDir, "atlas", "atlas-recorder.ts"), "utf8"));
 const popup = render(await readFile(path.join(popupDir, "popup.ts"), "utf8"));
 
 await writeFile(path.join(outDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
@@ -80,6 +82,7 @@ await writeFile(path.join(outDir, "stale-composer-recovery.js"), staleComposerRe
 await writeFile(path.join(outDir, "connector-continuity.js"), connectorContinuity);
 await writeFile(path.join(outDir, "send-residual-recovery.js"), sendResidualRecovery);
 await writeFile(path.join(outDir, "markdown-copy.js"), markdownCopy);
+await writeFile(path.join(outDir, "atlas-recorder.js"), atlasRecorder);
 await writeFile(path.join(outDir, "content.js"), content);
 await writeFile(path.join(outDir, "popup", "popup.js"), popup);
 await cp(path.join(popupDir, "index.html"), path.join(outDir, "popup", "index.html"));

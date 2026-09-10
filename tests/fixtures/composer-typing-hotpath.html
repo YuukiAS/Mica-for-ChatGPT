@@ -160,6 +160,7 @@
     <script src="../../dist/mica-dev/stale-composer-recovery.js"></script>
     <script src="../../dist/mica-dev/connector-continuity.js"></script>
     <script src="../../dist/mica-dev/send-residual-recovery.js"></script>
+    <script src="../../dist/mica-dev/atlas-recorder.js"></script>
     <script src="../../dist/mica-dev/content.js"></script>
     <script>
       const resultNode = document.getElementById("typing-result");
@@ -167,6 +168,8 @@
       const dock = document.getElementById("composer-dock");
       let editor = null;
       let composer = null;
+      const params = new URLSearchParams(location.search);
+      const atlasMode = params.get("atlas") === "1";
 
       run().catch((error) => {
         resultNode.textContent = JSON.stringify({ passed: false, error: String(error?.stack || error) }, null, 2);
@@ -190,10 +193,12 @@
         window.MicaConnectorLifecycleSignal.latchConnectorLifecycle("resolved-connector-pill", composer, editor);
         await waitFor(() => window.__MICA_TEST_CONTROLS__.getConnectorContinuityState()?.cachedSnapshotAvailable === true, 1500, stateText);
         await delay(320);
+        const atlasStarted = atlasMode ? window.__MICA_TEST_CONTROLS__.startAtlasRecorder({ sessionId: "typing-hotpath-atlas" }) : null;
 
         const twenty = await measureTyping("abcdefghijklmnopqrst");
         const twoHundred = await measureTyping("x".repeat(200));
         const composition = await measureComposition("composition");
+        const atlasStopped = atlasMode ? window.__MICA_TEST_CONTROLS__.stopAtlasRecorder("typing-hotpath-complete") : null;
         const continuity = window.__MICA_TEST_CONTROLS__.getConnectorContinuityState();
         const recovery = window.__MICA_TEST_CONTROLS__.getSendResidualRecoveryState();
         const status = window.__MICA_TEST_CONTROLS__.getDiagnosticsReport();
@@ -226,8 +231,24 @@
             generationId: recovery?.generationId,
             phase: recovery?.phase
           },
-          statusRuntime: status?.runtime || null
+          statusRuntime: status?.runtime || null,
+          atlas: {
+            mode: atlasMode,
+            started: summarizeAtlasReport(atlasStarted),
+            stopped: summarizeAtlasReport(atlasStopped)
+          }
         }, null, 2);
+      }
+
+      function summarizeAtlasReport(report) {
+        if (!report) return null;
+        return {
+          active: report.active,
+          sessionId: report.sessionId,
+          eventCount: typeof report.events === "number" ? report.events : report.timeline?.length || report.report?.timeline?.length || 0,
+          coverage: report.coverage,
+          runtime: report.runtime
+        };
       }
 
       async function measureTyping(text) {

@@ -18,6 +18,12 @@
     "test": "npm run test:fast",
     "test:e2e": "node scripts/test-candidate.mjs --tier=full",
     "test:e2e:stress": "node scripts/test-candidate.mjs --tier=stress",
+    "atlas:check": "node scripts/live-atlas-check.mjs",
+    "atlas:capture": "node scripts/live-atlas-cdp.mjs",
+    "atlas:sanitize": "node scripts/live-atlas-sanitize.mjs",
+    "atlas:build-fixtures": "node scripts/live-atlas-build-fixtures.mjs",
+    "atlas:analyze-timings": "node scripts/live-atlas-analyze-timings.mjs",
+    "test:atlas": "node scripts/test-atlas.mjs",
     "package:release": "npm run build && node scripts/package-release.mjs && node scripts/validate-release.mjs"
   },
   "engines": {

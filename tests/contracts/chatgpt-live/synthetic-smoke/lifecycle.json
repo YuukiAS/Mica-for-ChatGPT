@@ -1,0 +1,204 @@
+{
+  "schemaVersion": 1,
+  "kind": "mica.liveSurfaceAtlas.lifecycle",
+  "source": "synthetic-atlas-smoke",
+  "privacy": {
+    "localOnly": true,
+    "telemetryUploaded": false,
+    "promptTextIncluded": false,
+    "answerTextIncluded": false,
+    "rawDomIncluded": false,
+    "fullPageScreenshotIncluded": false,
+    "headersIncluded": false,
+    "cookiesIncluded": false,
+    "requestBodiesIncluded": false
+  },
+  "safety": {
+    "automatedSend": false,
+    "automatedEnter": false,
+    "automatedUpload": false,
+    "automatedConnectorAction": false,
+    "playwrightRealSiteTraceUsed": false,
+    "computerUseRequired": false
+  },
+  "timeline": [
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 0,
+      "relativeTimeMs": 0,
+      "epochTimeMs": 1788888888000,
+      "details": {
+        "checkpointId": "synthetic-smoke:1",
+        "stateClass": "atlas_started"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 40,
+      "relativeTimeMs": 40,
+      "epochTimeMs": 1788888888040,
+      "details": {
+        "checkpointId": "synthetic-smoke:2",
+        "stateClass": "composer_focus",
+        "textLength": 0
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "composer_beforeinput",
+      "monotonicTimeMs": 80,
+      "relativeTimeMs": 80,
+      "epochTimeMs": 1788888888080,
+      "details": {
+        "inputType": "insertText",
+        "dataLength": 1,
+        "textLengthBefore": 0,
+        "textLengthAfter": 1
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "composer_input",
+      "monotonicTimeMs": 96,
+      "relativeTimeMs": 96,
+      "epochTimeMs": 1788888888096,
+      "details": {
+        "inputType": "insertText",
+        "dataLength": 1,
+        "textLengthBefore": 0,
+        "textLengthAfter": 1
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 220,
+      "relativeTimeMs": 220,
+      "epochTimeMs": 1788888888220,
+      "details": {
+        "checkpointId": "synthetic-smoke:3",
+        "stateClass": "manual_send_intent",
+        "source": "submit"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 310,
+      "relativeTimeMs": 310,
+      "epochTimeMs": 1788888888310,
+      "details": {
+        "checkpointId": "synthetic-smoke:4",
+        "stateClass": "mounted_turn_window_changed",
+        "mountedTurns": 2
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 390,
+      "relativeTimeMs": 390,
+      "epochTimeMs": 1788888888390,
+      "details": {
+        "checkpointId": "synthetic-smoke:5",
+        "stateClass": "composer_body_zero",
+        "textLength": 0
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 520,
+      "relativeTimeMs": 520,
+      "epochTimeMs": 1788888888520,
+      "details": {
+        "checkpointId": "synthetic-smoke:6",
+        "stateClass": "assistant_turn_mounted"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 690,
+      "relativeTimeMs": 690,
+      "epochTimeMs": 1788888888690,
+      "details": {
+        "checkpointId": "synthetic-smoke:7",
+        "stateClass": "assistant_first_content_mutation"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "assistant_stream_mutation_burst",
+      "monotonicTimeMs": 900,
+      "relativeTimeMs": 900,
+      "epochTimeMs": 1788888888900,
+      "details": {
+        "addedNodes": 2,
+        "removedNodes": 0
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "assistant_stream_mutation_burst",
+      "monotonicTimeMs": 1180,
+      "relativeTimeMs": 1180,
+      "epochTimeMs": 1788888889180,
+      "details": {
+        "addedNodes": 3,
+        "removedNodes": 0
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 3150,
+      "relativeTimeMs": 3150,
+      "epochTimeMs": 1788888891150,
+      "details": {
+        "checkpointId": "synthetic-smoke:8",
+        "stateClass": "assistant_action_bar_visible",
+        "copyAreaVisible": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 3220,
+      "relativeTimeMs": 3220,
+      "epochTimeMs": 1788888891220,
+      "details": {
+        "checkpointId": "synthetic-smoke:9",
+        "stateClass": "assistant_settled",
+        "idleGapMs": 1840
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 3300,
+      "relativeTimeMs": 3300,
+      "epochTimeMs": 1788888891300,
+      "details": {
+        "checkpointId": "synthetic-smoke:10",
+        "stateClass": "mica_copy_invoked",
+        "markdownLength": 240
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 3400,
+      "relativeTimeMs": 3400,
+      "epochTimeMs": 1788888891400,
+      "details": {
+        "checkpointId": "synthetic-smoke:11",
+        "stateClass": "mica_overlay_state",
+        "mode": "compact",
+        "recording": true
+      }
+    }
+  ]
+}

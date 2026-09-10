@@ -59,6 +59,14 @@ try {
     const typingHotpathResult = await runTypingHotpathCase();
     console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: typingHotpathResult }, null, 2));
     process.exitCode = 0;
+  } else if (caseFilter === "atlas-hotpath") {
+    const atlasHotpathResult = await runTypingHotpathCase({ atlas: true });
+    console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: atlasHotpathResult }, null, 2));
+    process.exitCode = 0;
+  } else if (caseFilter === "atlas-replay") {
+    const atlasReplayResult = await runAtlasReplayCase();
+    console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: atlasReplayResult }, null, 2));
+    process.exitCode = 0;
   } else if (caseFilter === "markdown-copy") {
     const copyResult = await runMarkdownCopyCase();
     console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: copyResult }, null, 2));
@@ -228,15 +236,16 @@ async function runConnectorMentionLifecycleCase() {
   return payload;
 }
 
-async function runTypingHotpathCase() {
-  console.error("Running E2E case typing-hotpath@900px");
+async function runTypingHotpathCase(options = {}) {
+  const atlas = options.atlas === true;
+  console.error(`Running E2E case ${atlas ? "atlas-hotpath" : "typing-hotpath"}@900px`);
   const page = await browser.newPage({ viewport: { width: 900, height: 820 } });
   const errors = [];
   page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
   });
-  const url = `${baseUrl}/tests/fixtures/composer-typing-hotpath.html?t=${Date.now()}`;
+  const url = `${baseUrl}/tests/fixtures/composer-typing-hotpath.html?atlas=${atlas ? "1" : "0"}&t=${Date.now()}`;
   let payload;
   try {
     await page.goto(url, { waitUntil: "load" });
@@ -255,7 +264,7 @@ async function runTypingHotpathCase() {
   await page.close();
 
   payload.width = 900;
-  payload.mode = "typing-hotpath";
+  payload.mode = atlas ? "atlas-hotpath" : "typing-hotpath";
   payload.errors = errors;
   if (errors.length > 0) payload.passed = false;
   assert(payload.passed, "Typing hotpath fixture failed", payload);
@@ -266,6 +275,45 @@ async function runTypingHotpathCase() {
   assert(payload.twoHundred?.delta?.documentQuerySelectorAll <= payload.twenty?.delta?.documentQuerySelectorAll + 2, "Document-wide querySelectorAll scaled with typed characters", payload);
   assert(payload.continuity?.pollingActive === false, "Connector continuity polling is active during ordinary typing", payload);
   assert(payload.recovery?.guardActive === false && payload.recovery?.sendCandidateActive === false, "Send residual recovery timer is active during ordinary typing", payload);
+  if (atlas) {
+    assert(payload.atlas?.started?.active === true, "Atlas did not start for hotpath case", payload);
+    assert(payload.atlas?.stopped?.runtime?.listeners === 0, "Atlas listeners remained after stop", payload);
+    assert(payload.atlas?.stopped?.runtime?.observers === 0, "Atlas observers remained after stop", payload);
+    assert(payload.atlas?.stopped?.runtime?.timers === 0, "Atlas timers remained after stop", payload);
+  }
+  return payload;
+}
+
+async function runAtlasReplayCase() {
+  console.error("Running E2E case atlas-replay@900px");
+  const page = await browser.newPage({ viewport: { width: 900, height: 820 } });
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  const url = `${baseUrl}/tests/fixtures/generated/live-atlas-replay.html?t=${Date.now()}`;
+  let payload;
+  try {
+    await page.goto(url, { waitUntil: "load" });
+    await page.waitForFunction(() => {
+      const text = document.getElementById("atlas-result")?.textContent || "";
+      return text.trim().startsWith("{");
+    }, null, { timeout: 10000 });
+    payload = JSON.parse(await page.locator("#atlas-result").textContent());
+  } catch (error) {
+    const resultText = await page.locator("#atlas-result").textContent().catch(() => "");
+    await page.close();
+    throw Object.assign(new Error(`Atlas replay fixture failed before producing a result: ${error?.message || error}`), {
+      details: { resultText, errors }
+    });
+  }
+  await page.close();
+  payload.width = 900;
+  payload.mode = "atlas-replay";
+  payload.errors = errors;
+  if (errors.length > 0) payload.passed = false;
+  assert(payload.passed, "Atlas replay fixture failed", payload);
   return payload;
 }
 
