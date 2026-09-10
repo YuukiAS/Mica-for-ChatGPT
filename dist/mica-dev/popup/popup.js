@@ -41,7 +41,11 @@ const elements = {
   stopComposerCheck: document.getElementById("stopComposerCheck"),
   copyComposerReport: document.getElementById("copyComposerReport"),
   composerCheckStatus: document.getElementById("composerCheckStatus"),
-  prepareFinalSendCheck: document.getElementById("prepareFinalSendCheck")
+  prepareFinalSendCheck: document.getElementById("prepareFinalSendCheck"),
+  atlasStatus: document.getElementById("atlasStatus"),
+  startAtlas: document.getElementById("startAtlas"),
+  stopAtlas: document.getElementById("stopAtlas"),
+  copyAtlasReport: document.getElementById("copyAtlasReport")
 };
 
 load();
@@ -61,6 +65,9 @@ elements.runComposerCheck.addEventListener("click", () => composerCheckAction("M
 elements.stopComposerCheck.addEventListener("click", () => composerCheckAction("MICA_COMPOSER_GUIDED_STOP"));
 elements.copyComposerReport.addEventListener("click", copyComposerReport);
 elements.prepareFinalSendCheck.addEventListener("click", prepareFinalSendCheck);
+elements.startAtlas.addEventListener("click", startAtlas);
+elements.stopAtlas.addEventListener("click", stopAtlas);
+elements.copyAtlasReport.addEventListener("click", copyAtlasReport);
 
 async function load() {
   const manifest = chrome.runtime.getManifest();
@@ -160,6 +167,37 @@ async function prepareFinalSendCheck() {
       : "Composer not found.";
 }
 
+async function startAtlas() {
+  const response = await sendToActiveTab({
+    type: "MICA_ATLAS_START",
+    options: { sessionId: `popup-atlas-${Date.now()}` }
+  });
+  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
+  renderAtlasStatus(response?.atlas || response?.status?.runtime?.atlasState);
+}
+
+async function stopAtlas() {
+  const response = await sendToActiveTab({ type: "MICA_ATLAS_STOP", reason: "popup" });
+  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
+  renderAtlasStatus(response?.atlas || response?.status?.runtime?.atlasState);
+}
+
+async function copyAtlasReport() {
+  const response = await sendToActiveTab({ type: "MICA_ATLAS_GET_REPORT" });
+  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
+  renderAtlasStatus(response?.atlas || response?.status?.runtime?.atlasState);
+  if (!response?.reportText) {
+    elements.atlasStatus.textContent = "No report";
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(response.reportText);
+    elements.atlasStatus.textContent = "Report copied";
+  } catch (_error) {
+    elements.atlasStatus.textContent = "Clipboard failed";
+  }
+}
+
 async function composerCheckAction(type) {
   const response = await sendToActiveTab({ type });
   renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
@@ -216,6 +254,7 @@ function renderStatus(status, diagnostics, composerGuided = null) {
   elements.dot.style.background = statusColors[name] || statusColors["Native only"];
   renderDiagnostics(diagnostics);
   renderComposerCheck(composerGuided);
+  renderAtlasStatus(status?.runtime?.atlasState);
 }
 
 function formatCounts(status) {
@@ -254,6 +293,25 @@ function renderComposerCheck(composerGuided) {
   elements.composerCheckStatus.textContent = summary
     ? `Captured · stale clear ${summary.staleTextRestoredAfterClear ? "yes" : "no"} · send ${send?.classification || "not observed"}`
     : "Idle";
+}
+
+function renderAtlasStatus(atlas) {
+  if (!atlas || atlas.available === false) {
+    elements.atlasStatus.textContent = "Unavailable";
+    elements.startAtlas.disabled = true;
+    elements.stopAtlas.disabled = true;
+    elements.copyAtlasReport.disabled = true;
+    return;
+  }
+  const active = atlas.active === true;
+  elements.atlasStatus.textContent = active
+    ? `Recording · ${atlas.events || 0} events`
+    : atlas.sessionId
+      ? `Stopped · ${atlas.events || 0} events`
+      : "Off";
+  elements.startAtlas.disabled = active;
+  elements.stopAtlas.disabled = !active;
+  elements.copyAtlasReport.disabled = !atlas.sessionId;
 }
 
 function clamp(value, min, max) {

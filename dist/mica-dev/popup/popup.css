@@ -256,6 +256,17 @@ summary {
   margin-top: 8px;
 }
 
+.advanced-tool {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0 8px;
+  border-top: 1px solid var(--line);
+}
+
+.compact-actions {
+  grid-template-columns: 1fr 1fr;
+}
+
 footer {
   overflow-wrap: anywhere;
   font-size: 11px;

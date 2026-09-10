@@ -2,6 +2,7 @@ import path from "node:path";
 import { defaultRawSession, surfaceKeys, writeJson, writeText } from "./live-atlas-common.mjs";
 
 const sessionId = "synthetic-smoke";
+const syntheticCreatedAt = "2026-09-10T00:00:00.000Z";
 const coverage = Object.fromEntries(surfaceKeys.map((key) => [key, { status: "MISSING", count: 0 }]));
 for (const key of ["composer", "userTurn", "assistantStreaming", "assistantSettled", "assistantActionBar", "nativeCopyArea", "richMarkdown", "mentionChooser", "connectorPill", "micaOverlay", "longThreadMountedWindow", "micaCopy"]) {
   coverage[key] = { status: "OBSERVED", count: 1 };
@@ -29,7 +30,7 @@ const manifest = {
   schemaVersion: 1,
   kind: "mica.liveSurfaceAtlas.raw",
   sessionId,
-  createdAt: new Date().toISOString(),
+  createdAt: syntheticCreatedAt,
   source: "synthetic-atlas-smoke",
   dedicatedThreadUrl: "about:synthetic",
   privacy: privacyFlags(),
