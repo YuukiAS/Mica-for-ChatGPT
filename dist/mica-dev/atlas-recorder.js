@@ -24,6 +24,7 @@
     mutationQueue: [],
     mutationFlushTimer: 0,
     assistantState: new WeakMap(),
+    assistantEntries: new Set(),
     nodeIds: new WeakMap(),
     nextNodeId: 1,
     epochMs: 0,
@@ -36,8 +37,12 @@
     lastMountedTurns: 0,
     lastOverlayMode: null,
     lastOverlayRecording: false,
-    settledTimer: 0,
-    hardSettleTimer: 0,
+    structuralSampleTimer: 0,
+    pendingStructuralReason: "",
+    nextGenerationId: 1,
+    currentGeneration: null,
+    baselineScanned: false,
+    lastCheckpointSignature: new Map(),
     performance: createPerformanceSummary(),
     counters: createCounters()
   };
@@ -109,13 +114,12 @@
   function stop(reason = "manual") {
     if (!state.active) return summarizeSession("inactive");
     flushMutationQueue();
+    flushAssistantStreamBursts();
     record("atlas_stopping", { reason });
     clearTimer(state.mutationFlushTimer);
-    clearTimer(state.settledTimer);
-    clearTimer(state.hardSettleTimer);
+    clearTimer(state.structuralSampleTimer);
     state.mutationFlushTimer = 0;
-    state.settledTimer = 0;
-    state.hardSettleTimer = 0;
+    state.structuralSampleTimer = 0;
     for (const entry of state.listeners.splice(0)) entry.target.removeEventListener(entry.type, entry.handler, entry.options);
     for (const observer of state.observers.splice(0)) observer.disconnect();
     for (const observer of state.performanceObservers.splice(0)) {
@@ -139,6 +143,7 @@
     state.performanceObservers = [];
     state.mutationQueue = [];
     state.assistantState = new WeakMap();
+    state.assistantEntries = new Set();
     state.nodeIds = new WeakMap();
     state.nextNodeId = 1;
     state.epochMs = 0;
@@ -151,6 +156,12 @@
     state.lastMountedTurns = 0;
     state.lastOverlayMode = null;
     state.lastOverlayRecording = false;
+    state.structuralSampleTimer = 0;
+    state.pendingStructuralReason = "";
+    state.nextGenerationId = 1;
+    state.currentGeneration = null;
+    state.baselineScanned = false;
+    state.lastCheckpointSignature = new Map();
     state.performance = createPerformanceSummary();
     state.counters = createCounters();
   }
@@ -174,9 +185,10 @@
     if (typeof MutationObserver === "undefined") return;
     const observer = new MutationObserver((mutations) => {
       if (!state.active) return;
-      queueMutationSummary(mutations);
-      sampleStructuralState("mutation");
-      inspectAssistantMutations(mutations);
+      const summary = classifyMutationBatch(mutations);
+      queueMutationSummary(summary);
+      inspectAssistantMutations(mutations, summary);
+      if (summary.structural) scheduleStructuralSample(summary.reason);
     });
     observer.observe(document.body || document.documentElement, {
       childList: true,
@@ -267,7 +279,9 @@
   function handleSubmit(event) {
     const target = getEventElement(event.target);
     if (!isComposerRelated(target)) return;
-    checkpoint("manual_send_intent", { source: "submit", ...composerSummary() });
+    const generation = startGeneration("submit");
+    checkpoint("manual_send_intent", { generationId: generation.id, source: "submit", ...composerSummary() });
+    scheduleStructuralSample("manual_send_intent");
   }
 
   function handleClick(event) {
@@ -275,7 +289,9 @@
     const button = target?.closest?.("button, [role='button']");
     if (!(button instanceof HTMLElement)) return;
     if (isLikelySendButton(button) && isComposerRelated(button)) {
-      checkpoint("manual_send_intent", { source: "send_click", ...composerSummary() });
+      const generation = startGeneration("send_click");
+      checkpoint("manual_send_intent", { generationId: generation.id, source: "send_click", ...composerSummary() });
+      scheduleStructuralSample("manual_send_intent");
       return;
     }
     if (isCopyAction(button)) {
@@ -284,7 +300,21 @@
     }
   }
 
+  function startGeneration(source) {
+    const generation = {
+      id: state.nextGenerationId++,
+      source,
+      startedAt: now(),
+      userTurnObserved: false,
+      assistantTurnObserved: false,
+      lastAssistantTurnId: null
+    };
+    state.currentGeneration = generation;
+    return generation;
+  }
+
   function sampleStructuralState(reason) {
+    state.counters.structuralScans += 1;
     const composer = findComposer();
     const present = !!composer.editable || !!composer.root;
     if (present !== state.lastComposerPresent) checkpoint(present ? "composer_present" : "composer_missing", { reason, ...composerSummary(composer) });
@@ -315,7 +345,7 @@
 
     const turns = collectTurns();
     if (turns.length !== state.lastMountedTurns) {
-      checkpoint("mounted_turn_window_changed", { reason, mountedTurns: turns.length, previousMountedTurns: state.lastMountedTurns });
+      checkpoint("mounted_turn_window_changed", { generationId: state.currentGeneration?.id || null, reason, mountedTurns: turns.length, previousMountedTurns: state.lastMountedTurns });
       markObserved("longThreadMountedWindow");
       state.lastMountedTurns = turns.length;
     }
@@ -325,59 +355,131 @@
   }
 
   function inspectTurns(turns) {
+    const baselineCounts = { user: 0, assistant: 0, tool: 0 };
+    const baselineMode = !state.baselineScanned;
     for (const turn of turns) {
       const role = getTurnRole(turn);
-      if (role === "user") markObserved("userTurn");
+      if (baselineMode && baselineCounts[role] !== undefined) baselineCounts[role] += 1;
+      if (role === "user") {
+        markObserved("userTurn");
+        if (!baselineMode && state.currentGeneration && !state.currentGeneration.userTurnObserved) {
+          state.currentGeneration.userTurnObserved = true;
+          checkpoint("user_turn_mounted", { generationId: state.currentGeneration.id, turnId: nodeId(turn), rect: rectSummary(turn) });
+        }
+      }
       if (role === "assistant") {
         markObserved("assistantStreaming");
+        let entry = state.assistantState.get(turn);
+        if (!entry) {
+          entry = createAssistantEntry(turn);
+          state.assistantState.set(turn, entry);
+          state.assistantEntries.add(entry);
+          if (baselineMode || !state.currentGeneration) {
+            entry.baselineExisting = true;
+          } else {
+            state.currentGeneration.assistantTurnObserved = true;
+            state.currentGeneration.lastAssistantTurnId = nodeId(turn);
+            checkpoint("assistant_turn_mounted", { generationId: entry.generationId, turnId: nodeId(turn), rect: rectSummary(turn) });
+          }
+        }
         const actionBar = findActionBar(turn);
         if (actionBar) {
           markObserved("assistantActionBar");
-          checkpoint("assistant_action_bar_visible", { turnId: nodeId(turn), rect: rectSummary(actionBar), copyAreaVisible: !!actionBar.querySelector?.("[aria-label*='Copy'], [data-testid*='copy']") });
-        }
-        if (!state.assistantState.has(turn)) {
-          state.assistantState.set(turn, { mountedAt: now(), firstMutationAt: 0, settled: false, lastMutationAt: 0 });
-          checkpoint("assistant_turn_mounted", { turnId: nodeId(turn), rect: rectSummary(turn) });
+          if (!entry.actionBarVisible) {
+            entry.actionBarVisible = true;
+            checkpoint("assistant_action_bar_visible", { generationId: entry.generationId, turnId: nodeId(turn), rect: rectSummary(actionBar), copyAreaVisible: !!actionBar.querySelector?.("[aria-label*='Copy'], [data-testid*='copy']") });
+          }
         }
       }
     }
+    if (baselineMode) checkpoint("baseline_existing", { counts: baselineCounts, mountedTurns: turns.length });
+    state.baselineScanned = true;
   }
 
-  function inspectAssistantMutations(mutations) {
+  function createAssistantEntry(turn) {
+    const generationId = state.currentGeneration?.id || null;
+    return {
+      mountedAt: now(),
+      generationId,
+      firstMutationAt: 0,
+      settled: false,
+      lastMutationAt: 0,
+      actionBarVisible: false,
+      settledTimer: 0,
+      hardSettleTimer: 0,
+      streamFlushTimer: 0,
+      pendingStreamBurst: null,
+      turnId: nodeId(turn)
+    };
+  }
+
+  function inspectAssistantMutations(mutations, batchSummary = null) {
     for (const mutation of mutations) {
       const target = mutation.target instanceof Element ? mutation.target : mutation.target?.parentElement;
       const turn = target?.closest?.(TURN_SELECTOR);
       if (!(turn instanceof HTMLElement) || getTurnRole(turn) !== "assistant") continue;
-      const entry = state.assistantState.get(turn) || { mountedAt: now(), firstMutationAt: 0, settled: false, lastMutationAt: 0 };
+      const entry = state.assistantState.get(turn) || createAssistantEntry(turn);
+      if (!state.assistantState.has(turn)) state.assistantEntries.add(entry);
       const timestamp = now();
       if (!entry.firstMutationAt) {
         entry.firstMutationAt = timestamp;
-        checkpoint("assistant_first_content_mutation", { turnId: nodeId(turn), elapsedFromMountMs: Math.round(timestamp - entry.mountedAt) });
+        checkpoint("assistant_first_content_mutation", { generationId: entry.generationId, turnId: nodeId(turn), elapsedFromMountMs: Math.round(timestamp - entry.mountedAt) });
       }
       entry.lastMutationAt = timestamp;
       entry.settled = false;
       state.assistantState.set(turn, entry);
-      record("assistant_stream_mutation_burst", { turnId: nodeId(turn), mutationType: mutation.type, addedNodes: mutation.addedNodes?.length || 0, removedNodes: mutation.removedNodes?.length || 0 });
+      queueAssistantStreamMutation(turn, entry, mutation, batchSummary);
       scheduleAssistantSettled(turn, entry);
     }
   }
 
+  function queueAssistantStreamMutation(turn, entry, mutation, batchSummary) {
+    if (!entry.pendingStreamBurst) {
+      entry.pendingStreamBurst = { generationId: entry.generationId, turnId: nodeId(turn), addedNodes: 0, removedNodes: 0, mutationCount: 0 };
+    }
+    entry.pendingStreamBurst.addedNodes += mutation.addedNodes?.length || 0;
+    entry.pendingStreamBurst.removedNodes += mutation.removedNodes?.length || 0;
+    entry.pendingStreamBurst.mutationCount += batchSummary?.count || 1;
+    if (entry.streamFlushTimer) return;
+    entry.streamFlushTimer = setTrackedTimeout(() => {
+      const burst = entry.pendingStreamBurst;
+      entry.pendingStreamBurst = null;
+      entry.streamFlushTimer = 0;
+      if (burst) record("assistant_stream_mutation_burst", burst);
+    }, MUTATION_FLUSH_MS);
+  }
+
+  function flushAssistantStreamBursts() {
+    for (const entry of state.assistantEntries) {
+      if (!entry.pendingStreamBurst) continue;
+      clearTimer(entry.streamFlushTimer);
+      entry.streamFlushTimer = 0;
+      const burst = entry.pendingStreamBurst;
+      entry.pendingStreamBurst = null;
+      record("assistant_stream_mutation_burst", burst);
+    }
+  }
+
   function scheduleAssistantSettled(turn, entry) {
-    clearTimer(state.settledTimer);
-    state.settledTimer = setTrackedTimeout(() => {
+    clearTimer(entry.settledTimer);
+    entry.settledTimer = setTrackedTimeout(() => {
       if (!state.active || entry.settled) return;
       const gap = now() - (entry.lastMutationAt || entry.mountedAt);
       if (gap >= SETTLED_IDLE_MS) {
         entry.settled = true;
         markObserved("assistantSettled");
-        checkpoint("assistant_settled", { turnId: nodeId(turn), idleGapMs: Math.round(gap), actionBarVisible: !!findActionBar(turn) });
+        clearTimer(entry.hardSettleTimer);
+        entry.hardSettleTimer = 0;
+        checkpoint("assistant_settled", { generationId: entry.generationId, turnId: nodeId(turn), idleGapMs: Math.round(gap), actionBarVisible: !!findActionBar(turn) });
       }
     }, SETTLED_IDLE_MS + 20);
-    if (!state.hardSettleTimer) {
-      state.hardSettleTimer = setTrackedTimeout(() => {
+    if (!entry.hardSettleTimer) {
+      entry.hardSettleTimer = setTrackedTimeout(() => {
         if (!state.active || entry.settled) return;
         entry.settled = true;
-        checkpoint("assistant_settled_hard_cap", { turnId: nodeId(turn), capMs: ASSISTANT_SETTLED_HARD_CAP_MS, actionBarVisible: !!findActionBar(turn) });
+        clearTimer(entry.settledTimer);
+        entry.settledTimer = 0;
+        checkpoint("assistant_settled_hard_cap", { generationId: entry.generationId, turnId: nodeId(turn), capMs: ASSISTANT_SETTLED_HARD_CAP_MS, actionBarVisible: !!findActionBar(turn) });
       }, ASSISTANT_SETTLED_HARD_CAP_MS);
     }
   }
@@ -412,16 +514,8 @@
     }
   }
 
-  function queueMutationSummary(mutations) {
-    let added = 0;
-    let removed = 0;
-    let attributes = 0;
-    for (const mutation of mutations) {
-      added += mutation.addedNodes?.length || 0;
-      removed += mutation.removedNodes?.length || 0;
-      if (mutation.type === "attributes") attributes += 1;
-    }
-    state.mutationQueue.push({ at: relativeNow(), added, removed, attributes, count: mutations.length });
+  function queueMutationSummary(summary) {
+    state.mutationQueue.push({ at: relativeNow(), ...summary });
     if (state.mutationQueue.length > MAX_MUTATION_BURSTS) state.mutationQueue.shift();
     if (!state.mutationFlushTimer) state.mutationFlushTimer = setTrackedTimeout(flushMutationQueue, MUTATION_FLUSH_MS);
   }
@@ -436,15 +530,92 @@
       acc.removed += item.removed;
       acc.attributes += item.attributes;
       acc.count += item.count;
+      acc.composerMutations += item.composerMutations || 0;
+      acc.assistantMutations += item.assistantMutations || 0;
+      acc.structuralMutations += item.structuralMutations || 0;
       return acc;
-    }, { added: 0, removed: 0, attributes: 0, count: 0 });
+    }, { added: 0, removed: 0, attributes: 0, count: 0, composerMutations: 0, assistantMutations: 0, structuralMutations: 0 });
     state.counters.mutationBursts += 1;
     record("mutation_burst", summary);
   }
 
+  function classifyMutationBatch(mutations) {
+    const summary = { added: 0, removed: 0, attributes: 0, count: mutations.length, composerMutations: 0, assistantMutations: 0, structuralMutations: 0, structural: false, reason: "mutation" };
+    for (const mutation of mutations) {
+      const added = mutation.addedNodes?.length || 0;
+      const removed = mutation.removedNodes?.length || 0;
+      summary.added += added;
+      summary.removed += removed;
+      if (mutation.type === "attributes") summary.attributes += 1;
+      const target = mutation.target instanceof Element ? mutation.target : mutation.target?.parentElement;
+      if (isComposerRelated(target)) {
+        summary.composerMutations += 1;
+        if (mutation.type === "childList" && (added > 0 || removed > 0) && mutation.target !== state.lastComposerEditable) {
+          summary.structural = true;
+          summary.reason = "composer_structure";
+        }
+      }
+      if (isAssistantRelated(target)) summary.assistantMutations += 1;
+      if (mutationTouchesStructuralSurface(mutation)) {
+        summary.structural = true;
+        summary.structuralMutations += 1;
+        summary.reason = structuralReasonForMutation(mutation) || summary.reason;
+      }
+    }
+    return summary;
+  }
+
+  function scheduleStructuralSample(reason) {
+    state.pendingStructuralReason = reason || state.pendingStructuralReason || "scheduled";
+    if (state.structuralSampleTimer) return;
+    state.structuralSampleTimer = setTrackedTimeout(() => {
+      state.timers.delete(state.structuralSampleTimer);
+      state.structuralSampleTimer = 0;
+      const nextReason = state.pendingStructuralReason || "scheduled";
+      state.pendingStructuralReason = "";
+      sampleStructuralState(nextReason);
+    }, MUTATION_FLUSH_MS);
+  }
+
+  function mutationTouchesStructuralSurface(mutation) {
+    const target = mutation.target instanceof Element ? mutation.target : mutation.target?.parentElement;
+    if (mutation.type === "attributes") {
+      return !!target?.matches?.(`${TURN_SELECTOR}, [data-composer-surface='true'], [role='listbox'], [data-inline-selection-pill], [data-mica-root='true']`);
+    }
+    const changedNodes = [...(mutation.addedNodes || []), ...(mutation.removedNodes || [])];
+    return changedNodes.some((node) => {
+      if (!(node instanceof Element)) return false;
+      if (node.matches?.(TURN_SELECTOR) || node.querySelector?.(TURN_SELECTOR)) return true;
+      if (node.matches?.("[data-composer-surface='true'], [role='listbox'], [data-inline-selection-pill], [data-mica-root='true'], [role='toolbar'], [aria-label='Copy']")) return true;
+      if (node.querySelector?.("[data-composer-surface='true'], [role='listbox'], [data-inline-selection-pill], [data-mica-root='true'], [role='toolbar'], [aria-label='Copy']")) return true;
+      return false;
+    });
+  }
+
+  function structuralReasonForMutation(mutation) {
+    const target = mutation.target instanceof Element ? mutation.target : mutation.target?.parentElement;
+    if (target?.closest?.("[data-mica-root='true']")) return "mica_overlay";
+    if (target?.closest?.("[role='listbox'], [data-inline-selection-pill]")) return "connector_or_mention";
+    if (target?.closest?.(TURN_SELECTOR)) return "turn_structure";
+    if (target?.closest?.("[data-composer-surface='true']")) return "composer_structure";
+    return "structural_mutation";
+  }
+
+  function isAssistantRelated(node) {
+    const element = node instanceof Element ? node : null;
+    const turn = element?.closest?.(TURN_SELECTOR);
+    return turn instanceof HTMLElement && getTurnRole(turn) === "assistant";
+  }
+
   function checkpoint(stateClass, details = {}) {
+    const sanitized = sanitizeDetails(details);
+    if (isDedupeCheckpoint(stateClass)) {
+      const signature = checkpointSignature(stateClass, sanitized);
+      if (state.lastCheckpointSignature.get(stateClass) === signature) return null;
+      state.lastCheckpointSignature.set(stateClass, signature);
+    }
     state.counters.checkpoints += 1;
-    const event = record("checkpoint", { checkpointId: `${state.session?.id || "inactive"}:${state.counters.checkpoints}`, stateClass, ...sanitizeDetails(details) });
+    const event = record("checkpoint", { checkpointId: `${state.session?.id || "inactive"}:${state.counters.checkpoints}`, stateClass, ...sanitized });
     try {
       console.info(`${CHECKPOINT_PREFIX}${JSON.stringify({
         checkpointId: event.details.checkpointId,
@@ -453,6 +624,26 @@
       })}`);
     } catch (_error) {}
     return event;
+  }
+
+  function isDedupeCheckpoint(stateClass) {
+    return /^(baseline_existing|assistant_action_bar_visible|mention_chooser_visible|connector_pill_visible|mica_overlay_state|mounted_turn_window_changed|composer_present|composer_missing|composer_identity_changed)$/.test(stateClass);
+  }
+
+  function checkpointSignature(stateClass, details) {
+    return JSON.stringify({
+      stateClass,
+      generationId: details.generationId || null,
+      turnId: details.turnId || null,
+      rootId: details.rootId || null,
+      editableId: details.editableId || null,
+      surfaceId: details.surfaceId || null,
+      mountedTurns: details.mountedTurns ?? null,
+      mode: details.mode || null,
+      recording: details.recording ?? null,
+      rect: details.rect || null,
+      textLength: details.textLength ?? null
+    });
   }
 
   function record(type, details = {}) {
@@ -640,6 +831,7 @@
 
   function rectSummary(node) {
     if (!(node instanceof Element) || typeof node.getBoundingClientRect !== "function") return null;
+    state.counters.geometryReads += 1;
     const rect = node.getBoundingClientRect();
     return { x: round(rect.x), y: round(rect.y), width: round(rect.width), height: round(rect.height) };
   }
@@ -754,7 +946,7 @@
   }
 
   function createCounters() {
-    return { listenersAttached: 0, observersAttached: 0, timersCreated: 0, checkpoints: 0, inputEvents: 0, mutationBursts: 0, performanceEntries: 0 };
+    return { listenersAttached: 0, observersAttached: 0, timersCreated: 0, checkpoints: 0, inputEvents: 0, mutationBursts: 0, performanceEntries: 0, structuralScans: 0, geometryReads: 0 };
   }
 
   function safetyFlags() {

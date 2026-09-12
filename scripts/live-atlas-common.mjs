@@ -30,9 +30,39 @@ export const forbiddenPrivacyPatterns = [
   /bearer\s+[a-z0-9._-]+/i,
   /sk-[a-z0-9]/i,
   /-----BEGIN\s+(?:OPENSSH|RSA|EC|PRIVATE)/i,
+  /MY_PRIVATE_RANDOM_SENTENCE_93817/,
   /<html[\s>]/i,
   /<body[\s>]/i
 ];
+
+export const allowedGenericLabels = new Set(["Copy", "Retry", "Stop", "Continue", "Regenerate"]);
+export const allowedSurfaceAttrs = new Set([
+  "role",
+  "aria-expanded",
+  "aria-pressed",
+  "aria-label",
+  "disabled",
+  "contenteditable",
+  "data-composer-surface",
+  "data-message-author-role",
+  "data-mica-root",
+  "data-inline-selection-pill",
+  "data-symbol",
+  "data-testid",
+  "data-id"
+]);
+export const allowedSurfaceStyleKeys = new Set([
+  "display",
+  "position",
+  "border-radius",
+  "box-shadow",
+  "background-color",
+  "color",
+  "font-size",
+  "line-height",
+  "opacity",
+  "transform"
+]);
 
 export async function readJson(file) {
   return JSON.parse(await readFile(file, "utf8"));
@@ -56,10 +86,15 @@ export function assert(condition, message, details = null) {
 }
 
 export function validatePrivacyObject(value, pathLabel = "$") {
-  for (const text of collectStrings(value)) {
+  for (const { value: text, path: textPath } of collectStringsWithPath(value)) {
     for (const pattern of forbiddenPrivacyPatterns) {
-      assert(!pattern.test(text), `Privacy validation failed at ${pathLabel}: ${pattern}`);
+      assert(!pattern.test(text), `Privacy validation failed at ${pathLabel}${textPath}: ${pattern}`);
     }
+    assert(!/^https?:\/\//i.test(text), `Privacy validation failed at ${pathLabel}${textPath}: arbitrary URL`);
+    assert(!/[A-Z]:\\/.test(text), `Privacy validation failed at ${pathLabel}${textPath}: local path`);
+  }
+  for (const forbiddenKey of findForbiddenKeys(value)) {
+    assert(false, `Privacy validation failed at ${pathLabel}: forbidden field ${forbiddenKey}`);
   }
   if (value?.privacy) {
     assert(value.privacy.promptTextIncluded === false, "privacy.promptTextIncluded must be false");
@@ -74,20 +109,66 @@ export function validatePrivacyObject(value, pathLabel = "$") {
     assert(value.safety.automatedConnectorAction === false, "automatedConnectorAction must be false");
     assert(value.safety.playwrightRealSiteTraceUsed === false, "playwrightRealSiteTraceUsed must be false");
   }
+  if (value?.contract) validateSurfaceContract(value.contract, `${pathLabel}.contract`);
 }
 
-function collectStrings(value, strings = []) {
+function collectStringsWithPath(value, pathLabel = "$", strings = []) {
   if (typeof value === "string") {
-    strings.push(value);
+    strings.push({ value, path: pathLabel });
     return strings;
   }
   if (!value || typeof value !== "object") return strings;
   if (Array.isArray(value)) {
-    for (const item of value) collectStrings(item, strings);
+    for (let index = 0; index < value.length; index += 1) collectStringsWithPath(value[index], `${pathLabel}[${index}]`, strings);
     return strings;
   }
-  for (const item of Object.values(value)) collectStrings(item, strings);
+  for (const [key, item] of Object.entries(value)) collectStringsWithPath(item, `${pathLabel}.${key}`, strings);
   return strings;
+}
+
+function findForbiddenKeys(value, pathLabel = "$", out = []) {
+  if (!value || typeof value !== "object") return out;
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => findForbiddenKeys(item, `${pathLabel}[${index}]`, out));
+    return out;
+  }
+  for (const [key, item] of Object.entries(value)) {
+    if (/^(textContent|innerText|innerHTML|outerHTML|nodeValue|prompt|answer|headers|body|cookie|token|url|href|src|repository|fileName|conversationTitle|account|avatar)$/i.test(key)) {
+      out.push(`${pathLabel}.${key}`);
+    }
+    findForbiddenKeys(item, `${pathLabel}.${key}`, out);
+  }
+  return out;
+}
+
+export function validateSurfaceContract(contract, pathLabel = "$.contract") {
+  assert(contract && typeof contract === "object", `${pathLabel} must be an object`);
+  assert(/^[a-z0-9-]{1,40}$/.test(contract.tag || ""), `${pathLabel}.tag is not a safe tag`);
+  assert(contract.rect === null || isRect(contract.rect), `${pathLabel}.rect is invalid`);
+  if (contract.attrs) {
+    for (const [key, value] of Object.entries(contract.attrs)) {
+      assert(allowedSurfaceAttrs.has(key), `${pathLabel}.attrs.${key} is not allowlisted`);
+      if (key === "aria-label") assert(allowedGenericLabels.has(value) || /^label-length-\d+$/.test(value), `${pathLabel}.attrs.aria-label is not generic`);
+      else assert(typeof value === "string" && !/^https?:|[A-Z]:\\|MY_PRIVATE_RANDOM_SENTENCE_93817/.test(value), `${pathLabel}.attrs.${key} is unsafe`);
+    }
+  }
+  if (contract.styles) {
+    for (const [key, value] of Object.entries(contract.styles)) {
+      assert(allowedSurfaceStyleKeys.has(key), `${pathLabel}.styles.${key} is not allowlisted`);
+      assert(typeof value === "string" && !/url\(|https?:|file:|data:text/i.test(value), `${pathLabel}.styles.${key} contains an unsafe value`);
+    }
+  }
+  if (contract.text) {
+    assert(["empty", "short", "medium", "long", "redacted"].includes(contract.text.category), `${pathLabel}.text.category is invalid`);
+    assert(Number.isFinite(contract.text.length), `${pathLabel}.text.length is invalid`);
+  }
+  for (let index = 0; index < (contract.children || []).length; index += 1) {
+    validateSurfaceContract(contract.children[index], `${pathLabel}.children[${index}]`);
+  }
+}
+
+function isRect(rect) {
+  return ["x", "y", "width", "height"].every((key) => Number.isFinite(rect[key])) && rect.width >= 0 && rect.height >= 0;
 }
 
 export function summarizeNumbers(values) {

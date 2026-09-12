@@ -1,11 +1,14 @@
 import path from "node:path";
-import { defaultContractDir, defaultGeneratedFixture, readJson, writeText } from "./live-atlas-common.mjs";
+import { defaultContractDir, defaultGeneratedFixture, readJson, surfaceKeys, validatePrivacyObject, writeText } from "./live-atlas-common.mjs";
 
 const input = process.argv.find((arg) => arg.startsWith("--input="))?.slice("--input=".length) || defaultContractDir;
 const output = process.argv.find((arg) => arg.startsWith("--output="))?.slice("--output=".length) || defaultGeneratedFixture;
 const lifecycle = await readJson(path.join(input, "lifecycle.json"));
 const coverage = await readJson(path.join(input, "coverage.json"));
 const surfaces = await readJson(path.join(input, "surfaces.json"));
+validatePrivacyObject({ lifecycle, coverage, surfaces }, "fixture-input");
+
+const surfaceHtml = surfaceKeys.map((key) => renderSurfaceSlot(key, surfaces[key])).join("\n");
 const fixture = `<!doctype html>
 <html lang="en" data-mica-fixture="true" data-live-atlas-replay="true">
   <head>
@@ -13,39 +16,86 @@ const fixture = `<!doctype html>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Mica Live Atlas replay fixture</title>
     <style>
-      body { margin: 0; background: #f7f7f8; color: #171717; font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-      main { width: min(840px, calc(100vw - 32px)); margin: 0 auto; padding: 24px 0 160px; }
-      article { margin: 14px 0; padding: 14px; border: 1px solid #d9d9e3; border-radius: 8px; background: #fff; }
-      [data-composer-surface="true"] { position: fixed; left: 50%; bottom: 14px; display: grid; grid-template-columns: 1fr auto; gap: 8px; width: min(820px, calc(100vw - 24px)); min-height: 64px; padding: 12px; border-radius: 28px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.12); transform: translateX(-50%); }
-      [role="textbox"] { min-height: 36px; outline: none; white-space: pre-wrap; }
-      .action-bar { display: flex; justify-content: flex-end; gap: 8px; }
-      #atlas-result { position: fixed; left: 8px; top: 8px; z-index: 3; max-width: 48vw; white-space: pre-wrap; font-size: 11px; }
+      * { box-sizing: border-box; }
+      body { min-height: 900px; margin: 0; background: #f7f7f8; color: #171717; font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      #atlas-stage { position: relative; min-height: 900px; }
+      [data-atlas-surface-slot] { position: absolute; outline: 1px dashed rgba(0,0,0,.18); overflow: hidden; }
+      [data-atlas-missing] { position: relative; margin: 8px; padding: 6px 8px; border: 1px solid #999; background: #eee; color: #333; font-size: 12px; }
+      [data-atlas-placeholder-text] { display: inline-block; min-width: 3ch; min-height: 1em; border-radius: 3px; background: currentColor; opacity: .18; }
+      #atlas-result { position: fixed; left: 8px; top: 8px; z-index: 9999; max-width: 52vw; white-space: pre-wrap; font-size: 11px; background: rgba(255,255,255,.9); }
     </style>
   </head>
   <body>
     <pre id="atlas-result">Idle</pre>
-    <main id="conversation">
-      <article data-testid="conversation-turn-1"><div data-message-author-role="user"></div></article>
-      <article data-testid="conversation-turn-2"><div data-message-author-role="assistant" class="markdown"><h2></h2><p></p><ul><li></li></ul><pre><code></code></pre><table><tbody><tr><td></td><td></td></tr></tbody></table></div><div class="action-bar" role="toolbar"><button type="button" aria-label="Copy">Copy</button></div></article>
-    </main>
-    <form data-testid="composer" data-composer-surface="true"><div role="textbox" contenteditable="plaintext-only" aria-label="Message ChatGPT"></div><button type="submit" data-testid="send-button" aria-label="Send message">Send</button></form>
+    <div id="atlas-stage">
+${surfaceHtml}
+    </div>
     <script id="atlas-contract" type="application/json">${escapeHtml(JSON.stringify({ lifecycle, coverage, surfaces }))}</script>
     <script>
       const data = JSON.parse(document.getElementById("atlas-contract").textContent);
+      const observed = Object.values(data.surfaces).filter((surface) => surface.status === "OBSERVED");
+      const composer = data.surfaces.composer;
+      const composerEl = document.querySelector('[data-atlas-surface-slot="composer"]');
       const checks = [
         ["lifecycle events", data.lifecycle.timeline.length >= 8],
-        ["composer observed", data.coverage.composer.status === "OBSERVED"],
-        ["assistant action bar observed", data.coverage.assistantActionBar.status === "OBSERVED"],
-        ["native copy area observed", data.coverage.nativeCopyArea.status === "OBSERVED"],
-        ["no raw text", !JSON.stringify(data).includes("fixture answer")]
+        ["schema surfaces present", Object.keys(data.surfaces).length >= 8],
+        ["missing surfaces explicit", Object.values(data.surfaces).filter((surface) => surface.status === "MISSING").every((surface) => document.querySelector('[data-atlas-missing="' + surface.name + '"]'))],
+        ["composer contract rendered", composer.status !== "OBSERVED" || !!composerEl],
+        ["composer geometry from contract", composer.status !== "OBSERVED" || Math.round(composerEl.getBoundingClientRect().width) === Math.round(composer.contract.rect.width)],
+        ["no private random text", !JSON.stringify(data).includes(["MY_PRIVATE", "RANDOM_SENTENCE_93817"].join("_"))]
       ].map(([name, passed]) => ({ name, passed: !!passed }));
-      document.getElementById("atlas-result").textContent = JSON.stringify({ passed: checks.every((check) => check.passed), checks }, null, 2);
+      document.getElementById("atlas-result").textContent = JSON.stringify({ passed: checks.every((check) => check.passed), observedSurfaces: observed.length, checks }, null, 2);
     </script>
   </body>
 </html>`;
 await writeText(output, fixture);
-console.log(JSON.stringify({ passed: true, input, output }, null, 2));
+console.log(JSON.stringify({ passed: true, input, output, observedSurfaces: Object.values(surfaces).filter((surface) => surface.status === "OBSERVED").length }, null, 2));
+
+function renderSurfaceSlot(key, surface) {
+  if (!surface || surface.status !== "OBSERVED" || !surface.contract) {
+    return `      <div data-atlas-missing="${escapeAttr(key)}">MISSING ${escapeHtml(key)}</div>`;
+  }
+  const rect = surface.contract.rect || { x: 0, y: 0, width: 1, height: 1 };
+  const style = [
+    `left:${cssPx(rect.x)}`,
+    `top:${cssPx(rect.y)}`,
+    `width:${cssPx(rect.width)}`,
+    `height:${cssPx(rect.height)}`,
+    ...Object.entries(surface.contract.styles || {}).map(([name, value]) => `${name}:${String(value).replace(/[;"<>]/g, "")}`)
+  ].join(";");
+  return `      <div data-atlas-surface-slot="${escapeAttr(key)}" style="${escapeAttr(style)}">${renderNode(surface.contract, 0)}</div>`;
+}
+
+function renderNode(contract, depth) {
+  const tag = safeTag(contract.tag);
+  const attrs = Object.entries(contract.attrs || {})
+    .filter(([key]) => !/^data-atlas/.test(key))
+    .map(([key, value]) => `${escapeAttr(key)}="${escapeAttr(value)}"`)
+    .join(" ");
+  const role = contract.role && !attrs.includes("role=") ? ` role="${escapeAttr(contract.role)}"` : "";
+  const text = renderPlaceholderText(contract.text);
+  const children = depth >= 4 ? "" : (contract.children || []).map((child) => renderNode(child, depth + 1)).join("");
+  return `<${tag}${role}${attrs ? ` ${attrs}` : ""}>${text}${children}</${tag}>`;
+}
+
+function renderPlaceholderText(text) {
+  if (!text || text.length === 0) return "";
+  const width = Math.max(3, Math.min(32, Math.ceil(text.length / 3)));
+  return `<span data-atlas-placeholder-text style="width:${width}ch"></span>`;
+}
+
+function safeTag(tag) {
+  return /^[a-z0-9-]{1,40}$/.test(String(tag || "")) ? tag : "div";
+}
+
+function cssPx(value) {
+  return `${Math.max(0, Math.round(Number(value || 0) * 10) / 10)}px`;
+}
 
 function escapeHtml(value) {
-  return value.replace(/[<>&]/g, (char) => ({ "<": "\\u003c", ">": "\\u003e", "&": "\\u0026" }[char]));
+  return String(value).replace(/[<>&]/g, (char) => ({ "<": "\\u003c", ">": "\\u003e", "&": "\\u0026" }[char]));
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value).replace(/"/g, "&quot;");
 }

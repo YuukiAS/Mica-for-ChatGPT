@@ -7,7 +7,7 @@ const timings = await readJson(path.join(input, "timings.json"));
 const constants = await inventoryTimingConstants();
 const ledger = {};
 for (const [key, value] of Object.entries(timings.metrics || {})) {
-  ledger[key] = Array.isArray(value) ? summarizeNumbers(value) : summarizeNumbers(Number.isFinite(value) ? [value] : []);
+  ledger[key] = summarizeMetric(Array.isArray(value) ? value : Number.isFinite(value) ? [value] : []);
 }
 const result = { passed: true, input, ledger, constants };
 await writeJson(path.join(input, "timing-ledger.json"), result);
@@ -49,4 +49,14 @@ function classify(name) {
   if (/GUARD|CAP|LIFETIME|TIMEOUT/.test(name)) return "safety hard cap";
   if (/TTL|GRACE|SETTLE|WINDOW/.test(name)) return "lifecycle heuristic";
   return "timing constant requiring Atlas review";
+}
+
+function summarizeMetric(values) {
+  const summary = summarizeNumbers(values);
+  return {
+    ...summary,
+    stability: summary.n >= 5 ? "repeat-observed" : summary.n >= 2 ? "limited-sample" : summary.n === 1 ? "single-sample" : "missing",
+    p90Meaningful: summary.n >= 5,
+    p95Meaningful: summary.n >= 20
+  };
 }

@@ -21,6 +21,51 @@
     "playwrightRealSiteTraceUsed": false,
     "computerUseRequired": false
   },
+  "generations": [
+    {
+      "generationId": 1,
+      "states": {
+        "manual_send_intent": 220,
+        "user_turn_mounted": 300,
+        "composer_body_zero": 350,
+        "assistant_turn_mounted": 530,
+        "assistant_first_content_mutation": 670,
+        "assistant_stream_mutation_burst": 870,
+        "assistant_action_bar_visible": 3080,
+        "assistant_settled": 3140
+      },
+      "eventCount": 9
+    },
+    {
+      "generationId": 2,
+      "states": {
+        "manual_send_intent": 4220,
+        "user_turn_mounted": 4300,
+        "composer_body_zero": 4350,
+        "assistant_turn_mounted": 4530,
+        "assistant_first_content_mutation": 4670,
+        "assistant_stream_mutation_burst": 4870,
+        "assistant_action_bar_visible": 7080,
+        "assistant_settled": 7140,
+        "mica_copy_invoked": 12280
+      },
+      "eventCount": 10
+    },
+    {
+      "generationId": 3,
+      "states": {
+        "manual_send_intent": 8220,
+        "user_turn_mounted": 8300,
+        "composer_body_zero": 8350,
+        "assistant_turn_mounted": 8530,
+        "assistant_first_content_mutation": 8670,
+        "assistant_stream_mutation_burst": 8870,
+        "assistant_action_bar_visible": 11080,
+        "assistant_settled": 11140
+      },
+      "eventCount": 9
+    }
+  ],
   "timeline": [
     {
       "schemaVersion": 1,
@@ -30,7 +75,8 @@
       "epochTimeMs": 1788888888000,
       "details": {
         "checkpointId": "synthetic-smoke:1",
-        "stateClass": "atlas_started"
+        "stateClass": "atlas_started",
+        "generationId": null
       }
     },
     {
@@ -42,7 +88,8 @@
       "details": {
         "checkpointId": "synthetic-smoke:2",
         "stateClass": "composer_focus",
-        "textLength": 0
+        "textLength": 0,
+        "generationId": null
       }
     },
     {
@@ -54,8 +101,7 @@
       "details": {
         "inputType": "insertText",
         "dataLength": 1,
-        "textLengthBefore": 0,
-        "textLengthAfter": 1
+        "generationId": null
       }
     },
     {
@@ -67,8 +113,7 @@
       "details": {
         "inputType": "insertText",
         "dataLength": 1,
-        "textLengthBefore": 0,
-        "textLengthAfter": 1
+        "generationId": null
       }
     },
     {
@@ -78,126 +123,386 @@
       "relativeTimeMs": 220,
       "epochTimeMs": 1788888888220,
       "details": {
-        "checkpointId": "synthetic-smoke:3",
+        "checkpointId": "synthetic-smoke:g1:send",
         "stateClass": "manual_send_intent",
-        "source": "submit"
+        "source": "submit",
+        "generationId": 1
       }
     },
     {
       "schemaVersion": 1,
       "type": "checkpoint",
-      "monotonicTimeMs": 310,
-      "relativeTimeMs": 310,
-      "epochTimeMs": 1788888888310,
+      "monotonicTimeMs": 300,
+      "relativeTimeMs": 300,
+      "epochTimeMs": 1788888888300,
       "details": {
-        "checkpointId": "synthetic-smoke:4",
-        "stateClass": "mounted_turn_window_changed",
-        "mountedTurns": 2
+        "checkpointId": "synthetic-smoke:g1:user",
+        "stateClass": "user_turn_mounted",
+        "mountedTurns": 3,
+        "generationId": 1
       }
     },
     {
       "schemaVersion": 1,
       "type": "checkpoint",
-      "monotonicTimeMs": 390,
-      "relativeTimeMs": 390,
-      "epochTimeMs": 1788888888390,
+      "monotonicTimeMs": 350,
+      "relativeTimeMs": 350,
+      "epochTimeMs": 1788888888350,
       "details": {
-        "checkpointId": "synthetic-smoke:5",
+        "checkpointId": "synthetic-smoke:g1:zero",
         "stateClass": "composer_body_zero",
-        "textLength": 0
+        "textLength": 0,
+        "generationId": 1
       }
     },
     {
       "schemaVersion": 1,
       "type": "checkpoint",
-      "monotonicTimeMs": 520,
-      "relativeTimeMs": 520,
-      "epochTimeMs": 1788888888520,
+      "monotonicTimeMs": 530,
+      "relativeTimeMs": 530,
+      "epochTimeMs": 1788888888530,
       "details": {
-        "checkpointId": "synthetic-smoke:6",
-        "stateClass": "assistant_turn_mounted"
+        "checkpointId": "synthetic-smoke:g1:assistant",
+        "stateClass": "assistant_turn_mounted",
+        "turnId": "a1",
+        "generationId": 1
       }
     },
     {
       "schemaVersion": 1,
       "type": "checkpoint",
-      "monotonicTimeMs": 690,
-      "relativeTimeMs": 690,
-      "epochTimeMs": 1788888888690,
+      "monotonicTimeMs": 670,
+      "relativeTimeMs": 670,
+      "epochTimeMs": 1788888888670,
       "details": {
-        "checkpointId": "synthetic-smoke:7",
-        "stateClass": "assistant_first_content_mutation"
+        "checkpointId": "synthetic-smoke:g1:first",
+        "stateClass": "assistant_first_content_mutation",
+        "turnId": "a1",
+        "generationId": 1
       }
     },
     {
       "schemaVersion": 1,
       "type": "assistant_stream_mutation_burst",
-      "monotonicTimeMs": 900,
-      "relativeTimeMs": 900,
-      "epochTimeMs": 1788888888900,
+      "monotonicTimeMs": 870,
+      "relativeTimeMs": 870,
+      "epochTimeMs": 1788888888870,
       "details": {
+        "turnId": "a1",
+        "generationId": 1,
         "addedNodes": 2,
-        "removedNodes": 0
+        "removedNodes": 0,
+        "mutationCount": 6
       }
     },
     {
       "schemaVersion": 1,
       "type": "assistant_stream_mutation_burst",
-      "monotonicTimeMs": 1180,
-      "relativeTimeMs": 1180,
-      "epochTimeMs": 1788888889180,
+      "monotonicTimeMs": 1150,
+      "relativeTimeMs": 1150,
+      "epochTimeMs": 1788888889150,
       "details": {
+        "turnId": "a1",
+        "generationId": 1,
         "addedNodes": 3,
-        "removedNodes": 0
+        "removedNodes": 0,
+        "mutationCount": 8
       }
     },
     {
       "schemaVersion": 1,
       "type": "checkpoint",
-      "monotonicTimeMs": 3150,
-      "relativeTimeMs": 3150,
-      "epochTimeMs": 1788888891150,
+      "monotonicTimeMs": 3080,
+      "relativeTimeMs": 3080,
+      "epochTimeMs": 1788888891080,
       "details": {
-        "checkpointId": "synthetic-smoke:8",
+        "checkpointId": "synthetic-smoke:g1:actions",
         "stateClass": "assistant_action_bar_visible",
-        "copyAreaVisible": true
+        "turnId": "a1",
+        "copyAreaVisible": true,
+        "generationId": 1
       }
     },
     {
       "schemaVersion": 1,
       "type": "checkpoint",
-      "monotonicTimeMs": 3220,
-      "relativeTimeMs": 3220,
-      "epochTimeMs": 1788888891220,
+      "monotonicTimeMs": 3140,
+      "relativeTimeMs": 3140,
+      "epochTimeMs": 1788888891140,
       "details": {
-        "checkpointId": "synthetic-smoke:9",
+        "checkpointId": "synthetic-smoke:g1:settled",
         "stateClass": "assistant_settled",
-        "idleGapMs": 1840
+        "turnId": "a1",
+        "idleGapMs": 1840,
+        "generationId": 1
       }
     },
     {
       "schemaVersion": 1,
       "type": "checkpoint",
-      "monotonicTimeMs": 3300,
-      "relativeTimeMs": 3300,
-      "epochTimeMs": 1788888891300,
+      "monotonicTimeMs": 4220,
+      "relativeTimeMs": 4220,
+      "epochTimeMs": 1788888892220,
       "details": {
-        "checkpointId": "synthetic-smoke:10",
+        "checkpointId": "synthetic-smoke:g2:send",
+        "stateClass": "manual_send_intent",
+        "source": "submit",
+        "generationId": 2
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 4300,
+      "relativeTimeMs": 4300,
+      "epochTimeMs": 1788888892300,
+      "details": {
+        "checkpointId": "synthetic-smoke:g2:user",
+        "stateClass": "user_turn_mounted",
+        "mountedTurns": 4,
+        "generationId": 2
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 4350,
+      "relativeTimeMs": 4350,
+      "epochTimeMs": 1788888892350,
+      "details": {
+        "checkpointId": "synthetic-smoke:g2:zero",
+        "stateClass": "composer_body_zero",
+        "textLength": 0,
+        "generationId": 2
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 4530,
+      "relativeTimeMs": 4530,
+      "epochTimeMs": 1788888892530,
+      "details": {
+        "checkpointId": "synthetic-smoke:g2:assistant",
+        "stateClass": "assistant_turn_mounted",
+        "turnId": "a2",
+        "generationId": 2
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 4670,
+      "relativeTimeMs": 4670,
+      "epochTimeMs": 1788888892670,
+      "details": {
+        "checkpointId": "synthetic-smoke:g2:first",
+        "stateClass": "assistant_first_content_mutation",
+        "turnId": "a2",
+        "generationId": 2
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "assistant_stream_mutation_burst",
+      "monotonicTimeMs": 4870,
+      "relativeTimeMs": 4870,
+      "epochTimeMs": 1788888892870,
+      "details": {
+        "turnId": "a2",
+        "generationId": 2,
+        "addedNodes": 2,
+        "removedNodes": 0,
+        "mutationCount": 6
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "assistant_stream_mutation_burst",
+      "monotonicTimeMs": 5150,
+      "relativeTimeMs": 5150,
+      "epochTimeMs": 1788888893150,
+      "details": {
+        "turnId": "a2",
+        "generationId": 2,
+        "addedNodes": 3,
+        "removedNodes": 0,
+        "mutationCount": 8
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 7080,
+      "relativeTimeMs": 7080,
+      "epochTimeMs": 1788888895080,
+      "details": {
+        "checkpointId": "synthetic-smoke:g2:actions",
+        "stateClass": "assistant_action_bar_visible",
+        "turnId": "a2",
+        "copyAreaVisible": true,
+        "generationId": 2
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 7140,
+      "relativeTimeMs": 7140,
+      "epochTimeMs": 1788888895140,
+      "details": {
+        "checkpointId": "synthetic-smoke:g2:settled",
+        "stateClass": "assistant_settled",
+        "turnId": "a2",
+        "idleGapMs": 1840,
+        "generationId": 2
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 8220,
+      "relativeTimeMs": 8220,
+      "epochTimeMs": 1788888896220,
+      "details": {
+        "checkpointId": "synthetic-smoke:g3:send",
+        "stateClass": "manual_send_intent",
+        "source": "submit",
+        "generationId": 3
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 8300,
+      "relativeTimeMs": 8300,
+      "epochTimeMs": 1788888896300,
+      "details": {
+        "checkpointId": "synthetic-smoke:g3:user",
+        "stateClass": "user_turn_mounted",
+        "mountedTurns": 5,
+        "generationId": 3
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 8350,
+      "relativeTimeMs": 8350,
+      "epochTimeMs": 1788888896350,
+      "details": {
+        "checkpointId": "synthetic-smoke:g3:zero",
+        "stateClass": "composer_body_zero",
+        "textLength": 0,
+        "generationId": 3
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 8530,
+      "relativeTimeMs": 8530,
+      "epochTimeMs": 1788888896530,
+      "details": {
+        "checkpointId": "synthetic-smoke:g3:assistant",
+        "stateClass": "assistant_turn_mounted",
+        "turnId": "a3",
+        "generationId": 3
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 8670,
+      "relativeTimeMs": 8670,
+      "epochTimeMs": 1788888896670,
+      "details": {
+        "checkpointId": "synthetic-smoke:g3:first",
+        "stateClass": "assistant_first_content_mutation",
+        "turnId": "a3",
+        "generationId": 3
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "assistant_stream_mutation_burst",
+      "monotonicTimeMs": 8870,
+      "relativeTimeMs": 8870,
+      "epochTimeMs": 1788888896870,
+      "details": {
+        "turnId": "a3",
+        "generationId": 3,
+        "addedNodes": 2,
+        "removedNodes": 0,
+        "mutationCount": 6
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "assistant_stream_mutation_burst",
+      "monotonicTimeMs": 9150,
+      "relativeTimeMs": 9150,
+      "epochTimeMs": 1788888897150,
+      "details": {
+        "turnId": "a3",
+        "generationId": 3,
+        "addedNodes": 3,
+        "removedNodes": 0,
+        "mutationCount": 8
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 11080,
+      "relativeTimeMs": 11080,
+      "epochTimeMs": 1788888899080,
+      "details": {
+        "checkpointId": "synthetic-smoke:g3:actions",
+        "stateClass": "assistant_action_bar_visible",
+        "turnId": "a3",
+        "copyAreaVisible": true,
+        "generationId": 3
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 11140,
+      "relativeTimeMs": 11140,
+      "epochTimeMs": 1788888899140,
+      "details": {
+        "checkpointId": "synthetic-smoke:g3:settled",
+        "stateClass": "assistant_settled",
+        "turnId": "a3",
+        "idleGapMs": 1840,
+        "generationId": 3
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "type": "checkpoint",
+      "monotonicTimeMs": 12280,
+      "relativeTimeMs": 12280,
+      "epochTimeMs": 1788888900280,
+      "details": {
+        "checkpointId": "synthetic-smoke:30",
         "stateClass": "mica_copy_invoked",
-        "markdownLength": 240
+        "generationId": 2
       }
     },
     {
       "schemaVersion": 1,
       "type": "checkpoint",
-      "monotonicTimeMs": 3400,
-      "relativeTimeMs": 3400,
-      "epochTimeMs": 1788888891400,
+      "monotonicTimeMs": 12340,
+      "relativeTimeMs": 12340,
+      "epochTimeMs": 1788888900340,
       "details": {
-        "checkpointId": "synthetic-smoke:11",
+        "checkpointId": "synthetic-smoke:31",
         "stateClass": "mica_overlay_state",
         "mode": "compact",
-        "recording": true
+        "recording": true,
+        "generationId": null
       }
     }
   ]

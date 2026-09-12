@@ -196,7 +196,12 @@
         const atlasStarted = atlasMode ? window.__MICA_TEST_CONTROLS__.startAtlasRecorder({ sessionId: "typing-hotpath-atlas" }) : null;
 
         const twenty = await measureTyping("abcdefghijklmnopqrst");
+        const atlasBeforeStress = atlasMode ? window.MicaAtlasRecorder.getDebugState() : null;
+        const streamingPromise = atlasMode ? runStreamingMutations(220) : Promise.resolve({ mutationCount: 0 });
         const twoHundred = await measureTyping("x".repeat(200));
+        const streaming = await streamingPromise;
+        await delay(220);
+        const atlasAfterStress = atlasMode ? window.MicaAtlasRecorder.getDebugState() : null;
         const composition = await measureComposition("composition");
         const atlasStopped = atlasMode ? window.__MICA_TEST_CONTROLS__.stopAtlasRecorder("typing-hotpath-complete") : null;
         const continuity = window.__MICA_TEST_CONTROLS__.getConnectorContinuityState();
@@ -210,12 +215,16 @@
           ["200 chars no computed style", twoHundred.delta.getComputedStyle === 0],
           ["composition no computed style", composition.delta.getComputedStyle === 0],
           ["document query all not linear", twoHundred.delta.documentQuerySelectorAll <= twenty.delta.documentQuerySelectorAll + 2],
-          ["document query selector not linear", twoHundred.delta.documentQuerySelector <= twenty.delta.documentQuerySelector + 2],
+          ["document query selector not linear", twoHundred.delta.documentQuerySelector <= twenty.delta.documentQuerySelector + (atlasMode ? 4 : 2)],
           ["continuity polling inactive", continuity?.pollingActive === false && continuity?.perf?.activePollingTimer === false],
           ["send recovery polling inactive", recovery?.guardActive === false && recovery?.sendCandidateActive === false],
           ["turn scan not linear", (status?.runtime?.nativeSafeMountedStatusProbes || 0) <= 2],
           ["typing p95 smoke", twoHundred.p95Ms < 12],
-          ["typing total smoke", twoHundred.totalMs < 700]
+          ["typing total smoke", twoHundred.totalMs < 700],
+          ["atlas structural scans coalesced", !atlasMode || ((atlasAfterStress?.counters?.structuralScans || 0) - (atlasBeforeStress?.counters?.structuralScans || 0)) <= 3],
+          ["atlas geometry reads coalesced", !atlasMode || ((atlasAfterStress?.counters?.geometryReads || 0) - (atlasBeforeStress?.counters?.geometryReads || 0)) <= 24],
+          ["atlas mutation bursts coalesced", !atlasMode || ((atlasAfterStress?.counters?.mutationBursts || 0) - (atlasBeforeStress?.counters?.mutationBursts || 0)) <= 4],
+          ["atlas streaming observed", !atlasMode || streaming.mutationCount >= 200]
         ].map(([name, passed]) => ({ name, passed: !!passed }));
 
         resultNode.textContent = JSON.stringify({
@@ -232,9 +241,12 @@
             phase: recovery?.phase
           },
           statusRuntime: status?.runtime || null,
+          streaming,
           atlas: {
             mode: atlasMode,
             started: summarizeAtlasReport(atlasStarted),
+            beforeStress: atlasBeforeStress,
+            afterStress: atlasAfterStress,
             stopped: summarizeAtlasReport(atlasStopped)
           }
         }, null, 2);
@@ -343,6 +355,27 @@
         paragraph.textContent = "fixture turn body";
         article.append(marker, paragraph);
         conversation.appendChild(article);
+        return article;
+      }
+
+      async function runStreamingMutations(count) {
+        const assistant = appendTurn("assistant");
+        const stream = document.createElement("div");
+        stream.dataset.testid = "streaming-body";
+        assistant.appendChild(stream);
+        for (let index = 0; index < count; index += 1) {
+          stream.appendChild(document.createTextNode("x"));
+          if (index % 20 === 0) await delay(0);
+        }
+        const actionBar = document.createElement("div");
+        actionBar.setAttribute("role", "toolbar");
+        const copy = document.createElement("button");
+        copy.type = "button";
+        copy.setAttribute("aria-label", "Copy");
+        copy.textContent = "Copy";
+        actionBar.appendChild(copy);
+        assistant.appendChild(actionBar);
+        return { mutationCount: count };
       }
 
       function stateText() {

@@ -4,10 +4,12 @@ import { performance } from "node:perf_hooks";
 const steps = [
   ["build", "node", ["scripts/build.mjs"]],
   ["atlas:check", "node", ["scripts/live-atlas-check.mjs"]],
+  ["atlas:cdp-protocol", "node", ["scripts/live-atlas-cdp-protocol-test.mjs"]],
   ["atlas:sample", "node", ["scripts/live-atlas-sample.mjs"]],
   ["atlas:sanitize", "node", ["scripts/live-atlas-sanitize.mjs"]],
   ["atlas:privacy", "node", ["scripts/live-atlas-privacy.mjs"]],
   ["atlas:build-fixtures", "node", ["scripts/live-atlas-build-fixtures.mjs"]],
+  ["atlas:fixture-contract", "node", ["scripts/live-atlas-fixture-contract-test.mjs"]],
   ["atlas:analyze-timings", "node", ["scripts/live-atlas-analyze-timings.mjs"]],
   ["e2e:atlas-replay", "node", ["scripts/run-e2e.mjs", "--case=atlas-replay"]],
   ["e2e:typing-hotpath", "node", ["scripts/run-e2e.mjs", "--case=typing-hotpath"]],

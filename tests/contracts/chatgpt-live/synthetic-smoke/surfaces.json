@@ -15,15 +15,55 @@
       "cookiesIncluded": false,
       "requestBodiesIncluded": false
     },
+    "checkpointId": null,
+    "stateClass": "unknown",
     "contract": {
       "tag": "div",
       "role": "toolbar",
+      "attrs": {
+        "role": "toolbar"
+      },
       "rect": {
         "x": 620,
         "y": 520,
         "width": 220,
         "height": 40
-      }
+      },
+      "state": {
+        "disabled": false,
+        "expanded": null,
+        "pressed": null,
+        "contenteditable": ""
+      },
+      "text": {
+        "category": "redacted",
+        "length": 32
+      },
+      "styles": {
+        "display": "flex"
+      },
+      "children": [
+        {
+          "tag": "button",
+          "role": null,
+          "attrs": {
+            "aria-label": "Copy"
+          },
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "short",
+            "length": 4
+          },
+          "styles": {},
+          "children": []
+        }
+      ]
     }
   },
   "composer": {
@@ -42,15 +82,56 @@
       "cookiesIncluded": false,
       "requestBodiesIncluded": false
     },
+    "checkpointId": null,
+    "stateClass": "unknown",
     "contract": {
       "tag": "form",
       "role": null,
+      "attrs": {
+        "data-composer-surface": "true"
+      },
       "rect": {
         "x": 40,
         "y": 730,
         "width": 820,
         "height": 72
-      }
+      },
+      "state": {
+        "disabled": false,
+        "expanded": null,
+        "pressed": null,
+        "contenteditable": ""
+      },
+      "text": {
+        "category": "redacted",
+        "length": 32
+      },
+      "styles": {
+        "border-radius": "28px",
+        "background-color": "rgb(255, 255, 255)"
+      },
+      "children": [
+        {
+          "tag": "button",
+          "role": null,
+          "attrs": {
+            "aria-label": "Copy"
+          },
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "short",
+            "length": 4
+          },
+          "styles": {},
+          "children": []
+        }
+      ]
     }
   },
   "connectorPill": {
@@ -69,15 +150,56 @@
       "cookiesIncluded": false,
       "requestBodiesIncluded": false
     },
+    "checkpointId": null,
+    "stateClass": "unknown",
     "contract": {
       "tag": "span",
       "role": null,
+      "attrs": {
+        "data-id": "plugin:anonymous",
+        "data-inline-selection-pill": ""
+      },
       "rect": {
         "x": 76,
         "y": 744,
         "width": 94,
         "height": 24
-      }
+      },
+      "state": {
+        "disabled": false,
+        "expanded": null,
+        "pressed": null,
+        "contenteditable": ""
+      },
+      "text": {
+        "category": "redacted",
+        "length": 32
+      },
+      "styles": {
+        "border-radius": "999px"
+      },
+      "children": [
+        {
+          "tag": "button",
+          "role": null,
+          "attrs": {
+            "aria-label": "Copy"
+          },
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "short",
+            "length": 4
+          },
+          "styles": {},
+          "children": []
+        }
+      ]
     }
   },
   "mentionChooser": {
@@ -96,15 +218,55 @@
       "cookiesIncluded": false,
       "requestBodiesIncluded": false
     },
+    "checkpointId": null,
+    "stateClass": "unknown",
     "contract": {
       "tag": "div",
       "role": "listbox",
+      "attrs": {
+        "role": "listbox"
+      },
       "rect": {
         "x": 56,
         "y": 580,
         "width": 360,
         "height": 260
-      }
+      },
+      "state": {
+        "disabled": false,
+        "expanded": null,
+        "pressed": null,
+        "contenteditable": ""
+      },
+      "text": {
+        "category": "redacted",
+        "length": 32
+      },
+      "styles": {
+        "background-color": "rgb(255, 255, 255)"
+      },
+      "children": [
+        {
+          "tag": "button",
+          "role": null,
+          "attrs": {
+            "aria-label": "Copy"
+          },
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "short",
+            "length": 4
+          },
+          "styles": {},
+          "children": []
+        }
+      ]
     }
   },
   "micaOverlay": {
@@ -123,15 +285,199 @@
       "cookiesIncluded": false,
       "requestBodiesIncluded": false
     },
+    "checkpointId": null,
+    "stateClass": "unknown",
     "contract": {
       "tag": "mica-overlay",
       "role": null,
+      "attrs": {
+        "data-mica-root": "true"
+      },
       "rect": {
         "x": 812,
         "y": 760,
         "width": 56,
         "height": 44
-      }
+      },
+      "state": {
+        "disabled": false,
+        "expanded": null,
+        "pressed": null,
+        "contenteditable": ""
+      },
+      "text": {
+        "category": "redacted",
+        "length": 32
+      },
+      "styles": {
+        "position": "fixed"
+      },
+      "children": [
+        {
+          "tag": "button",
+          "role": null,
+          "attrs": {
+            "aria-label": "Copy"
+          },
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "short",
+            "length": 4
+          },
+          "styles": {},
+          "children": []
+        }
+      ]
     }
+  },
+  "userTurn": {
+    "schemaVersion": 1,
+    "name": "userTurn",
+    "status": "MISSING",
+    "source": "sanitizer",
+    "privacy": {
+      "localOnly": true,
+      "telemetryUploaded": false,
+      "promptTextIncluded": false,
+      "answerTextIncluded": false,
+      "rawDomIncluded": false,
+      "fullPageScreenshotIncluded": false,
+      "headersIncluded": false,
+      "cookiesIncluded": false,
+      "requestBodiesIncluded": false
+    },
+    "contract": null
+  },
+  "assistantStreaming": {
+    "schemaVersion": 1,
+    "name": "assistantStreaming",
+    "status": "MISSING",
+    "source": "sanitizer",
+    "privacy": {
+      "localOnly": true,
+      "telemetryUploaded": false,
+      "promptTextIncluded": false,
+      "answerTextIncluded": false,
+      "rawDomIncluded": false,
+      "fullPageScreenshotIncluded": false,
+      "headersIncluded": false,
+      "cookiesIncluded": false,
+      "requestBodiesIncluded": false
+    },
+    "contract": null
+  },
+  "assistantSettled": {
+    "schemaVersion": 1,
+    "name": "assistantSettled",
+    "status": "MISSING",
+    "source": "sanitizer",
+    "privacy": {
+      "localOnly": true,
+      "telemetryUploaded": false,
+      "promptTextIncluded": false,
+      "answerTextIncluded": false,
+      "rawDomIncluded": false,
+      "fullPageScreenshotIncluded": false,
+      "headersIncluded": false,
+      "cookiesIncluded": false,
+      "requestBodiesIncluded": false
+    },
+    "contract": null
+  },
+  "nativeCopyArea": {
+    "schemaVersion": 1,
+    "name": "nativeCopyArea",
+    "status": "MISSING",
+    "source": "sanitizer",
+    "privacy": {
+      "localOnly": true,
+      "telemetryUploaded": false,
+      "promptTextIncluded": false,
+      "answerTextIncluded": false,
+      "rawDomIncluded": false,
+      "fullPageScreenshotIncluded": false,
+      "headersIncluded": false,
+      "cookiesIncluded": false,
+      "requestBodiesIncluded": false
+    },
+    "contract": null
+  },
+  "richMarkdown": {
+    "schemaVersion": 1,
+    "name": "richMarkdown",
+    "status": "MISSING",
+    "source": "sanitizer",
+    "privacy": {
+      "localOnly": true,
+      "telemetryUploaded": false,
+      "promptTextIncluded": false,
+      "answerTextIncluded": false,
+      "rawDomIncluded": false,
+      "fullPageScreenshotIncluded": false,
+      "headersIncluded": false,
+      "cookiesIncluded": false,
+      "requestBodiesIncluded": false
+    },
+    "contract": null
+  },
+  "longThreadMountedWindow": {
+    "schemaVersion": 1,
+    "name": "longThreadMountedWindow",
+    "status": "MISSING",
+    "source": "sanitizer",
+    "privacy": {
+      "localOnly": true,
+      "telemetryUploaded": false,
+      "promptTextIncluded": false,
+      "answerTextIncluded": false,
+      "rawDomIncluded": false,
+      "fullPageScreenshotIncluded": false,
+      "headersIncluded": false,
+      "cookiesIncluded": false,
+      "requestBodiesIncluded": false
+    },
+    "contract": null
+  },
+  "toolFileAuthSurface": {
+    "schemaVersion": 1,
+    "name": "toolFileAuthSurface",
+    "status": "MISSING",
+    "source": "sanitizer",
+    "privacy": {
+      "localOnly": true,
+      "telemetryUploaded": false,
+      "promptTextIncluded": false,
+      "answerTextIncluded": false,
+      "rawDomIncluded": false,
+      "fullPageScreenshotIncluded": false,
+      "headersIncluded": false,
+      "cookiesIncluded": false,
+      "requestBodiesIncluded": false
+    },
+    "contract": null
+  },
+  "micaCopy": {
+    "schemaVersion": 1,
+    "name": "micaCopy",
+    "status": "MISSING",
+    "source": "sanitizer",
+    "privacy": {
+      "localOnly": true,
+      "telemetryUploaded": false,
+      "promptTextIncluded": false,
+      "answerTextIncluded": false,
+      "rawDomIncluded": false,
+      "fullPageScreenshotIncluded": false,
+      "headersIncluded": false,
+      "cookiesIncluded": false,
+      "requestBodiesIncluded": false
+    },
+    "contract": null
   }
 }

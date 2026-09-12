@@ -1,69 +1,150 @@
 {
   "passed": true,
-  "input": "D:\\Code\\Mica-for-ChatGPT\\tests\\contracts\\chatgpt-live\\synthetic-smoke",
+  "input": "C:\\Code\\Mica-for-ChatGPT\\tests\\contracts\\chatgpt-live\\synthetic-smoke",
   "ledger": {
-    "inputToHandlerProcessingMs": {
+    "manualSendIntentToUserTurnMountedMs": {
+      "n": 3,
+      "min": 80,
+      "median": 80,
+      "p90": 80,
+      "p95": 80,
+      "max": 80,
+      "mad": 0,
+      "stability": "limited-sample",
+      "p90Meaningful": false,
+      "p95Meaningful": false
+    },
+    "manualSendIntentToComposerBodyZeroMs": {
+      "n": 3,
+      "min": 130,
+      "median": 130,
+      "p90": 130,
+      "p95": 130,
+      "max": 130,
+      "mad": 0,
+      "stability": "limited-sample",
+      "p90Meaningful": false,
+      "p95Meaningful": false
+    },
+    "composerMissingToComposerRemountedMs": {
+      "n": 0,
+      "min": null,
+      "median": null,
+      "p90": null,
+      "p95": null,
+      "max": null,
+      "mad": null,
+      "stability": "missing",
+      "p90Meaningful": false,
+      "p95Meaningful": false
+    },
+    "userTurnToAssistantMountedMs": {
+      "n": 3,
+      "min": 230,
+      "median": 230,
+      "p90": 230,
+      "p95": 230,
+      "max": 230,
+      "mad": 0,
+      "stability": "limited-sample",
+      "p90Meaningful": false,
+      "p95Meaningful": false
+    },
+    "assistantMountedToFirstMutationMs": {
+      "n": 3,
+      "min": 140,
+      "median": 140,
+      "p90": 140,
+      "p95": 140,
+      "max": 140,
+      "mad": 0,
+      "stability": "limited-sample",
+      "p90Meaningful": false,
+      "p95Meaningful": false
+    },
+    "streamMutationGapsMs": {
+      "n": 3,
+      "min": 280,
+      "median": 280,
+      "p90": 280,
+      "p95": 280,
+      "max": 280,
+      "mad": 0,
+      "stability": "limited-sample",
+      "p90Meaningful": false,
+      "p95Meaningful": false
+    },
+    "lastMutationToActionBarVisibleMs": {
+      "n": 3,
+      "min": 1930,
+      "median": 1930,
+      "p90": 1930,
+      "p95": 1930,
+      "max": 1930,
+      "mad": 0,
+      "stability": "limited-sample",
+      "p90Meaningful": false,
+      "p95Meaningful": false
+    },
+    "lastMutationToSettledMs": {
+      "n": 3,
+      "min": 1990,
+      "median": 1990,
+      "p90": 1990,
+      "p95": 1990,
+      "max": 1990,
+      "mad": 0,
+      "stability": "limited-sample",
+      "p90Meaningful": false,
+      "p95Meaningful": false
+    },
+    "micaRuntimeTransitionToOverlayUpdateMs": {
+      "n": 0,
+      "min": null,
+      "median": null,
+      "p90": null,
+      "p95": null,
+      "max": null,
+      "mad": null,
+      "stability": "missing",
+      "p90Meaningful": false,
+      "p95Meaningful": false
+    },
+    "inputDelayMs": {
+      "n": 1,
+      "min": 0.4,
+      "median": 0.4,
+      "p90": 0.4,
+      "p95": 0.4,
+      "max": 0.4,
+      "mad": 0,
+      "stability": "single-sample",
+      "p90Meaningful": false,
+      "p95Meaningful": false
+    },
+    "inputProcessingDurationMs": {
+      "n": 1,
+      "min": 1.4,
+      "median": 1.4,
+      "p90": 1.4,
+      "p95": 1.4,
+      "max": 1.4,
+      "mad": 0,
+      "stability": "single-sample",
+      "p90Meaningful": false,
+      "p95Meaningful": false
+    },
+    "inputInteractionDurationMs": {
       "n": 1,
       "min": 2.5,
       "median": 2.5,
       "p90": 2.5,
       "p95": 2.5,
       "max": 2.5,
-      "mad": 0
-    },
-    "manualSendIntentToUserTurnMountedMs": {
-      "n": 1,
-      "min": 90,
-      "median": 90,
-      "p90": 90,
-      "p95": 90,
-      "max": 90,
-      "mad": 0
-    },
-    "manualSendIntentToComposerBodyZeroMs": {
-      "n": 1,
-      "min": 170,
-      "median": 170,
-      "p90": 170,
-      "p95": 170,
-      "max": 170,
-      "mad": 0
-    },
-    "userTurnToAssistantMountedMs": {
-      "n": 1,
-      "min": 210,
-      "median": 210,
-      "p90": 210,
-      "p95": 210,
-      "max": 210,
-      "mad": 0
-    },
-    "assistantMountedToFirstMutationMs": {
-      "n": 1,
-      "min": 170,
-      "median": 170,
-      "p90": 170,
-      "p95": 170,
-      "max": 170,
-      "mad": 0
-    },
-    "lastMutationToActionBarVisibleMs": {
-      "n": 1,
-      "min": 2250,
-      "median": 2250,
-      "p90": 2250,
-      "p95": 2250,
-      "max": 2250,
-      "mad": 0
-    },
-    "lastMutationToSettledMs": {
-      "n": 1,
-      "min": 2320,
-      "median": 2320,
-      "p90": 2320,
-      "p95": 2320,
-      "max": 2320,
-      "mad": 0
+      "mad": 0,
+      "stability": "single-sample",
+      "p90Meaningful": false,
+      "p95Meaningful": false
     }
   },
   "constants": [
