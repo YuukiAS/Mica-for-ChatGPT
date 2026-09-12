@@ -353,6 +353,8 @@ async function runAtlasGenerationIdentityCase() {
   assert(payload.passed, "Atlas generation identity fixture failed", payload);
   assert(payload.manualCount === 1, "Click plus submit produced more than one Atlas generation", payload);
   assert(payload.userCount === 1, "Old user turn remount was misclassified as new", payload);
+  assert(payload.unresolvedCount >= 1, "Unstable turn identity did not emit fail-open diagnostic", payload);
+  assert(payload.reportBeforeTerminal === true, "Recorder report marker was not emitted before terminal marker", payload);
   assert(payload.richCount === 1, "Rich Markdown settled checkpoint missing", payload);
   return payload;
 }

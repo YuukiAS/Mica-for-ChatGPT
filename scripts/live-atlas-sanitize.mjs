@@ -100,22 +100,25 @@ function sanitizeContract(contract) {
 function sanitizeTimeline(rawTimeline) {
   const generationState = { current: 0 };
   return rawTimeline.map((event) => {
+    const timeBase = safeTimeBase(event.timeBase || (String(event.type || "").startsWith("cdp_") ? "cdp-page-monotonic" : "atlas-session-relative"));
     const details = sanitizeDetails(event.details || {});
     const stateClass = details.stateClass || event.type;
-    if (stateClass === "manual_send_intent") generationState.current += 1;
-    const generationId = details.generationId || (isGenerationEvent(stateClass) ? generationState.current || null : null);
+    if (timeBase === "atlas-session-relative" && stateClass === "manual_send_intent") generationState.current += 1;
+    const generationId = details.generationId || (timeBase === "atlas-session-relative" && isGenerationEvent(stateClass) ? generationState.current || null : null);
     return {
       schemaVersion: 1,
       type: safeEventType(event.type),
-      monotonicTimeMs: round(event.monotonicTimeMs),
-      relativeTimeMs: round(event.relativeTimeMs),
-      epochTimeMs: round(event.epochTimeMs),
+      timeBase,
+      monotonicTimeMs: roundNullable(event.monotonicTimeMs),
+      relativeTimeMs: roundNullable(event.relativeTimeMs),
+      epochTimeMs: roundNullable(event.epochTimeMs),
       details: { ...details, generationId }
     };
   });
 }
 
 function deriveGenerations(timeline) {
+  timeline = timeline.filter(isAuthoritativeTimingEvent);
   const generations = new Map();
   for (const event of timeline) {
     const stateClass = event.details?.stateClass || event.type;
@@ -130,6 +133,7 @@ function deriveGenerations(timeline) {
 }
 
 function deriveTimings(timeline, performance) {
+  timeline = timeline.filter(isAuthoritativeTimingEvent);
   const generations = deriveGenerations(timeline);
   const metric = {
     manualSendIntentToUserTurnMountedMs: [],
@@ -207,7 +211,7 @@ function sanitizeDetails(details) {
     "mountedTurns", "previousMountedTurns", "textLength", "inputType", "dataLength", "delta", "composing",
     "keyClass", "ctrl", "meta", "shift", "alt", "repeat", "present", "reason", "idleGapMs", "capMs",
     "copyAreaVisible", "mode", "recording", "addedNodes", "removedNodes", "attributes", "count",
-    "burstCount", "mutationCount", "elapsedFromMountMs", "label", "rect", "monotonicTimestamp", "clipped",
+    "burstCount", "mutationCount", "elapsedFromMountMs", "label", "rect", "monotonicTimestamp", "cdpMonotonicTimestamp", "clipped",
     "surfaceKey", "screenshot", "counts", "targetRect", "role", "surfaceRole", "terminal", "status", "missingReason", "rich"
   ]);
   for (const [key, value] of Object.entries(details)) {
@@ -313,6 +317,14 @@ function safeEventType(value) {
   return /^[a-z0-9_:-]{1,80}$/i.test(String(value || "")) ? String(value) : "event";
 }
 
+function safeTimeBase(value) {
+  return ["atlas-session-relative", "cdp-page-monotonic", "agent-local"].includes(value) ? value : "unknown";
+}
+
+function isAuthoritativeTimingEvent(event) {
+  return event.timeBase === "atlas-session-relative" && !String(event.type || "").startsWith("cdp_");
+}
+
 function safeVariant(value) {
   return /^[a-z0-9_.:-]{1,120}$/i.test(String(value || "")) ? String(value) : `variant-length-${String(value).length}`;
 }
@@ -350,6 +362,11 @@ function variantFromSurface(surface) {
 
 function round(value) {
   return Math.round(Number(value || 0) * 10) / 10;
+}
+
+function roundNullable(value) {
+  if (value === null || value === undefined || value === "") return null;
+  return Number.isFinite(Number(value)) ? round(value) : null;
 }
 
 function argValue(name) {

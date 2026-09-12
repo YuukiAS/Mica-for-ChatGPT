@@ -70,6 +70,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 0,
       "relativeTimeMs": 0,
       "epochTimeMs": 1788888888000,
@@ -82,6 +83,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 40,
       "relativeTimeMs": 40,
       "epochTimeMs": 1788888888040,
@@ -95,6 +97,7 @@
     {
       "schemaVersion": 1,
       "type": "composer_beforeinput",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 80,
       "relativeTimeMs": 80,
       "epochTimeMs": 1788888888080,
@@ -107,6 +110,7 @@
     {
       "schemaVersion": 1,
       "type": "composer_input",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 96,
       "relativeTimeMs": 96,
       "epochTimeMs": 1788888888096,
@@ -119,6 +123,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 220,
       "relativeTimeMs": 220,
       "epochTimeMs": 1788888888220,
@@ -132,6 +137,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 300,
       "relativeTimeMs": 300,
       "epochTimeMs": 1788888888300,
@@ -145,6 +151,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 350,
       "relativeTimeMs": 350,
       "epochTimeMs": 1788888888350,
@@ -158,6 +165,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 530,
       "relativeTimeMs": 530,
       "epochTimeMs": 1788888888530,
@@ -171,6 +179,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 670,
       "relativeTimeMs": 670,
       "epochTimeMs": 1788888888670,
@@ -184,6 +193,7 @@
     {
       "schemaVersion": 1,
       "type": "assistant_stream_mutation_burst",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 870,
       "relativeTimeMs": 870,
       "epochTimeMs": 1788888888870,
@@ -198,6 +208,7 @@
     {
       "schemaVersion": 1,
       "type": "assistant_stream_mutation_burst",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 1150,
       "relativeTimeMs": 1150,
       "epochTimeMs": 1788888889150,
@@ -212,6 +223,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 3080,
       "relativeTimeMs": 3080,
       "epochTimeMs": 1788888891080,
@@ -226,6 +238,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 3140,
       "relativeTimeMs": 3140,
       "epochTimeMs": 1788888891140,
@@ -240,6 +253,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 4220,
       "relativeTimeMs": 4220,
       "epochTimeMs": 1788888892220,
@@ -253,6 +267,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 4300,
       "relativeTimeMs": 4300,
       "epochTimeMs": 1788888892300,
@@ -266,6 +281,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 4350,
       "relativeTimeMs": 4350,
       "epochTimeMs": 1788888892350,
@@ -279,6 +295,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 4530,
       "relativeTimeMs": 4530,
       "epochTimeMs": 1788888892530,
@@ -292,6 +309,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 4670,
       "relativeTimeMs": 4670,
       "epochTimeMs": 1788888892670,
@@ -305,6 +323,7 @@
     {
       "schemaVersion": 1,
       "type": "assistant_stream_mutation_burst",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 4870,
       "relativeTimeMs": 4870,
       "epochTimeMs": 1788888892870,
@@ -319,6 +338,7 @@
     {
       "schemaVersion": 1,
       "type": "assistant_stream_mutation_burst",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 5150,
       "relativeTimeMs": 5150,
       "epochTimeMs": 1788888893150,
@@ -333,6 +353,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 7080,
       "relativeTimeMs": 7080,
       "epochTimeMs": 1788888895080,
@@ -347,6 +368,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 7140,
       "relativeTimeMs": 7140,
       "epochTimeMs": 1788888895140,
@@ -361,6 +383,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 8220,
       "relativeTimeMs": 8220,
       "epochTimeMs": 1788888896220,
@@ -374,6 +397,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 8300,
       "relativeTimeMs": 8300,
       "epochTimeMs": 1788888896300,
@@ -387,6 +411,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 8350,
       "relativeTimeMs": 8350,
       "epochTimeMs": 1788888896350,
@@ -400,6 +425,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 8530,
       "relativeTimeMs": 8530,
       "epochTimeMs": 1788888896530,
@@ -413,6 +439,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 8670,
       "relativeTimeMs": 8670,
       "epochTimeMs": 1788888896670,
@@ -426,6 +453,7 @@
     {
       "schemaVersion": 1,
       "type": "assistant_stream_mutation_burst",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 8870,
       "relativeTimeMs": 8870,
       "epochTimeMs": 1788888896870,
@@ -440,6 +468,7 @@
     {
       "schemaVersion": 1,
       "type": "assistant_stream_mutation_burst",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 9150,
       "relativeTimeMs": 9150,
       "epochTimeMs": 1788888897150,
@@ -454,6 +483,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 11080,
       "relativeTimeMs": 11080,
       "epochTimeMs": 1788888899080,
@@ -468,6 +498,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 11140,
       "relativeTimeMs": 11140,
       "epochTimeMs": 1788888899140,
@@ -482,6 +513,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 12280,
       "relativeTimeMs": 12280,
       "epochTimeMs": 1788888900280,
@@ -494,6 +526,7 @@
     {
       "schemaVersion": 1,
       "type": "checkpoint",
+      "timeBase": "atlas-session-relative",
       "monotonicTimeMs": 12340,
       "relativeTimeMs": 12340,
       "epochTimeMs": 1788888900340,

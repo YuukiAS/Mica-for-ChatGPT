@@ -18,7 +18,7 @@ const commands = [];
 const sockets = new Set();
 const oldFixedIdleEquivalentMs = 30;
 const inactivityHardCapMs = 120;
-const drainMs = 80;
+const drainMs = 1;
 let checkpointMessagesSent = 0;
 let socketClosedAt = 0;
 
@@ -122,7 +122,8 @@ try {
   assert(performanceJson.explicitStop === true && performanceJson.truncated === false, "performance metadata does not record clean explicit stop");
   assert(performanceJson.recorderReportsIngested === 1 && performanceJson.recorderPerformanceIngested === true, "recorder performance was not ingested");
   assert(recorderReport.timeline.some((event) => event.type === "composer_input"), "recorder lifecycle timeline was not ingested");
-  assert(timeline.some((event) => event.type === "composer_input"), "combined raw timeline does not include recorder events");
+  assert(timeline.some((event) => event.type === "composer_input" && event.timeBase === "atlas-session-relative"), "combined raw timeline does not include recorder events on the Atlas time base");
+  assert(timeline.filter((event) => event.type === "cdp_checkpoint_observed").every((event) => event.timeBase === "cdp-page-monotonic" && event.relativeTimeMs === null), "CDP mirror events were mixed into the Atlas relative clock");
   assert(Object.values(coverage).some((entry) => entry.status === "OBSERVED"), "coverage has no observed surfaces");
   assert(!methods.some((method) => /^Input\.|^Network\.|^Fetch\.|^Tracing\./.test(method) || ["Page.navigate", "Page.reload", "Runtime.evaluate"].includes(method)), "forbidden CDP command was sent");
 
@@ -185,11 +186,17 @@ function scheduleLongSession(socket) {
     enqueue("assistant_settled", generation);
     delay += oldFixedIdleEquivalentMs + 10;
   }
+  delay += scheduleReportChunks(socket, delay + 1);
   enqueue("atlas_stopped");
-  scheduleReportChunks(socket, delay + 1);
 }
 
 function scheduleReportChunks(socket, delay) {
+  const longTimeline = Array.from({ length: 180 }, (_, index) => ({
+    schemaVersion: 1,
+    type: index % 2 === 0 ? "composer_beforeinput" : "composer_input",
+    relativeTimeMs: 10 + index,
+    details: { inputType: "insertText", dataLength: 1 }
+  }));
   const report = {
     schemaVersion: 1,
     kind: "mica.liveSurfaceAtlas",
@@ -205,13 +212,10 @@ function scheduleReportChunks(socket, delay) {
       layoutShift: [{ type: "layout-shift", startTime: 40, duration: 0, value: 0.01 }],
       memory: { usedJSHeapSize: 1000, totalJSHeapSize: 2000, jsHeapSizeLimit: 3000 }
     },
-    timeline: [
-      { schemaVersion: 1, type: "composer_beforeinput", relativeTimeMs: 10, details: { inputType: "insertText", dataLength: 1 } },
-      { schemaVersion: 1, type: "composer_input", relativeTimeMs: 12, details: { inputType: "insertText", dataLength: 1 } }
-    ]
+    timeline: longTimeline
   };
   const payload = JSON.stringify(report);
-  const chunkSize = 120;
+  const chunkSize = 800;
   const total = Math.ceil(payload.length / chunkSize);
   for (let index = 0; index < total; index += 1) {
     setTimeout(() => {
@@ -223,6 +227,7 @@ function scheduleReportChunks(socket, delay) {
       }
     }, delay + index);
   }
+  return total + 2;
 }
 
 function waitFor(predicate, timeoutMs) {

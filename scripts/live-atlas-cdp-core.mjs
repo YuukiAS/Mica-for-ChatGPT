@@ -51,7 +51,31 @@ export function assertReadOnlyCommand(command) {
   if (!READ_ONLY_CDP_COMMANDS.has(command)) throw new Error(`CDP command is not allowlisted: ${command}`);
 }
 
+export function validateAtlasThreadUrl(threadUrl) {
+  let parsed;
+  try {
+    parsed = new URL(threadUrl);
+  } catch (_error) {
+    throw new Error("Atlas thread URL must be a valid https://chatgpt.com conversation URL");
+  }
+  if (parsed.protocol !== "https:" || parsed.hostname !== "chatgpt.com") {
+    throw new Error("Atlas thread URL must use https://chatgpt.com");
+  }
+  const segments = parsed.pathname.split("/").filter(Boolean);
+  const conversationIndex = segments.indexOf("c");
+  const conversationId = conversationIndex >= 0 ? segments[conversationIndex + 1] : "";
+  if (!conversationId || !/^[A-Za-z0-9_-]{1,160}$/.test(conversationId)) {
+    throw new Error("Atlas thread URL must contain a /c/<conversation-id> path segment");
+  }
+  return {
+    href: threadUrl,
+    conversationId,
+    exactTargetUrl: threadUrl
+  };
+}
+
 export async function resolveExactTarget({ port, threadUrl, fetchImpl = fetch }) {
+  validateAtlasThreadUrl(threadUrl);
   const targets = await fetchJson(`http://127.0.0.1:${port}/json/list`, fetchImpl);
   const matches = targets.filter((target) => target.type === "page" && target.url === threadUrl);
   if (matches.length !== 1) {
@@ -207,7 +231,8 @@ export async function runReadOnlyCaptureSession(options) {
     timeline.push({
       schemaVersion: 1,
       type: "cdp_checkpoint_observed",
-      relativeTimeMs: checkpoint.monotonicTimestamp ?? null,
+      timeBase: "cdp-page-monotonic",
+      relativeTimeMs: null,
       details: safeCheckpointTimelineDetails(checkpoint)
     });
     if (!isVisualCheckpoint(checkpoint)) {
@@ -219,7 +244,8 @@ export async function runReadOnlyCaptureSession(options) {
     timeline.push({
       schemaVersion: 1,
       type: "cdp_checkpoint_capture",
-      relativeTimeMs: checkpoint.monotonicTimestamp ?? null,
+      timeBase: "cdp-page-monotonic",
+      relativeTimeMs: null,
       details: {
         checkpointId: checkpoint.checkpointId,
         stateClass: checkpoint.stateClass,
@@ -244,8 +270,10 @@ export async function writeRawSessionBundle({ out, threadUrl, session }) {
   await mkdir(out, { recursive: true });
   await writeJson(path.join(out, "manifest.json"), createManifest({ threadUrl, target: session.target, commandsSent: session.commandsSent, session }));
   const recorderReports = Array.isArray(session.recorderReports) ? session.recorderReports : [];
-  const recorderTimeline = recorderReports.flatMap((report) => Array.isArray(report.timeline) ? report.timeline : []);
-  const combinedTimeline = [...recorderTimeline, ...session.timeline].sort((a, b) => Number(a.relativeTimeMs || 0) - Number(b.relativeTimeMs || 0));
+  const recorderTimeline = recorderReports.flatMap((report) => Array.isArray(report.timeline) ? report.timeline : [])
+    .map((event) => ({ ...event, timeBase: "atlas-session-relative" }));
+  const cdpTimeline = session.timeline.map((event) => ({ ...event, timeBase: event.timeBase || "cdp-page-monotonic" }));
+  const combinedTimeline = [...recorderTimeline, ...cdpTimeline];
   await writeFile(path.join(out, "timeline.ndjson"), `${combinedTimeline.map((event) => JSON.stringify(event)).join("\n")}\n`);
   if (recorderReports.length) await writeJson(path.join(out, "recorder-report.json"), mergeRecorderReports(recorderReports));
   await writeJson(path.join(out, "coverage.json"), coverage);
@@ -353,21 +381,21 @@ export function isTerminalCheckpoint(checkpoint) {
 }
 
 export function surfaceKeyForCheckpoint(stateClass) {
-  if (/^atlas_stopped/.test(stateClass)) return null;
-  if (/^composer_|atlas_started/.test(stateClass)) return "composer";
-  if (/^manual_send|composer_body_zero|assistant_first_content_mutation|assistant_stream_mutation_burst|recorder_report_exported/.test(stateClass)) return null;
-  if (/^user_turn/.test(stateClass)) return "userTurn";
-  if (/^mention_/.test(stateClass)) return "mentionChooser";
-  if (/^connector_/.test(stateClass)) return "connectorPill";
-  if (/rich_markdown/.test(stateClass)) return "richMarkdown";
-  if (/mica_copy/.test(stateClass)) return "micaCopy";
-  if (/native_copy|assistant_copy/.test(stateClass)) return "nativeCopyArea";
-  if (/assistant_action_bar/.test(stateClass)) return "assistantActionBar";
-  if (/assistant_settled/.test(stateClass)) return "assistantSettled";
-  if (/assistant_/.test(stateClass)) return "assistantStreaming";
-  if (/mica_overlay/.test(stateClass)) return "micaOverlay";
-  if (/mounted_turn/.test(stateClass)) return "longThreadMountedWindow";
-  return "composer";
+  if (!stateClass) return null;
+  if (/^(atlas_stopped|manual_send_intent|composer_body_zero|assistant_first_content_mutation|assistant_stream_mutation_burst|recorder_report_exported|turn_identity_unresolved|baseline_existing)$/.test(stateClass)) return null;
+  if (/^(atlas_started|composer_present|composer_focus|composer_blur|composer_identity_changed)$/.test(stateClass)) return "composer";
+  if (stateClass === "user_turn_mounted") return "userTurn";
+  if (stateClass === "mention_chooser_visible") return "mentionChooser";
+  if (stateClass === "connector_pill_visible") return "connectorPill";
+  if (stateClass === "rich_markdown_settled") return "richMarkdown";
+  if (stateClass === "mica_copy_invoked") return "micaCopy";
+  if (stateClass === "assistant_copy_action_visible_or_invoked") return "nativeCopyArea";
+  if (stateClass === "assistant_action_bar_visible") return "assistantActionBar";
+  if (stateClass === "assistant_settled" || stateClass === "assistant_settled_hard_cap") return "assistantSettled";
+  if (stateClass === "assistant_turn_mounted") return "assistantStreaming";
+  if (stateClass === "mica_overlay_state") return "micaOverlay";
+  if (stateClass === "mounted_turn_window_changed") return "longThreadMountedWindow";
+  return null;
 }
 
 export function isVisualCheckpoint(checkpoint) {
@@ -426,13 +454,17 @@ export function sanitizeNodeContract(snapshot, doc, nodeIndex, clip, depth) {
 }
 
 export function createManifest({ threadUrl, target, commandsSent, session = null }) {
+  const validation = validateAtlasThreadUrl(threadUrl);
   return {
     schemaVersion: 1,
     kind: "mica.liveSurfaceAtlas.raw",
     sessionId: `atlas-cdp-${Date.now()}`,
     createdAt: new Date().toISOString(),
     source: "real-cdp-companion",
-    threadUrlAllowed: /^https:\/\/chatgpt\.com\/c\/[A-Za-z0-9_-]+/.test(threadUrl),
+    attached: session?.attached === true,
+    threadUrlAllowed: true,
+    targetUrlExactMatch: target?.url === validation.exactTargetUrl,
+    conversationIdLength: validation.conversationId.length,
     targetTitleLength: String(target?.title || "").length,
     styleWhitelist: STYLE_WHITELIST,
     readOnlyCommands: [...READ_ONLY_CDP_COMMANDS],
@@ -456,6 +488,7 @@ function cdpLifecycleEvent(type, details) {
   return {
     schemaVersion: 1,
     type,
+    timeBase: "agent-local",
     relativeTimeMs: null,
     details
   };
@@ -767,19 +800,6 @@ function controlState(attrs) {
   };
 }
 
-function observedContract(surfaceKey, clip) {
-  return {
-    tag: surfaceKey === "composer" ? "form" : "div",
-    role: surfaceKey === "assistantActionBar" ? "toolbar" : surfaceKey === "mentionChooser" ? "listbox" : null,
-    attrs: {},
-    rect: clipToRect(clip),
-    state: {},
-    text: { category: "redacted", length: 0 },
-    styles: {},
-    children: []
-  };
-}
-
 function assertOfficialSnapshotStrings(snapshot) {
   if (!Array.isArray(snapshot?.strings)) throw new Error("DOMSnapshot response missing top-level strings table");
 }
@@ -822,6 +842,7 @@ function safeCheckpointTimelineDetails(checkpoint) {
     generationId: checkpoint.generationId ?? null,
     terminal: checkpoint.terminal === true,
     surfaceKey: surfaceKeyForCheckpoint(checkpoint.stateClass),
+    cdpMonotonicTimestamp: checkpoint.monotonicTimestamp ?? null,
     targetRect: normalizeTargetRect(checkpoint.targetRect || checkpoint.rect)
   };
 }

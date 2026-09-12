@@ -24,6 +24,14 @@
         <button id="send" type="submit" data-testid="send-button" aria-label="Send message">Send</button>
       </div>
     </form>
+    <script>
+      const originalConsoleInfo = console.info.bind(console);
+      window.__atlasConsoleInfo = [];
+      console.info = (...args) => {
+        window.__atlasConsoleInfo.push(args.join(" "));
+        originalConsoleInfo(...args);
+      };
+    </script>
     <script src="../../dist/mica-dev/atlas-recorder.js"></script>
     <script>
       const result = document.getElementById("result");
@@ -38,6 +46,7 @@
 
       async function run() {
         const oldUser = appendTurn("user", "old-user-1");
+        const oldUnstableUser = appendUnstableTurn("user");
         appendTurn("assistant", "old-assistant-1");
         appendTurn("user", "old-user-2");
         appendTurn("assistant", "old-assistant-2");
@@ -51,6 +60,8 @@
 
         oldUser.remove();
         conversation.appendChild(turn("user", "old-user-1"));
+        oldUnstableUser.remove();
+        conversation.appendChild(unstableTurn("user"));
         await delay(160);
         const newUser = appendTurn("user", "new-user-1");
         await delay(160);
@@ -64,16 +75,21 @@
         const users = events(timeline, "user_turn_mounted");
         const assistants = events(timeline, "assistant_turn_mounted");
         const rich = events(timeline, "rich_markdown_settled");
+        const unresolved = events(timeline, "turn_identity_unresolved");
+        const reportIndex = window.__atlasConsoleInfo.findIndex((line) => line.startsWith("MICA_ATLAS_REPORT_CHUNK "));
+        const terminalIndex = window.__atlasConsoleInfo.findIndex((line) => line.startsWith("MICA_ATLAS_CHECKPOINT ") && line.includes('"stateClass":"atlas_stopped"'));
         const checks = [
           ["click plus submit creates one generation", manual.length === 1],
           ["new user turn observed once", users.length === 1],
           ["old remount ignored", users[0]?.details?.generationId === 1],
+          ["unstable old remount failed open", unresolved.length >= 1 && users.length === 1],
           ["assistant tied to same generation", assistants.length === 1 && assistants[0].details.generationId === 1],
           ["rich markdown checkpoint emitted", rich.length === 1 && rich[0].details.generationId === 1],
+          ["recorder report emitted before terminal marker", reportIndex >= 0 && terminalIndex >= 0 && reportIndex < terminalIndex],
           ["terminal report retained performance bucket", !!stop.report.performance && Array.isArray(stop.report.performance.eventTiming)],
           ["no automated send", stop.report.safety.automatedSend === false && stop.report.safety.automatedEnter === false]
         ].map(([name, passed]) => ({ name, passed: !!passed }));
-        result.textContent = JSON.stringify({ passed: checks.every((check) => check.passed), checks, manualCount: manual.length, userCount: users.length, assistantCount: assistants.length, richCount: rich.length, start: start.status }, null, 2);
+        result.textContent = JSON.stringify({ passed: checks.every((check) => check.passed), checks, manualCount: manual.length, userCount: users.length, assistantCount: assistants.length, richCount: rich.length, unresolvedCount: unresolved.length, reportBeforeTerminal: reportIndex < terminalIndex, start: start.status }, null, 2);
       }
 
       function events(timeline, stateClass) {
@@ -86,11 +102,24 @@
         return node;
       }
 
+      function appendUnstableTurn(role) {
+        const node = unstableTurn(role);
+        conversation.appendChild(node);
+        return node;
+      }
+
       function turn(role, id) {
         const article = document.createElement("article");
         article.dataset.testid = `conversation-turn-${id}`;
         article.dataset.messageAuthorRole = role;
         article.textContent = `${role} ${id}`;
+        return article;
+      }
+
+      function unstableTurn(role) {
+        const article = document.createElement("article");
+        article.dataset.messageAuthorRole = role;
+        article.textContent = `${role} unstable`;
         return article;
       }
 

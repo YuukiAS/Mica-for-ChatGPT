@@ -43,6 +43,7 @@
     nextGenerationId: 1,
     currentGeneration: null,
     knownTurnKeys: new Set(),
+    unresolvedTurnDiagnosticSignatures: new Set(),
     baselineScanned: false,
     lastCheckpointSignature: new Map(),
     performance: createPerformanceSummary(),
@@ -133,13 +134,14 @@
     state.session.stoppedAtMonotonicMs = now();
     state.session.stopReason = reason;
     record("atlas_stopped", { reason, listenerCount: 0, observerCount: 0, timerCount: 0 });
+    const finalReport = buildReport();
+    emitRecorderReportMarker(finalReport);
     emitCheckpointMarker("atlas_stopped", {
       checkpointId: `${state.session?.id || "inactive"}:stopped`,
       monotonicTimestamp: round(relativeNow()),
       terminal: true,
       reason
     });
-    emitRecorderReportMarker(buildReport());
     return summarizeSession("stopped");
   }
 
@@ -170,6 +172,7 @@
     state.nextGenerationId = 1;
     state.currentGeneration = null;
     state.knownTurnKeys = new Set();
+    state.unresolvedTurnDiagnosticSignatures = new Set();
     state.baselineScanned = false;
     state.lastCheckpointSignature = new Map();
     state.performance = createPerformanceSummary();
@@ -384,13 +387,18 @@
     for (const turn of turns) {
       const role = getTurnRole(turn);
       const key = turnKey(turn, role);
-      const knownBefore = state.knownTurnKeys.has(key);
       if (baselineMode && baselineCounts[role] !== undefined) baselineCounts[role] += 1;
+      if (!key) {
+        markUnresolvedTurnIdentity(turn, role, baselineMode);
+        continue;
+      }
+      const knownBefore = state.knownTurnKeys.has(key);
+      const turnHint = safeTurnHint(key);
       if (role === "user") {
         markObserved("userTurn");
         if (!baselineMode && state.currentGeneration && !state.currentGeneration.userTurnObserved && !knownBefore) {
           state.currentGeneration.userTurnObserved = true;
-          checkpoint("user_turn_mounted", { generationId: state.currentGeneration.id, role: "user", surfaceRole: "user", turnId: nodeId(turn), rect: rectSummary(turn) });
+          checkpoint("user_turn_mounted", { generationId: state.currentGeneration.id, role: "user", surfaceRole: "user", turnId: turnHint, rect: rectSummary(turn) });
         }
       }
       if (role === "assistant") {
@@ -404,14 +412,16 @@
             entry.baselineExisting = true;
           } else {
             state.currentGeneration.assistantTurnObserved = true;
-            state.currentGeneration.lastAssistantTurnId = nodeId(turn);
-            checkpoint("assistant_turn_mounted", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: nodeId(turn), rect: rectSummary(turn) });
+            state.currentGeneration.lastAssistantTurnId = turnHint;
+            entry.turnId = turnHint;
+            checkpoint("assistant_turn_mounted", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: turnHint, rect: rectSummary(turn) });
             entry.mountCheckpointed = true;
           }
         } else if (!entry.baselineExisting && !entry.mountCheckpointed && entry.generationId && state.currentGeneration?.id === entry.generationId && state.currentGeneration.userTurnObserved) {
           state.currentGeneration.assistantTurnObserved = true;
-          state.currentGeneration.lastAssistantTurnId = nodeId(turn);
-          checkpoint("assistant_turn_mounted", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: nodeId(turn), rect: rectSummary(turn) });
+          state.currentGeneration.lastAssistantTurnId = turnHint;
+          entry.turnId = turnHint;
+          checkpoint("assistant_turn_mounted", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: turnHint, rect: rectSummary(turn) });
           entry.mountCheckpointed = true;
         }
         const actionBar = findActionBar(turn);
@@ -431,6 +441,7 @@
 
   function createAssistantEntry(turn, knownBefore = false) {
     const generationId = state.currentGeneration?.id || null;
+    const key = turnKey(turn, getTurnRole(turn));
     return {
       mountedAt: now(),
       generationId,
@@ -442,7 +453,7 @@
       hardSettleTimer: 0,
       streamFlushTimer: 0,
       pendingStreamBurst: null,
-      turnId: nodeId(turn),
+      turnId: key ? safeTurnHint(key) : null,
       knownBefore,
       mountCheckpointed: false
     };
@@ -458,7 +469,7 @@
       const timestamp = now();
       if (!entry.firstMutationAt) {
         entry.firstMutationAt = timestamp;
-        checkpoint("assistant_first_content_mutation", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: nodeId(turn), elapsedFromMountMs: Math.round(timestamp - entry.mountedAt) });
+        checkpoint("assistant_first_content_mutation", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: entry.turnId, elapsedFromMountMs: Math.round(timestamp - entry.mountedAt) });
       }
       entry.lastMutationAt = timestamp;
       entry.settled = false;
@@ -505,10 +516,10 @@
         markObserved("assistantSettled");
         clearTimer(entry.hardSettleTimer);
         entry.hardSettleTimer = 0;
-        checkpoint("assistant_settled", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: nodeId(turn), rect: rectSummary(turn), idleGapMs: Math.round(gap), actionBarVisible: !!findActionBar(turn) });
+        checkpoint("assistant_settled", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: entry.turnId, rect: rectSummary(turn), idleGapMs: Math.round(gap), actionBarVisible: !!findActionBar(turn) });
         if (hasRichMarkdown(turn)) {
           markObserved("richMarkdown");
-          checkpoint("rich_markdown_settled", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: nodeId(turn), rect: rectSummary(turn), rich: true });
+          checkpoint("rich_markdown_settled", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: entry.turnId, rect: rectSummary(turn), rich: true });
         }
       }
     }, SETTLED_IDLE_MS + 20);
@@ -518,10 +529,10 @@
         entry.settled = true;
         clearTimer(entry.settledTimer);
         entry.settledTimer = 0;
-        checkpoint("assistant_settled_hard_cap", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: nodeId(turn), rect: rectSummary(turn), capMs: ASSISTANT_SETTLED_HARD_CAP_MS, actionBarVisible: !!findActionBar(turn) });
+        checkpoint("assistant_settled_hard_cap", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: entry.turnId, rect: rectSummary(turn), capMs: ASSISTANT_SETTLED_HARD_CAP_MS, actionBarVisible: !!findActionBar(turn) });
         if (hasRichMarkdown(turn)) {
           markObserved("richMarkdown");
-          checkpoint("rich_markdown_settled", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: nodeId(turn), rect: rectSummary(turn), rich: true });
+          checkpoint("rich_markdown_settled", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: entry.turnId, rect: rectSummary(turn), rich: true });
         }
       }, ASSISTANT_SETTLED_HARD_CAP_MS);
     }
@@ -701,7 +712,7 @@
   }
 
   function isDedupeCheckpoint(stateClass) {
-    return /^(baseline_existing|assistant_action_bar_visible|mention_chooser_visible|connector_pill_visible|mica_overlay_state|mounted_turn_window_changed|composer_present|composer_missing|composer_identity_changed)$/.test(stateClass);
+    return /^(baseline_existing|turn_identity_unresolved|assistant_action_bar_visible|mention_chooser_visible|connector_pill_visible|mica_overlay_state|mounted_turn_window_changed|composer_present|composer_missing|composer_identity_changed)$/.test(stateClass);
   }
 
   function checkpointSignature(stateClass, details) {
@@ -709,6 +720,7 @@
       stateClass,
       generationId: details.generationId || null,
       turnId: details.turnId || null,
+      role: details.role || null,
       rootId: details.rootId || null,
       editableId: details.editableId || null,
       surfaceId: details.surfaceId || null,
@@ -825,13 +837,34 @@
   }
 
   function turnKey(turn, role = getTurnRole(turn)) {
-    if (!(turn instanceof HTMLElement)) return "unknown";
+    if (!(turn instanceof HTMLElement)) return null;
     const directTestId = turn.getAttribute("data-testid");
     const roleNode = turn.matches(ROLE_SELECTOR) ? turn : turn.querySelector?.(ROLE_SELECTOR);
     const roleTestId = roleNode instanceof HTMLElement ? roleNode.getAttribute("data-testid") : null;
     const stable = directTestId || roleTestId || turn.getAttribute("data-message-id") || roleNode?.getAttribute?.("data-message-id");
     if (stable && /^[a-zA-Z0-9:_-]{1,120}$/.test(stable)) return `${role || "turn"}:${stable}`;
-    return `${role || "turn"}:${nodeId(turn)}`;
+    return null;
+  }
+
+  function markUnresolvedTurnIdentity(turn, role, baselineMode) {
+    const signature = `${role || "unknown"}:${baselineMode ? "baseline" : "active"}:${state.currentGeneration?.id || "none"}`;
+    if (state.unresolvedTurnDiagnosticSignatures.has(signature)) return;
+    state.unresolvedTurnDiagnosticSignatures.add(signature);
+    checkpoint("turn_identity_unresolved", {
+      generationId: state.currentGeneration?.id || null,
+      role: role || "unknown",
+      reason: "missing_stable_turn_identity",
+      rect: rectSummary(turn)
+    });
+  }
+
+  function safeTurnHint(key) {
+    let hash = 2166136261;
+    for (let index = 0; index < key.length; index += 1) {
+      hash ^= key.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return `turn:${(hash >>> 0).toString(36)}`;
   }
 
   function getTurnRole(node) {

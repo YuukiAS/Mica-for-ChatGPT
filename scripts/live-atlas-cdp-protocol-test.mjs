@@ -67,6 +67,10 @@ server.on("upgrade", (request, socket) => {
         });
         writeProtocolMessage(socket, {
           method: "Runtime.consoleAPICalled",
+          params: { args: [{ value: "MICA_ATLAS_CHECKPOINT {\"checkpointId\":\"fake:unknown\",\"stateClass\":\"future_unknown_checkpoint\",\"monotonicTimestamp\":160}" }] }
+        });
+        writeProtocolMessage(socket, {
+          method: "Runtime.consoleAPICalled",
           params: { args: [{ value: "MICA_ATLAS_CHECKPOINT {\"checkpointId\":\"fake:stop\",\"stateClass\":\"atlas_stopped\",\"monotonicTimestamp\":180,\"terminal\":true}" }] }
         });
       }
@@ -95,6 +99,7 @@ try {
     assert(methods.includes(method), `${method} was not sent`);
   }
   assert(!methods.some((method) => /^Input\.|^Network\.|^Fetch\.|^Tracing\./.test(method) || ["Page.navigate", "Page.reload", "Runtime.evaluate"].includes(method)), "forbidden CDP command was sent");
+  assert(methods.filter((method) => method === "DOMSnapshot.captureSnapshot").length === 2, "unknown checkpoint triggered heavy DOMSnapshot capture");
   assert(screenshotClipSeen, "Page.captureScreenshot was not clipped");
   assert(largeSnapshotBytes > 65536, "DOMSnapshot response did not exercise RFC6455 length=127");
   const surfaceFiles = await readDir(path.join(out, "surfaces"));

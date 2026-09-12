@@ -6,6 +6,7 @@ import {
   READ_ONLY_CDP_COMMANDS,
   STYLE_WHITELIST,
   runReadOnlyCaptureSession,
+  validateAtlasThreadUrl,
   writeRawSessionBundle
 } from "./live-atlas-cdp-core.mjs";
 import { rawRoot } from "./live-atlas-common.mjs";
@@ -26,9 +27,7 @@ console.log("- --idle-ms is an inactivity hard cap and is re-armed after each ch
 console.log("- Page.captureScreenshot always uses a surface clip; no full-page screenshot policy");
 console.log("- automatedSend/Enter/Upload/ConnectorAction: false");
 
-if (!/^https:\/\/chatgpt\.com\/c\/[A-Za-z0-9_-]+$/.test(threadUrl)) {
-  throw new Error("atlas:capture requires --thread-url=https://chatgpt.com/c/<dedicated-capture-thread-id>");
-}
+validateAtlasThreadUrl(threadUrl);
 
 const controller = new AbortController();
 const onSigint = () => {

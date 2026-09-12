@@ -21,6 +21,10 @@ assert(cdpCore.includes("snapshot.strings") && !/doc\.strings/.test(cdpCore), "C
 assert(cdpCore.includes("readBigUInt64BE") && cdpCore.includes("fragmentedOpcode") && cdpCore.includes("opcode === 9"), "CDP WebSocket must handle large frames, fragments, and ping");
 assert(cdpCore.includes("REPORT_PREFIX") && cdpCore.includes("assembleRecorderReportChunk"), "CDP companion must ingest recorder report chunks");
 assert(cdpCore.includes("isVisualCheckpoint") && cdpCore.includes("cdp_checkpoint_observed"), "CDP companion must separate timing-only and visual checkpoints");
+assert(cdpCore.includes("return null;") && !/return "composer";\s*\n}/.test(cdpCore), "unknown checkpoints must not default to composer capture");
+assert(cdpCore.includes("validateAtlasThreadUrl") && cdp.includes("validateAtlasThreadUrl"), "atlas capture must use the shared thread URL validator");
+assert(recorder.indexOf("emitRecorderReportMarker(finalReport)") >= 0 && recorder.indexOf("emitRecorderReportMarker(finalReport)") < recorder.indexOf("emitCheckpointMarker(\"atlas_stopped\""), "recorder report must be emitted before terminal marker");
+assert(cdpCore.includes("timeBase: \"cdp-page-monotonic\"") && cdpCore.includes("timeBase: \"atlas-session-relative\""), "raw timeline must preserve explicit time bases");
 for (const allowed of ["Runtime.enable", "Log.enable", "Page.getLayoutMetrics", "DOMSnapshot.captureSnapshot", "Page.captureScreenshot", "Performance.getMetrics"]) {
   assert((cdp + cdpCore).includes(allowed), `CDP companion missing allowlisted command ${allowed}`);
 }

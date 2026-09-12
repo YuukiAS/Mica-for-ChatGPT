@@ -4,10 +4,13 @@ import { performance } from "node:perf_hooks";
 const steps = [
   ["build", "node", ["scripts/build.mjs"]],
   ["atlas:check", "node", ["scripts/live-atlas-check.mjs"]],
+  ["atlas:url", "node", ["scripts/live-atlas-url-test.mjs"]],
   ["atlas:cdp-protocol", "node", ["scripts/live-atlas-cdp-protocol-test.mjs"]],
   ["atlas:cdp-long-session", "node", ["scripts/live-atlas-cdp-long-session-test.mjs"]],
+  ["atlas:preflight", "node", ["scripts/live-atlas-preflight-test.mjs"]],
   ["atlas:sample", "node", ["scripts/live-atlas-sample.mjs"]],
   ["atlas:sanitize", "node", ["scripts/live-atlas-sanitize.mjs"]],
+  ["atlas:timeline-clock", "node", ["scripts/live-atlas-timeline-clock-test.mjs"]],
   ["atlas:privacy", "node", ["scripts/live-atlas-privacy.mjs"]],
   ["atlas:variants", "node", ["scripts/live-atlas-sanitizer-variants-test.mjs"]],
   ["atlas:build-fixtures", "node", ["scripts/live-atlas-build-fixtures.mjs"]],

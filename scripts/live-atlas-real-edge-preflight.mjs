@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { readJson, rawRoot } from "./live-atlas-common.mjs";
+import { validateAtlasThreadUrl } from "./live-atlas-cdp-core.mjs";
 
 const threadUrl = argValue("--thread-url") || process.env.MICA_ATLAS_THREAD_URL || "";
 const port = argValue("--port") || process.env.MICA_ATLAS_CDP_PORT || "9222";
@@ -8,9 +10,7 @@ const sessionId = argValue("--session-id") || `real-edge-preflight-${Date.now()}
 const raw = argValue("--out") || path.join(rawRoot, sessionId);
 const sanitized = argValue("--sanitized") || path.join("tests", "contracts", "chatgpt-live", sessionId);
 
-if (!/^https:\/\/chatgpt\.com\/c\/[A-Za-z0-9_-]+$/.test(threadUrl)) {
-  throw new Error("atlas:preflight requires --thread-url=https://chatgpt.com/c/<dedicated-empty-thread-id>");
-}
+validateAtlasThreadUrl(threadUrl);
 
 console.log("REAL_EDGE_PREFLIGHT safety:");
 console.log("- no Send, Enter, upload, connector action, retry/regenerate, auth, navigation, or account mutation");
@@ -21,19 +21,67 @@ await run("node", ["scripts/live-atlas-sanitize.mjs", `--input=${raw}`, `--outpu
 await run("node", ["scripts/live-atlas-privacy.mjs", `--input=${sanitized}`]);
 await run("node", ["scripts/live-atlas-build-fixtures.mjs", `--input=${sanitized}`, `--output=${path.join(sanitized, "fixture.html")}`]);
 
+const manifest = await readJson(path.join(raw, "manifest.json"));
+const performanceJson = await readJson(path.join(raw, "performance.json"));
+const timeline = (await readFile(path.join(raw, "timeline.ndjson"), "utf8"))
+  .trim()
+  .split(/\r?\n/)
+  .filter(Boolean)
+  .map((line) => JSON.parse(line));
+const screenshotFiles = (await readdir(path.join(raw, "screenshots")).catch(() => [])).filter((file) => file.endsWith(".png"));
+const screenshotEvidence = await Promise.all(screenshotFiles.map(async (file) => {
+  const buffer = await readFile(path.join(raw, "screenshots", file));
+  return { file, bytes: buffer.length, png: hasPngSignature(buffer) };
+}));
 const surfaces = await readJson(path.join(sanitized, "surfaces.json"));
 const composer = surfaces.composer;
-if (composer?.status !== "OBSERVED" || !composer.contract?.rect || composer.source !== "real-cdp-companion") {
+const overlay = surfaces.micaOverlay;
+const observedSurfaces = Object.values(surfaces).filter((surface) => surface.status === "OBSERVED");
+const recorderEvents = timeline.filter((event) => event.timeBase === "atlas-session-relative" && !String(event.type || "").startsWith("cdp_"));
+if (manifest.attached !== true || manifest.targetUrlExactMatch !== true) {
+  throw new Error("REAL_EDGE_PREFLIGHT failed: exact target was not attached");
+}
+if (!["atlas_stopped", "operator_stop"].includes(manifest.terminationReason) || manifest.truncated || performanceJson.truncated) {
+  throw new Error(`REAL_EDGE_PREFLIGHT failed: capture did not terminate cleanly (${manifest.terminationReason || "unknown"})`);
+}
+if (timeline.some((event) => event.type === "cdp_capture_error" || event.details?.status === "capture_error")) {
+  throw new Error("REAL_EDGE_PREFLIGHT failed: capture_error was recorded");
+}
+if (composer?.status !== "OBSERVED" || !contractHasStructure(composer.contract) || composer.source !== "real-cdp-companion") {
   throw new Error("REAL_EDGE_PREFLIGHT failed: composer real CDP contract was not observed");
 }
 if (!composer.variants?.length) {
   throw new Error("REAL_EDGE_PREFLIGHT failed: composer variant was not preserved");
+}
+if (!screenshotEvidence.some((item) => item.bytes > 8 && item.png)) {
+  throw new Error("REAL_EDGE_PREFLIGHT failed: no non-empty cropped PNG screenshot was produced");
+}
+if (performanceJson.recorderReportsIngested < 1) {
+  throw new Error("REAL_EDGE_PREFLIGHT failed: recorder report was not ingested");
+}
+if (performanceJson.recorderPerformanceIngested !== true || !performanceJson.recorderPerformance) {
+  throw new Error("REAL_EDGE_PREFLIGHT failed: recorder performance object was not ingested");
+}
+if (recorderEvents.length === 0) {
+  throw new Error("REAL_EDGE_PREFLIGHT failed: combined raw timeline contains no in-page recorder events");
+}
+if (overlay?.status !== "OBSERVED" || overlay.source !== "real-cdp-companion" || !contractHasStructure(overlay.contract)) {
+  throw new Error("REAL_EDGE_PREFLIGHT failed: Mica overlay real surface was not observed");
+}
+if (manifest.safety?.automatedSend || manifest.safety?.automatedEnter || manifest.safety?.automatedUpload || manifest.safety?.automatedConnectorAction) {
+  throw new Error("REAL_EDGE_PREFLIGHT failed: safety flags indicate automated mutation");
 }
 
 console.log(JSON.stringify({
   REAL_EDGE_PREFLIGHT: "PASS",
   raw,
   sanitized,
+  checkpointCount: manifest.checkpointCount,
+  capturedVisualCount: manifest.capturedCheckpointCount,
+  recorderEventCount: recorderEvents.length,
+  screenshotCount: screenshotEvidence.length,
+  observedSurfaces: observedSurfaces.map((surface) => surface.name).sort(),
+  terminationReason: manifest.terminationReason,
   automatedSend: false,
   automatedEnter: false,
   automatedUpload: false,
@@ -51,4 +99,24 @@ function run(command, args) {
 function argValue(name) {
   const arg = process.argv.find((item) => item.startsWith(`${name}=`));
   return arg ? arg.slice(name.length + 1) : null;
+}
+
+function hasPngSignature(buffer) {
+  return buffer.length >= 8
+    && buffer[0] === 0x89
+    && buffer[1] === 0x50
+    && buffer[2] === 0x4e
+    && buffer[3] === 0x47
+    && buffer[4] === 0x0d
+    && buffer[5] === 0x0a
+    && buffer[6] === 0x1a
+    && buffer[7] === 0x0a;
+}
+
+function contractHasStructure(contract) {
+  if (!contract || !contract.rect || !contract.tag) return false;
+  const attrs = contract.attrs && Object.keys(contract.attrs).length > 0;
+  const children = Array.isArray(contract.children) && contract.children.length > 0;
+  const text = Number(contract.text?.length || 0) > 0 && typeof contract.text?.category === "string";
+  return attrs || children || text;
 }
