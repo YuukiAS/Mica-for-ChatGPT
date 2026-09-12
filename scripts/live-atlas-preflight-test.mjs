@@ -74,6 +74,7 @@ try {
   const performanceJson = JSON.parse(await readFile(path.join(raw, "performance.json"), "utf8"));
   const timeline = (await readFile(path.join(raw, "timeline.ndjson"), "utf8")).trim().split(/\r?\n/).map((line) => JSON.parse(line));
   assert(result.stdout.includes('"REAL_EDGE_PREFLIGHT": "PASS"'), "preflight did not print PASS");
+  assert(result.stdout.includes("REAL_EDGE_CDP_ATTACHED = YES") && result.stdout.includes("SAFE_TO_START_ATLAS = YES"), "preflight did not expose CDP ready handshake");
   assert(manifest.targetUrlExactMatch === true && manifest.attached === true, "preflight did not prove exact attachment");
   assert(manifest.terminationReason === "atlas_stopped" && manifest.truncated === false, "preflight did not prove clean termination");
   assert(performanceJson.recorderReportsIngested === 1 && performanceJson.recorderPerformanceIngested === true, "preflight did not prove recorder ingestion");

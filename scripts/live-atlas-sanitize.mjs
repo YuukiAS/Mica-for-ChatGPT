@@ -69,7 +69,8 @@ async function loadSanitizedSurfaces(surfacesDir) {
 function sanitizeSurface(value, key) {
   const contract = value.contract ? sanitizeContract(value.contract) : null;
   if (contract) validateSurfaceContract(contract, `${key}.contract`);
-  return {
+  const turnId = safeId(value.turnId);
+  const surface = {
     schemaVersion: 1,
     name: key,
     status: value.status === "OBSERVED" && contract ? "OBSERVED" : "MISSING",
@@ -81,6 +82,8 @@ function sanitizeSurface(value, key) {
     variant: safeVariant(value.variant || `${value.generationId ? `g${value.generationId}` : "global"}:${value.stateClass || key}`),
     contract
   };
+  if (turnId) surface.turnId = turnId;
+  return surface;
 }
 
 function sanitizeContract(contract) {

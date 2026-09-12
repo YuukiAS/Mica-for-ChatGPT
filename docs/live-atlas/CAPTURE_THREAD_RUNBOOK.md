@@ -2,9 +2,18 @@
 
 Status: **READY FOR REAL EDGE NO-SEND PREFLIGHT.**
 
-Goal 009 protocol, targeting, ingestion, sanitizer, fixture, and lifecycle gates are implemented in `ae0732b Harden atlas ground truth capture`. Goal 010 preflight-integrity gates are implemented in this branch candidate.
+Goal 009 protocol, targeting, ingestion, sanitizer, fixture, and lifecycle gates are implemented in `ae0732b Harden atlas ground truth capture`. Goal 010 preflight-integrity gates are implemented in `05ebda7 Complete atlas preflight integrity gate`. Goal 011 coordinate-safe targeting and attach-handshake gates are implemented in this branch candidate.
 
 Do not begin Round 1 until the strengthened no-send real Edge preflight prints `REAL_EDGE_PREFLIGHT = PASS`. The preflight captures only the current empty-thread composer and Mica overlay; it must not send, submit, upload, run connectors, retry/regenerate, or mutate account/conversation state.
+
+During the no-send preflight and the later dedicated capture, click Mica -> Advanced -> `Start Atlas` only after the CDP companion has printed both:
+
+```text
+REAL_EDGE_CDP_ATTACHED = YES
+SAFE_TO_START_ATLAS = YES
+```
+
+Do not use a fixed sleep as a substitute for this handshake.
 
 This runbook defines the single dedicated real ChatGPT thread used to bootstrap Mica's Live Surface Atlas. The goal is to collect real UI structure, lifecycle ordering, timing evidence, and visual checkpoints once, then replay them locally instead of repeatedly asking the user to QA Mica.
 
@@ -39,8 +48,9 @@ Before Round 1:
 1. Reload the unpacked Mica candidate from `dist/mica-dev`.
 2. Open the dedicated capture thread.
 3. Start the hardened read-only CDP companion for this exact thread URL.
-4. Open Mica popup -> Advanced -> `Start Atlas`.
-5. Confirm Atlas shows Recording and the CDP companion reports one exact target attached in read-only mode.
+4. Wait until the CDP companion prints `SAFE_TO_START_ATLAS = YES`.
+5. Open Mica popup -> Advanced -> `Start Atlas`.
+6. Confirm Atlas shows Recording and the CDP companion reports one exact target attached in read-only mode.
 
 ## Round 1 — Real composer typing / IME / paste
 

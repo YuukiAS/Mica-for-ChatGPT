@@ -36,7 +36,19 @@ const onSigint = () => {
 };
 process.once("SIGINT", onSigint);
 
-const session = await runReadOnlyCaptureSession({ port, threadUrl, out, idleMs, drainMs, maxCheckpoints, abortSignal: controller.signal });
+const session = await runReadOnlyCaptureSession({
+  port,
+  threadUrl,
+  out,
+  idleMs,
+  drainMs,
+  maxCheckpoints,
+  abortSignal: controller.signal,
+  onAttached: () => {
+    console.log("REAL_EDGE_CDP_ATTACHED = YES");
+    console.log("SAFE_TO_START_ATLAS = YES");
+  }
+});
 process.off("SIGINT", onSigint);
 await writeRawSessionBundle({ out, threadUrl, session });
 

@@ -96,7 +96,8 @@ export async function runReadOnlyCaptureSession(options) {
     drainMs = DEFAULT_DRAIN_MS,
     abortSignal = null,
     fetchImpl = fetch,
-    connect = connectWebSocket
+    connect = connectWebSocket,
+    onAttached = null
   } = options;
   const target = await resolveExactTarget({ port, threadUrl, fetchImpl });
   const client = await connect(target.webSocketDebuggerUrl);
@@ -152,6 +153,7 @@ export async function runReadOnlyCaptureSession(options) {
     else abortSignal.addEventListener("abort", onAbort, { once: true });
   }
 
+  let messageListenerActive = false;
   client.onMessage((message) => {
     if (stopped) return;
     const checkpoint = parseCheckpointMessage(message);
@@ -166,10 +168,14 @@ export async function runReadOnlyCaptureSession(options) {
     });
     trackCapture(capture);
   });
+  messageListenerActive = true;
 
   await client.send("Runtime.enable");
   await client.send("Log.enable");
   attached = true;
+  if (typeof onAttached === "function") {
+    onAttached({ attached: true, target, messageListenerActive, runtimeEnabled: true, logEnabled: true });
+  }
   await client.send("Performance.getMetrics");
   armInactivityTimer();
   await sessionDone;
@@ -250,6 +256,7 @@ export async function runReadOnlyCaptureSession(options) {
         checkpointId: checkpoint.checkpointId,
         stateClass: checkpoint.stateClass,
         generationId: checkpoint.generationId ?? null,
+        turnId: captured.turnId || null,
         surfaceKey: captured.surfaceKey,
         screenshot: captured.screenshotFile ? path.basename(captured.screenshotFile) : null,
         clipped: !!captured.screenshotFile,
@@ -298,7 +305,7 @@ export async function captureCheckpoint(client, checkpoint, paths) {
   const layout = await client.send("Page.getLayoutMetrics");
   const snapshot = await client.send("DOMSnapshot.captureSnapshot", { computedStyles: STYLE_WHITELIST });
   const metrics = await client.send("Performance.getMetrics");
-  const match = resolveSurfaceMatch(snapshot, surfaceKey, checkpoint);
+  const match = resolveSurfaceMatch(snapshot, surfaceKey, checkpoint, { layoutMetrics: layout });
   if (!match) {
     const surface = {
       schemaVersion: 1,
@@ -315,7 +322,7 @@ export async function captureCheckpoint(client, checkpoint, paths) {
     };
     const surfaceFile = path.join(paths.surfacesDir, `${surfaceKey}-${safeFilePart(checkpoint.checkpointId)}.json`);
     await writeJson(surfaceFile, surface);
-    return { surfaceKey, status: "MISSING", surfaceFile, screenshotFile: null, missingReason: surface.missingReason };
+    return { surfaceKey, status: "MISSING", surfaceFile, screenshotFile: null, missingReason: surface.missingReason, turnId: null };
   }
   const rect = match.rect;
   const clip = sanitizeClip(rect, layout);
@@ -328,6 +335,7 @@ export async function captureCheckpoint(client, checkpoint, paths) {
     checkpointId: checkpoint.checkpointId,
     stateClass: checkpoint.stateClass,
     generationId: checkpoint.generationId ?? null,
+    turnId: match.turnId || safeCheckpointTurnId(checkpoint.turnId) || null,
     variant: variantForCheckpoint(checkpoint),
     privacy: privacyFlags(),
     contract: contractForSurface(snapshot, surfaceKey, clip, match.nodeIndex),
@@ -337,7 +345,7 @@ export async function captureCheckpoint(client, checkpoint, paths) {
   const screenshotFile = path.join(paths.screenshotsDir, `${surfaceKey}-${safeFilePart(checkpoint.checkpointId)}.png`);
   await writeJson(surfaceFile, surface);
   await writeFile(screenshotFile, Buffer.from(String(screenshot?.data || ""), "base64"));
-  return { surfaceKey, status: "OBSERVED", surfaceFile, screenshotFile, clip };
+  return { surfaceKey, status: "OBSERVED", surfaceFile, screenshotFile, clip, turnId: surface.turnId };
 }
 
 export function parseCheckpointMessage(message) {
@@ -402,22 +410,36 @@ export function isVisualCheckpoint(checkpoint) {
   return !!surfaceKeyForCheckpoint(checkpoint.stateClass);
 }
 
-export function resolveSurfaceMatch(snapshot, surfaceKey, checkpoint = {}) {
+export function resolveSurfaceMatch(snapshot, surfaceKey, checkpoint = {}, options = {}) {
   const doc = snapshot?.documents?.[0];
   const layout = doc?.layout;
   const nodes = doc?.nodes;
   assertOfficialSnapshotStrings(snapshot);
   if (!layout || !nodes || !surfaceKey) return null;
   const targetRect = normalizeTargetRect(checkpoint.targetRect || checkpoint.rect);
+  const expectedTurnId = safeCheckpointTurnId(checkpoint.turnId);
+  const turnBound = isTurnBoundSurface(surfaceKey);
+  const ownerTurnBound = isAssistantOwnedSurface(surfaceKey);
+  const viewportOffset = viewportOffsetFor(doc, options.layoutMetrics);
   const candidates = [];
   const layoutNodeIndexes = layout.nodeIndex || [];
   const bounds = layout.bounds || [];
   for (let index = 0; index < layoutNodeIndexes.length; index += 1) {
     const nodeIndex = layoutNodeIndexes[index];
     if (!nodeMatchesSurface(snapshot, doc, nodeIndex, surfaceKey, checkpoint)) continue;
-    const rect = rectFromBounds(bounds[index]);
-    if (!rect) continue;
-    candidates.push({ nodeIndex, rect, score: targetRect ? rectDistance(rect, targetRect) : index });
+    const documentRect = rectFromBounds(bounds[index]);
+    if (!documentRect) continue;
+    const rect = documentRectToViewportRect(documentRect, viewportOffset);
+    const identity = surfaceTurnIdentity(snapshot, doc, nodeIndex, surfaceKey, checkpoint);
+    if ((turnBound || ownerTurnBound) && expectedTurnId && identity.turnId !== expectedTurnId) continue;
+    candidates.push({
+      nodeIndex,
+      rect,
+      documentRect,
+      turnId: identity.turnId || null,
+      owningTurnNodeIndex: identity.owningTurnNodeIndex ?? null,
+      score: targetRect ? rectDistance(rect, targetRect) : index
+    });
   }
   candidates.sort((a, b) => a.score - b.score);
   return candidates[0] || null;
@@ -708,7 +730,7 @@ function decodeFrame(buffer) {
 }
 
 function nodeMatchesSurface(snapshot, doc, nodeIndex, surfaceKey, checkpoint = {}) {
-  const attrs = sanitizedAttributes(snapshot, doc, nodeIndex);
+  const attrs = nodeAttributes(snapshot, doc, nodeIndex);
   const strings = snapshotStrings(snapshot);
   const tag = stringAt(strings, doc.nodes?.nodeName?.[nodeIndex] || "").toLowerCase();
   const checkpointRole = checkpoint.role || checkpoint.surfaceRole || null;
@@ -725,6 +747,90 @@ function nodeMatchesSurface(snapshot, doc, nodeIndex, surfaceKey, checkpoint = {
   }
   if (surfaceKey === "longThreadMountedWindow") return /conversation|thread|scroll/i.test(attrs["data-testid"] || attrs.role || "");
   return false;
+}
+
+function isTurnBoundSurface(surfaceKey) {
+  return surfaceKey === "userTurn"
+    || surfaceKey === "assistantStreaming"
+    || surfaceKey === "assistantSettled"
+    || surfaceKey === "richMarkdown";
+}
+
+function isAssistantOwnedSurface(surfaceKey) {
+  return surfaceKey === "assistantActionBar" || surfaceKey === "nativeCopyArea";
+}
+
+function surfaceTurnIdentity(snapshot, doc, nodeIndex, surfaceKey, checkpoint = {}) {
+  if (surfaceKey === "userTurn") {
+    return { turnId: turnHintForNode(snapshot, doc, nodeIndex, "user"), owningTurnNodeIndex: nodeIndex };
+  }
+  if (surfaceKey === "assistantStreaming" || surfaceKey === "assistantSettled" || surfaceKey === "richMarkdown") {
+    return { turnId: turnHintForNode(snapshot, doc, nodeIndex, "assistant"), owningTurnNodeIndex: nodeIndex };
+  }
+  if (isAssistantOwnedSurface(surfaceKey)) {
+    const owner = findOwningTurnNodeIndex(snapshot, doc, nodeIndex, "assistant");
+    return {
+      turnId: owner === null ? null : turnHintForNode(snapshot, doc, owner, "assistant"),
+      owningTurnNodeIndex: owner
+    };
+  }
+  return { turnId: safeCheckpointTurnId(checkpoint.turnId), owningTurnNodeIndex: null };
+}
+
+function findOwningTurnNodeIndex(snapshot, doc, nodeIndex, expectedRole) {
+  const parentIndex = doc.nodes?.parentIndex || [];
+  let current = nodeIndex;
+  while (current !== null && current !== undefined && current >= 0) {
+    const role = roleForNode(snapshot, doc, current);
+    if (role === expectedRole) return current;
+    current = parentIndex[current];
+  }
+  return null;
+}
+
+function turnHintForNode(snapshot, doc, nodeIndex, expectedRole = null) {
+  const role = expectedRole || roleForNode(snapshot, doc, nodeIndex);
+  if (!role) return null;
+  const direct = nodeAttributes(snapshot, doc, nodeIndex);
+  const roleNodeIndex = direct["data-message-author-role"] === role ? nodeIndex : findDescendantRoleNodeIndex(snapshot, doc, nodeIndex, role);
+  const roleAttrs = roleNodeIndex === null ? {} : nodeAttributes(snapshot, doc, roleNodeIndex);
+  const stable = direct["data-testid"] || roleAttrs["data-testid"] || direct["data-message-id"] || roleAttrs["data-message-id"];
+  if (stable && /^[a-zA-Z0-9:_-]{1,120}$/.test(stable)) return safeTurnHint(`${role}:${stable}`);
+  return null;
+}
+
+function roleForNode(snapshot, doc, nodeIndex) {
+  const direct = nodeAttributes(snapshot, doc, nodeIndex)["data-message-author-role"];
+  if (direct) return direct;
+  for (const role of ["user", "assistant", "tool"]) {
+    if (findDescendantRoleNodeIndex(snapshot, doc, nodeIndex, role) !== null) return role;
+  }
+  return null;
+}
+
+function findDescendantRoleNodeIndex(snapshot, doc, nodeIndex, role) {
+  const pending = childIndexesOf(doc, nodeIndex).slice(0, 64);
+  let inspected = 0;
+  while (pending.length && inspected < 256) {
+    inspected += 1;
+    const current = pending.shift();
+    const attrs = nodeAttributes(snapshot, doc, current);
+    if (attrs["data-message-author-role"] === role) return current;
+    pending.push(...childIndexesOf(doc, current).slice(0, 32));
+  }
+  return null;
+}
+
+function nodeAttributes(snapshot, doc, nodeIndex) {
+  const attrs = {};
+  const strings = snapshotStrings(snapshot);
+  const raw = doc.nodes?.attributes?.[nodeIndex] || [];
+  for (let index = 0; index < raw.length; index += 2) {
+    const key = stringAt(strings, raw[index]);
+    const value = stringAt(strings, raw[index + 1]);
+    attrs[key] = value;
+  }
+  return attrs;
 }
 
 function findSurfaceNodeIndex(snapshot, doc, surfaceKey, checkpoint = {}) {
@@ -812,6 +918,18 @@ function snapshotStrings(snapshot) {
 function rectFromBounds(rect) {
   if (!Array.isArray(rect) || rect.length < 4) return null;
   return { x: Number(rect[0]), y: Number(rect[1]), width: Number(rect[2]), height: Number(rect[3]) };
+}
+
+function viewportOffsetFor(doc, layoutMetrics = null) {
+  const visual = layoutMetrics?.visualViewport || {};
+  const layout = layoutMetrics?.layoutViewport || {};
+  const pageX = firstFinite(visual.pageX, layout.pageX, doc?.scrollOffsetX, 0);
+  const pageY = firstFinite(visual.pageY, layout.pageY, doc?.scrollOffsetY, 0);
+  return { x: pageX, y: pageY };
+}
+
+function documentRectToViewportRect(rect, offset) {
+  return { x: rect.x - offset.x, y: rect.y - offset.y, width: rect.width, height: rect.height };
 }
 
 function normalizeTargetRect(rect) {
@@ -915,6 +1033,28 @@ function stableAttr(value) {
   if (value === "") return "";
   if (/^[a-zA-Z0-9:_ -]{1,80}$/.test(value)) return value;
   return `attr-length-${String(value).length}`;
+}
+
+function safeCheckpointTurnId(value) {
+  const text = String(value || "");
+  return /^turn:[a-z0-9]{1,32}$/.test(text) ? text : null;
+}
+
+function safeTurnHint(key) {
+  let hash = 2166136261;
+  for (let index = 0; index < key.length; index += 1) {
+    hash ^= key.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `turn:${(hash >>> 0).toString(36)}`;
+}
+
+function firstFinite(...values) {
+  for (const value of values) {
+    const number = Number(value);
+    if (Number.isFinite(number)) return number;
+  }
+  return 0;
 }
 
 function normalizeTag(tag) {
