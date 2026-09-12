@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import http from "node:http";
 import net from "node:net";
 import path from "node:path";
+import { surfaceKeys } from "./live-atlas-common.mjs";
 
 export const READ_ONLY_CDP_COMMANDS = new Set([
   "Runtime.enable",
@@ -38,6 +39,9 @@ export const STYLE_WHITELIST = [
 ];
 
 export const CHECKPOINT_PREFIX = "MICA_ATLAS_CHECKPOINT ";
+export const DEFAULT_INACTIVITY_HARD_CAP_MS = 15 * 60 * 1000;
+export const DEFAULT_DRAIN_MS = 750;
+export const DEFAULT_MAX_CHECKPOINTS = 500;
 
 export function assertReadOnlyCommand(command) {
   if (FORBIDDEN_CDP_COMMANDS.has(command) || FORBIDDEN_CDP_PREFIXES.some((prefix) => command.startsWith(prefix))) {
@@ -62,8 +66,10 @@ export async function runReadOnlyCaptureSession(options) {
     port,
     threadUrl,
     out,
-    maxCheckpoints = 24,
-    idleMs = 5000,
+    maxCheckpoints = DEFAULT_MAX_CHECKPOINTS,
+    idleMs = DEFAULT_INACTIVITY_HARD_CAP_MS,
+    drainMs = DEFAULT_DRAIN_MS,
+    abortSignal = null,
     fetchImpl = fetch,
     connect = connectWebSocket
   } = options;
@@ -78,21 +84,111 @@ export async function runReadOnlyCaptureSession(options) {
 
   let attached = false;
   let checkpointCount = 0;
+  let capturedCheckpointCount = 0;
   let stopped = false;
-  let idleTimer = null;
-  let finishIdle = null;
-
-  const stopAfterIdle = () => new Promise((resolve) => {
-    finishIdle = resolve;
-    idleTimer = setTimeout(resolve, idleMs);
+  let terminationReason = null;
+  let truncation = null;
+  let inactivityTimer = null;
+  let drainTimer = null;
+  let finishSession = null;
+  const pendingCaptures = new Set();
+  const sessionDone = new Promise((resolve) => {
+    finishSession = resolve;
   });
 
-  client.onMessage(async (message) => {
+  const clearInactivityTimer = () => {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    inactivityTimer = null;
+  };
+  const armInactivityTimer = () => {
+    clearInactivityTimer();
+    if (!Number.isFinite(idleMs) || idleMs <= 0) return;
+    inactivityTimer = setTimeout(() => requestFinish("inactivity_hard_cap"), idleMs);
+  };
+  const requestFinish = (reason) => {
+    if (terminationReason) return;
+    terminationReason = reason;
+    clearInactivityTimer();
+    if (reason === "atlas_stopped" || reason === "operator_stop") {
+      drainTimer = setTimeout(() => finishSession(), Math.max(0, drainMs));
+      return;
+    }
+    finishSession();
+  };
+  const trackCapture = (promise) => {
+    pendingCaptures.add(promise);
+    promise.finally(() => pendingCaptures.delete(promise));
+  };
+  const onAbort = () => requestFinish("operator_stop");
+  if (abortSignal) {
+    if (abortSignal.aborted) requestFinish("operator_stop");
+    else abortSignal.addEventListener("abort", onAbort, { once: true });
+  }
+
+  client.onMessage((message) => {
     if (stopped) return;
     const checkpoint = parseCheckpointMessage(message);
     if (!checkpoint) return;
+    const capture = handleCheckpoint(checkpoint).catch((error) => {
+      timeline.push(cdpLifecycleEvent("cdp_capture_error", {
+        checkpointId: checkpoint.checkpointId || null,
+        stateClass: checkpoint.stateClass || null,
+        message: error.message
+      }));
+      requestFinish("capture_error");
+    });
+    trackCapture(capture);
+  });
+
+  await client.send("Runtime.enable");
+  await client.send("Log.enable");
+  attached = true;
+  await client.send("Performance.getMetrics");
+  armInactivityTimer();
+  await sessionDone;
+  if (drainTimer) clearTimeout(drainTimer);
+  await Promise.allSettled([...pendingCaptures]);
+  stopped = true;
+  if (abortSignal) abortSignal.removeEventListener("abort", onAbort);
+  clearInactivityTimer();
+  await client.close();
+  return {
+    attached,
+    target,
+    timeline,
+    surfaces: [...surfaces.keys()],
+    checkpointCount,
+    capturedCheckpointCount,
+    commandsSent: client.commandsSent,
+    terminationReason: terminationReason || "unknown",
+    explicitStop: terminationReason === "atlas_stopped",
+    drainMs,
+    inactivityHardCapMs: idleMs,
+    maxCheckpoints,
+    truncated: !!truncation,
+    truncation
+  };
+
+  async function handleCheckpoint(checkpoint) {
     checkpointCount += 1;
+    armInactivityTimer();
+    const terminal = isTerminalCheckpoint(checkpoint);
+    if (checkpointCount > maxCheckpoints) {
+      if (!truncation) {
+        truncation = {
+          reason: "checkpoint_capacity_exceeded",
+          maxCheckpoints,
+          firstDroppedCheckpointId: checkpoint.checkpointId || null,
+          firstDroppedStateClass: checkpoint.stateClass || null
+        };
+        timeline.push(cdpLifecycleEvent("cdp_checkpoint_truncation", truncation));
+        requestFinish("checkpoint_capacity_exceeded");
+      }
+      if (terminal) requestFinish("atlas_stopped");
+      return;
+    }
     const captured = await captureCheckpoint(client, checkpoint, { screenshotsDir, surfacesDir });
+    capturedCheckpointCount += 1;
     timeline.push({
       schemaVersion: 1,
       type: "cdp_checkpoint_capture",
@@ -100,28 +196,37 @@ export async function runReadOnlyCaptureSession(options) {
       details: {
         checkpointId: checkpoint.checkpointId,
         stateClass: checkpoint.stateClass,
+        generationId: checkpoint.generationId ?? null,
         surfaceKey: captured.surfaceKey,
         screenshot: captured.screenshotFile ? path.basename(captured.screenshotFile) : null,
         clipped: true
       }
     });
     surfaces.set(captured.surfaceKey, captured.surfaceFile);
-    if (checkpointCount >= maxCheckpoints) {
-      stopped = true;
-      if (idleTimer) clearTimeout(idleTimer);
-      await client.close();
-      if (finishIdle) finishIdle();
-    }
-  });
+    if (terminal) requestFinish("atlas_stopped");
+  }
+}
 
-  await client.send("Runtime.enable");
-  await client.send("Log.enable");
-  attached = true;
-  await client.send("Performance.getMetrics");
-  await stopAfterIdle();
-  stopped = true;
-  await client.close();
-  return { attached, target, timeline, surfaces: [...surfaces.keys()], checkpointCount, commandsSent: client.commandsSent };
+export async function writeRawSessionBundle({ out, threadUrl, session }) {
+  const coverage = Object.fromEntries(surfaceKeys.map((key) => [
+    key,
+    { status: session.surfaces.includes(key) ? "OBSERVED" : "MISSING", count: session.surfaces.filter((item) => item === key).length }
+  ]));
+  await mkdir(out, { recursive: true });
+  await writeJson(path.join(out, "manifest.json"), createManifest({ threadUrl, target: session.target, commandsSent: session.commandsSent, session }));
+  await writeFile(path.join(out, "timeline.ndjson"), `${session.timeline.map((event) => JSON.stringify(event)).join("\n")}\n`);
+  await writeJson(path.join(out, "coverage.json"), coverage);
+  await writeJson(path.join(out, "performance.json"), {
+    schemaVersion: 1,
+    source: "real-cdp-companion",
+    privacy: privacyFlags(),
+    safety: safetyFlags(),
+    cdpMetricsCaptured: session.commandsSent.includes("Performance.getMetrics"),
+    terminationReason: session.terminationReason,
+    explicitStop: session.explicitStop,
+    truncated: session.truncated
+  });
+  return { coverage };
 }
 
 export async function captureCheckpoint(client, checkpoint, paths) {
@@ -161,6 +266,10 @@ export function parseCheckpointMessage(message) {
   } catch (_error) {
     return null;
   }
+}
+
+export function isTerminalCheckpoint(checkpoint) {
+  return checkpoint?.stateClass === "atlas_stopped" || checkpoint?.terminal === true;
 }
 
 export function surfaceKeyForCheckpoint(stateClass) {
@@ -218,7 +327,7 @@ export function sanitizeNodeContract(doc, nodeIndex, clip, depth) {
   };
 }
 
-export function createManifest({ threadUrl, target, commandsSent }) {
+export function createManifest({ threadUrl, target, commandsSent, session = null }) {
   return {
     schemaVersion: 1,
     kind: "mica.liveSurfaceAtlas.raw",
@@ -230,8 +339,26 @@ export function createManifest({ threadUrl, target, commandsSent }) {
     styleWhitelist: STYLE_WHITELIST,
     readOnlyCommands: [...READ_ONLY_CDP_COMMANDS],
     commandsSent,
+    terminationReason: session?.terminationReason || null,
+    explicitStop: session?.explicitStop || false,
+    checkpointCount: session?.checkpointCount ?? null,
+    capturedCheckpointCount: session?.capturedCheckpointCount ?? null,
+    maxCheckpoints: session?.maxCheckpoints ?? null,
+    inactivityHardCapMs: session?.inactivityHardCapMs ?? null,
+    drainMs: session?.drainMs ?? null,
+    truncated: session?.truncated || false,
+    truncation: session?.truncation || null,
     privacy: privacyFlags(),
     safety: safetyFlags()
+  };
+}
+
+function cdpLifecycleEvent(type, details) {
+  return {
+    schemaVersion: 1,
+    type,
+    relativeTimeMs: null,
+    details
   };
 }
 
@@ -331,8 +458,18 @@ async function openWebSocket(url) {
       socket.write(encodeFrame(Buffer.from(payload)));
     },
     close() {
-      socket.destroy();
-      return Promise.resolve();
+      if (socket.destroyed) return Promise.resolve();
+      return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          if (!socket.destroyed) socket.destroy();
+          resolve();
+        }, 200);
+        socket.once("close", () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+        socket.end(encodeFrame(Buffer.alloc(0), 8));
+      });
     }
   };
   socket.on("data", (chunk) => {
@@ -341,6 +478,7 @@ async function openWebSocket(url) {
       const decoded = decodeFrame(buffer);
       if (!decoded) break;
       buffer = decoded.rest;
+      if (decoded.opcode === 8) continue;
       if (decoded.opcode === 1 && wrapper.onFrame) wrapper.onFrame(decoded.payload.toString("utf8"));
     }
   });
@@ -370,9 +508,9 @@ function readHandshake(socket, key) {
   });
 }
 
-function encodeFrame(payload) {
+function encodeFrame(payload, opcode = 1) {
   const header = [];
-  header.push(0x81);
+  header.push(0x80 | opcode);
   const mask = randomBytes(4);
   if (payload.length < 126) header.push(0x80 | payload.length);
   else if (payload.length < 65536) header.push(0x80 | 126, payload.length >> 8, payload.length & 0xff);

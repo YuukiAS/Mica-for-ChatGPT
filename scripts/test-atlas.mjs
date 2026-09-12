@@ -5,6 +5,7 @@ const steps = [
   ["build", "node", ["scripts/build.mjs"]],
   ["atlas:check", "node", ["scripts/live-atlas-check.mjs"]],
   ["atlas:cdp-protocol", "node", ["scripts/live-atlas-cdp-protocol-test.mjs"]],
+  ["atlas:cdp-long-session", "node", ["scripts/live-atlas-cdp-long-session-test.mjs"]],
   ["atlas:sample", "node", ["scripts/live-atlas-sample.mjs"]],
   ["atlas:sanitize", "node", ["scripts/live-atlas-sanitize.mjs"]],
   ["atlas:privacy", "node", ["scripts/live-atlas-privacy.mjs"]],

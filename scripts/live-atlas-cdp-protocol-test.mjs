@@ -47,6 +47,10 @@ server.on("upgrade", (request, socket) => {
       const frame = decodeFrame(buffer);
       if (!frame) break;
       buffer = frame.rest;
+      if (frame.opcode === 8) {
+        socket.end();
+        continue;
+      }
       const message = JSON.parse(frame.payload.toString("utf8"));
       commands.push({ method: message.method, params: message.params || {} });
       socket.write(encodeFrame(JSON.stringify({ id: message.id, result: resultFor(message.method, message.params || {}) })));
@@ -147,6 +151,7 @@ function encodeFrame(payload) {
 
 function decodeFrame(buffer) {
   if (buffer.length < 2) return null;
+  const opcode = buffer[0] & 0x0f;
   let length = buffer[1] & 0x7f;
   let offset = 2;
   if (length === 126) {
@@ -162,5 +167,5 @@ function decodeFrame(buffer) {
   if (mask) {
     for (let index = 0; index < payload.length; index += 1) payload[index] ^= mask[index % 4];
   }
-  return { payload, rest: buffer.subarray(offset + length) };
+  return { opcode, payload, rest: buffer.subarray(offset + length) };
 }

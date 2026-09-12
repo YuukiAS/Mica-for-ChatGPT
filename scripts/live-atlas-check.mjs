@@ -15,9 +15,11 @@ for (const forbidden of ["Input.dispatchKeyEvent", "Input.insertText", "Input.di
   assert(!directUse, `CDP companion exposes forbidden CDP call ${forbidden}`);
 }
 assert(cdpCore.includes("FORBIDDEN_CDP_COMMANDS") && cdpCore.includes("FORBIDDEN_CDP_PREFIXES"), "CDP companion must keep explicit deny lists");
+assert(cdpCore.includes("DEFAULT_INACTIVITY_HARD_CAP_MS") && cdpCore.includes("DEFAULT_MAX_CHECKPOINTS = 500"), "CDP companion must use long-session retention and hard-cap defaults");
+assert(cdpCore.includes("isTerminalCheckpoint") && cdpCore.includes("atlas_stopped") && cdpCore.includes("operator_stop"), "CDP companion must support explicit stop semantics");
 for (const allowed of ["Runtime.enable", "Log.enable", "Page.getLayoutMetrics", "DOMSnapshot.captureSnapshot", "Page.captureScreenshot", "Performance.getMetrics"]) {
   assert((cdp + cdpCore).includes(allowed), `CDP companion missing allowlisted command ${allowed}`);
 }
 assert(cdpCore.includes("connectWebSocket") && cdpCore.includes("webSocketDebuggerUrl"), "CDP companion must implement WebSocket attach");
 assert(cdpCore.includes("captureCheckpoint") && cdpCore.includes("Page.captureScreenshot") && cdpCore.includes("clip"), "CDP companion must capture clipped surfaces at checkpoints");
-console.log(JSON.stringify({ passed: true, liveSurfaceAtlas: true, readOnlyCdpCompanion: true, protocolHarness: "scripts/live-atlas-cdp-protocol-test.mjs", playwrightRealSiteTraceUsed: false, automatedSend: false, automatedEnter: false, automatedUpload: false }, null, 2));
+console.log(JSON.stringify({ passed: true, liveSurfaceAtlas: true, readOnlyCdpCompanion: true, protocolHarness: "scripts/live-atlas-cdp-protocol-test.mjs", longSessionHarness: "scripts/live-atlas-cdp-long-session-test.mjs", playwrightRealSiteTraceUsed: false, automatedSend: false, automatedEnter: false, automatedUpload: false }, null, 2));

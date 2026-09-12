@@ -131,6 +131,12 @@
     state.session.stoppedAtMonotonicMs = now();
     state.session.stopReason = reason;
     record("atlas_stopped", { reason, listenerCount: 0, observerCount: 0, timerCount: 0 });
+    emitCheckpointMarker("atlas_stopped", {
+      checkpointId: `${state.session?.id || "inactive"}:stopped`,
+      monotonicTimestamp: round(relativeNow()),
+      terminal: true,
+      reason
+    });
     return summarizeSession("stopped");
   }
 
@@ -616,14 +622,18 @@
     }
     state.counters.checkpoints += 1;
     const event = record("checkpoint", { checkpointId: `${state.session?.id || "inactive"}:${state.counters.checkpoints}`, stateClass, ...sanitized });
-    try {
-      console.info(`${CHECKPOINT_PREFIX}${JSON.stringify({
-        checkpointId: event.details.checkpointId,
-        stateClass,
-        monotonicTimestamp: event.monotonicTimeMs
-      })}`);
-    } catch (_error) {}
+    emitCheckpointMarker(stateClass, {
+      checkpointId: event.details.checkpointId,
+      monotonicTimestamp: event.monotonicTimeMs,
+      generationId: sanitized.generationId ?? null
+    });
     return event;
+  }
+
+  function emitCheckpointMarker(stateClass, details) {
+    try {
+      console.info(`${CHECKPOINT_PREFIX}${JSON.stringify({ stateClass, ...details })}`);
+    } catch (_error) {}
   }
 
   function isDedupeCheckpoint(stateClass) {
