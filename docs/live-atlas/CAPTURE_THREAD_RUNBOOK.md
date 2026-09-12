@@ -1,10 +1,12 @@
 # Mica Live Surface Atlas — Dedicated Capture Thread Runbook
 
-Status: **READY FOR REAL EDGE NO-SEND PREFLIGHT.**
+Status: **PRE-CAPTURE BLOCKED by Goal 012 screenshot-coordinate integrity gate.**
 
-Goal 009 protocol, targeting, ingestion, sanitizer, fixture, and lifecycle gates are implemented in `ae0732b Harden atlas ground truth capture`. Goal 010 preflight-integrity gates are implemented in `05ebda7 Complete atlas preflight integrity gate`. Goal 011 coordinate-safe targeting and attach-handshake gates are implemented in this branch candidate.
+Goal 009 protocol, targeting, ingestion, sanitizer, fixture, and lifecycle gates are implemented in `ae0732b Harden atlas ground truth capture`. Goal 010 preflight-integrity gates are implemented in `05ebda7 Complete atlas preflight integrity gate`. Goal 011 coordinate-safe targeting and attach-handshake gates are implemented in `45aa9dc Harden atlas targeting handshake`.
 
-Do not begin Round 1 until the strengthened no-send real Edge preflight prints `REAL_EDGE_PREFLIGHT = PASS`. The preflight captures only the current empty-thread composer and Mica overlay; it must not send, submit, upload, run connectors, retry/regenerate, or mutate account/conversation state.
+A final code audit found that the current matcher correctly converts DOMSnapshot document coordinates into viewport coordinates for comparing against `getBoundingClientRect()`, but screenshot capture still reuses that viewport-relative rectangle. `Page.captureScreenshot` needs a page/document clip with deliberate CSS-pixel/DIP conversion. See `docs/tasks/2026-09-12-v020-goal-012-screenshot-coordinate-integrity.md`.
+
+Do not run the real Edge no-send preflight or Round 1 until Goal 012 passes and this runbook is explicitly marked READY again.
 
 During the no-send preflight and the later dedicated capture, click Mica -> Advanced -> `Start Atlas` only after the CDP companion has printed both:
 
