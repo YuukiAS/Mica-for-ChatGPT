@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import http from "node:http";
 import net from "node:net";
 import path from "node:path";
@@ -8,6 +8,8 @@ import { surfaceKeys } from "./live-atlas-common.mjs";
 export const READ_ONLY_CDP_COMMANDS = new Set([
   "Runtime.enable",
   "Log.enable",
+  "Target.getTargets",
+  "Target.attachToTarget",
   "DOMSnapshot.captureSnapshot",
   "Page.getLayoutMetrics",
   "Page.captureScreenshot",
@@ -86,21 +88,118 @@ export async function resolveExactTarget({ port, threadUrl, fetchImpl = fetch })
   return target;
 }
 
+export function defaultEdgeUserDataDir(env = process.env) {
+  return env.LOCALAPPDATA ? path.join(env.LOCALAPPDATA, "Microsoft", "Edge", "User Data") : null;
+}
+
+export async function readDevToolsActivePort(userDataDir, readFileImpl = readFile) {
+  if (!userDataDir) throw new Error("DevToolsActivePort discovery requires --user-data-dir");
+  const file = path.join(userDataDir, "DevToolsActivePort");
+  const text = await readFileImpl(file, "utf8");
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const port = Number(lines[0]);
+  const browserPath = lines[1] || "";
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+    throw new Error(`Invalid DevToolsActivePort port in ${file}`);
+  }
+  if (!browserPath.startsWith("/devtools/browser/")) {
+    throw new Error(`Invalid DevToolsActivePort browser WebSocket path in ${file}`);
+  }
+  return {
+    file,
+    port,
+    browserPath,
+    webSocketDebuggerUrl: `ws://127.0.0.1:${port}${browserPath}`
+  };
+}
+
+export async function resolveCaptureEndpoint({ port, threadUrl, userDataDir = null, fetchImpl = fetch, readFileImpl = readFile }) {
+  validateAtlasThreadUrl(threadUrl);
+  const attempts = [];
+  const tryDevToolsFile = async (dir, source) => {
+    if (!dir) return null;
+    try {
+      const entry = await readDevToolsActivePort(dir, readFileImpl);
+      attempts.push({ mode: "devtools-active-port", source, ok: true });
+      return { mode: "browser", source, userDataDir: dir, webSocketDebuggerUrl: entry.webSocketDebuggerUrl, port: entry.port, attempts };
+    } catch (error) {
+      attempts.push({ mode: "devtools-active-port", source, ok: false, error: error.message });
+      return null;
+    }
+  };
+
+  if (userDataDir) {
+    const endpoint = await tryDevToolsFile(userDataDir, "explicit-user-data-dir");
+    if (endpoint) return endpoint;
+  }
+
+  try {
+    const target = await resolveExactTarget({ port, threadUrl, fetchImpl });
+    attempts.push({ mode: "http-json-list", port, ok: true });
+    return { mode: "direct-page", target, webSocketDebuggerUrl: target.webSocketDebuggerUrl, port, attempts };
+  } catch (error) {
+    attempts.push({ mode: "http-json-list", port, ok: false, error: error.message });
+  }
+
+  const defaultDir = defaultEdgeUserDataDir();
+  if (defaultDir && defaultDir !== userDataDir) {
+    const endpoint = await tryDevToolsFile(defaultDir, "default-edge-user-data-dir");
+    if (endpoint) return endpoint;
+  }
+
+  const detail = attempts.map((attempt) => `${attempt.mode}${attempt.source ? `:${attempt.source}` : ""}${attempt.port ? `:${attempt.port}` : ""}=${attempt.ok ? "ok" : attempt.error}`).join("; ");
+  throw new Error(`Unable to resolve Atlas CDP target for exact thread URL. Attempts: ${detail}`);
+}
+
+export async function attachBrowserPageTarget(client, threadUrl) {
+  validateAtlasThreadUrl(threadUrl);
+  const targetResult = await client.send("Target.getTargets", {}, { rootSession: true });
+  const targetInfos = Array.isArray(targetResult.targetInfos) ? targetResult.targetInfos : [];
+  const matches = targetInfos.filter((target) => target.type === "page" && target.url === threadUrl);
+  if (matches.length !== 1) {
+    throw new Error(`Expected exactly one browser target for ${threadUrl}; found ${matches.length}`);
+  }
+  const target = matches[0];
+  if (!target.targetId) throw new Error("Browser target discovery returned a page without targetId");
+  const attached = await client.send("Target.attachToTarget", { targetId: target.targetId, flatten: true }, { rootSession: true });
+  if (!attached.sessionId) throw new Error("Target.attachToTarget did not return a flattened sessionId");
+  client.setPageSessionId?.(attached.sessionId);
+  return {
+    target: {
+      type: target.type,
+      url: target.url,
+      title: target.title || "",
+      targetId: target.targetId,
+      attachedVia: "browser-websocket"
+    },
+    sessionId: attached.sessionId
+  };
+}
+
 export async function runReadOnlyCaptureSession(options) {
   const {
     port,
     threadUrl,
     out,
+    userDataDir = null,
     maxCheckpoints = DEFAULT_MAX_CHECKPOINTS,
     idleMs = DEFAULT_INACTIVITY_HARD_CAP_MS,
     drainMs = DEFAULT_DRAIN_MS,
     abortSignal = null,
     fetchImpl = fetch,
+    readFileImpl = readFile,
     connect = connectWebSocket,
     onAttached = null
   } = options;
-  const target = await resolveExactTarget({ port, threadUrl, fetchImpl });
-  const client = await connect(target.webSocketDebuggerUrl);
+  const endpoint = await resolveCaptureEndpoint({ port, threadUrl, userDataDir, fetchImpl, readFileImpl });
+  const client = await connect(endpoint.webSocketDebuggerUrl);
+  let target = endpoint.target || null;
+  let pageSessionId = null;
+  if (endpoint.mode === "browser") {
+    const attachedTarget = await attachBrowserPageTarget(client, threadUrl);
+    target = attachedTarget.target;
+    pageSessionId = attachedTarget.sessionId;
+  }
   const timeline = [];
   const surfaces = [];
   const recorderReports = [];
@@ -174,7 +273,7 @@ export async function runReadOnlyCaptureSession(options) {
   await client.send("Log.enable");
   attached = true;
   if (typeof onAttached === "function") {
-    onAttached({ attached: true, target, messageListenerActive, runtimeEnabled: true, logEnabled: true });
+    onAttached({ attached: true, target, endpointMode: endpoint.mode, pageSessionId, messageListenerActive, runtimeEnabled: true, logEnabled: true });
   }
   await client.send("Performance.getMetrics");
   armInactivityTimer();
@@ -188,6 +287,9 @@ export async function runReadOnlyCaptureSession(options) {
   return {
     attached,
     target,
+    endpointMode: endpoint.mode,
+    pageSessionId,
+    discoveryAttempts: endpoint.attempts || [],
     timeline,
     surfaces: surfaces.slice(),
     recorderReports,
@@ -560,6 +662,7 @@ export async function fetchJson(url, fetchImpl = fetch) {
 export async function connectWebSocket(url) {
   const socket = await openWebSocket(url);
   let nextId = 1;
+  let pageSessionId = null;
   const pending = new Map();
   const listeners = new Set();
   const commandsSent = [];
@@ -572,19 +675,27 @@ export async function connectWebSocket(url) {
       else resolve(message.result || {});
       return;
     }
+    if (pageSessionId) {
+      if (message.sessionId !== pageSessionId) return;
+    }
     for (const listener of listeners) listener(message);
   };
   return {
     commandsSent,
+    setPageSessionId(sessionId) {
+      pageSessionId = sessionId || null;
+    },
     onMessage(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    send(method, params = {}) {
+    send(method, params = {}, options = {}) {
       assertReadOnlyCommand(method);
       commandsSent.push(method);
       const id = nextId++;
-      socket.send(JSON.stringify({ id, method, params }));
+      const message = { id, method, params };
+      if (pageSessionId && options.rootSession !== true) message.sessionId = pageSessionId;
+      socket.send(JSON.stringify(message));
       return new Promise((resolve, reject) => {
         pending.set(id, { resolve, reject });
       });

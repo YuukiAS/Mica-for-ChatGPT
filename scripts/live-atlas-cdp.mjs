@@ -13,6 +13,7 @@ import { rawRoot } from "./live-atlas-common.mjs";
 
 const port = Number(argValue("--port") || process.env.MICA_ATLAS_CDP_PORT || 9222);
 const threadUrl = argValue("--thread-url") || process.env.MICA_ATLAS_THREAD_URL || "";
+const userDataDir = argValue("--user-data-dir") || process.env.MICA_ATLAS_EDGE_USER_DATA_DIR || "";
 const out = argValue("--out") || path.join(rawRoot, `capture-${Date.now()}`);
 const idleMs = Number(argValue("--idle-ms") || process.env.MICA_ATLAS_IDLE_MS || DEFAULT_INACTIVITY_HARD_CAP_MS);
 const drainMs = Number(argValue("--drain-ms") || process.env.MICA_ATLAS_DRAIN_MS || DEFAULT_DRAIN_MS);
@@ -23,6 +24,7 @@ console.log("- read-only CDP command allowlist only");
 console.log("- no Input.*, Page.navigate, reload, generic Runtime.evaluate, Network mutation, Fetch mutation, Tracing");
 console.log("- captures only named MICA_ATLAS_CHECKPOINT markers");
 console.log("- normal termination requires atlas_stopped marker or local Ctrl+C/operator stop");
+console.log("- supports Edge DevToolsActivePort browser WebSocket auto-connect via --user-data-dir");
 console.log("- --idle-ms is an inactivity hard cap and is re-armed after each checkpoint");
 console.log("- Page.captureScreenshot always uses a surface clip; no full-page screenshot policy");
 console.log("- automatedSend/Enter/Upload/ConnectorAction: false");
@@ -39,6 +41,7 @@ process.once("SIGINT", onSigint);
 const session = await runReadOnlyCaptureSession({
   port,
   threadUrl,
+  userDataDir: userDataDir || null,
   out,
   idleMs,
   drainMs,

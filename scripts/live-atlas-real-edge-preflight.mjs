@@ -6,6 +6,7 @@ import { validateAtlasThreadUrl } from "./live-atlas-cdp-core.mjs";
 
 const threadUrl = argValue("--thread-url") || process.env.MICA_ATLAS_THREAD_URL || "";
 const port = argValue("--port") || process.env.MICA_ATLAS_CDP_PORT || "9222";
+const userDataDir = argValue("--user-data-dir") || process.env.MICA_ATLAS_EDGE_USER_DATA_DIR || "";
 const sessionId = argValue("--session-id") || `real-edge-preflight-${Date.now()}`;
 const raw = argValue("--out") || path.join(rawRoot, sessionId);
 const sanitized = argValue("--sanitized") || path.join("tests", "contracts", "chatgpt-live", sessionId);
@@ -16,7 +17,13 @@ console.log("REAL_EDGE_PREFLIGHT safety:");
 console.log("- no Send, Enter, upload, connector action, retry/regenerate, auth, navigation, or account mutation");
 console.log("- user manually starts and stops Atlas; CDP companion only records read-only checkpoints");
 
-await run("node", ["scripts/live-atlas-cdp.mjs", `--port=${port}`, `--thread-url=${threadUrl}`, `--out=${raw}`]);
+await run("node", [
+  "scripts/live-atlas-cdp.mjs",
+  `--port=${port}`,
+  `--thread-url=${threadUrl}`,
+  `--out=${raw}`,
+  ...(userDataDir ? [`--user-data-dir=${userDataDir}`] : [])
+]);
 await run("node", ["scripts/live-atlas-sanitize.mjs", `--input=${raw}`, `--output=${sanitized}`]);
 await run("node", ["scripts/live-atlas-privacy.mjs", `--input=${sanitized}`]);
 await run("node", ["scripts/live-atlas-build-fixtures.mjs", `--input=${sanitized}`, `--output=${path.join(sanitized, "fixture.html")}`]);

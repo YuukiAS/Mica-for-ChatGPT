@@ -2,7 +2,7 @@
 
 状态：**READY FOR REAL EDGE NO-SEND PREFLIGHT（可以开始真实 Edge 无发送预检）**。
 
-Goal 009 的协议、定位、数据接入、隐私清洗、fixture 和生命周期门禁已在 `ae0732b Harden atlas ground truth capture` 中完成；Goal 010 的 preflight 完整性门禁已在 `05ebda7 Complete atlas preflight integrity gate` 中完成；Goal 011 的滚动坐标安全定位和 CDP attach handshake 已在 `45aa9dc Harden atlas targeting handshake` 中完成；Goal 012 的截图坐标完整性门禁已在当前候选分支完成。
+Goal 009 的协议、定位、数据接入、隐私清洗、fixture 和生命周期门禁已在 `ae0732b Harden atlas ground truth capture` 中完成；Goal 010 的 preflight 完整性门禁已在 `05ebda7 Complete atlas preflight integrity gate` 中完成；Goal 011 的滚动坐标安全定位和 CDP attach handshake 已在 `45aa9dc Harden atlas targeting handshake` 中完成；Goal 012 的截图坐标完整性门禁已在当前候选分支完成；Goal 013 的 Edge `DevToolsActivePort` auto-connect 兼容门禁已在当前候选分支完成。
 
 **不要直接开始 Round 1。** 必须先完成真实 Edge 的“无发送预检”，且终端明确打印：
 
@@ -52,15 +52,13 @@ edge://inspect
 2. 左侧进入“远程调试 / Remote debugging”。
 3. 勾选“允许对此浏览器实例进行远程调试”。
 4. 当前登录状态、Cookie、现有 ChatGPT 会话都会继续保留。
-5. Windows 下 Edge 会在当前用户数据目录写入 `DevToolsActivePort`。PowerShell 可读取：
+5. Windows 下 Edge 会在当前用户数据目录写入 `DevToolsActivePort`。Atlas 工具会通过 `--user-data-dir` 读取该文件，并直接连接其中记录的 browser WebSocket。
 
 ```powershell
-$devtoolsFile = Join-Path $env:LOCALAPPDATA 'Microsoft\Edge\User Data\DevToolsActivePort'
-$port = [int](Get-Content $devtoolsFile | Select-Object -First 1)
-$port
+$edgeUserData = Join-Path $env:LOCALAPPDATA 'Microsoft\Edge\User Data'
 ```
 
-之后把这个 `$port` 传给 `atlas:preflight` / `atlas:capture`。
+之后把这个 `$edgeUserData` 传给 `atlas:preflight` / `atlas:capture`。不要把 `/json/list` 或 `/json/version` 是否可访问作为成功标准；`edge://inspect` 的 auto-connect 路径以 `DevToolsActivePort` 为准。
 
 只有在 `edge://inspect` 方式不可用时，才考虑另开专用 Edge profile。不要默认要求重新登录。
 
@@ -127,7 +125,11 @@ URL 必须已经包含 `/c/<conversation-id>`。Project-scoped URL 也支持；�
 
 ### 3. 启用当前 Edge 的远程调试
 
-优先按上面的“复用当前已经登录的 Edge”方式，在 `edge://inspect` 中启用远程调试，然后取得 `$port`。
+优先按上面的“复用当前已经登录的 Edge”方式，在 `edge://inspect` 中启用远程调试，然后准备当前 Edge user-data-dir：
+
+```powershell
+$edgeUserData = Join-Path $env:LOCALAPPDATA 'Microsoft\Edge\User Data'
+```
 
 ### 4. 启动 preflight
 
@@ -137,10 +139,16 @@ URL 必须已经包含 `/c/<conversation-id>`。Project-scoped URL 也支持；�
 $threadUrl = '<完整 ChatGPT thread URL>'
 ```
 
-运行：
+运行推荐的 `DevToolsActivePort` auto-connect 命令：
 
 ```powershell
-npm run atlas:preflight -- --thread-url="$threadUrl" --port=$port
+npm run atlas:preflight -- --thread-url="$threadUrl" --user-data-dir="$edgeUserData"
+```
+
+仅当当前环境明确提供传统 `/json/list` discovery 时，才使用兼容 fallback：
+
+```powershell
+npm run atlas:preflight -- --thread-url="$threadUrl" --port=9222
 ```
 
 ### 5. 等待明确 handshake
