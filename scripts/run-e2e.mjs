@@ -79,6 +79,10 @@ try {
     const finalSendCheckResult = await runFinalSendCheckCase();
     console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: finalSendCheckResult }, null, 2));
     process.exitCode = 0;
+  } else if (caseFilter === "popup-atlas-status") {
+    const popupAtlasResult = await runPopupAtlasStatusCase();
+    console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: popupAtlasResult }, null, 2));
+    process.exitCode = 0;
   } else if (caseFilter === "connector-mention-lifecycle") {
     const connectorResult = await runConnectorMentionLifecycleCase();
     connectorResult.pointerOverlayControls = await runOverlayControlsHitTestCase();
@@ -102,6 +106,8 @@ try {
     results.push(copyResult);
     const finalSendCheckResult = await runFinalSendCheckCase();
     results.push(finalSendCheckResult);
+    const popupAtlasResult = await runPopupAtlasStatusCase();
+    results.push(popupAtlasResult);
     const connectorResult = await runConnectorMentionLifecycleCase();
     results.push(connectorResult);
     const overlayControlsHitTestResult = await runOverlayControlsHitTestCase();
@@ -164,6 +170,8 @@ try {
     results.push(copyResult);
     const finalSendCheckResult = await runFinalSendCheckCase();
     results.push(finalSendCheckResult);
+    const popupAtlasResult = await runPopupAtlasStatusCase();
+    results.push(popupAtlasResult);
     const typingHotpathResult = await runTypingHotpathCase();
     results.push(typingHotpathResult);
     const connectorResult = await runConnectorMentionLifecycleCase();
@@ -438,6 +446,153 @@ async function runFinalSendCheckCase() {
   assert(payload.guard?.totalRequestSubmitCalls === 0, "Final send check called requestSubmit", payload);
   assert(payload.guard?.totalFormSubmitCalls === 0, "Final send check called form.submit", payload);
   return payload;
+}
+
+async function runPopupAtlasStatusCase() {
+  console.error("Running E2E case popup-atlas-status@900px");
+  const available = await runPopupAtlasPage(true);
+  const unavailable = await runPopupAtlasPage(false);
+  const payload = {
+    passed: available.offUi
+      && available.startUi
+      && available.stopUi
+      && unavailable.trueUnavailableUi
+      && available.errors.length === 0
+      && unavailable.errors.length === 0,
+    mode: "popup-atlas-status",
+    width: 900,
+    atlasStatusSource: available.offUi,
+    atlasOffUi: available.offUi,
+    atlasStartUi: available.startUi,
+    atlasStopUi: available.stopUi,
+    trueUnavailableUi: unavailable.trueUnavailableUi,
+    available,
+    unavailable
+  };
+  assert(payload.passed, "Popup Atlas status fixture failed", payload);
+  return payload;
+}
+
+async function runPopupAtlasPage(recorderAvailable) {
+  const page = await browser.newPage({ viewport: { width: 420, height: 760 } });
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  await page.addInitScript((available) => {
+    const messages = [];
+    const settings = {
+      enabled: true,
+      showStatus: true,
+      longThreadOptimization: true,
+      staleClearRecovery: true,
+      connectorContinuity: true,
+      sendResidualRecovery: true,
+      micaMarkdownCopy: true,
+      autoDismissKnownInterruptions: true,
+      recentTurnKeepCount: 8
+    };
+    const baseStatus = {
+      name: "Active",
+      reason: "Fixture",
+      mountedTurns: 1,
+      optimizedTurns: 0
+    };
+    let atlas = available
+      ? { available: true, active: false, sessionId: null, events: 0 }
+      : { available: false, active: false };
+    window.__MICA_POPUP_ATLAS_MESSAGES__ = messages;
+    window.chrome = {
+      runtime: {
+        lastError: null,
+        getManifest() {
+          return { version: "0.2.0", version_name: "0.2.0" };
+        }
+      },
+      storage: {
+        local: {
+          get(defaults, callback) {
+            callback({ ...defaults, ...settings });
+          },
+          set(_value, callback) {
+            callback?.();
+          }
+        }
+      },
+      tabs: {
+        query(_query, callback) {
+          callback([{ id: 1 }]);
+        },
+        sendMessage(_tabId, message, callback) {
+          messages.push(message.type);
+          if (message.type === "MICA_GET_STATUS") {
+            callback({ status: baseStatus, settings, diagnostics: {}, composerGuided: {}, atlas });
+            return;
+          }
+          if (message.type === "MICA_ATLAS_START") {
+            atlas = { available: true, active: true, sessionId: "popup-atlas-test", events: 7 };
+            callback({ status: baseStatus, atlas });
+            return;
+          }
+          if (message.type === "MICA_ATLAS_STOP") {
+            atlas = { available: true, active: false, sessionId: "popup-atlas-test", events: 9 };
+            callback({ status: baseStatus, atlas });
+            return;
+          }
+          if (message.type === "MICA_ATLAS_GET_REPORT") {
+            callback({ status: baseStatus, atlas, reportText: "{\"kind\":\"test\"}" });
+            return;
+          }
+          callback({ status: baseStatus, atlas });
+        }
+      }
+    };
+  }, recorderAvailable);
+
+  try {
+    await page.goto(`${baseUrl}/dist/mica-dev/popup/index.html?t=${Date.now()}`, { waitUntil: "load" });
+    await page.locator("details").evaluate((node) => { node.open = true; });
+    await page.waitForFunction(() => document.getElementById("atlasStatus")?.textContent?.trim()?.length > 0, null, { timeout: 5000 });
+    if (!recorderAvailable) {
+      const result = await popupState(page);
+      result.trueUnavailableUi = result.text === "Unavailable" && result.startDisabled && result.stopDisabled && result.copyDisabled;
+      result.errors = errors;
+      result.messages = await page.evaluate(() => window.__MICA_POPUP_ATLAS_MESSAGES__ || []);
+      return result;
+    }
+
+    const off = await popupState(page);
+    await page.locator("#startAtlas").click();
+    await page.waitForFunction(() => document.getElementById("atlasStatus")?.textContent?.includes("Recording"));
+    const started = await popupState(page);
+    await page.locator("#stopAtlas").click();
+    await page.waitForFunction(() => document.getElementById("atlasStatus")?.textContent?.includes("Stopped"));
+    const stopped = await popupState(page);
+    const copyEnabledAfterStop = stopped.copyDisabled === false;
+    const messages = await page.evaluate(() => window.__MICA_POPUP_ATLAS_MESSAGES__ || []);
+    return {
+      offUi: off.text === "Off" && off.startDisabled === false && off.stopDisabled === true && off.copyDisabled === true,
+      startUi: started.text === "Recording · 7 events" && started.startDisabled === true && started.stopDisabled === false,
+      stopUi: stopped.text === "Stopped · 9 events" && stopped.startDisabled === false && stopped.stopDisabled === true && copyEnabledAfterStop,
+      off,
+      started,
+      stopped,
+      messages,
+      errors
+    };
+  } finally {
+    await page.close();
+  }
+}
+
+function popupState(page) {
+  return page.evaluate(() => ({
+    text: document.getElementById("atlasStatus")?.textContent?.trim() || "",
+    startDisabled: document.getElementById("startAtlas")?.disabled === true,
+    stopDisabled: document.getElementById("stopAtlas")?.disabled === true,
+    copyDisabled: document.getElementById("copyAtlasReport")?.disabled === true
+  }));
 }
 
 async function runOverlayPlacementMatrixCase() {

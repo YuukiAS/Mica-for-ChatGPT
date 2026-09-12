@@ -1,7 +1,7 @@
 (() => {
   const VERSION = "0.2.0";
   const VERSION_NAME = "0.2.0";
-  const BUILD_LABEL = "v020-convergence.rc5";
+  const BUILD_LABEL = "v020-convergence.rc6";
   const DEFAULT_SETTINGS = {
     enabled: true,
     showStatus: true,
@@ -391,7 +391,7 @@
     globalThis.chrome?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
       if (!message || typeof message !== "object") return false;
       if (message.type === "MICA_GET_STATUS") {
-        sendResponse({ status: currentStatus, settings, diagnostics: summarizeDiagnostics(), composerGuided: summarizeComposerGuidedDiagnostics() });
+        sendResponse({ status: currentStatus, settings, diagnostics: summarizeDiagnostics(), composerGuided: summarizeComposerGuidedDiagnostics(), atlas: summarizeAtlasRecorder() });
         return true;
       }
       if (message.type === "MICA_SET_SETTINGS") {
@@ -399,40 +399,40 @@
         settings = { ...settings, ...next };
         writeSettings(next).then(() => {
           applySettingsChange();
-          sendResponse({ status: currentStatus, settings, diagnostics: summarizeDiagnostics(), composerGuided: summarizeComposerGuidedDiagnostics() });
+          sendResponse({ status: currentStatus, settings, diagnostics: summarizeDiagnostics(), composerGuided: summarizeComposerGuidedDiagnostics(), atlas: summarizeAtlasRecorder() });
         });
         return true;
       }
       if (message.type === "MICA_DIAGNOSTICS_START") {
         startDiagnostics();
-        sendResponse({ status: currentStatus, diagnostics: summarizeDiagnostics() });
+        sendResponse({ status: currentStatus, diagnostics: summarizeDiagnostics(), atlas: summarizeAtlasRecorder() });
         return true;
       }
       if (message.type === "MICA_DIAGNOSTICS_STOP") {
         stopDiagnostics();
-        sendResponse({ status: currentStatus, diagnostics: summarizeDiagnostics(), report: buildDiagnosticsReport() });
+        sendResponse({ status: currentStatus, diagnostics: summarizeDiagnostics(), atlas: summarizeAtlasRecorder(), report: buildDiagnosticsReport() });
         return true;
       }
       if (message.type === "MICA_DIAGNOSTICS_COPY_REPORT") {
         const report = buildDiagnosticsReport();
-        sendResponse({ status: currentStatus, diagnostics: summarizeDiagnostics(), report, reportText: JSON.stringify(report, null, 2) });
+        sendResponse({ status: currentStatus, diagnostics: summarizeDiagnostics(), atlas: summarizeAtlasRecorder(), report, reportText: JSON.stringify(report, null, 2) });
         return true;
       }
       if (message.type === "MICA_DIAGNOSTICS_RESET") {
         resetDiagnostics();
-        sendResponse({ status: currentStatus, diagnostics: summarizeDiagnostics() });
+        sendResponse({ status: currentStatus, diagnostics: summarizeDiagnostics(), atlas: summarizeAtlasRecorder() });
         return true;
       }
       if (message.type === "MICA_COMPOSER_GUIDED_START") {
-        sendResponse({ status: currentStatus, composerGuided: startComposerGuidedDiagnostics() });
+        sendResponse({ status: currentStatus, composerGuided: startComposerGuidedDiagnostics(), atlas: summarizeAtlasRecorder() });
         return true;
       }
       if (message.type === "MICA_COMPOSER_GUIDED_NEXT") {
-        sendResponse({ status: currentStatus, composerGuided: nextComposerGuidedDiagnosticsStep() });
+        sendResponse({ status: currentStatus, composerGuided: nextComposerGuidedDiagnosticsStep(), atlas: summarizeAtlasRecorder() });
         return true;
       }
       if (message.type === "MICA_COMPOSER_GUIDED_STOP") {
-        sendResponse({ status: currentStatus, composerGuided: stopComposerGuidedDiagnostics(), report: getComposerGuidedDiagnosticsReport() });
+        sendResponse({ status: currentStatus, composerGuided: stopComposerGuidedDiagnostics(), atlas: summarizeAtlasRecorder(), report: getComposerGuidedDiagnosticsReport() });
         return true;
       }
       if (message.type === "MICA_COMPOSER_GUIDED_COPY_REPORT") {
@@ -440,17 +440,18 @@
         sendResponse({
           status: currentStatus,
           composerGuided: summarizeComposerGuidedDiagnostics(),
+          atlas: summarizeAtlasRecorder(),
           report,
           reportText: report ? JSON.stringify(report, null, 2) : ""
         });
         return true;
       }
       if (message.type === "MICA_COMPOSER_GUIDED_RESET") {
-        sendResponse({ status: currentStatus, composerGuided: resetComposerGuidedDiagnostics() });
+        sendResponse({ status: currentStatus, composerGuided: resetComposerGuidedDiagnostics(), atlas: summarizeAtlasRecorder() });
         return true;
       }
       if (message.type === "MICA_PREPARE_FINAL_SEND_CHECK") {
-        sendResponse({ status: currentStatus, composerGuided: summarizeComposerGuidedDiagnostics(), oneShot: prepareFinalSendCheck() });
+        sendResponse({ status: currentStatus, composerGuided: summarizeComposerGuidedDiagnostics(), atlas: summarizeAtlasRecorder(), oneShot: prepareFinalSendCheck() });
         return true;
       }
       if (message.type === "MICA_ATLAS_START") {

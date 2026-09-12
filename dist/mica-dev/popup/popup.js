@@ -72,7 +72,7 @@ elements.copyAtlasReport.addEventListener("click", copyAtlasReport);
 async function load() {
   const manifest = chrome.runtime.getManifest();
   elements.version.textContent = `v${manifest.version_name || manifest.version}`;
-  elements.buildLabel.textContent = "v020-convergence.rc5";
+  elements.buildLabel.textContent = "v020-convergence.rc6";
   const settings = await getStorage(DEFAULT_SETTINGS);
   elements.enabled.checked = settings.enabled;
   elements.showStatus.checked = settings.showStatus;
@@ -98,7 +98,7 @@ async function load() {
     elements.reliabilityEnabled.checked = response.settings.staleClearRecovery && response.settings.connectorContinuity && response.settings.sendResidualRecovery && response.settings.autoDismissKnownInterruptions;
     elements.recentTurnKeepCount.value = String(response.settings.recentTurnKeepCount);
   }
-  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
+  renderResponse(response);
 }
 
 async function save() {
@@ -116,7 +116,7 @@ async function save() {
   elements.recentTurnKeepCount.value = String(next.recentTurnKeepCount);
   await setStorage(next);
   const response = await sendToActiveTab({ type: "MICA_SET_SETTINGS", settings: next });
-  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
+  renderResponse(response);
 }
 
 async function saveReliabilityGroup() {
@@ -134,12 +134,12 @@ async function requestStatus() {
 
 async function diagnosticsAction(type) {
   const response = await sendToActiveTab({ type });
-  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
+  renderResponse(response);
 }
 
 async function copyReport() {
   const response = await sendToActiveTab({ type: "MICA_DIAGNOSTICS_COPY_REPORT" });
-  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
+  renderResponse(response);
   if (!response?.reportText) {
     elements.diagnosticsStatus.textContent = "No diagnostics report available.";
     return;
@@ -154,7 +154,7 @@ async function copyReport() {
 
 async function prepareFinalSendCheck() {
   const response = await sendToActiveTab({ type: "MICA_PREPARE_FINAL_SEND_CHECK" });
-  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
+  renderResponse(response);
   const result = response?.oneShot;
   if (!result) {
     elements.composerCheckStatus.textContent = "Open a supported ChatGPT page.";
@@ -172,20 +172,17 @@ async function startAtlas() {
     type: "MICA_ATLAS_START",
     options: { sessionId: `popup-atlas-${Date.now()}` }
   });
-  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
-  renderAtlasStatus(response?.atlas || response?.status?.runtime?.atlasState);
+  renderResponse(response);
 }
 
 async function stopAtlas() {
   const response = await sendToActiveTab({ type: "MICA_ATLAS_STOP", reason: "popup" });
-  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
-  renderAtlasStatus(response?.atlas || response?.status?.runtime?.atlasState);
+  renderResponse(response);
 }
 
 async function copyAtlasReport() {
   const response = await sendToActiveTab({ type: "MICA_ATLAS_GET_REPORT" });
-  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
-  renderAtlasStatus(response?.atlas || response?.status?.runtime?.atlasState);
+  renderResponse(response);
   if (!response?.reportText) {
     elements.atlasStatus.textContent = "No report";
     return;
@@ -200,12 +197,12 @@ async function copyAtlasReport() {
 
 async function composerCheckAction(type) {
   const response = await sendToActiveTab({ type });
-  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
+  renderResponse(response);
 }
 
 async function copyComposerReport() {
   const response = await sendToActiveTab({ type: "MICA_COMPOSER_GUIDED_COPY_REPORT" });
-  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
+  renderResponse(response);
   if (!response?.reportText) {
     elements.composerCheckStatus.textContent = "No composer report available.";
     return;
@@ -246,7 +243,15 @@ async function setStorage(value) {
   });
 }
 
-function renderStatus(status, diagnostics, composerGuided = null) {
+function renderResponse(response) {
+  renderStatus(response?.status, response?.diagnostics, response?.composerGuided, atlasFromResponse(response));
+}
+
+function atlasFromResponse(response) {
+  return response?.atlas || response?.status?.runtime?.atlasState || null;
+}
+
+function renderStatus(status, diagnostics, composerGuided = null, atlas = null) {
   const name = status?.name || "Native only";
   elements.state.textContent = name;
   elements.reason.textContent = status?.reason || "Open a ChatGPT conversation.";
@@ -254,7 +259,7 @@ function renderStatus(status, diagnostics, composerGuided = null) {
   elements.dot.style.background = statusColors[name] || statusColors["Native only"];
   renderDiagnostics(diagnostics);
   renderComposerCheck(composerGuided);
-  renderAtlasStatus(status?.runtime?.atlasState);
+  renderAtlasStatus(atlas);
 }
 
 function formatCounts(status) {
