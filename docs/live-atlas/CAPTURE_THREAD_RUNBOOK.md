@@ -2,7 +2,7 @@
 
 Status: **READY FOR DEDICATED CAPTURE PREFLIGHT.**
 
-Goal 009 protocol, targeting, ingestion, sanitizer, fixture, and lifecycle gates are implemented in `c267fdd Harden atlas ground truth capture`.
+Goal 009 protocol, targeting, ingestion, sanitizer, fixture, and lifecycle gates are implemented in `ae0732b Harden atlas ground truth capture`.
 
 Do not begin Round 1 until the no-send real Edge preflight prints `REAL_EDGE_PREFLIGHT = PASS`. The preflight captures only the current empty-thread composer and Mica overlay; it must not send, submit, upload, run connectors, retry/regenerate, or mutate account/conversation state.
 
