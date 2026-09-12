@@ -1,6 +1,10 @@
 # Mica Live Surface Atlas — Dedicated Capture Thread Runbook
 
-Status: **PRE-CAPTURE BLOCKED until Atlas hardening gate passes.**
+Status: **READY FOR DEDICATED CAPTURE.**
+
+Passing pre-capture durability commit: `d13985e Make atlas CDP capture durable for long sessions`.
+
+The CDP companion now runs as `attach -> continuous capture -> explicit Atlas stop or local operator stop -> drain pending captures -> close`. `--idle-ms` is an inactivity hard cap only; it is re-armed after every valid Atlas checkpoint and is not used to infer ChatGPT lifecycle completion. The default checkpoint retention is `500`; capacity overflow is recorded as truncation/error instead of a successful capture.
 
 This runbook defines the single dedicated real ChatGPT thread used to bootstrap Mica's Live Surface Atlas. The goal is to collect real UI structure, lifecycle ordering, timing evidence, and visual checkpoints once, then replay them locally instead of repeatedly asking the user to QA Mica.
 
