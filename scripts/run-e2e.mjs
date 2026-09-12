@@ -67,6 +67,10 @@ try {
     const atlasReplayResult = await runAtlasReplayCase();
     console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: atlasReplayResult }, null, 2));
     process.exitCode = 0;
+  } else if (caseFilter === "atlas-generation-identity") {
+    const atlasGenerationResult = await runAtlasGenerationIdentityCase();
+    console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: atlasGenerationResult }, null, 2));
+    process.exitCode = 0;
   } else if (caseFilter === "markdown-copy") {
     const copyResult = await runMarkdownCopyCase();
     console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: copyResult }, null, 2));
@@ -314,6 +318,42 @@ async function runAtlasReplayCase() {
   payload.errors = errors;
   if (errors.length > 0) payload.passed = false;
   assert(payload.passed, "Atlas replay fixture failed", payload);
+  return payload;
+}
+
+async function runAtlasGenerationIdentityCase() {
+  console.error("Running E2E case atlas-generation-identity@900px");
+  const page = await browser.newPage({ viewport: { width: 900, height: 820 } });
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  const url = `${baseUrl}/tests/fixtures/atlas-generation-identity.html?t=${Date.now()}`;
+  let payload;
+  try {
+    await page.goto(url, { waitUntil: "load" });
+    await page.waitForFunction(() => {
+      const text = document.getElementById("result")?.textContent || "";
+      return text.trim().startsWith("{");
+    }, null, { timeout: 10000 });
+    payload = JSON.parse(await page.locator("#result").textContent());
+  } catch (error) {
+    const resultText = await page.locator("#result").textContent().catch(() => "");
+    await page.close();
+    throw Object.assign(new Error(`Atlas generation identity fixture failed before producing a result: ${error?.message || error}`), {
+      details: { resultText, errors }
+    });
+  }
+  await page.close();
+  payload.width = 900;
+  payload.mode = "atlas-generation-identity";
+  payload.errors = errors;
+  if (errors.length > 0) payload.passed = false;
+  assert(payload.passed, "Atlas generation identity fixture failed", payload);
+  assert(payload.manualCount === 1, "Click plus submit produced more than one Atlas generation", payload);
+  assert(payload.userCount === 1, "Old user turn remount was misclassified as new", payload);
+  assert(payload.richCount === 1, "Rich Markdown settled checkpoint missing", payload);
   return payload;
 }
 

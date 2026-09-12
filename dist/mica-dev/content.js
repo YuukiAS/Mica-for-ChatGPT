@@ -1,7 +1,7 @@
 (() => {
   const VERSION = "0.2.0";
   const VERSION_NAME = "0.2.0";
-  const BUILD_LABEL = "v020-convergence.rc3";
+  const BUILD_LABEL = "v020-convergence.rc4";
   const DEFAULT_SETTINGS = {
     enabled: true,
     showStatus: true,

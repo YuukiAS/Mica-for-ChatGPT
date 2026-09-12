@@ -43,7 +43,7 @@ const timings = {
   source: manifest.source || "unknown",
   privacy: manifest.privacy,
   safety: manifest.safety,
-  metrics: deriveTimings(timeline, performance)
+  metrics: deriveTimings(timeline, performance.recorderPerformance || performance)
 };
 await mkdir(output, { recursive: true });
 await writeJson(path.join(output, "manifest.json"), { ...manifest, kind: "mica.liveSurfaceAtlas.sanitized", rawPathCommitted: false });
@@ -77,6 +77,8 @@ function sanitizeSurface(value, key) {
     privacy: value.privacy || manifest.privacy,
     checkpointId: safeId(value.checkpointId),
     stateClass: safeState(value.stateClass),
+    generationId: Number.isFinite(value.generationId) ? Math.round(value.generationId) : null,
+    variant: safeVariant(value.variant || `${value.generationId ? `g${value.generationId}` : "global"}:${value.stateClass || key}`),
     contract
   };
 }
@@ -206,11 +208,11 @@ function sanitizeDetails(details) {
     "keyClass", "ctrl", "meta", "shift", "alt", "repeat", "present", "reason", "idleGapMs", "capMs",
     "copyAreaVisible", "mode", "recording", "addedNodes", "removedNodes", "attributes", "count",
     "burstCount", "mutationCount", "elapsedFromMountMs", "label", "rect", "monotonicTimestamp", "clipped",
-    "surfaceKey", "screenshot", "counts"
+    "surfaceKey", "screenshot", "counts", "targetRect", "role", "surfaceRole", "terminal", "status", "missingReason", "rich"
   ]);
   for (const [key, value] of Object.entries(details)) {
     if (!allowedKeys.has(key)) continue;
-    if (key === "rect") allowed[key] = sanitizeRect(value);
+    if (key === "rect" || key === "targetRect") allowed[key] = sanitizeRect(value);
     else if (key === "counts" && value && typeof value === "object") allowed[key] = sanitizeCounts(value);
     else if (typeof value === "string") allowed[key] = safeDetailString(key, value);
     else if (typeof value === "number") allowed[key] = round(value);
@@ -228,8 +230,10 @@ function sanitizeCounts(value) {
 }
 
 function mergeSurface(existing, next) {
-  if (!existing || existing.status !== "OBSERVED") return next;
-  return existing;
+  if (!existing || existing.status !== "OBSERVED") return withVariant(next);
+  if (next.status !== "OBSERVED") return existing;
+  const variants = [...(existing.variants || [variantFromSurface(existing)]), variantFromSurface(next)];
+  return { ...existing, variants };
 }
 
 function missingSurface(key) {
@@ -309,6 +313,10 @@ function safeEventType(value) {
   return /^[a-z0-9_:-]{1,80}$/i.test(String(value || "")) ? String(value) : "event";
 }
 
+function safeVariant(value) {
+  return /^[a-z0-9_.:-]{1,120}$/i.test(String(value || "")) ? String(value) : `variant-length-${String(value).length}`;
+}
+
 function safeAttr(value) {
   const text = String(value || "");
   if (text === "") return "";
@@ -317,12 +325,27 @@ function safeAttr(value) {
 
 function safeDetailString(key, value) {
   if (key === "label" && ["Copy", "Retry", "Stop", "Continue", "Regenerate"].includes(value)) return value;
-  if (/^(checkpointId|stateClass|source|turnId|surfaceId|rootId|editableId|reason|mode|surfaceKey|screenshot|keyClass|inputType)$/.test(key)) return /^[a-zA-Z0-9:_./-]{1,120}$/.test(value) ? value : `${key}-length-${value.length}`;
+  if (/^(checkpointId|stateClass|source|turnId|surfaceId|rootId|editableId|reason|mode|surfaceKey|screenshot|keyClass|inputType|role|surfaceRole|status|missingReason)$/.test(key)) return /^[a-zA-Z0-9:_./-]{1,120}$/.test(value) ? value : `${key}-length-${value.length}`;
   return `${key}-length-${value.length}`;
 }
 
 function isGenerationEvent(stateClass) {
   return /^(manual_send_intent|user_turn_mounted|composer_body_zero|assistant_turn_mounted|assistant_first_content_mutation|assistant_action_bar_visible|assistant_settled|assistant_settled_hard_cap)$/.test(stateClass);
+}
+
+function withVariant(surface) {
+  if (surface.status !== "OBSERVED") return surface;
+  return { ...surface, variants: [variantFromSurface(surface)] };
+}
+
+function variantFromSurface(surface) {
+  return {
+    variant: safeVariant(surface.variant || `${surface.generationId ? `g${surface.generationId}` : "global"}:${surface.stateClass || surface.name}`),
+    checkpointId: surface.checkpointId,
+    stateClass: surface.stateClass,
+    generationId: surface.generationId,
+    contract: surface.contract
+  };
 }
 
 function round(value) {

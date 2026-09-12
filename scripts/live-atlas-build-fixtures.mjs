@@ -8,7 +8,7 @@ const coverage = await readJson(path.join(input, "coverage.json"));
 const surfaces = await readJson(path.join(input, "surfaces.json"));
 validatePrivacyObject({ lifecycle, coverage, surfaces }, "fixture-input");
 
-const surfaceHtml = surfaceKeys.map((key) => renderSurfaceSlot(key, surfaces[key])).join("\n");
+const surfaceHtml = surfaceKeys.map((key) => renderSurfaceSlots(key, surfaces[key])).join("\n");
 const fixture = `<!doctype html>
 <html lang="en" data-mica-fixture="true" data-live-atlas-replay="true">
   <head>
@@ -36,12 +36,14 @@ ${surfaceHtml}
       const observed = Object.values(data.surfaces).filter((surface) => surface.status === "OBSERVED");
       const composer = data.surfaces.composer;
       const composerEl = document.querySelector('[data-atlas-surface-slot="composer"]');
+      const variantCount = Object.values(data.surfaces).reduce((count, surface) => count + (surface.variants || []).length, 0);
       const checks = [
         ["lifecycle events", data.lifecycle.timeline.length >= 8],
         ["schema surfaces present", Object.keys(data.surfaces).length >= 8],
         ["missing surfaces explicit", Object.values(data.surfaces).filter((surface) => surface.status === "MISSING").every((surface) => document.querySelector('[data-atlas-missing="' + surface.name + '"]'))],
         ["composer contract rendered", composer.status !== "OBSERVED" || !!composerEl],
         ["composer geometry from contract", composer.status !== "OBSERVED" || Math.round(composerEl.getBoundingClientRect().width) === Math.round(composer.contract.rect.width)],
+        ["surface variants preserved", variantCount >= observed.length],
         ["no private random text", !JSON.stringify(data).includes(["MY_PRIVATE", "RANDOM_SENTENCE_93817"].join("_"))]
       ].map(([name, passed]) => ({ name, passed: !!passed }));
       document.getElementById("atlas-result").textContent = JSON.stringify({ passed: checks.every((check) => check.passed), observedSurfaces: observed.length, checks }, null, 2);
@@ -51,19 +53,25 @@ ${surfaceHtml}
 await writeText(output, fixture);
 console.log(JSON.stringify({ passed: true, input, output, observedSurfaces: Object.values(surfaces).filter((surface) => surface.status === "OBSERVED").length }, null, 2));
 
-function renderSurfaceSlot(key, surface) {
+function renderSurfaceSlots(key, surface) {
   if (!surface || surface.status !== "OBSERVED" || !surface.contract) {
     return `      <div data-atlas-missing="${escapeAttr(key)}">MISSING ${escapeHtml(key)}</div>`;
   }
-  const rect = surface.contract.rect || { x: 0, y: 0, width: 1, height: 1 };
+  const variants = surface.variants?.length ? surface.variants : [{ variant: surface.variant || "default", contract: surface.contract }];
+  return variants.map((variant, index) => renderSurfaceSlot(key, variant, index)).join("\n");
+}
+
+function renderSurfaceSlot(key, variant, index) {
+  const contract = variant.contract;
+  const rect = contract.rect || { x: 0, y: 0, width: 1, height: 1 };
   const style = [
     `left:${cssPx(rect.x)}`,
-    `top:${cssPx(rect.y)}`,
+    `top:${cssPx(rect.y + index * 8)}`,
     `width:${cssPx(rect.width)}`,
     `height:${cssPx(rect.height)}`,
-    ...Object.entries(surface.contract.styles || {}).map(([name, value]) => `${name}:${String(value).replace(/[;"<>]/g, "")}`)
+    ...Object.entries(contract.styles || {}).map(([name, value]) => `${name}:${String(value).replace(/[;"<>]/g, "")}`)
   ].join(";");
-  return `      <div data-atlas-surface-slot="${escapeAttr(key)}" style="${escapeAttr(style)}">${renderNode(surface.contract, 0)}</div>`;
+  return `      <div data-atlas-surface-slot="${escapeAttr(key)}" data-atlas-variant="${escapeAttr(variant.variant || "default")}" style="${escapeAttr(style)}">${renderNode(contract, 0)}</div>`;
 }
 
 function renderNode(contract, depth) {

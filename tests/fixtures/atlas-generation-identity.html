@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mica Atlas generation identity fixture</title>
+    <style>
+      body { margin: 0; padding: 24px; font: 14px/1.4 system-ui, sans-serif; background: #f7f7f8; color: #171717; }
+      main { width: 760px; max-width: calc(100vw - 48px); margin: 0 auto 120px; }
+      article { margin: 10px 0; padding: 12px; border: 1px solid #ddd; border-radius: 8px; background: #fff; }
+      form { position: fixed; left: 50%; bottom: 16px; width: 720px; max-width: calc(100vw - 32px); transform: translateX(-50%); }
+      [data-composer-surface="true"] { display: grid; grid-template-columns: 1fr auto; gap: 8px; min-height: 56px; padding: 10px; border-radius: 24px; background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+      [role="textbox"] { min-height: 32px; outline: none; }
+      button { border: 0; border-radius: 999px; padding: 0 14px; background: #171717; color: #fff; }
+      #result { position: fixed; left: 8px; top: 8px; max-width: 50vw; white-space: pre-wrap; font-size: 11px; background: rgba(255,255,255,.92); }
+    </style>
+  </head>
+  <body>
+    <pre id="result">Idle</pre>
+    <main id="conversation"></main>
+    <form id="composer" data-testid="composer">
+      <div data-composer-surface="true">
+        <div id="editor" role="textbox" contenteditable="plaintext-only" aria-label="Message Mica">local fixture draft</div>
+        <button id="send" type="submit" data-testid="send-button" aria-label="Send message">Send</button>
+      </div>
+    </form>
+    <script src="../../dist/mica-dev/atlas-recorder.js"></script>
+    <script>
+      const result = document.getElementById("result");
+      const conversation = document.getElementById("conversation");
+      const form = document.getElementById("composer");
+      const send = document.getElementById("send");
+      form.addEventListener("submit", (event) => event.preventDefault());
+
+      run().catch((error) => {
+        result.textContent = JSON.stringify({ passed: false, error: String(error?.stack || error) }, null, 2);
+      });
+
+      async function run() {
+        const oldUser = appendTurn("user", "old-user-1");
+        appendTurn("assistant", "old-assistant-1");
+        appendTurn("user", "old-user-2");
+        appendTurn("assistant", "old-assistant-2");
+        await delay(40);
+        const start = window.MicaAtlasRecorder.start({ sessionId: "atlas-generation-identity" });
+        await delay(160);
+
+        send.click();
+        form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+        await delay(30);
+
+        oldUser.remove();
+        conversation.appendChild(turn("user", "old-user-1"));
+        await delay(160);
+        const newUser = appendTurn("user", "new-user-1");
+        await delay(160);
+        const assistant = appendTurn("assistant", "new-assistant-1");
+        assistant.appendChild(actionBar());
+        assistant.appendChild(richBody());
+        await delay(2200);
+        const stop = window.MicaAtlasRecorder.stop("generation-identity-complete");
+        const timeline = stop.report.timeline;
+        const manual = events(timeline, "manual_send_intent");
+        const users = events(timeline, "user_turn_mounted");
+        const assistants = events(timeline, "assistant_turn_mounted");
+        const rich = events(timeline, "rich_markdown_settled");
+        const checks = [
+          ["click plus submit creates one generation", manual.length === 1],
+          ["new user turn observed once", users.length === 1],
+          ["old remount ignored", users[0]?.details?.generationId === 1],
+          ["assistant tied to same generation", assistants.length === 1 && assistants[0].details.generationId === 1],
+          ["rich markdown checkpoint emitted", rich.length === 1 && rich[0].details.generationId === 1],
+          ["terminal report retained performance bucket", !!stop.report.performance && Array.isArray(stop.report.performance.eventTiming)],
+          ["no automated send", stop.report.safety.automatedSend === false && stop.report.safety.automatedEnter === false]
+        ].map(([name, passed]) => ({ name, passed: !!passed }));
+        result.textContent = JSON.stringify({ passed: checks.every((check) => check.passed), checks, manualCount: manual.length, userCount: users.length, assistantCount: assistants.length, richCount: rich.length, start: start.status }, null, 2);
+      }
+
+      function events(timeline, stateClass) {
+        return timeline.filter((event) => event.details?.stateClass === stateClass);
+      }
+
+      function appendTurn(role, id) {
+        const node = turn(role, id);
+        conversation.appendChild(node);
+        return node;
+      }
+
+      function turn(role, id) {
+        const article = document.createElement("article");
+        article.dataset.testid = `conversation-turn-${id}`;
+        article.dataset.messageAuthorRole = role;
+        article.textContent = `${role} ${id}`;
+        return article;
+      }
+
+      function actionBar() {
+        const bar = document.createElement("div");
+        bar.setAttribute("role", "toolbar");
+        const copy = document.createElement("button");
+        copy.type = "button";
+        copy.setAttribute("aria-label", "Copy");
+        copy.textContent = "Copy";
+        bar.appendChild(copy);
+        return bar;
+      }
+
+      function richBody() {
+        const body = document.createElement("section");
+        body.innerHTML = "<h2>Heading</h2><p>Body</p><ul><li>Item</li></ul><blockquote>Quote</blockquote><pre><code>const x = 1;</code></pre><table><tr><td>A</td></tr></table>";
+        return body;
+      }
+
+      function delay(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+    </script>
+  </body>
+</html>

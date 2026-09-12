@@ -15,8 +15,10 @@
       "cookiesIncluded": false,
       "requestBodiesIncluded": false
     },
-    "checkpointId": null,
-    "stateClass": "unknown",
+    "checkpointId": "synthetic-smoke:g2:actions",
+    "stateClass": "assistant_action_bar_visible",
+    "generationId": 2,
+    "variant": "g2:assistant_action_bar_visible",
     "contract": {
       "tag": "div",
       "role": "toolbar",
@@ -64,11 +66,121 @@
           "children": []
         }
       ]
-    }
+    },
+    "variants": [
+      {
+        "variant": "g2:assistant_action_bar_visible",
+        "checkpointId": "synthetic-smoke:g2:actions",
+        "stateClass": "assistant_action_bar_visible",
+        "generationId": 2,
+        "contract": {
+          "tag": "div",
+          "role": "toolbar",
+          "attrs": {
+            "role": "toolbar"
+          },
+          "rect": {
+            "x": 620,
+            "y": 520,
+            "width": 220,
+            "height": 40
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "display": "flex"
+          },
+          "children": [
+            {
+              "tag": "button",
+              "role": null,
+              "attrs": {
+                "aria-label": "Copy"
+              },
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 4
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      },
+      {
+        "variant": "global:assistantActionBar",
+        "checkpointId": null,
+        "stateClass": "unknown",
+        "generationId": null,
+        "contract": {
+          "tag": "div",
+          "role": "toolbar",
+          "attrs": {
+            "role": "toolbar"
+          },
+          "rect": {
+            "x": 620,
+            "y": 520,
+            "width": 220,
+            "height": 40
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "display": "flex"
+          },
+          "children": [
+            {
+              "tag": "button",
+              "role": null,
+              "attrs": {
+                "aria-label": "Copy"
+              },
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 4
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      }
+    ]
   },
-  "composer": {
+  "assistantSettled": {
     "schemaVersion": 1,
-    "name": "composer",
+    "name": "assistantSettled",
     "status": "OBSERVED",
     "source": "synthetic-atlas-smoke",
     "privacy": {
@@ -82,19 +194,22 @@
       "cookiesIncluded": false,
       "requestBodiesIncluded": false
     },
-    "checkpointId": null,
-    "stateClass": "unknown",
+    "checkpointId": "synthetic-smoke:g2:settled",
+    "stateClass": "assistant_settled",
+    "generationId": 2,
+    "variant": "g2:assistant_settled",
     "contract": {
-      "tag": "form",
+      "tag": "article",
       "role": null,
       "attrs": {
-        "data-composer-surface": "true"
+        "data-message-author-role": "assistant",
+        "data-testid": "conversation-turn-assistant-rich"
       },
       "rect": {
-        "x": 40,
-        "y": 730,
-        "width": 820,
-        "height": 72
+        "x": 76,
+        "y": 380,
+        "width": 760,
+        "height": 360
       },
       "state": {
         "disabled": false,
@@ -107,8 +222,312 @@
         "length": 32
       },
       "styles": {
-        "border-radius": "28px",
-        "background-color": "rgb(255, 255, 255)"
+        "display": "block"
+      },
+      "children": [
+        {
+          "tag": "h2",
+          "role": null,
+          "attrs": {},
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "short",
+            "length": 12
+          },
+          "styles": {},
+          "children": []
+        },
+        {
+          "tag": "ul",
+          "role": null,
+          "attrs": {},
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "medium",
+            "length": 60
+          },
+          "styles": {},
+          "children": []
+        },
+        {
+          "tag": "blockquote",
+          "role": null,
+          "attrs": {},
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "short",
+            "length": 24
+          },
+          "styles": {},
+          "children": []
+        },
+        {
+          "tag": "pre",
+          "role": null,
+          "attrs": {},
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "medium",
+            "length": 80
+          },
+          "styles": {},
+          "children": [
+            {
+              "tag": "code",
+              "role": null,
+              "attrs": {},
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "medium",
+                "length": 80
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        },
+        {
+          "tag": "table",
+          "role": null,
+          "attrs": {},
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "medium",
+            "length": 48
+          },
+          "styles": {},
+          "children": []
+        }
+      ]
+    },
+    "variants": [
+      {
+        "variant": "g2:assistant_settled",
+        "checkpointId": "synthetic-smoke:g2:settled",
+        "stateClass": "assistant_settled",
+        "generationId": 2,
+        "contract": {
+          "tag": "article",
+          "role": null,
+          "attrs": {
+            "data-message-author-role": "assistant",
+            "data-testid": "conversation-turn-assistant-rich"
+          },
+          "rect": {
+            "x": 76,
+            "y": 380,
+            "width": 760,
+            "height": 360
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "display": "block"
+          },
+          "children": [
+            {
+              "tag": "h2",
+              "role": null,
+              "attrs": {},
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 12
+              },
+              "styles": {},
+              "children": []
+            },
+            {
+              "tag": "ul",
+              "role": null,
+              "attrs": {},
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "medium",
+                "length": 60
+              },
+              "styles": {},
+              "children": []
+            },
+            {
+              "tag": "blockquote",
+              "role": null,
+              "attrs": {},
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 24
+              },
+              "styles": {},
+              "children": []
+            },
+            {
+              "tag": "pre",
+              "role": null,
+              "attrs": {},
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "medium",
+                "length": 80
+              },
+              "styles": {},
+              "children": [
+                {
+                  "tag": "code",
+                  "role": null,
+                  "attrs": {},
+                  "rect": null,
+                  "state": {
+                    "disabled": false,
+                    "expanded": null,
+                    "pressed": null,
+                    "contenteditable": ""
+                  },
+                  "text": {
+                    "category": "medium",
+                    "length": 80
+                  },
+                  "styles": {},
+                  "children": []
+                }
+              ]
+            },
+            {
+              "tag": "table",
+              "role": null,
+              "attrs": {},
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "medium",
+                "length": 48
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "assistantStreaming": {
+    "schemaVersion": 1,
+    "name": "assistantStreaming",
+    "status": "OBSERVED",
+    "source": "synthetic-atlas-smoke",
+    "privacy": {
+      "localOnly": true,
+      "telemetryUploaded": false,
+      "promptTextIncluded": false,
+      "answerTextIncluded": false,
+      "rawDomIncluded": false,
+      "fullPageScreenshotIncluded": false,
+      "headersIncluded": false,
+      "cookiesIncluded": false,
+      "requestBodiesIncluded": false
+    },
+    "checkpointId": "synthetic-smoke:g2:assistant",
+    "stateClass": "assistant_turn_mounted",
+    "generationId": 2,
+    "variant": "g2:assistant_turn_mounted",
+    "contract": {
+      "tag": "article",
+      "role": null,
+      "attrs": {
+        "data-message-author-role": "assistant",
+        "data-testid": "conversation-turn-assistant"
+      },
+      "rect": {
+        "x": 76,
+        "y": 380,
+        "width": 760,
+        "height": 180
+      },
+      "state": {
+        "disabled": false,
+        "expanded": null,
+        "pressed": null,
+        "contenteditable": ""
+      },
+      "text": {
+        "category": "redacted",
+        "length": 32
+      },
+      "styles": {
+        "display": "block"
       },
       "children": [
         {
@@ -132,7 +551,301 @@
           "children": []
         }
       ]
-    }
+    },
+    "variants": [
+      {
+        "variant": "g2:assistant_turn_mounted",
+        "checkpointId": "synthetic-smoke:g2:assistant",
+        "stateClass": "assistant_turn_mounted",
+        "generationId": 2,
+        "contract": {
+          "tag": "article",
+          "role": null,
+          "attrs": {
+            "data-message-author-role": "assistant",
+            "data-testid": "conversation-turn-assistant"
+          },
+          "rect": {
+            "x": 76,
+            "y": 380,
+            "width": 760,
+            "height": 180
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "display": "block"
+          },
+          "children": [
+            {
+              "tag": "button",
+              "role": null,
+              "attrs": {
+                "aria-label": "Copy"
+              },
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 4
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "composer": {
+    "schemaVersion": 1,
+    "name": "composer",
+    "status": "OBSERVED",
+    "source": "synthetic-atlas-smoke",
+    "privacy": {
+      "localOnly": true,
+      "telemetryUploaded": false,
+      "promptTextIncluded": false,
+      "answerTextIncluded": false,
+      "rawDomIncluded": false,
+      "fullPageScreenshotIncluded": false,
+      "headersIncluded": false,
+      "cookiesIncluded": false,
+      "requestBodiesIncluded": false
+    },
+    "checkpointId": "synthetic-smoke:composer-focused",
+    "stateClass": "composer_focus",
+    "generationId": null,
+    "variant": "global:composer_focus",
+    "contract": {
+      "tag": "form",
+      "role": null,
+      "attrs": {
+        "data-composer-surface": "true"
+      },
+      "rect": {
+        "x": 40,
+        "y": 724,
+        "width": 820,
+        "height": 84
+      },
+      "state": {
+        "disabled": false,
+        "expanded": null,
+        "pressed": null,
+        "contenteditable": ""
+      },
+      "text": {
+        "category": "redacted",
+        "length": 32
+      },
+      "styles": {
+        "border-radius": "28px",
+        "box-shadow": "0 8px 24px rgba(0,0,0,.12)"
+      },
+      "children": [
+        {
+          "tag": "button",
+          "role": null,
+          "attrs": {
+            "aria-label": "Copy"
+          },
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "short",
+            "length": 4
+          },
+          "styles": {},
+          "children": []
+        }
+      ]
+    },
+    "variants": [
+      {
+        "variant": "global:composer_focus",
+        "checkpointId": "synthetic-smoke:composer-focused",
+        "stateClass": "composer_focus",
+        "generationId": null,
+        "contract": {
+          "tag": "form",
+          "role": null,
+          "attrs": {
+            "data-composer-surface": "true"
+          },
+          "rect": {
+            "x": 40,
+            "y": 724,
+            "width": 820,
+            "height": 84
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "border-radius": "28px",
+            "box-shadow": "0 8px 24px rgba(0,0,0,.12)"
+          },
+          "children": [
+            {
+              "tag": "button",
+              "role": null,
+              "attrs": {
+                "aria-label": "Copy"
+              },
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 4
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      },
+      {
+        "variant": "global:composer_present",
+        "checkpointId": "synthetic-smoke:composer-idle",
+        "stateClass": "composer_present",
+        "generationId": null,
+        "contract": {
+          "tag": "form",
+          "role": null,
+          "attrs": {
+            "data-composer-surface": "true"
+          },
+          "rect": {
+            "x": 40,
+            "y": 730,
+            "width": 820,
+            "height": 72
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "border-radius": "28px",
+            "background-color": "rgb(255, 255, 255)"
+          },
+          "children": [
+            {
+              "tag": "button",
+              "role": null,
+              "attrs": {
+                "aria-label": "Copy"
+              },
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 4
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      },
+      {
+        "variant": "global:composer",
+        "checkpointId": null,
+        "stateClass": "unknown",
+        "generationId": null,
+        "contract": {
+          "tag": "form",
+          "role": null,
+          "attrs": {
+            "data-composer-surface": "true"
+          },
+          "rect": {
+            "x": 40,
+            "y": 730,
+            "width": 820,
+            "height": 72
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "border-radius": "28px",
+            "background-color": "rgb(255, 255, 255)"
+          },
+          "children": [
+            {
+              "tag": "button",
+              "role": null,
+              "attrs": {
+                "aria-label": "Copy"
+              },
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 4
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      }
+    ]
   },
   "connectorPill": {
     "schemaVersion": 1,
@@ -150,8 +863,10 @@
       "cookiesIncluded": false,
       "requestBodiesIncluded": false
     },
-    "checkpointId": null,
-    "stateClass": "unknown",
+    "checkpointId": "synthetic-smoke:connector",
+    "stateClass": "connector_pill_visible",
+    "generationId": null,
+    "variant": "global:connector_pill_visible",
     "contract": {
       "tag": "span",
       "role": null,
@@ -200,7 +915,244 @@
           "children": []
         }
       ]
-    }
+    },
+    "variants": [
+      {
+        "variant": "global:connector_pill_visible",
+        "checkpointId": "synthetic-smoke:connector",
+        "stateClass": "connector_pill_visible",
+        "generationId": null,
+        "contract": {
+          "tag": "span",
+          "role": null,
+          "attrs": {
+            "data-id": "plugin:anonymous",
+            "data-inline-selection-pill": ""
+          },
+          "rect": {
+            "x": 76,
+            "y": 744,
+            "width": 94,
+            "height": 24
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "border-radius": "999px"
+          },
+          "children": [
+            {
+              "tag": "button",
+              "role": null,
+              "attrs": {
+                "aria-label": "Copy"
+              },
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 4
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      },
+      {
+        "variant": "global:connectorPill",
+        "checkpointId": null,
+        "stateClass": "unknown",
+        "generationId": null,
+        "contract": {
+          "tag": "span",
+          "role": null,
+          "attrs": {
+            "data-id": "plugin:anonymous",
+            "data-inline-selection-pill": ""
+          },
+          "rect": {
+            "x": 76,
+            "y": 744,
+            "width": 94,
+            "height": 24
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "border-radius": "999px"
+          },
+          "children": [
+            {
+              "tag": "button",
+              "role": null,
+              "attrs": {
+                "aria-label": "Copy"
+              },
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 4
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "longThreadMountedWindow": {
+    "schemaVersion": 1,
+    "name": "longThreadMountedWindow",
+    "status": "OBSERVED",
+    "source": "synthetic-atlas-smoke",
+    "privacy": {
+      "localOnly": true,
+      "telemetryUploaded": false,
+      "promptTextIncluded": false,
+      "answerTextIncluded": false,
+      "rawDomIncluded": false,
+      "fullPageScreenshotIncluded": false,
+      "headersIncluded": false,
+      "cookiesIncluded": false,
+      "requestBodiesIncluded": false
+    },
+    "checkpointId": "synthetic-smoke:window",
+    "stateClass": "mounted_turn_window_changed",
+    "generationId": null,
+    "variant": "global:mounted_window",
+    "contract": {
+      "tag": "main",
+      "role": null,
+      "attrs": {
+        "data-testid": "conversation-window"
+      },
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 900,
+        "height": 720
+      },
+      "state": {
+        "disabled": false,
+        "expanded": null,
+        "pressed": null,
+        "contenteditable": ""
+      },
+      "text": {
+        "category": "redacted",
+        "length": 32
+      },
+      "styles": {
+        "display": "block"
+      },
+      "children": [
+        {
+          "tag": "button",
+          "role": null,
+          "attrs": {
+            "aria-label": "Copy"
+          },
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "short",
+            "length": 4
+          },
+          "styles": {},
+          "children": []
+        }
+      ]
+    },
+    "variants": [
+      {
+        "variant": "global:mounted_window",
+        "checkpointId": "synthetic-smoke:window",
+        "stateClass": "mounted_turn_window_changed",
+        "generationId": null,
+        "contract": {
+          "tag": "main",
+          "role": null,
+          "attrs": {
+            "data-testid": "conversation-window"
+          },
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 900,
+            "height": 720
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "display": "block"
+          },
+          "children": [
+            {
+              "tag": "button",
+              "role": null,
+              "attrs": {
+                "aria-label": "Copy"
+              },
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 4
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      }
+    ]
   },
   "mentionChooser": {
     "schemaVersion": 1,
@@ -218,8 +1170,10 @@
       "cookiesIncluded": false,
       "requestBodiesIncluded": false
     },
-    "checkpointId": null,
-    "stateClass": "unknown",
+    "checkpointId": "synthetic-smoke:mention",
+    "stateClass": "mention_chooser_visible",
+    "generationId": null,
+    "variant": "global:mention_chooser_visible",
     "contract": {
       "tag": "div",
       "role": "listbox",
@@ -267,7 +1221,242 @@
           "children": []
         }
       ]
-    }
+    },
+    "variants": [
+      {
+        "variant": "global:mention_chooser_visible",
+        "checkpointId": "synthetic-smoke:mention",
+        "stateClass": "mention_chooser_visible",
+        "generationId": null,
+        "contract": {
+          "tag": "div",
+          "role": "listbox",
+          "attrs": {
+            "role": "listbox"
+          },
+          "rect": {
+            "x": 56,
+            "y": 580,
+            "width": 360,
+            "height": 260
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "background-color": "rgb(255, 255, 255)"
+          },
+          "children": [
+            {
+              "tag": "button",
+              "role": null,
+              "attrs": {
+                "aria-label": "Copy"
+              },
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 4
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      },
+      {
+        "variant": "global:mentionChooser",
+        "checkpointId": null,
+        "stateClass": "unknown",
+        "generationId": null,
+        "contract": {
+          "tag": "div",
+          "role": "listbox",
+          "attrs": {
+            "role": "listbox"
+          },
+          "rect": {
+            "x": 56,
+            "y": 580,
+            "width": 360,
+            "height": 260
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "background-color": "rgb(255, 255, 255)"
+          },
+          "children": [
+            {
+              "tag": "button",
+              "role": null,
+              "attrs": {
+                "aria-label": "Copy"
+              },
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 4
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "micaCopy": {
+    "schemaVersion": 1,
+    "name": "micaCopy",
+    "status": "OBSERVED",
+    "source": "synthetic-atlas-smoke",
+    "privacy": {
+      "localOnly": true,
+      "telemetryUploaded": false,
+      "promptTextIncluded": false,
+      "answerTextIncluded": false,
+      "rawDomIncluded": false,
+      "fullPageScreenshotIncluded": false,
+      "headersIncluded": false,
+      "cookiesIncluded": false,
+      "requestBodiesIncluded": false
+    },
+    "checkpointId": "synthetic-smoke:mica-copy",
+    "stateClass": "mica_copy_invoked",
+    "generationId": 2,
+    "variant": "g2:mica_copy_invoked",
+    "contract": {
+      "tag": "div",
+      "role": null,
+      "attrs": {
+        "data-testid": "mica-copy"
+      },
+      "rect": {
+        "x": 620,
+        "y": 474,
+        "width": 240,
+        "height": 44
+      },
+      "state": {
+        "disabled": false,
+        "expanded": null,
+        "pressed": null,
+        "contenteditable": ""
+      },
+      "text": {
+        "category": "redacted",
+        "length": 32
+      },
+      "styles": {
+        "display": "block"
+      },
+      "children": [
+        {
+          "tag": "button",
+          "role": null,
+          "attrs": {
+            "aria-label": "Copy"
+          },
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "short",
+            "length": 4
+          },
+          "styles": {},
+          "children": []
+        }
+      ]
+    },
+    "variants": [
+      {
+        "variant": "g2:mica_copy_invoked",
+        "checkpointId": "synthetic-smoke:mica-copy",
+        "stateClass": "mica_copy_invoked",
+        "generationId": 2,
+        "contract": {
+          "tag": "div",
+          "role": null,
+          "attrs": {
+            "data-testid": "mica-copy"
+          },
+          "rect": {
+            "x": 620,
+            "y": 474,
+            "width": 240,
+            "height": 44
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "display": "block"
+          },
+          "children": [
+            {
+              "tag": "button",
+              "role": null,
+              "attrs": {
+                "aria-label": "Copy"
+              },
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 4
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      }
+    ]
   },
   "micaOverlay": {
     "schemaVersion": 1,
@@ -285,8 +1474,10 @@
       "cookiesIncluded": false,
       "requestBodiesIncluded": false
     },
-    "checkpointId": null,
-    "stateClass": "unknown",
+    "checkpointId": "synthetic-smoke:overlay-compact",
+    "stateClass": "mica_overlay_state",
+    "generationId": null,
+    "variant": "global:mica_overlay_compact",
     "contract": {
       "tag": "mica-overlay",
       "role": null,
@@ -334,67 +1525,177 @@
           "children": []
         }
       ]
-    }
-  },
-  "userTurn": {
-    "schemaVersion": 1,
-    "name": "userTurn",
-    "status": "MISSING",
-    "source": "sanitizer",
-    "privacy": {
-      "localOnly": true,
-      "telemetryUploaded": false,
-      "promptTextIncluded": false,
-      "answerTextIncluded": false,
-      "rawDomIncluded": false,
-      "fullPageScreenshotIncluded": false,
-      "headersIncluded": false,
-      "cookiesIncluded": false,
-      "requestBodiesIncluded": false
     },
-    "contract": null
-  },
-  "assistantStreaming": {
-    "schemaVersion": 1,
-    "name": "assistantStreaming",
-    "status": "MISSING",
-    "source": "sanitizer",
-    "privacy": {
-      "localOnly": true,
-      "telemetryUploaded": false,
-      "promptTextIncluded": false,
-      "answerTextIncluded": false,
-      "rawDomIncluded": false,
-      "fullPageScreenshotIncluded": false,
-      "headersIncluded": false,
-      "cookiesIncluded": false,
-      "requestBodiesIncluded": false
-    },
-    "contract": null
-  },
-  "assistantSettled": {
-    "schemaVersion": 1,
-    "name": "assistantSettled",
-    "status": "MISSING",
-    "source": "sanitizer",
-    "privacy": {
-      "localOnly": true,
-      "telemetryUploaded": false,
-      "promptTextIncluded": false,
-      "answerTextIncluded": false,
-      "rawDomIncluded": false,
-      "fullPageScreenshotIncluded": false,
-      "headersIncluded": false,
-      "cookiesIncluded": false,
-      "requestBodiesIncluded": false
-    },
-    "contract": null
+    "variants": [
+      {
+        "variant": "global:mica_overlay_compact",
+        "checkpointId": "synthetic-smoke:overlay-compact",
+        "stateClass": "mica_overlay_state",
+        "generationId": null,
+        "contract": {
+          "tag": "mica-overlay",
+          "role": null,
+          "attrs": {
+            "data-mica-root": "true"
+          },
+          "rect": {
+            "x": 812,
+            "y": 760,
+            "width": 56,
+            "height": 44
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "position": "fixed"
+          },
+          "children": [
+            {
+              "tag": "button",
+              "role": null,
+              "attrs": {
+                "aria-label": "Copy"
+              },
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 4
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      },
+      {
+        "variant": "global:mica_overlay_recording",
+        "checkpointId": "synthetic-smoke:overlay-recording",
+        "stateClass": "mica_overlay_state",
+        "generationId": null,
+        "contract": {
+          "tag": "mica-overlay",
+          "role": null,
+          "attrs": {
+            "data-mica-root": "true"
+          },
+          "rect": {
+            "x": 768,
+            "y": 732,
+            "width": 100,
+            "height": 72
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "position": "fixed"
+          },
+          "children": [
+            {
+              "tag": "button",
+              "role": null,
+              "attrs": {
+                "aria-label": "Copy"
+              },
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 4
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      },
+      {
+        "variant": "global:micaOverlay",
+        "checkpointId": null,
+        "stateClass": "unknown",
+        "generationId": null,
+        "contract": {
+          "tag": "mica-overlay",
+          "role": null,
+          "attrs": {
+            "data-mica-root": "true"
+          },
+          "rect": {
+            "x": 812,
+            "y": 760,
+            "width": 56,
+            "height": 44
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "position": "fixed"
+          },
+          "children": [
+            {
+              "tag": "button",
+              "role": null,
+              "attrs": {
+                "aria-label": "Copy"
+              },
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 4
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      }
+    ]
   },
   "nativeCopyArea": {
     "schemaVersion": 1,
     "name": "nativeCopyArea",
-    "status": "MISSING",
-    "source": "sanitizer",
+    "status": "OBSERVED",
+    "source": "synthetic-atlas-smoke",
     "privacy": {
       "localOnly": true,
       "telemetryUploaded": false,
@@ -406,13 +1707,122 @@
       "cookiesIncluded": false,
       "requestBodiesIncluded": false
     },
-    "contract": null
+    "checkpointId": "synthetic-smoke:g2:native-copy",
+    "stateClass": "assistant_copy_action_visible_or_invoked",
+    "generationId": 2,
+    "variant": "g2:native_copy_area",
+    "contract": {
+      "tag": "div",
+      "role": "toolbar",
+      "attrs": {
+        "role": "toolbar",
+        "aria-label": "Copy"
+      },
+      "rect": {
+        "x": 620,
+        "y": 520,
+        "width": 220,
+        "height": 40
+      },
+      "state": {
+        "disabled": false,
+        "expanded": null,
+        "pressed": null,
+        "contenteditable": ""
+      },
+      "text": {
+        "category": "redacted",
+        "length": 32
+      },
+      "styles": {
+        "display": "flex"
+      },
+      "children": [
+        {
+          "tag": "button",
+          "role": null,
+          "attrs": {
+            "aria-label": "Copy"
+          },
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "short",
+            "length": 4
+          },
+          "styles": {},
+          "children": []
+        }
+      ]
+    },
+    "variants": [
+      {
+        "variant": "g2:native_copy_area",
+        "checkpointId": "synthetic-smoke:g2:native-copy",
+        "stateClass": "assistant_copy_action_visible_or_invoked",
+        "generationId": 2,
+        "contract": {
+          "tag": "div",
+          "role": "toolbar",
+          "attrs": {
+            "role": "toolbar",
+            "aria-label": "Copy"
+          },
+          "rect": {
+            "x": 620,
+            "y": 520,
+            "width": 220,
+            "height": 40
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "display": "flex"
+          },
+          "children": [
+            {
+              "tag": "button",
+              "role": null,
+              "attrs": {
+                "aria-label": "Copy"
+              },
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 4
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      }
+    ]
   },
   "richMarkdown": {
     "schemaVersion": 1,
     "name": "richMarkdown",
-    "status": "MISSING",
-    "source": "sanitizer",
+    "status": "OBSERVED",
+    "source": "synthetic-atlas-smoke",
     "privacy": {
       "localOnly": true,
       "telemetryUploaded": false,
@@ -424,13 +1834,300 @@
       "cookiesIncluded": false,
       "requestBodiesIncluded": false
     },
-    "contract": null
+    "checkpointId": "synthetic-smoke:g2:rich",
+    "stateClass": "rich_markdown_settled",
+    "generationId": 2,
+    "variant": "g2:rich_markdown_settled",
+    "contract": {
+      "tag": "article",
+      "role": null,
+      "attrs": {
+        "data-message-author-role": "assistant",
+        "data-testid": "conversation-turn-assistant-rich"
+      },
+      "rect": {
+        "x": 76,
+        "y": 380,
+        "width": 760,
+        "height": 360
+      },
+      "state": {
+        "disabled": false,
+        "expanded": null,
+        "pressed": null,
+        "contenteditable": ""
+      },
+      "text": {
+        "category": "redacted",
+        "length": 32
+      },
+      "styles": {
+        "display": "block"
+      },
+      "children": [
+        {
+          "tag": "h2",
+          "role": null,
+          "attrs": {},
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "short",
+            "length": 12
+          },
+          "styles": {},
+          "children": []
+        },
+        {
+          "tag": "ul",
+          "role": null,
+          "attrs": {},
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "medium",
+            "length": 60
+          },
+          "styles": {},
+          "children": []
+        },
+        {
+          "tag": "blockquote",
+          "role": null,
+          "attrs": {},
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "short",
+            "length": 24
+          },
+          "styles": {},
+          "children": []
+        },
+        {
+          "tag": "pre",
+          "role": null,
+          "attrs": {},
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "medium",
+            "length": 80
+          },
+          "styles": {},
+          "children": [
+            {
+              "tag": "code",
+              "role": null,
+              "attrs": {},
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "medium",
+                "length": 80
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        },
+        {
+          "tag": "table",
+          "role": null,
+          "attrs": {},
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "medium",
+            "length": 48
+          },
+          "styles": {},
+          "children": []
+        }
+      ]
+    },
+    "variants": [
+      {
+        "variant": "g2:rich_markdown_settled",
+        "checkpointId": "synthetic-smoke:g2:rich",
+        "stateClass": "rich_markdown_settled",
+        "generationId": 2,
+        "contract": {
+          "tag": "article",
+          "role": null,
+          "attrs": {
+            "data-message-author-role": "assistant",
+            "data-testid": "conversation-turn-assistant-rich"
+          },
+          "rect": {
+            "x": 76,
+            "y": 380,
+            "width": 760,
+            "height": 360
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "display": "block"
+          },
+          "children": [
+            {
+              "tag": "h2",
+              "role": null,
+              "attrs": {},
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 12
+              },
+              "styles": {},
+              "children": []
+            },
+            {
+              "tag": "ul",
+              "role": null,
+              "attrs": {},
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "medium",
+                "length": 60
+              },
+              "styles": {},
+              "children": []
+            },
+            {
+              "tag": "blockquote",
+              "role": null,
+              "attrs": {},
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 24
+              },
+              "styles": {},
+              "children": []
+            },
+            {
+              "tag": "pre",
+              "role": null,
+              "attrs": {},
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "medium",
+                "length": 80
+              },
+              "styles": {},
+              "children": [
+                {
+                  "tag": "code",
+                  "role": null,
+                  "attrs": {},
+                  "rect": null,
+                  "state": {
+                    "disabled": false,
+                    "expanded": null,
+                    "pressed": null,
+                    "contenteditable": ""
+                  },
+                  "text": {
+                    "category": "medium",
+                    "length": 80
+                  },
+                  "styles": {},
+                  "children": []
+                }
+              ]
+            },
+            {
+              "tag": "table",
+              "role": null,
+              "attrs": {},
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "medium",
+                "length": 48
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      }
+    ]
   },
-  "longThreadMountedWindow": {
+  "userTurn": {
     "schemaVersion": 1,
-    "name": "longThreadMountedWindow",
-    "status": "MISSING",
-    "source": "sanitizer",
+    "name": "userTurn",
+    "status": "OBSERVED",
+    "source": "synthetic-atlas-smoke",
     "privacy": {
       "localOnly": true,
       "telemetryUploaded": false,
@@ -442,29 +2139,120 @@
       "cookiesIncluded": false,
       "requestBodiesIncluded": false
     },
-    "contract": null
+    "checkpointId": "synthetic-smoke:g2:user",
+    "stateClass": "user_turn_mounted",
+    "generationId": 2,
+    "variant": "g2:user_turn_mounted",
+    "contract": {
+      "tag": "article",
+      "role": null,
+      "attrs": {
+        "data-message-author-role": "user",
+        "data-testid": "conversation-turn-user"
+      },
+      "rect": {
+        "x": 76,
+        "y": 320,
+        "width": 760,
+        "height": 54
+      },
+      "state": {
+        "disabled": false,
+        "expanded": null,
+        "pressed": null,
+        "contenteditable": ""
+      },
+      "text": {
+        "category": "redacted",
+        "length": 32
+      },
+      "styles": {
+        "display": "block"
+      },
+      "children": [
+        {
+          "tag": "button",
+          "role": null,
+          "attrs": {
+            "aria-label": "Copy"
+          },
+          "rect": null,
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "short",
+            "length": 4
+          },
+          "styles": {},
+          "children": []
+        }
+      ]
+    },
+    "variants": [
+      {
+        "variant": "g2:user_turn_mounted",
+        "checkpointId": "synthetic-smoke:g2:user",
+        "stateClass": "user_turn_mounted",
+        "generationId": 2,
+        "contract": {
+          "tag": "article",
+          "role": null,
+          "attrs": {
+            "data-message-author-role": "user",
+            "data-testid": "conversation-turn-user"
+          },
+          "rect": {
+            "x": 76,
+            "y": 320,
+            "width": 760,
+            "height": 54
+          },
+          "state": {
+            "disabled": false,
+            "expanded": null,
+            "pressed": null,
+            "contenteditable": ""
+          },
+          "text": {
+            "category": "redacted",
+            "length": 32
+          },
+          "styles": {
+            "display": "block"
+          },
+          "children": [
+            {
+              "tag": "button",
+              "role": null,
+              "attrs": {
+                "aria-label": "Copy"
+              },
+              "rect": null,
+              "state": {
+                "disabled": false,
+                "expanded": null,
+                "pressed": null,
+                "contenteditable": ""
+              },
+              "text": {
+                "category": "short",
+                "length": 4
+              },
+              "styles": {},
+              "children": []
+            }
+          ]
+        }
+      }
+    ]
   },
   "toolFileAuthSurface": {
     "schemaVersion": 1,
     "name": "toolFileAuthSurface",
-    "status": "MISSING",
-    "source": "sanitizer",
-    "privacy": {
-      "localOnly": true,
-      "telemetryUploaded": false,
-      "promptTextIncluded": false,
-      "answerTextIncluded": false,
-      "rawDomIncluded": false,
-      "fullPageScreenshotIncluded": false,
-      "headersIncluded": false,
-      "cookiesIncluded": false,
-      "requestBodiesIncluded": false
-    },
-    "contract": null
-  },
-  "micaCopy": {
-    "schemaVersion": 1,
-    "name": "micaCopy",
     "status": "MISSING",
     "source": "sanitizer",
     "privacy": {

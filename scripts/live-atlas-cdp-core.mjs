@@ -39,6 +39,7 @@ export const STYLE_WHITELIST = [
 ];
 
 export const CHECKPOINT_PREFIX = "MICA_ATLAS_CHECKPOINT ";
+export const REPORT_PREFIX = "MICA_ATLAS_REPORT_CHUNK ";
 export const DEFAULT_INACTIVITY_HARD_CAP_MS = 15 * 60 * 1000;
 export const DEFAULT_DRAIN_MS = 750;
 export const DEFAULT_MAX_CHECKPOINTS = 500;
@@ -76,7 +77,8 @@ export async function runReadOnlyCaptureSession(options) {
   const target = await resolveExactTarget({ port, threadUrl, fetchImpl });
   const client = await connect(target.webSocketDebuggerUrl);
   const timeline = [];
-  const surfaces = new Map();
+  const surfaces = [];
+  const recorderReports = [];
   const screenshotsDir = path.join(out, "screenshots");
   const surfacesDir = path.join(out, "surfaces");
   await mkdir(screenshotsDir, { recursive: true });
@@ -92,6 +94,7 @@ export async function runReadOnlyCaptureSession(options) {
   let drainTimer = null;
   let finishSession = null;
   const pendingCaptures = new Set();
+  const reportChunks = new Map();
   const sessionDone = new Promise((resolve) => {
     finishSession = resolve;
   });
@@ -156,7 +159,8 @@ export async function runReadOnlyCaptureSession(options) {
     attached,
     target,
     timeline,
-    surfaces: [...surfaces.keys()],
+    surfaces: surfaces.slice(),
+    recorderReports,
     checkpointCount,
     capturedCheckpointCount,
     commandsSent: client.commandsSent,
@@ -170,6 +174,19 @@ export async function runReadOnlyCaptureSession(options) {
   };
 
   async function handleCheckpoint(checkpoint) {
+    if (isRecorderReportCheckpoint(checkpoint)) {
+      armInactivityTimer();
+      const report = checkpoint.report || assembleRecorderReportChunk(checkpoint, reportChunks);
+      if (report) {
+        recorderReports.push(report);
+        timeline.push(cdpLifecycleEvent("cdp_recorder_report_ingested", {
+          sessionId: safeFilePart(report.session?.id || "unknown"),
+          eventCount: Array.isArray(report.timeline) ? report.timeline.length : 0,
+          performanceCaptured: !!report.performance
+        }));
+      }
+      return;
+    }
     checkpointCount += 1;
     armInactivityTimer();
     const terminal = isTerminalCheckpoint(checkpoint);
@@ -187,8 +204,18 @@ export async function runReadOnlyCaptureSession(options) {
       if (terminal) requestFinish("atlas_stopped");
       return;
     }
+    timeline.push({
+      schemaVersion: 1,
+      type: "cdp_checkpoint_observed",
+      relativeTimeMs: checkpoint.monotonicTimestamp ?? null,
+      details: safeCheckpointTimelineDetails(checkpoint)
+    });
+    if (!isVisualCheckpoint(checkpoint)) {
+      if (terminal) requestFinish("atlas_stopped");
+      return;
+    }
     const captured = await captureCheckpoint(client, checkpoint, { screenshotsDir, surfacesDir });
-    capturedCheckpointCount += 1;
+    if (captured.status === "OBSERVED") capturedCheckpointCount += 1;
     timeline.push({
       schemaVersion: 1,
       type: "cdp_checkpoint_capture",
@@ -199,10 +226,12 @@ export async function runReadOnlyCaptureSession(options) {
         generationId: checkpoint.generationId ?? null,
         surfaceKey: captured.surfaceKey,
         screenshot: captured.screenshotFile ? path.basename(captured.screenshotFile) : null,
-        clipped: true
+        clipped: !!captured.screenshotFile,
+        status: captured.status,
+        missingReason: captured.missingReason || null
       }
     });
-    surfaces.set(captured.surfaceKey, captured.surfaceFile);
+    if (captured.status === "OBSERVED") surfaces.push(captured.surfaceKey);
     if (terminal) requestFinish("atlas_stopped");
   }
 }
@@ -214,7 +243,11 @@ export async function writeRawSessionBundle({ out, threadUrl, session }) {
   ]));
   await mkdir(out, { recursive: true });
   await writeJson(path.join(out, "manifest.json"), createManifest({ threadUrl, target: session.target, commandsSent: session.commandsSent, session }));
-  await writeFile(path.join(out, "timeline.ndjson"), `${session.timeline.map((event) => JSON.stringify(event)).join("\n")}\n`);
+  const recorderReports = Array.isArray(session.recorderReports) ? session.recorderReports : [];
+  const recorderTimeline = recorderReports.flatMap((report) => Array.isArray(report.timeline) ? report.timeline : []);
+  const combinedTimeline = [...recorderTimeline, ...session.timeline].sort((a, b) => Number(a.relativeTimeMs || 0) - Number(b.relativeTimeMs || 0));
+  await writeFile(path.join(out, "timeline.ndjson"), `${combinedTimeline.map((event) => JSON.stringify(event)).join("\n")}\n`);
+  if (recorderReports.length) await writeJson(path.join(out, "recorder-report.json"), mergeRecorderReports(recorderReports));
   await writeJson(path.join(out, "coverage.json"), coverage);
   await writeJson(path.join(out, "performance.json"), {
     schemaVersion: 1,
@@ -222,6 +255,9 @@ export async function writeRawSessionBundle({ out, threadUrl, session }) {
     privacy: privacyFlags(),
     safety: safetyFlags(),
     cdpMetricsCaptured: session.commandsSent.includes("Performance.getMetrics"),
+    recorderReportsIngested: recorderReports.length,
+    recorderPerformanceIngested: recorderReports.some((report) => !!report.performance),
+    recorderPerformance: mergeRecorderPerformance(recorderReports),
     terminationReason: session.terminationReason,
     explicitStop: session.explicitStop,
     truncated: session.truncated
@@ -234,7 +270,26 @@ export async function captureCheckpoint(client, checkpoint, paths) {
   const layout = await client.send("Page.getLayoutMetrics");
   const snapshot = await client.send("DOMSnapshot.captureSnapshot", { computedStyles: STYLE_WHITELIST });
   const metrics = await client.send("Performance.getMetrics");
-  const rect = rectForSurface(snapshot, surfaceKey) || fallbackClip(layout);
+  const match = resolveSurfaceMatch(snapshot, surfaceKey, checkpoint);
+  if (!match) {
+    const surface = {
+      schemaVersion: 1,
+      name: surfaceKey,
+      status: "MISSING",
+      source: "real-cdp-companion",
+      checkpointId: checkpoint.checkpointId,
+      stateClass: checkpoint.stateClass,
+      generationId: checkpoint.generationId ?? null,
+      missingReason: "surface_not_resolved",
+      privacy: privacyFlags(),
+      contract: null,
+      performanceMetricCount: Array.isArray(metrics?.metrics) ? metrics.metrics.length : 0
+    };
+    const surfaceFile = path.join(paths.surfacesDir, `${surfaceKey}-${safeFilePart(checkpoint.checkpointId)}.json`);
+    await writeJson(surfaceFile, surface);
+    return { surfaceKey, status: "MISSING", surfaceFile, screenshotFile: null, missingReason: surface.missingReason };
+  }
+  const rect = match.rect;
   const clip = sanitizeClip(rect, layout);
   const screenshot = await client.send("Page.captureScreenshot", { format: "png", clip, fromSurface: true });
   const surface = {
@@ -244,15 +299,17 @@ export async function captureCheckpoint(client, checkpoint, paths) {
     source: "real-cdp-companion",
     checkpointId: checkpoint.checkpointId,
     stateClass: checkpoint.stateClass,
+    generationId: checkpoint.generationId ?? null,
+    variant: variantForCheckpoint(checkpoint),
     privacy: privacyFlags(),
-    contract: contractForSurface(snapshot, surfaceKey, clip),
+    contract: contractForSurface(snapshot, surfaceKey, clip, match.nodeIndex),
     performanceMetricCount: Array.isArray(metrics?.metrics) ? metrics.metrics.length : 0
   };
   const surfaceFile = path.join(paths.surfacesDir, `${surfaceKey}-${safeFilePart(checkpoint.checkpointId)}.json`);
   const screenshotFile = path.join(paths.screenshotsDir, `${surfaceKey}-${safeFilePart(checkpoint.checkpointId)}.png`);
   await writeJson(surfaceFile, surface);
   await writeFile(screenshotFile, Buffer.from(String(screenshot?.data || ""), "base64"));
-  return { surfaceKey, surfaceFile, screenshotFile, clip };
+  return { surfaceKey, status: "OBSERVED", surfaceFile, screenshotFile, clip };
 }
 
 export function parseCheckpointMessage(message) {
@@ -260,9 +317,32 @@ export function parseCheckpointMessage(message) {
     || message?.params?.args?.map((arg) => arg.value).join(" ")
     || message?.params?.message?.text
     || "";
+  if (String(text).startsWith(REPORT_PREFIX)) return parseRecorderReportMessage(String(text));
   if (!String(text).startsWith(CHECKPOINT_PREFIX)) return null;
   try {
     return JSON.parse(String(text).slice(CHECKPOINT_PREFIX.length));
+  } catch (_error) {
+    return null;
+  }
+}
+
+function parseRecorderReportMessage(text) {
+  try {
+    const chunk = JSON.parse(text.slice(REPORT_PREFIX.length));
+    if (chunk && typeof chunk === "object" && typeof chunk.data === "string") {
+      return {
+        stateClass: "recorder_report_chunk",
+        checkpointId: `recorder-report:${chunk.index ?? 0}`,
+        monotonicTimestamp: null,
+        chunk
+      };
+    }
+    return {
+      stateClass: "recorder_report_exported",
+      checkpointId: "recorder-report",
+      monotonicTimestamp: null,
+      report: chunk
+    };
   } catch (_error) {
     return null;
   }
@@ -273,56 +353,74 @@ export function isTerminalCheckpoint(checkpoint) {
 }
 
 export function surfaceKeyForCheckpoint(stateClass) {
-  if (/^composer_|manual_send|atlas_started/.test(stateClass)) return "composer";
+  if (/^atlas_stopped/.test(stateClass)) return null;
+  if (/^composer_|atlas_started/.test(stateClass)) return "composer";
+  if (/^manual_send|composer_body_zero|assistant_first_content_mutation|assistant_stream_mutation_burst|recorder_report_exported/.test(stateClass)) return null;
+  if (/^user_turn/.test(stateClass)) return "userTurn";
   if (/^mention_/.test(stateClass)) return "mentionChooser";
   if (/^connector_/.test(stateClass)) return "connectorPill";
-  if (/assistant_action_bar|copy/.test(stateClass)) return "assistantActionBar";
-  if (/assistant_|user_turn/.test(stateClass)) return "assistantStreaming";
+  if (/rich_markdown/.test(stateClass)) return "richMarkdown";
+  if (/mica_copy/.test(stateClass)) return "micaCopy";
+  if (/native_copy|assistant_copy/.test(stateClass)) return "nativeCopyArea";
+  if (/assistant_action_bar/.test(stateClass)) return "assistantActionBar";
+  if (/assistant_settled/.test(stateClass)) return "assistantSettled";
+  if (/assistant_/.test(stateClass)) return "assistantStreaming";
   if (/mica_overlay/.test(stateClass)) return "micaOverlay";
   if (/mounted_turn/.test(stateClass)) return "longThreadMountedWindow";
   return "composer";
 }
 
-export function rectForSurface(snapshot, surfaceKey) {
+export function isVisualCheckpoint(checkpoint) {
+  return !!surfaceKeyForCheckpoint(checkpoint.stateClass);
+}
+
+export function resolveSurfaceMatch(snapshot, surfaceKey, checkpoint = {}) {
   const doc = snapshot?.documents?.[0];
   const layout = doc?.layout;
   const nodes = doc?.nodes;
-  if (!layout || !nodes) return null;
+  assertOfficialSnapshotStrings(snapshot);
+  if (!layout || !nodes || !surfaceKey) return null;
+  const targetRect = normalizeTargetRect(checkpoint.targetRect || checkpoint.rect);
+  const candidates = [];
   const layoutNodeIndexes = layout.nodeIndex || [];
   const bounds = layout.bounds || [];
   for (let index = 0; index < layoutNodeIndexes.length; index += 1) {
     const nodeIndex = layoutNodeIndexes[index];
-    if (nodeMatchesSurface(doc, nodeIndex, surfaceKey)) {
-      const rect = bounds[index];
-      if (Array.isArray(rect) && rect.length >= 4) return { x: rect[0], y: rect[1], width: rect[2], height: rect[3] };
-    }
+    if (!nodeMatchesSurface(snapshot, doc, nodeIndex, surfaceKey, checkpoint)) continue;
+    const rect = rectFromBounds(bounds[index]);
+    if (!rect) continue;
+    candidates.push({ nodeIndex, rect, score: targetRect ? rectDistance(rect, targetRect) : index });
   }
-  return null;
+  candidates.sort((a, b) => a.score - b.score);
+  return candidates[0] || null;
 }
 
-export function contractForSurface(snapshot, surfaceKey, clip) {
+export function rectForSurface(snapshot, surfaceKey, checkpoint = {}) {
+  return resolveSurfaceMatch(snapshot, surfaceKey, checkpoint)?.rect || null;
+}
+
+export function contractForSurface(snapshot, surfaceKey, clip, nodeIndex = null) {
   const doc = snapshot?.documents?.[0];
-  if (!doc) return observedContract(surfaceKey, clip);
-  const nodeIndex = findSurfaceNodeIndex(doc, surfaceKey);
-  if (nodeIndex === null) return observedContract(surfaceKey, clip);
-  return sanitizeNodeContract(doc, nodeIndex, clip, 0);
+  assertOfficialSnapshotStrings(snapshot);
+  if (!doc || nodeIndex === null) return null;
+  return sanitizeNodeContract(snapshot, doc, nodeIndex, clip, 0);
 }
 
-export function sanitizeNodeContract(doc, nodeIndex, clip, depth) {
+export function sanitizeNodeContract(snapshot, doc, nodeIndex, clip, depth) {
   const nodes = doc.nodes || {};
-  const strings = doc.strings || [];
+  const strings = snapshotStrings(snapshot);
   const tag = stringAt(strings, nodes.nodeName?.[nodeIndex] || "").toLowerCase() || "div";
-  const attrs = sanitizedAttributes(doc, nodeIndex);
+  const attrs = sanitizedAttributes(snapshot, doc, nodeIndex);
   const role = attrs.role || null;
-  const children = depth >= 3 ? [] : childIndexesOf(doc, nodeIndex).slice(0, 12).map((child) => sanitizeNodeContract(doc, child, null, depth + 1));
+  const children = depth >= 3 ? [] : childIndexesOf(doc, nodeIndex).slice(0, 12).map((child) => sanitizeNodeContract(snapshot, doc, child, null, depth + 1));
   return {
     tag: normalizeTag(tag),
     role,
     attrs,
     rect: depth === 0 ? clipToRect(clip) : null,
     state: controlState(attrs),
-    text: textContract(doc, nodeIndex),
-    styles: sanitizedStyles(doc, nodeIndex),
+    text: textContract(snapshot, doc, nodeIndex),
+    styles: sanitizedStyles(snapshot, doc, nodeIndex),
     children
   };
 }
@@ -343,6 +441,7 @@ export function createManifest({ threadUrl, target, commandsSent, session = null
     explicitStop: session?.explicitStop || false,
     checkpointCount: session?.checkpointCount ?? null,
     capturedCheckpointCount: session?.capturedCheckpointCount ?? null,
+    recorderReportsIngested: session?.recorderReports?.length || 0,
     maxCheckpoints: session?.maxCheckpoints ?? null,
     inactivityHardCapMs: session?.inactivityHardCapMs ?? null,
     drainMs: session?.drainMs ?? null,
@@ -452,6 +551,8 @@ async function openWebSocket(url) {
   ].join("\r\n"));
   await readHandshake(socket, key);
   let buffer = Buffer.alloc(0);
+  let fragmentedOpcode = null;
+  const fragments = [];
   const wrapper = {
     onFrame: null,
     send(payload) {
@@ -479,7 +580,28 @@ async function openWebSocket(url) {
       if (!decoded) break;
       buffer = decoded.rest;
       if (decoded.opcode === 8) continue;
-      if (decoded.opcode === 1 && wrapper.onFrame) wrapper.onFrame(decoded.payload.toString("utf8"));
+      if (decoded.opcode === 9) {
+        socket.write(encodeFrame(decoded.payload, 10));
+        continue;
+      }
+      if (decoded.opcode === 1 && decoded.fin && wrapper.onFrame) {
+        wrapper.onFrame(decoded.payload.toString("utf8"));
+        continue;
+      }
+      if (decoded.opcode === 1 && !decoded.fin) {
+        fragmentedOpcode = 1;
+        fragments.length = 0;
+        fragments.push(decoded.payload);
+        continue;
+      }
+      if (decoded.opcode === 0 && fragmentedOpcode === 1) {
+        fragments.push(decoded.payload);
+        if (decoded.fin && wrapper.onFrame) {
+          wrapper.onFrame(Buffer.concat(fragments).toString("utf8"));
+          fragmentedOpcode = null;
+          fragments.length = 0;
+        }
+      }
     }
   });
   return wrapper;
@@ -514,7 +636,11 @@ function encodeFrame(payload, opcode = 1) {
   const mask = randomBytes(4);
   if (payload.length < 126) header.push(0x80 | payload.length);
   else if (payload.length < 65536) header.push(0x80 | 126, payload.length >> 8, payload.length & 0xff);
-  else throw new Error("CDP frame too large");
+  else {
+    const length = BigInt(payload.length);
+    header.push(0x80 | 127);
+    for (let shift = 56n; shift >= 0n; shift -= 8n) header.push(Number((length >> shift) & 0xffn));
+  }
   const out = Buffer.concat([Buffer.from(header), mask, payload]);
   for (let index = 0; index < payload.length; index += 1) out[header.length + 4 + index] = payload[index] ^ mask[index % 4];
   return out;
@@ -522,6 +648,7 @@ function encodeFrame(payload, opcode = 1) {
 
 function decodeFrame(buffer) {
   if (buffer.length < 2) return null;
+  const fin = (buffer[0] & 0x80) !== 0;
   const opcode = buffer[0] & 0x0f;
   const masked = (buffer[1] & 0x80) !== 0;
   let length = buffer[1] & 0x7f;
@@ -530,6 +657,12 @@ function decodeFrame(buffer) {
     if (buffer.length < 4) return null;
     length = buffer.readUInt16BE(2);
     offset = 4;
+  } else if (length === 127) {
+    if (buffer.length < 10) return null;
+    const bigLength = buffer.readBigUInt64BE(2);
+    if (bigLength > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("CDP frame exceeds safe JavaScript length");
+    length = Number(bigLength);
+    offset = 10;
   }
   const mask = masked ? buffer.subarray(offset, offset + 4) : null;
   if (masked) offset += 4;
@@ -538,31 +671,40 @@ function decodeFrame(buffer) {
   if (mask) {
     for (let index = 0; index < payload.length; index += 1) payload[index] ^= mask[index % 4];
   }
-  return { opcode, payload, rest: buffer.subarray(offset + length) };
+  return { fin, opcode, payload, rest: buffer.subarray(offset + length) };
 }
 
-function nodeMatchesSurface(doc, nodeIndex, surfaceKey) {
-  const attrs = sanitizedAttributes(doc, nodeIndex);
-  const tag = stringAt(doc.strings || [], doc.nodes?.nodeName?.[nodeIndex] || "").toLowerCase();
+function nodeMatchesSurface(snapshot, doc, nodeIndex, surfaceKey, checkpoint = {}) {
+  const attrs = sanitizedAttributes(snapshot, doc, nodeIndex);
+  const strings = snapshotStrings(snapshot);
+  const tag = stringAt(strings, doc.nodes?.nodeName?.[nodeIndex] || "").toLowerCase();
+  const checkpointRole = checkpoint.role || checkpoint.surfaceRole || null;
+  if (checkpointRole && attrs["data-message-author-role"] && attrs["data-message-author-role"] !== checkpointRole) return false;
   if (surfaceKey === "composer") return attrs["data-composer-surface"] === "true" || /composer/i.test(attrs["data-testid"] || "");
   if (surfaceKey === "mentionChooser") return attrs.role === "listbox" || /mention|composer-menu/i.test(attrs["data-testid"] || "");
   if (surfaceKey === "connectorPill") return attrs["data-inline-selection-pill"] !== undefined || /plugin:/.test(attrs["data-id"] || "");
-  if (surfaceKey === "assistantActionBar") return attrs.role === "toolbar" || /action|copy/i.test(attrs["data-testid"] || attrs["aria-label"] || "");
+  if (surfaceKey === "assistantActionBar" || surfaceKey === "nativeCopyArea") return attrs.role === "toolbar" || /action|copy/i.test(attrs["data-testid"] || attrs["aria-label"] || "");
+  if (surfaceKey === "micaCopy") return attrs["data-testid"] === "mica-copy" || /mica.*copy/i.test(attrs["data-testid"] || attrs["aria-label"] || "");
   if (surfaceKey === "micaOverlay") return attrs["data-mica-root"] === "true" || tag === "mica-overlay";
-  return attrs["data-message-author-role"] === "assistant" || /conversation-turn/i.test(attrs["data-testid"] || "");
+  if (surfaceKey === "userTurn") return attrs["data-message-author-role"] === "user" || /conversation-turn/i.test(attrs["data-testid"] || "") && checkpointRole === "user";
+  if (surfaceKey === "assistantStreaming" || surfaceKey === "assistantSettled" || surfaceKey === "richMarkdown") {
+    return attrs["data-message-author-role"] === "assistant" || /conversation-turn/i.test(attrs["data-testid"] || "") && checkpointRole !== "user";
+  }
+  if (surfaceKey === "longThreadMountedWindow") return /conversation|thread|scroll/i.test(attrs["data-testid"] || attrs.role || "");
+  return false;
 }
 
-function findSurfaceNodeIndex(doc, surfaceKey) {
+function findSurfaceNodeIndex(snapshot, doc, surfaceKey, checkpoint = {}) {
   const nodes = doc.nodes || {};
   for (let index = 0; index < (nodes.nodeName?.length || 0); index += 1) {
-    if (nodeMatchesSurface(doc, index, surfaceKey)) return index;
+    if (nodeMatchesSurface(snapshot, doc, index, surfaceKey, checkpoint)) return index;
   }
   return null;
 }
 
-function sanitizedAttributes(doc, nodeIndex) {
+function sanitizedAttributes(snapshot, doc, nodeIndex) {
   const attrs = {};
-  const strings = doc.strings || [];
+  const strings = snapshotStrings(snapshot);
   const raw = doc.nodes?.attributes?.[nodeIndex] || [];
   const allow = new Set(["role", "aria-expanded", "aria-pressed", "disabled", "contenteditable", "data-composer-surface", "data-message-author-role", "data-mica-root", "data-inline-selection-pill", "data-symbol", "data-testid", "data-id", "aria-label"]);
   for (let index = 0; index < raw.length; index += 2) {
@@ -580,9 +722,9 @@ function sanitizedAttributes(doc, nodeIndex) {
   return attrs;
 }
 
-function sanitizedStyles(doc, nodeIndex) {
+function sanitizedStyles(snapshot, doc, nodeIndex) {
   const styles = {};
-  const strings = doc.strings || [];
+  const strings = snapshotStrings(snapshot);
   const layout = doc.layout || {};
   const layoutIndex = (layout.nodeIndex || []).indexOf(nodeIndex);
   const styleIndexes = layoutIndex >= 0 ? layout.styles?.[layoutIndex] || [] : [];
@@ -593,13 +735,14 @@ function sanitizedStyles(doc, nodeIndex) {
   return styles;
 }
 
-function textContract(doc, nodeIndex) {
+function textContract(snapshot, doc, nodeIndex) {
   const children = childIndexesOf(doc, nodeIndex);
   let textLength = 0;
+  const strings = snapshotStrings(snapshot);
   for (const child of children) {
-    const name = stringAt(doc.strings || [], doc.nodes?.nodeName?.[child] || "");
+    const name = stringAt(strings, doc.nodes?.nodeName?.[child] || "");
     if (name === "#text") {
-      const value = stringAt(doc.strings || [], doc.nodes?.nodeValue?.[child] || "");
+      const value = stringAt(strings, doc.nodes?.nodeValue?.[child] || "");
       textLength += value.length;
     }
   }
@@ -637,6 +780,103 @@ function observedContract(surfaceKey, clip) {
   };
 }
 
+function assertOfficialSnapshotStrings(snapshot) {
+  if (!Array.isArray(snapshot?.strings)) throw new Error("DOMSnapshot response missing top-level strings table");
+}
+
+function snapshotStrings(snapshot) {
+  assertOfficialSnapshotStrings(snapshot);
+  return snapshot.strings;
+}
+
+function rectFromBounds(rect) {
+  if (!Array.isArray(rect) || rect.length < 4) return null;
+  return { x: Number(rect[0]), y: Number(rect[1]), width: Number(rect[2]), height: Number(rect[3]) };
+}
+
+function normalizeTargetRect(rect) {
+  if (!rect || typeof rect !== "object") return null;
+  const out = rectFromBounds([rect.x, rect.y, rect.width, rect.height]);
+  return out && Number.isFinite(out.x) && Number.isFinite(out.y) && out.width > 0 && out.height > 0 ? out : null;
+}
+
+function rectDistance(rect, target) {
+  const cx = rect.x + rect.width / 2;
+  const cy = rect.y + rect.height / 2;
+  const tx = target.x + target.width / 2;
+  const ty = target.y + target.height / 2;
+  const areaDelta = Math.abs((rect.width * rect.height) - (target.width * target.height)) / Math.max(1, target.width * target.height);
+  return Math.hypot(cx - tx, cy - ty) + areaDelta * 100;
+}
+
+function variantForCheckpoint(checkpoint) {
+  const stateClass = checkpoint.stateClass || "unknown";
+  const generation = checkpoint.generationId ? `g${checkpoint.generationId}` : "global";
+  return `${generation}:${stateClass}`;
+}
+
+function safeCheckpointTimelineDetails(checkpoint) {
+  return {
+    checkpointId: checkpoint.checkpointId || null,
+    stateClass: checkpoint.stateClass || null,
+    generationId: checkpoint.generationId ?? null,
+    terminal: checkpoint.terminal === true,
+    surfaceKey: surfaceKeyForCheckpoint(checkpoint.stateClass),
+    targetRect: normalizeTargetRect(checkpoint.targetRect || checkpoint.rect)
+  };
+}
+
+function isRecorderReportCheckpoint(checkpoint) {
+  return (checkpoint?.stateClass === "recorder_report_exported" && checkpoint.report && typeof checkpoint.report === "object")
+    || checkpoint?.stateClass === "recorder_report_chunk";
+}
+
+function assembleRecorderReportChunk(checkpoint, reportChunks) {
+  const chunk = checkpoint.chunk;
+  const sessionId = safeFilePart(chunk?.sessionId || "unknown");
+  const total = Math.max(1, Math.min(100, Math.round(Number(chunk?.total || 0))));
+  const index = Math.round(Number(chunk?.index));
+  if (!Number.isFinite(index) || index < 0 || index >= total || typeof chunk.data !== "string") return null;
+  if (!reportChunks.has(sessionId)) reportChunks.set(sessionId, { total, chunks: new Array(total).fill(null) });
+  const entry = reportChunks.get(sessionId);
+  if (entry.total !== total) return null;
+  entry.chunks[index] = chunk.data;
+  if (entry.chunks.some((item) => item === null)) return null;
+  reportChunks.delete(sessionId);
+  try {
+    return JSON.parse(entry.chunks.join(""));
+  } catch (_error) {
+    return null;
+  }
+}
+
+function mergeRecorderReports(reports) {
+  const last = reports[reports.length - 1] || {};
+  return {
+    schemaVersion: 1,
+    kind: "mica.liveSurfaceAtlas.recorderReport",
+    reportCount: reports.length,
+    privacy: privacyFlags(),
+    safety: safetyFlags(),
+    coverage: last.coverage || {},
+    counters: last.counters || {},
+    performance: mergeRecorderPerformance(reports),
+    timeline: reports.flatMap((report) => Array.isArray(report.timeline) ? report.timeline : [])
+  };
+}
+
+function mergeRecorderPerformance(reports) {
+  const performance = { eventTiming: [], longAnimationFrame: [], longTask: [], layoutShift: [], memory: null };
+  for (const report of reports) {
+    const source = report.performance || {};
+    for (const key of ["eventTiming", "longAnimationFrame", "longTask", "layoutShift"]) {
+      if (Array.isArray(source[key])) performance[key].push(...source[key]);
+    }
+    if (source.memory) performance.memory = source.memory;
+  }
+  return performance;
+}
+
 function sanitizeClip(rect, layout) {
   const viewport = layout?.visualViewport || layout?.layoutViewport || { clientWidth: 1200, clientHeight: 900, pageX: 0, pageY: 0 };
   const x = Math.max(0, Number(rect.x || 0));
@@ -644,11 +884,6 @@ function sanitizeClip(rect, layout) {
   const width = Math.max(1, Math.min(Number(rect.width || 1), Number(viewport.clientWidth || 1200)));
   const height = Math.max(1, Math.min(Number(rect.height || 1), Number(viewport.clientHeight || 900)));
   return { x, y, width, height, scale: 1 };
-}
-
-function fallbackClip(layout) {
-  const viewport = layout?.visualViewport || layout?.layoutViewport || { clientWidth: 1200, clientHeight: 900 };
-  return { x: 0, y: Math.max(0, Number(viewport.clientHeight || 900) - 220), width: Math.min(900, Number(viewport.clientWidth || 1200)), height: 220 };
 }
 
 function clipToRect(clip) {

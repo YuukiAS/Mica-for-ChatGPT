@@ -10,6 +10,7 @@
   const ROLE_SELECTOR = "[data-message-author-role='user'], [data-message-author-role='assistant'], [data-message-author-role='tool']";
   const COMPOSER_SELECTOR = "[data-testid*='composer'], textarea, [contenteditable], [role='textbox'], form";
   const CHECKPOINT_PREFIX = "MICA_ATLAS_CHECKPOINT ";
+  const REPORT_PREFIX = "MICA_ATLAS_REPORT_CHUNK ";
   const ALLOWED_TEXT_LABELS = new Set(["Copy", "Retry", "Stop", "Continue", "Regenerate"]);
 
   const state = {
@@ -41,6 +42,7 @@
     pendingStructuralReason: "",
     nextGenerationId: 1,
     currentGeneration: null,
+    knownTurnKeys: new Set(),
     baselineScanned: false,
     lastCheckpointSignature: new Map(),
     performance: createPerformanceSummary(),
@@ -137,6 +139,7 @@
       terminal: true,
       reason
     });
+    emitRecorderReportMarker(buildReport());
     return summarizeSession("stopped");
   }
 
@@ -166,6 +169,7 @@
     state.pendingStructuralReason = "";
     state.nextGenerationId = 1;
     state.currentGeneration = null;
+    state.knownTurnKeys = new Set();
     state.baselineScanned = false;
     state.lastCheckpointSignature = new Map();
     state.performance = createPerformanceSummary();
@@ -286,7 +290,7 @@
     const target = getEventElement(event.target);
     if (!isComposerRelated(target)) return;
     const generation = startGeneration("submit");
-    checkpoint("manual_send_intent", { generationId: generation.id, source: "submit", ...composerSummary() });
+    checkpointManualSendIntent(generation, "submit");
     scheduleStructuralSample("manual_send_intent");
   }
 
@@ -296,7 +300,7 @@
     if (!(button instanceof HTMLElement)) return;
     if (isLikelySendButton(button) && isComposerRelated(button)) {
       const generation = startGeneration("send_click");
-      checkpoint("manual_send_intent", { generationId: generation.id, source: "send_click", ...composerSummary() });
+      checkpointManualSendIntent(generation, "send_click");
       scheduleStructuralSample("manual_send_intent");
       return;
     }
@@ -307,16 +311,30 @@
   }
 
   function startGeneration(source) {
+    if (state.currentGeneration && !state.currentGeneration.userTurnObserved) {
+      if (!state.currentGeneration.sources.includes(source)) state.currentGeneration.sources.push(source);
+      return state.currentGeneration;
+    }
+    const preSendKnownTurnKeys = Array.from(state.knownTurnKeys);
     const generation = {
       id: state.nextGenerationId++,
       source,
+      sources: [source],
       startedAt: now(),
+      preSendKnownTurnKeys,
+      manualIntentCheckpointed: false,
       userTurnObserved: false,
       assistantTurnObserved: false,
       lastAssistantTurnId: null
     };
     state.currentGeneration = generation;
     return generation;
+  }
+
+  function checkpointManualSendIntent(generation, source) {
+    if (!generation || generation.manualIntentCheckpointed) return;
+    generation.manualIntentCheckpointed = true;
+    checkpoint("manual_send_intent", { generationId: generation.id, source, ...composerSummary() });
   }
 
   function sampleStructuralState(reason) {
@@ -365,44 +383,53 @@
     const baselineMode = !state.baselineScanned;
     for (const turn of turns) {
       const role = getTurnRole(turn);
+      const key = turnKey(turn, role);
+      const knownBefore = state.knownTurnKeys.has(key);
       if (baselineMode && baselineCounts[role] !== undefined) baselineCounts[role] += 1;
       if (role === "user") {
         markObserved("userTurn");
-        if (!baselineMode && state.currentGeneration && !state.currentGeneration.userTurnObserved) {
+        if (!baselineMode && state.currentGeneration && !state.currentGeneration.userTurnObserved && !knownBefore) {
           state.currentGeneration.userTurnObserved = true;
-          checkpoint("user_turn_mounted", { generationId: state.currentGeneration.id, turnId: nodeId(turn), rect: rectSummary(turn) });
+          checkpoint("user_turn_mounted", { generationId: state.currentGeneration.id, role: "user", surfaceRole: "user", turnId: nodeId(turn), rect: rectSummary(turn) });
         }
       }
       if (role === "assistant") {
         markObserved("assistantStreaming");
         let entry = state.assistantState.get(turn);
         if (!entry) {
-          entry = createAssistantEntry(turn);
+          entry = createAssistantEntry(turn, knownBefore);
           state.assistantState.set(turn, entry);
           state.assistantEntries.add(entry);
-          if (baselineMode || !state.currentGeneration) {
+          if (baselineMode || knownBefore || !state.currentGeneration || !state.currentGeneration.userTurnObserved) {
             entry.baselineExisting = true;
           } else {
             state.currentGeneration.assistantTurnObserved = true;
             state.currentGeneration.lastAssistantTurnId = nodeId(turn);
-            checkpoint("assistant_turn_mounted", { generationId: entry.generationId, turnId: nodeId(turn), rect: rectSummary(turn) });
+            checkpoint("assistant_turn_mounted", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: nodeId(turn), rect: rectSummary(turn) });
+            entry.mountCheckpointed = true;
           }
+        } else if (!entry.baselineExisting && !entry.mountCheckpointed && entry.generationId && state.currentGeneration?.id === entry.generationId && state.currentGeneration.userTurnObserved) {
+          state.currentGeneration.assistantTurnObserved = true;
+          state.currentGeneration.lastAssistantTurnId = nodeId(turn);
+          checkpoint("assistant_turn_mounted", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: nodeId(turn), rect: rectSummary(turn) });
+          entry.mountCheckpointed = true;
         }
         const actionBar = findActionBar(turn);
         if (actionBar) {
           markObserved("assistantActionBar");
           if (!entry.actionBarVisible) {
             entry.actionBarVisible = true;
-            checkpoint("assistant_action_bar_visible", { generationId: entry.generationId, turnId: nodeId(turn), rect: rectSummary(actionBar), copyAreaVisible: !!actionBar.querySelector?.("[aria-label*='Copy'], [data-testid*='copy']") });
+            checkpoint("assistant_action_bar_visible", { generationId: entry.generationId, role: "assistant", surfaceRole: "toolbar", turnId: nodeId(turn), rect: rectSummary(actionBar), copyAreaVisible: !!actionBar.querySelector?.("[aria-label*='Copy'], [data-testid*='copy']") });
           }
         }
       }
+      state.knownTurnKeys.add(key);
     }
     if (baselineMode) checkpoint("baseline_existing", { counts: baselineCounts, mountedTurns: turns.length });
     state.baselineScanned = true;
   }
 
-  function createAssistantEntry(turn) {
+  function createAssistantEntry(turn, knownBefore = false) {
     const generationId = state.currentGeneration?.id || null;
     return {
       mountedAt: now(),
@@ -415,7 +442,9 @@
       hardSettleTimer: 0,
       streamFlushTimer: 0,
       pendingStreamBurst: null,
-      turnId: nodeId(turn)
+      turnId: nodeId(turn),
+      knownBefore,
+      mountCheckpointed: false
     };
   }
 
@@ -429,7 +458,7 @@
       const timestamp = now();
       if (!entry.firstMutationAt) {
         entry.firstMutationAt = timestamp;
-        checkpoint("assistant_first_content_mutation", { generationId: entry.generationId, turnId: nodeId(turn), elapsedFromMountMs: Math.round(timestamp - entry.mountedAt) });
+        checkpoint("assistant_first_content_mutation", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: nodeId(turn), elapsedFromMountMs: Math.round(timestamp - entry.mountedAt) });
       }
       entry.lastMutationAt = timestamp;
       entry.settled = false;
@@ -476,7 +505,11 @@
         markObserved("assistantSettled");
         clearTimer(entry.hardSettleTimer);
         entry.hardSettleTimer = 0;
-        checkpoint("assistant_settled", { generationId: entry.generationId, turnId: nodeId(turn), idleGapMs: Math.round(gap), actionBarVisible: !!findActionBar(turn) });
+        checkpoint("assistant_settled", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: nodeId(turn), rect: rectSummary(turn), idleGapMs: Math.round(gap), actionBarVisible: !!findActionBar(turn) });
+        if (hasRichMarkdown(turn)) {
+          markObserved("richMarkdown");
+          checkpoint("rich_markdown_settled", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: nodeId(turn), rect: rectSummary(turn), rich: true });
+        }
       }
     }, SETTLED_IDLE_MS + 20);
     if (!entry.hardSettleTimer) {
@@ -485,9 +518,19 @@
         entry.settled = true;
         clearTimer(entry.settledTimer);
         entry.settledTimer = 0;
-        checkpoint("assistant_settled_hard_cap", { generationId: entry.generationId, turnId: nodeId(turn), capMs: ASSISTANT_SETTLED_HARD_CAP_MS, actionBarVisible: !!findActionBar(turn) });
+        checkpoint("assistant_settled_hard_cap", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: nodeId(turn), rect: rectSummary(turn), capMs: ASSISTANT_SETTLED_HARD_CAP_MS, actionBarVisible: !!findActionBar(turn) });
+        if (hasRichMarkdown(turn)) {
+          markObserved("richMarkdown");
+          checkpoint("rich_markdown_settled", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: nodeId(turn), rect: rectSummary(turn), rich: true });
+        }
       }, ASSISTANT_SETTLED_HARD_CAP_MS);
     }
+  }
+
+  function hasRichMarkdown(turn) {
+    if (!(turn instanceof HTMLElement)) return false;
+    const structuralCount = turn.querySelectorAll("h1,h2,h3,ul,ol,blockquote,pre,code,table,math,.katex,[data-testid*='markdown']").length;
+    return structuralCount >= 2;
   }
 
   function inspectMentionAndConnector() {
@@ -625,7 +668,11 @@
     emitCheckpointMarker(stateClass, {
       checkpointId: event.details.checkpointId,
       monotonicTimestamp: event.monotonicTimeMs,
-      generationId: sanitized.generationId ?? null
+      generationId: sanitized.generationId ?? null,
+      targetRect: sanitized.rect || null,
+      turnId: sanitized.turnId || null,
+      role: sanitized.role || null,
+      surfaceRole: sanitized.surfaceRole || null
     });
     return event;
   }
@@ -633,6 +680,23 @@
   function emitCheckpointMarker(stateClass, details) {
     try {
       console.info(`${CHECKPOINT_PREFIX}${JSON.stringify({ stateClass, ...details })}`);
+    } catch (_error) {}
+  }
+
+  function emitRecorderReportMarker(report) {
+    try {
+      const payload = JSON.stringify(report);
+      const chunkSize = 24000;
+      const total = Math.max(1, Math.ceil(payload.length / chunkSize));
+      for (let index = 0; index < total; index += 1) {
+        console.info(`${REPORT_PREFIX}${JSON.stringify({
+          schemaVersion: SCHEMA_VERSION,
+          sessionId: report.session?.id || "unknown",
+          index,
+          total,
+          data: payload.slice(index * chunkSize, (index + 1) * chunkSize)
+        })}`);
+      }
     } catch (_error) {}
   }
 
@@ -758,6 +822,16 @@
 
   function collectTurns() {
     return Array.from(document.querySelectorAll(TURN_SELECTOR)).filter((node) => node instanceof HTMLElement && !!getTurnRole(node));
+  }
+
+  function turnKey(turn, role = getTurnRole(turn)) {
+    if (!(turn instanceof HTMLElement)) return "unknown";
+    const directTestId = turn.getAttribute("data-testid");
+    const roleNode = turn.matches(ROLE_SELECTOR) ? turn : turn.querySelector?.(ROLE_SELECTOR);
+    const roleTestId = roleNode instanceof HTMLElement ? roleNode.getAttribute("data-testid") : null;
+    const stable = directTestId || roleTestId || turn.getAttribute("data-message-id") || roleNode?.getAttribute?.("data-message-id");
+    if (stable && /^[a-zA-Z0-9:_-]{1,120}$/.test(stable)) return `${role || "turn"}:${stable}`;
+    return `${role || "turn"}:${nodeId(turn)}`;
   }
 
   function getTurnRole(node) {

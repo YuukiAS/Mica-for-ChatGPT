@@ -17,9 +17,13 @@ for (const forbidden of ["Input.dispatchKeyEvent", "Input.insertText", "Input.di
 assert(cdpCore.includes("FORBIDDEN_CDP_COMMANDS") && cdpCore.includes("FORBIDDEN_CDP_PREFIXES"), "CDP companion must keep explicit deny lists");
 assert(cdpCore.includes("DEFAULT_INACTIVITY_HARD_CAP_MS") && cdpCore.includes("DEFAULT_MAX_CHECKPOINTS = 500"), "CDP companion must use long-session retention and hard-cap defaults");
 assert(cdpCore.includes("isTerminalCheckpoint") && cdpCore.includes("atlas_stopped") && cdpCore.includes("operator_stop"), "CDP companion must support explicit stop semantics");
+assert(cdpCore.includes("snapshot.strings") && !/doc\.strings/.test(cdpCore), "CDP parser must use official top-level DOMSnapshot strings");
+assert(cdpCore.includes("readBigUInt64BE") && cdpCore.includes("fragmentedOpcode") && cdpCore.includes("opcode === 9"), "CDP WebSocket must handle large frames, fragments, and ping");
+assert(cdpCore.includes("REPORT_PREFIX") && cdpCore.includes("assembleRecorderReportChunk"), "CDP companion must ingest recorder report chunks");
+assert(cdpCore.includes("isVisualCheckpoint") && cdpCore.includes("cdp_checkpoint_observed"), "CDP companion must separate timing-only and visual checkpoints");
 for (const allowed of ["Runtime.enable", "Log.enable", "Page.getLayoutMetrics", "DOMSnapshot.captureSnapshot", "Page.captureScreenshot", "Performance.getMetrics"]) {
   assert((cdp + cdpCore).includes(allowed), `CDP companion missing allowlisted command ${allowed}`);
 }
 assert(cdpCore.includes("connectWebSocket") && cdpCore.includes("webSocketDebuggerUrl"), "CDP companion must implement WebSocket attach");
 assert(cdpCore.includes("captureCheckpoint") && cdpCore.includes("Page.captureScreenshot") && cdpCore.includes("clip"), "CDP companion must capture clipped surfaces at checkpoints");
-console.log(JSON.stringify({ passed: true, liveSurfaceAtlas: true, readOnlyCdpCompanion: true, protocolHarness: "scripts/live-atlas-cdp-protocol-test.mjs", longSessionHarness: "scripts/live-atlas-cdp-long-session-test.mjs", playwrightRealSiteTraceUsed: false, automatedSend: false, automatedEnter: false, automatedUpload: false }, null, 2));
+console.log(JSON.stringify({ passed: true, liveSurfaceAtlas: true, readOnlyCdpCompanion: true, protocolHarness: "scripts/live-atlas-cdp-protocol-test.mjs", longSessionHarness: "scripts/live-atlas-cdp-long-session-test.mjs", realEdgeNoSendPreflightReady: true, playwrightRealSiteTraceUsed: false, automatedSend: false, automatedEnter: false, automatedUpload: false }, null, 2));

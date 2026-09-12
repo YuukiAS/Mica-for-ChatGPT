@@ -9,10 +9,12 @@ const steps = [
   ["atlas:sample", "node", ["scripts/live-atlas-sample.mjs"]],
   ["atlas:sanitize", "node", ["scripts/live-atlas-sanitize.mjs"]],
   ["atlas:privacy", "node", ["scripts/live-atlas-privacy.mjs"]],
+  ["atlas:variants", "node", ["scripts/live-atlas-sanitizer-variants-test.mjs"]],
   ["atlas:build-fixtures", "node", ["scripts/live-atlas-build-fixtures.mjs"]],
   ["atlas:fixture-contract", "node", ["scripts/live-atlas-fixture-contract-test.mjs"]],
   ["atlas:analyze-timings", "node", ["scripts/live-atlas-analyze-timings.mjs"]],
   ["e2e:atlas-replay", "node", ["scripts/run-e2e.mjs", "--case=atlas-replay"]],
+  ["e2e:atlas-generation-identity", "node", ["scripts/run-e2e.mjs", "--case=atlas-generation-identity"]],
   ["e2e:typing-hotpath", "node", ["scripts/run-e2e.mjs", "--case=typing-hotpath"]],
   ["e2e:atlas-hotpath", "node", ["scripts/run-e2e.mjs", "--case=atlas-hotpath"]]
 ];

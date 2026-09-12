@@ -6,7 +6,9 @@ import path from "node:path";
 import { performance } from "node:perf_hooks";
 import {
   DEFAULT_MAX_CHECKPOINTS,
+  privacyFlags,
   runReadOnlyCaptureSession,
+  safetyFlags,
   writeRawSessionBundle
 } from "./live-atlas-cdp-core.mjs";
 import { assert } from "./live-atlas-common.mjs";
@@ -16,7 +18,7 @@ const commands = [];
 const sockets = new Set();
 const oldFixedIdleEquivalentMs = 30;
 const inactivityHardCapMs = 120;
-const drainMs = 12;
+const drainMs = 80;
 let checkpointMessagesSent = 0;
 let socketClosedAt = 0;
 
@@ -60,6 +62,7 @@ server.on("upgrade", (request, socket) => {
         socket.end();
         continue;
       }
+      if (frame.opcode === 10) continue;
       const message = JSON.parse(frame.payload.toString("utf8"));
       commands.push({ method: message.method, params: message.params || {} });
       socket.write(encodeFrame(JSON.stringify({ id: message.id, result: resultFor(message.method, message.params || {}) })));
@@ -92,10 +95,11 @@ try {
   const generations = new Set(timeline.map((event) => event.details?.generationId).filter((id) => Number.isFinite(id)));
   const surfaceFiles = await readdir(path.join(out, "surfaces"));
   const screenshotFiles = await readdir(path.join(out, "screenshots"));
+  const surfaceContracts = await Promise.all(surfaceFiles.map(async (file) => JSON.parse(await readFile(path.join(out, "surfaces", file), "utf8"))));
   const manifest = JSON.parse(await readFile(path.join(out, "manifest.json"), "utf8"));
   const coverage = JSON.parse(await readFile(path.join(out, "coverage.json"), "utf8"));
   const performanceJson = JSON.parse(await readFile(path.join(out, "performance.json"), "utf8"));
-
+  const recorderReport = JSON.parse(await readFile(path.join(out, "recorder-report.json"), "utf8"));
   assert(elapsedMs > oldFixedIdleEquivalentMs * 5, "long session did not exceed the old one-shot idle equivalent");
   assert(result.terminationReason === "atlas_stopped", `unexpected termination reason: ${result.terminationReason}`);
   assert(result.explicitStop === true, "explicit stop marker was not honored");
@@ -103,12 +107,22 @@ try {
   assert(result.maxCheckpoints === DEFAULT_MAX_CHECKPOINTS, "default checkpoint retention was not used");
   assert(checkpointMessagesSent > 24, "five-round simulation did not exceed the old 24 checkpoint limit");
   assert(result.checkpointCount === checkpointMessagesSent, "not all checkpoints were retained");
+  assert(methods.filter((method) => method === "DOMSnapshot.captureSnapshot").length === result.capturedCheckpointCount, "DOMSnapshot count must equal visual captures only");
+  assert(result.capturedCheckpointCount < result.checkpointCount, "heavy CDP capture was not bounded below total lifecycle checkpoints");
   for (const generation of [1, 2, 3, 4, 5]) assert(generations.has(generation), `generation ${generation} was not retained`);
   assert(socketClosedAt >= started, "CDP socket did not close cleanly");
-  assert(surfaceFiles.length > 0, "no surface files were written");
-  assert(screenshotFiles.length > 0, "no screenshot files were written");
+  assert(surfaceFiles.length >= 21, "visual checkpoints did not write enough surface files");
+  assert(screenshotFiles.length >= 21, "visual checkpoints did not write enough screenshot files");
+  for (const generation of [1, 2, 3, 4, 5]) {
+    assert(surfaceContracts.some((surface) => surface.name === "userTurn" && surface.generationId === generation && surface.contract?.rect?.y === userRect(generation).y), `generation ${generation} user turn targeting failed`);
+    assert(surfaceContracts.some((surface) => surface.name === "assistantStreaming" && surface.generationId === generation && surface.contract?.rect?.y === assistantRect(generation).y), `generation ${generation} assistant targeting failed`);
+    assert(surfaceContracts.some((surface) => surface.name === "assistantActionBar" && surface.generationId === generation && surface.contract?.rect?.y === actionRect(generation).y), `generation ${generation} action bar targeting failed`);
+  }
   assert(manifest.explicitStop === true && manifest.truncated === false, "manifest does not record clean explicit stop");
   assert(performanceJson.explicitStop === true && performanceJson.truncated === false, "performance metadata does not record clean explicit stop");
+  assert(performanceJson.recorderReportsIngested === 1 && performanceJson.recorderPerformanceIngested === true, "recorder performance was not ingested");
+  assert(recorderReport.timeline.some((event) => event.type === "composer_input"), "recorder lifecycle timeline was not ingested");
+  assert(timeline.some((event) => event.type === "composer_input"), "combined raw timeline does not include recorder events");
   assert(Object.values(coverage).some((entry) => entry.status === "OBSERVED"), "coverage has no observed surfaces");
   assert(!methods.some((method) => /^Input\.|^Network\.|^Fetch\.|^Tracing\./.test(method) || ["Page.navigate", "Page.reload", "Runtime.evaluate"].includes(method)), "forbidden CDP command was sent");
 
@@ -143,7 +157,10 @@ function scheduleLongSession(socket) {
       checkpointId: `long:${scheduled}`,
       stateClass,
       monotonicTimestamp: scheduled * 100,
-      generationId
+      generationId,
+      targetRect: targetRectFor(stateClass, generationId),
+      role: /^user_turn/.test(stateClass) ? "user" : /^assistant_/.test(stateClass) ? "assistant" : null,
+      surfaceRole: /action_bar/.test(stateClass) ? "toolbar" : /^user_turn/.test(stateClass) ? "user" : /^assistant_/.test(stateClass) ? "assistant" : null
     };
     setTimeout(() => {
       if (!socket.destroyed) {
@@ -169,6 +186,43 @@ function scheduleLongSession(socket) {
     delay += oldFixedIdleEquivalentMs + 10;
   }
   enqueue("atlas_stopped");
+  scheduleReportChunks(socket, delay + 1);
+}
+
+function scheduleReportChunks(socket, delay) {
+  const report = {
+    schemaVersion: 1,
+    kind: "mica.liveSurfaceAtlas",
+    session: { id: "long-session-recorder" },
+    privacy: privacyFlags(),
+    safety: safetyFlags(),
+    coverage: {},
+    counters: { checkpoints: checkpointMessagesSent },
+    performance: {
+      eventTiming: [{ name: "input", startTime: 10, processingStart: 11, processingEnd: 12, duration: 4 }],
+      longAnimationFrame: [{ type: "long-animation-frame", startTime: 20, duration: 55 }],
+      longTask: [{ type: "longtask", startTime: 30, duration: 60 }],
+      layoutShift: [{ type: "layout-shift", startTime: 40, duration: 0, value: 0.01 }],
+      memory: { usedJSHeapSize: 1000, totalJSHeapSize: 2000, jsHeapSizeLimit: 3000 }
+    },
+    timeline: [
+      { schemaVersion: 1, type: "composer_beforeinput", relativeTimeMs: 10, details: { inputType: "insertText", dataLength: 1 } },
+      { schemaVersion: 1, type: "composer_input", relativeTimeMs: 12, details: { inputType: "insertText", dataLength: 1 } }
+    ]
+  };
+  const payload = JSON.stringify(report);
+  const chunkSize = 120;
+  const total = Math.ceil(payload.length / chunkSize);
+  for (let index = 0; index < total; index += 1) {
+    setTimeout(() => {
+      if (!socket.destroyed) {
+        socket.write(encodeFrame(JSON.stringify({
+          method: "Runtime.consoleAPICalled",
+          params: { args: [{ value: `MICA_ATLAS_REPORT_CHUNK ${JSON.stringify({ schemaVersion: 1, sessionId: "long-session-recorder", index, total, data: payload.slice(index * chunkSize, (index + 1) * chunkSize) })}` }] }
+        })));
+      }
+    }, delay + index);
+  }
 }
 
 function waitFor(predicate, timeoutMs) {
@@ -197,27 +251,82 @@ function resultFor(method, params) {
 }
 
 function fakeSnapshot(styles) {
-  const strings = ["HTML", "BODY", "FORM", "ARTICLE", "DIV", "#text", "data-composer-surface", "true", "data-message-author-role", "assistant", "role", "toolbar", "aria-label", "Copy", "display", "grid", "border-radius", "18px"];
+  const strings = [];
+  const intern = (value) => {
+    let index = strings.indexOf(value);
+    if (index < 0) {
+      index = strings.length;
+      strings.push(value);
+    }
+    return index;
+  };
+  const nodeName = [];
+  const nodeValue = [];
+  const parentIndex = [];
+  const attributes = [];
+  const layoutNodeIndex = [];
+  const bounds = [];
+  const layoutStyles = [];
+  const addNode = (name, parent, attrs = {}, rect = null) => {
+    const index = nodeName.length;
+    nodeName.push(intern(name));
+    nodeValue.push("");
+    parentIndex.push(parent);
+    attributes.push(Object.entries(attrs).flatMap(([key, value]) => [intern(key), intern(value)]));
+    if (rect) {
+      layoutNodeIndex.push(index);
+      bounds.push([rect.x, rect.y, rect.width, rect.height]);
+      layoutStyles.push([styles.indexOf("display") >= 0 ? intern("grid") : "", styles.indexOf("border-radius") >= 0 ? intern("18px") : ""]);
+    }
+    return index;
+  };
+  const html = addNode("HTML", -1);
+  const body = addNode("BODY", html);
+  addNode("FORM", body, { "data-composer-surface": "true", "data-testid": "composer" }, { x: 48, y: 720, width: 884, height: 80 });
+  addNode("ARTICLE", body, { "data-message-author-role": "user", "data-testid": "conversation-turn-user-old" }, { x: 64, y: 80, width: 820, height: 52 });
+  addNode("ARTICLE", body, { "data-message-author-role": "assistant", "data-testid": "conversation-turn-assistant-old" }, { x: 64, y: 140, width: 820, height: 80 });
+  addNode("DIV", body, { role: "toolbar", "aria-label": "Copy", "data-testid": "action-old" }, { x: 690, y: 190, width: 170, height: 44 });
+  for (let generation = 1; generation <= 5; generation += 1) {
+    addNode("ARTICLE", body, { "data-message-author-role": "user", "data-testid": `conversation-turn-user-g${generation}` }, userRect(generation));
+    addNode("ARTICLE", body, { "data-message-author-role": "assistant", "data-testid": `conversation-turn-assistant-g${generation}` }, assistantRect(generation));
+    addNode("DIV", body, { role: "toolbar", "aria-label": "Copy", "data-testid": `action-g${generation}` }, actionRect(generation));
+  }
   return {
+    strings,
     documents: [{
-      strings,
       nodes: {
-        nodeName: [0, 1, 2, 3, 4, 5],
-        nodeValue: ["", "", "", "", "", 5],
-        parentIndex: [-1, 0, 1, 1, 3, 3],
-        attributes: [[], [], [6, 7], [8, 9], [10, 11, 12, 13], []]
+        nodeName,
+        nodeValue,
+        parentIndex,
+        attributes
       },
       layout: {
-        nodeIndex: [2, 3, 4],
-        bounds: [[48, 720, 884, 80], [64, 180, 820, 360], [690, 548, 170, 44]],
-        styles: [
-          [styles.indexOf("display") >= 0 ? 15 : "", styles.indexOf("border-radius") >= 0 ? 17 : ""],
-          [styles.indexOf("display") >= 0 ? 15 : "", ""],
-          [styles.indexOf("display") >= 0 ? 15 : "", styles.indexOf("border-radius") >= 0 ? 17 : ""]
-        ]
+        nodeIndex: layoutNodeIndex,
+        bounds,
+        styles: layoutStyles
       }
     }]
   };
+}
+
+function targetRectFor(stateClass, generationId) {
+  if (stateClass === "atlas_started") return { x: 48, y: 720, width: 884, height: 80 };
+  if (stateClass === "user_turn_mounted") return userRect(generationId);
+  if (stateClass === "assistant_turn_mounted" || stateClass === "assistant_settled") return assistantRect(generationId);
+  if (stateClass === "assistant_action_bar_visible") return actionRect(generationId);
+  return null;
+}
+
+function userRect(generation) {
+  return { x: 64, y: 240 + generation * 120, width: 820, height: 52 };
+}
+
+function assistantRect(generation) {
+  return { x: 64, y: 296 + generation * 120, width: 820, height: 86 };
+}
+
+function actionRect(generation) {
+  return { x: 690, y: 386 + generation * 120, width: 170, height: 44 };
 }
 
 function encodeFrame(payload) {

@@ -1,10 +1,10 @@
 # Mica Live Surface Atlas — Dedicated Capture Thread Runbook
 
-Status: **PRE-CAPTURE BLOCKED by Goal 009 ground-truth correctness gate.**
+Status: **READY FOR DEDICATED CAPTURE PREFLIGHT.**
 
-Long-session durability itself passed in `d13985e Make atlas CDP capture durable for long sessions`, but a deeper protocol/ground-truth audit found additional blockers before the user's first multi-round real capture. See `docs/tasks/2026-09-12-v020-goal-009-real-atlas-ground-truth-correctness.md`.
+Goal 009 protocol, targeting, ingestion, sanitizer, fixture, and lifecycle gates are implemented in `c267fdd Harden atlas ground truth capture`.
 
-Do not begin Round 1 until Goal 009 is complete, the runbook is explicitly marked READY again, and the no-send real Edge preflight passes.
+Do not begin Round 1 until the no-send real Edge preflight prints `REAL_EDGE_PREFLIGHT = PASS`. The preflight captures only the current empty-thread composer and Mica overlay; it must not send, submit, upload, run connectors, retry/regenerate, or mutate account/conversation state.
 
 This runbook defines the single dedicated real ChatGPT thread used to bootstrap Mica's Live Surface Atlas. The goal is to collect real UI structure, lifecycle ordering, timing evidence, and visual checkpoints once, then replay them locally instead of repeatedly asking the user to QA Mica.
 

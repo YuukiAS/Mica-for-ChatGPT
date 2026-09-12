@@ -23,6 +23,7 @@
     "atlas:sanitize": "node scripts/live-atlas-sanitize.mjs",
     "atlas:build-fixtures": "node scripts/live-atlas-build-fixtures.mjs",
     "atlas:analyze-timings": "node scripts/live-atlas-analyze-timings.mjs",
+    "atlas:preflight": "node scripts/live-atlas-real-edge-preflight.mjs",
     "test:atlas": "node scripts/test-atlas.mjs",
     "package:release": "npm run build && node scripts/package-release.mjs && node scripts/validate-release.mjs"
   },
