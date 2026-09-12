@@ -9,8 +9,11 @@ const currentAssistantHint = safeTurnHint("assistant:conversation-turn-assistant
 const currentUserHint = safeTurnHint("user:msg-current-user");
 const { snapshot, indexes } = fixtureSnapshot();
 const layoutMetrics = {
-  visualViewport: { clientWidth: 900, clientHeight: 700, pageX: 0, pageY: SCROLL_Y },
-  layoutViewport: { clientWidth: 900, clientHeight: 700, pageX: 0, pageY: SCROLL_Y }
+  cssVisualViewport: { clientWidth: 900, clientHeight: 700, pageX: 0, pageY: SCROLL_Y, zoom: 1 },
+  cssLayoutViewport: { clientWidth: 900, clientHeight: 700, pageX: 0, pageY: SCROLL_Y },
+  cssContentSize: { x: 0, y: 0, width: 900, height: 2200 },
+  visualViewport: { clientWidth: 900, clientHeight: 700, pageX: 0, pageY: 333 },
+  layoutViewport: { clientWidth: 900, clientHeight: 700, pageX: 0, pageY: 444 }
 };
 
 const oldDirectGeometryPick = oldGeometryOnlyAssistantPick(snapshot, { x: 40, y: 320, width: 820, height: 180 });
@@ -23,7 +26,8 @@ const assistant = resolveSurfaceMatch(snapshot, "assistantSettled", {
   targetRect: { x: 40, y: 320, width: 820, height: 180 }
 }, { layoutMetrics });
 assert(assistant?.nodeIndex === indexes.currentAssistant, "current assistant was not selected by exact turn hint", assistant);
-assert(assistant.rect.y === 320, "assistant rect was not normalized to viewport coordinates", assistant);
+assert(assistant.viewportRect.y === 320, "assistant rect was not normalized with CSS viewport coordinates", assistant);
+assert(assistant.documentRect.y === 1320, "assistant document rect was not preserved", assistant);
 assert(assistant.turnId === currentAssistantHint, "assistant match did not expose privacy-safe turn hint");
 
 const actionBar = resolveSurfaceMatch(snapshot, "assistantActionBar", {
@@ -51,7 +55,7 @@ const user = resolveSurfaceMatch(snapshot, "userTurn", {
   targetRect: { x: 80, y: 250, width: 760, height: 52 }
 }, { layoutMetrics });
 assert(user?.nodeIndex === indexes.currentUser, "user turn data-message-id hint did not select current user", user);
-const userContract = contractForSurface(snapshot, "userTurn", user.rect, user.nodeIndex);
+const userContract = contractForSurface(snapshot, "userTurn", user.viewportRect, user.nodeIndex);
 assert(!JSON.stringify(userContract).includes("msg-current-user"), "raw data-message-id leaked into sanitized contract");
 
 const unresolved = resolveSurfaceMatch(snapshot, "assistantSettled", {

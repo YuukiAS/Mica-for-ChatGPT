@@ -120,10 +120,18 @@ try {
 }
 
 function resultFor(method, params) {
-  if (method === "Page.getLayoutMetrics") return { visualViewport: { clientWidth: 900, clientHeight: 820, pageX: 0, pageY: 0 }, layoutViewport: { clientWidth: 900, clientHeight: 820 } };
+  if (method === "Page.getLayoutMetrics") {
+    return {
+      cssVisualViewport: { clientWidth: 900, clientHeight: 820, pageX: 0, pageY: 0, zoom: 1 },
+      cssLayoutViewport: { clientWidth: 900, clientHeight: 820, pageX: 0, pageY: 0 },
+      cssContentSize: { x: 0, y: 0, width: 900, height: 900 },
+      visualViewport: { clientWidth: 900, clientHeight: 820, pageX: 0, pageY: 777 },
+      layoutViewport: { clientWidth: 900, clientHeight: 820, pageX: 0, pageY: 888 }
+    };
+  }
   if (method === "DOMSnapshot.captureSnapshot") return fakeSnapshot(params.computedStyles || []);
   if (method === "Page.captureScreenshot") {
-    screenshotClipSeen = !!params.clip && Number(params.clip.width) > 0 && Number(params.clip.height) > 0 && params.captureBeyondViewport !== true;
+    screenshotClipSeen = !!params.clip && Number(params.clip.width) > 0 && Number(params.clip.height) > 0 && params.captureBeyondViewport === true;
     return { data: Buffer.from("fakepng").toString("base64") };
   }
   if (method === "Performance.getMetrics") return { metrics: [{ name: "Timestamp", value: 1 }] };

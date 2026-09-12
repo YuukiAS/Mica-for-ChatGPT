@@ -33,6 +33,8 @@ const screenshotEvidence = await Promise.all(screenshotFiles.map(async (file) =>
   const buffer = await readFile(path.join(raw, "screenshots", file));
   return { file, bytes: buffer.length, png: hasPngSignature(buffer) };
 }));
+const rawSurfaceFiles = (await readdir(path.join(raw, "surfaces")).catch(() => [])).filter((file) => file.endsWith(".json"));
+const rawSurfaces = await Promise.all(rawSurfaceFiles.map((file) => readJson(path.join(raw, "surfaces", file))));
 const surfaces = await readJson(path.join(sanitized, "surfaces.json"));
 const composer = surfaces.composer;
 const overlay = surfaces.micaOverlay;
@@ -55,6 +57,19 @@ if (!composer.variants?.length) {
 }
 if (!screenshotEvidence.some((item) => item.bytes > 8 && item.png)) {
   throw new Error("REAL_EDGE_PREFLIGHT failed: no non-empty cropped PNG screenshot was produced");
+}
+const observedRawSurfaces = rawSurfaces.filter((surface) => surface.status === "OBSERVED");
+if (!observedRawSurfaces.length || !observedRawSurfaces.every(hasScreenshotCoordinateEvidence)) {
+  throw new Error("REAL_EDGE_PREFLIGHT failed: observed surface lacks documentRect-derived screenshot evidence");
+}
+for (const surface of observedRawSurfaces) {
+  const screenshot = screenshotEvidence.find((item) => item.file.includes(`${surface.name}-`));
+  if (!screenshot?.png || screenshot.bytes <= 8) {
+    throw new Error(`REAL_EDGE_PREFLIGHT failed: ${surface.name} screenshot is missing or not a PNG`);
+  }
+  if (!rectsCorrespond(surface.contract?.rect, surface.coordinateEvidence?.viewportRect)) {
+    throw new Error(`REAL_EDGE_PREFLIGHT failed: ${surface.name} contract does not match resolved viewport rect`);
+  }
 }
 if (performanceJson.recorderReportsIngested < 1) {
   throw new Error("REAL_EDGE_PREFLIGHT failed: recorder report was not ingested");
@@ -80,6 +95,7 @@ console.log(JSON.stringify({
   capturedVisualCount: manifest.capturedCheckpointCount,
   recorderEventCount: recorderEvents.length,
   screenshotCount: screenshotEvidence.length,
+  screenshotCoordinateEvidenceCount: observedRawSurfaces.length,
   observedSurfaces: observedSurfaces.map((surface) => surface.name).sort(),
   terminationReason: manifest.terminationReason,
   automatedSend: false,
@@ -119,4 +135,22 @@ function contractHasStructure(contract) {
   const children = Array.isArray(contract.children) && contract.children.length > 0;
   const text = Number(contract.text?.length || 0) > 0 && typeof contract.text?.category === "string";
   return attrs || children || text;
+}
+
+function hasScreenshotCoordinateEvidence(surface) {
+  const evidence = surface.coordinateEvidence || {};
+  return evidence.screenshotClipSource === "documentRect"
+    && isRect(evidence.documentRect)
+    && isRect(evidence.viewportRect)
+    && isRect(evidence.screenshotClip)
+    && Number.isFinite(Number(evidence.cssZoom));
+}
+
+function isRect(rect) {
+  return rect && ["x", "y", "width", "height"].every((key) => Number.isFinite(Number(rect[key]))) && rect.width > 0 && rect.height > 0;
+}
+
+function rectsCorrespond(left, right) {
+  if (!isRect(left) || !isRect(right)) return false;
+  return ["x", "y", "width", "height"].every((key) => Math.abs(Number(left[key]) - Number(right[key])) <= 0.2);
 }

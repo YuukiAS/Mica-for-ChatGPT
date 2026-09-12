@@ -324,9 +324,8 @@ export async function captureCheckpoint(client, checkpoint, paths) {
     await writeJson(surfaceFile, surface);
     return { surfaceKey, status: "MISSING", surfaceFile, screenshotFile: null, missingReason: surface.missingReason, turnId: null };
   }
-  const rect = match.rect;
-  const clip = sanitizeClip(rect, layout);
-  const screenshot = await client.send("Page.captureScreenshot", { format: "png", clip, fromSurface: true });
+  const clip = screenshotClipForDocumentRect(match.documentRect, layout);
+  const screenshot = await client.send("Page.captureScreenshot", { format: "png", clip, fromSurface: true, captureBeyondViewport: true });
   const surface = {
     schemaVersion: 1,
     name: surfaceKey,
@@ -337,15 +336,24 @@ export async function captureCheckpoint(client, checkpoint, paths) {
     generationId: checkpoint.generationId ?? null,
     turnId: match.turnId || safeCheckpointTurnId(checkpoint.turnId) || null,
     variant: variantForCheckpoint(checkpoint),
+    coordinateEvidence: {
+      documentRect: roundRect(match.documentRect),
+      viewportRect: roundRect(match.viewportRect),
+      screenshotClip: clipToRect(clip),
+      screenshotClipSource: "documentRect",
+      viewportOffset: roundRectOffset(viewportOffsetFor(snapshot?.documents?.[0], layout)),
+      cssViewportMetricsPreferred: hasCssViewportMetrics(layout),
+      cssZoom: zoomForScreenshot(layout)
+    },
     privacy: privacyFlags(),
-    contract: contractForSurface(snapshot, surfaceKey, clip, match.nodeIndex),
+    contract: contractForSurface(snapshot, surfaceKey, match.viewportRect, match.nodeIndex),
     performanceMetricCount: Array.isArray(metrics?.metrics) ? metrics.metrics.length : 0
   };
   const surfaceFile = path.join(paths.surfacesDir, `${surfaceKey}-${safeFilePart(checkpoint.checkpointId)}.json`);
   const screenshotFile = path.join(paths.screenshotsDir, `${surfaceKey}-${safeFilePart(checkpoint.checkpointId)}.png`);
   await writeJson(surfaceFile, surface);
   await writeFile(screenshotFile, Buffer.from(String(screenshot?.data || ""), "base64"));
-  return { surfaceKey, status: "OBSERVED", surfaceFile, screenshotFile, clip, turnId: surface.turnId };
+  return { surfaceKey, status: "OBSERVED", surfaceFile, screenshotFile, clip, turnId: surface.turnId, documentRect: match.documentRect, viewportRect: match.viewportRect };
 }
 
 export function parseCheckpointMessage(message) {
@@ -429,16 +437,17 @@ export function resolveSurfaceMatch(snapshot, surfaceKey, checkpoint = {}, optio
     if (!nodeMatchesSurface(snapshot, doc, nodeIndex, surfaceKey, checkpoint)) continue;
     const documentRect = rectFromBounds(bounds[index]);
     if (!documentRect) continue;
-    const rect = documentRectToViewportRect(documentRect, viewportOffset);
+    const viewportRect = documentRectToViewportRect(documentRect, viewportOffset);
     const identity = surfaceTurnIdentity(snapshot, doc, nodeIndex, surfaceKey, checkpoint);
     if ((turnBound || ownerTurnBound) && expectedTurnId && identity.turnId !== expectedTurnId) continue;
     candidates.push({
       nodeIndex,
-      rect,
+      rect: viewportRect,
+      viewportRect,
       documentRect,
       turnId: identity.turnId || null,
       owningTurnNodeIndex: identity.owningTurnNodeIndex ?? null,
-      score: targetRect ? rectDistance(rect, targetRect) : index
+      score: targetRect ? rectDistance(viewportRect, targetRect) : index
     });
   }
   candidates.sort((a, b) => a.score - b.score);
@@ -921,15 +930,43 @@ function rectFromBounds(rect) {
 }
 
 function viewportOffsetFor(doc, layoutMetrics = null) {
+  const cssVisual = layoutMetrics?.cssVisualViewport || {};
+  const cssLayout = layoutMetrics?.cssLayoutViewport || {};
   const visual = layoutMetrics?.visualViewport || {};
   const layout = layoutMetrics?.layoutViewport || {};
-  const pageX = firstFinite(visual.pageX, layout.pageX, doc?.scrollOffsetX, 0);
-  const pageY = firstFinite(visual.pageY, layout.pageY, doc?.scrollOffsetY, 0);
+  const deprecatedScale = firstFinite(cssVisual.zoom, cssVisual.scale, visual.zoom, visual.scale, 1);
+  const pageX = firstFinite(cssVisual.pageX, cssLayout.pageX, doc?.scrollOffsetX, normalizeDeprecatedMetric(visual.pageX, deprecatedScale), normalizeDeprecatedMetric(layout.pageX, deprecatedScale), 0);
+  const pageY = firstFinite(cssVisual.pageY, cssLayout.pageY, doc?.scrollOffsetY, normalizeDeprecatedMetric(visual.pageY, deprecatedScale), normalizeDeprecatedMetric(layout.pageY, deprecatedScale), 0);
   return { x: pageX, y: pageY };
 }
 
 function documentRectToViewportRect(rect, offset) {
   return { x: rect.x - offset.x, y: rect.y - offset.y, width: rect.width, height: rect.height };
+}
+
+export function screenshotClipForDocumentRect(documentRect, layoutMetrics = null) {
+  const rect = normalizeTargetRect(documentRect);
+  if (!rect) return { x: 0, y: 0, width: 1, height: 1, scale: 1 };
+  const zoom = zoomForScreenshot(layoutMetrics);
+  const cssContent = layoutMetrics?.cssContentSize || {};
+  const legacyContent = layoutMetrics?.contentSize || {};
+  const maxWidthCss = firstFinite(cssContent.width, normalizeDeprecatedMetric(legacyContent.width, zoom), rect.x + rect.width);
+  const maxHeightCss = firstFinite(cssContent.height, normalizeDeprecatedMetric(legacyContent.height, zoom), rect.y + rect.height);
+  const xCss = Math.max(0, Math.min(rect.x, Math.max(0, maxWidthCss - 1)));
+  const yCss = Math.max(0, Math.min(rect.y, Math.max(0, maxHeightCss - 1)));
+  const clippedCss = {
+    x: xCss,
+    y: yCss,
+    width: Math.max(1, Math.min(rect.width, Math.max(1, maxWidthCss - xCss))),
+    height: Math.max(1, Math.min(rect.height, Math.max(1, maxHeightCss - yCss)))
+  };
+  return {
+    x: round(clippedCss.x * zoom),
+    y: round(clippedCss.y * zoom),
+    width: round(clippedCss.width * zoom),
+    height: round(clippedCss.height * zoom),
+    scale: 1
+  };
 }
 
 function normalizeTargetRect(rect) {
@@ -1029,6 +1066,16 @@ function clipToRect(clip) {
   return { x: round(clip.x), y: round(clip.y), width: round(clip.width), height: round(clip.height) };
 }
 
+function roundRect(rect) {
+  if (!rect) return null;
+  return { x: round(rect.x), y: round(rect.y), width: round(rect.width), height: round(rect.height) };
+}
+
+function roundRectOffset(offset) {
+  if (!offset) return null;
+  return { x: round(offset.x), y: round(offset.y) };
+}
+
 function stableAttr(value) {
   if (value === "") return "";
   if (/^[a-zA-Z0-9:_ -]{1,80}$/.test(value)) return value;
@@ -1051,10 +1098,31 @@ function safeTurnHint(key) {
 
 function firstFinite(...values) {
   for (const value of values) {
+    if (value === null || value === undefined || value === "") continue;
     const number = Number(value);
     if (Number.isFinite(number)) return number;
   }
   return 0;
+}
+
+function hasCssViewportMetrics(layoutMetrics = null) {
+  return !!(layoutMetrics?.cssVisualViewport || layoutMetrics?.cssLayoutViewport || layoutMetrics?.cssContentSize);
+}
+
+function zoomForScreenshot(layoutMetrics = null) {
+  return saneZoom(layoutMetrics?.cssVisualViewport?.zoom ?? layoutMetrics?.cssVisualViewport?.scale ?? 1);
+}
+
+function saneZoom(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : 1;
+}
+
+function normalizeDeprecatedMetric(value, scale = 1) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  const divisor = saneZoom(scale);
+  return number / divisor;
 }
 
 function normalizeTag(tag) {

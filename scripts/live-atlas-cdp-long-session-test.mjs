@@ -248,7 +248,7 @@ function resultFor(method, params) {
   if (method === "Page.getLayoutMetrics") return { visualViewport: { clientWidth: 980, clientHeight: 840, pageX: 0, pageY: 0 }, layoutViewport: { clientWidth: 980, clientHeight: 840 } };
   if (method === "DOMSnapshot.captureSnapshot") return fakeSnapshot(params.computedStyles || []);
   if (method === "Page.captureScreenshot") {
-    assert(!!params.clip && Number(params.clip.width) > 0 && Number(params.clip.height) > 0 && params.captureBeyondViewport !== true, "screenshot was not clipped");
+    assert(!!params.clip && Number(params.clip.width) > 0 && Number(params.clip.height) > 0 && params.captureBeyondViewport === true, "screenshot was not clipped from page coordinates");
     return { data: Buffer.from("fakepng").toString("base64") };
   }
   if (method === "Performance.getMetrics") return { metrics: [{ name: "Timestamp", value: performance.now() }] };

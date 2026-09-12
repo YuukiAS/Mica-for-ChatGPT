@@ -6,6 +6,7 @@ const steps = [
   ["atlas:check", "node", ["scripts/live-atlas-check.mjs"]],
   ["atlas:url", "node", ["scripts/live-atlas-url-test.mjs"]],
   ["atlas:targeting", "node", ["scripts/live-atlas-targeting-test.mjs"]],
+  ["atlas:screenshot-coordinate", "node", ["scripts/live-atlas-screenshot-coordinate-test.mjs"]],
   ["atlas:handshake", "node", ["scripts/live-atlas-handshake-test.mjs"]],
   ["atlas:cdp-protocol", "node", ["scripts/live-atlas-cdp-protocol-test.mjs"]],
   ["atlas:cdp-long-session", "node", ["scripts/live-atlas-cdp-long-session-test.mjs"]],

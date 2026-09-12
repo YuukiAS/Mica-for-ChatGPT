@@ -25,6 +25,9 @@ assert(cdpCore.includes("return null;") && !/return "composer";\s*\n}/.test(cdpC
 assert(cdpCore.includes("validateAtlasThreadUrl") && cdp.includes("validateAtlasThreadUrl"), "atlas capture must use the shared thread URL validator");
 assert(recorder.indexOf("emitRecorderReportMarker(finalReport)") >= 0 && recorder.indexOf("emitRecorderReportMarker(finalReport)") < recorder.indexOf("emitCheckpointMarker(\"atlas_stopped\""), "recorder report must be emitted before terminal marker");
 assert(cdpCore.includes("timeBase: \"cdp-page-monotonic\"") && cdpCore.includes("timeBase: \"atlas-session-relative\""), "raw timeline must preserve explicit time bases");
+assert(cdpCore.includes("documentRect") && cdpCore.includes("viewportRect") && cdpCore.includes("screenshotClipForDocumentRect"), "CDP capture must separate matching viewport rects from screenshot document clips");
+assert(cdpCore.includes("cssVisualViewport") && cdpCore.includes("cssLayoutViewport") && cdpCore.includes("cssContentSize"), "CDP capture must prefer modern CSS viewport metrics");
+assert(cdp.includes("REAL_EDGE_CDP_ATTACHED = YES") && cdp.includes("SAFE_TO_START_ATLAS = YES"), "CDP capture CLI must expose the explicit ready handshake");
 for (const allowed of ["Runtime.enable", "Log.enable", "Page.getLayoutMetrics", "DOMSnapshot.captureSnapshot", "Page.captureScreenshot", "Performance.getMetrics"]) {
   assert((cdp + cdpCore).includes(allowed), `CDP companion missing allowlisted command ${allowed}`);
 }

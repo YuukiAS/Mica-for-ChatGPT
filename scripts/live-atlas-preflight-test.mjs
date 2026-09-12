@@ -75,6 +75,7 @@ try {
   const timeline = (await readFile(path.join(raw, "timeline.ndjson"), "utf8")).trim().split(/\r?\n/).map((line) => JSON.parse(line));
   assert(result.stdout.includes('"REAL_EDGE_PREFLIGHT": "PASS"'), "preflight did not print PASS");
   assert(result.stdout.includes("REAL_EDGE_CDP_ATTACHED = YES") && result.stdout.includes("SAFE_TO_START_ATLAS = YES"), "preflight did not expose CDP ready handshake");
+  assert(/"screenshotCoordinateEvidenceCount":\s*[1-9]/.test(result.stdout), "preflight did not report screenshot coordinate evidence");
   assert(manifest.targetUrlExactMatch === true && manifest.attached === true, "preflight did not prove exact attachment");
   assert(manifest.terminationReason === "atlas_stopped" && manifest.truncated === false, "preflight did not prove clean termination");
   assert(performanceJson.recorderReportsIngested === 1 && performanceJson.recorderPerformanceIngested === true, "preflight did not prove recorder ingestion");
@@ -84,6 +85,7 @@ try {
     passed: true,
     realEdgePreflightAssertions: true,
     projectThreadUrlSupport: manifest.targetUrlExactMatch,
+    screenshotCoordinateIntegrity: true,
     recorderReportsIngested: performanceJson.recorderReportsIngested,
     recorderPerformanceIngested: performanceJson.recorderPerformanceIngested,
     automatedSend: false,
@@ -127,10 +129,18 @@ function writeCheckpoint(socket, stateClass, checkpointId, targetRect, terminal 
 }
 
 function resultFor(method, params) {
-  if (method === "Page.getLayoutMetrics") return { visualViewport: { clientWidth: 900, clientHeight: 820, pageX: 0, pageY: 0 }, layoutViewport: { clientWidth: 900, clientHeight: 820 } };
+  if (method === "Page.getLayoutMetrics") {
+    return {
+      cssVisualViewport: { clientWidth: 900, clientHeight: 820, pageX: 0, pageY: 0, zoom: 1 },
+      cssLayoutViewport: { clientWidth: 900, clientHeight: 820, pageX: 0, pageY: 0 },
+      cssContentSize: { x: 0, y: 0, width: 900, height: 900 },
+      visualViewport: { clientWidth: 900, clientHeight: 820, pageX: 0, pageY: 777 },
+      layoutViewport: { clientWidth: 900, clientHeight: 820, pageX: 0, pageY: 888 }
+    };
+  }
   if (method === "DOMSnapshot.captureSnapshot") return fakeSnapshot(params.computedStyles || []);
   if (method === "Page.captureScreenshot") {
-    assert(!!params.clip && params.captureBeyondViewport !== true, "preflight screenshot was not clipped");
+    assert(!!params.clip && params.captureBeyondViewport === true, "preflight screenshot was not clipped from page coordinates");
     return { data: pngBytes.toString("base64") };
   }
   if (method === "Performance.getMetrics") return { metrics: [{ name: "Timestamp", value: 1 }] };
