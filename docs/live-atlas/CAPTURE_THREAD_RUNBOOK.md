@@ -1,82 +1,221 @@
-# Mica Live Surface Atlas — Dedicated Capture Thread Runbook
+# Mica Live Surface Atlas — 专用采集线程操作手册
 
-Status: **READY FOR REAL EDGE NO-SEND PREFLIGHT.**
+状态：**READY FOR REAL EDGE NO-SEND PREFLIGHT（可以开始真实 Edge 无发送预检）**。
 
-Goal 009 protocol, targeting, ingestion, sanitizer, fixture, and lifecycle gates are implemented in `ae0732b Harden atlas ground truth capture`. Goal 010 preflight-integrity gates are implemented in `05ebda7 Complete atlas preflight integrity gate`. Goal 011 coordinate-safe targeting and attach-handshake gates are implemented in `45aa9dc Harden atlas targeting handshake`. Goal 012 screenshot-coordinate integrity gates are implemented in this branch candidate.
+Goal 009 的协议、定位、数据接入、隐私清洗、fixture 和生命周期门禁已在 `ae0732b Harden atlas ground truth capture` 中完成；Goal 010 的 preflight 完整性门禁已在 `05ebda7 Complete atlas preflight integrity gate` 中完成；Goal 011 的滚动坐标安全定位和 CDP attach handshake 已在 `45aa9dc Harden atlas targeting handshake` 中完成；Goal 012 的截图坐标完整性门禁已在当前候选分支完成。
 
-Do not begin Round 1 until the strengthened no-send real Edge preflight prints `REAL_EDGE_PREFLIGHT = PASS`. The preflight captures only the current empty-thread composer and Mica overlay; it must not send, submit, upload, run connectors, retry/regenerate, or mutate account/conversation state.
+**不要直接开始 Round 1。** 必须先完成真实 Edge 的“无发送预检”，且终端明确打印：
 
-During the no-send preflight and the later dedicated capture, click Mica -> Advanced -> `Start Atlas` only after the CDP companion has printed both:
+```text
+REAL_EDGE_PREFLIGHT = PASS
+```
+
+无发送预检只采集当前 thread 的 composer 和 Mica overlay；不得发送消息、提交表单、上传文件、运行 connector、Retry/Regenerate，也不得修改账号或对话。
+
+在无发送预检和后续正式采集里，只有当 CDP companion 已明确打印下面两行后，才允许在 Mica 中点击 `Start Atlas`：
 
 ```text
 REAL_EDGE_CDP_ATTACHED = YES
 SAFE_TO_START_ATLAS = YES
 ```
 
-Do not use a fixed sleep as a substitute for this handshake.
+不要用“等几秒”代替这个 handshake。
 
-This runbook defines the single dedicated real ChatGPT thread used to bootstrap Mica's Live Surface Atlas. The goal is to collect real UI structure, lifecycle ordering, timing evidence, and visual checkpoints once, then replay them locally instead of repeatedly asking the user to QA Mica.
+这份手册定义一个专门用于 Mica Live Surface Atlas 的真实 ChatGPT thread。目标是一次性采集真实 UI 结构、生命周期顺序、时间数据和视觉 checkpoint，之后尽量在本地 fixture 中复现，而不是反复让用户做人工 QA。
 
-## Version / branch prerequisite
+## 版本 / 分支前提
 
-Do not run this capture from `main` / `0.1.7`.
+不要从 `main` / `0.1.7` 运行本次采集。
 
-Required candidate branch:
+必须使用候选分支：
 
 ```text
 codex/v020-convergence-pushable
 ```
 
-Before capture, the local `dist/mica-dev` must be rebuilt from that branch and the popup/manifest must identify the current `0.2.0` convergence candidate.
+采集前必须从该分支重新构建 `dist/mica-dev`，并确认 popup/manifest 显示当前 `0.2.0` convergence candidate。
 
-## Hard safety boundary
+## 推荐方式：复用当前已经登录的 Edge
 
-Atlas, CDP, Codex, Computer Use, Playwright, or any other agent/tool must never perform a real ChatGPT Send, Enter/Ctrl+Enter submit path, upload, connector execution, regenerate/retry, OAuth, account mutation, or conversation mutation.
+**不需要为了 Atlas 重新登录 ChatGPT。**
 
-All real Send actions in this runbook are manual user actions.
+Microsoft Edge 现在支持对已经运行、已经登录的网站会话启用远程调试。推荐直接复用你当前正在使用的 Edge profile，而不是再开一个临时 `--user-data-dir` profile。
 
-The CDP companion is read-only. Computer Use is not required for the capture and must not drive the conversation.
+操作：
 
-## Dedicated thread
+1. 在当前 Edge 打开：
 
-Create one harmless dedicated ChatGPT thread inside the current project. Do not use a research/work/private thread and do not upload files.
+```text
+edge://inspect
+```
 
-Keep one Atlas recording session active across the whole run. Do not stop/restart Atlas between rounds unless capture fails.
+2. 左侧进入“远程调试 / Remote debugging”。
+3. 勾选“允许对此浏览器实例进行远程调试”。
+4. 当前登录状态、Cookie、现有 ChatGPT 会话都会继续保留。
+5. Windows 下 Edge 会在当前用户数据目录写入 `DevToolsActivePort`。PowerShell 可读取：
 
-Before Round 1:
+```powershell
+$devtoolsFile = Join-Path $env:LOCALAPPDATA 'Microsoft\Edge\User Data\DevToolsActivePort'
+$port = [int](Get-Content $devtoolsFile | Select-Object -First 1)
+$port
+```
 
-1. Reload the unpacked Mica candidate from `dist/mica-dev`.
-2. Open the dedicated capture thread.
-3. Start the hardened read-only CDP companion for this exact thread URL.
-4. Wait until the CDP companion prints `SAFE_TO_START_ATLAS = YES`.
-5. Open Mica popup -> Advanced -> `Start Atlas`.
-6. Confirm Atlas shows Recording and the CDP companion reports one exact target attached in read-only mode.
+之后把这个 `$port` 传给 `atlas:preflight` / `atlas:capture`。
 
-## Round 1 — Real composer typing / IME / paste
+只有在 `edge://inspect` 方式不可用时，才考虑另开专用 Edge profile。不要默认要求重新登录。
 
-Purpose: capture normal composer focus, English/Chinese input, IME composition, correction, paste, input latency, and the first plain manual Send lifecycle.
+如确实需要查找本机 `msedge.exe` 路径，可直接在 PowerShell 用：
 
-Manual editing sequence before Send:
+```powershell
+(Get-Process msedge | Where-Object Path | Select-Object -First 1 -ExpandProperty Path)
+```
 
-1. Type `Mica Atlas typing test: ABC 123 `.
-2. Using Chinese IME, type `中文输入法测试`.
-3. Backspace the final two Chinese characters and re-type them.
-4. Paste exactly: ` | pasted-segment | `.
-5. Type the final sentence below, then manually click Send once.
+## 硬性安全边界
 
-Message to send:
+Atlas、CDP、Codex、Computer Use、Playwright 或任何其他 agent/tool 都不得在真实 ChatGPT 上自动执行：
+
+- Send；
+- Enter / Ctrl+Enter 的提交路径；
+- form submit；
+- 上传或附件选择；
+- connector/tool 执行；
+- Retry / Regenerate / Stop；
+- OAuth / 账号设置 / 支付；
+- 编辑或删除真实对话。
+
+本手册中所有真实 Send 都必须由用户手动完成。
+
+CDP companion 只读。正式采集不需要 Computer Use，也不能让 Computer Use 驱动对话。
+
+## 真实 Edge 无发送预检
+
+正式 Round 1 之前先做一次完全不发送消息的 preflight。
+
+### 1. 准备候选版本
+
+在 repo 中：
+
+```powershell
+cd C:\Code\Mica-for-ChatGPT
+git fetch origin
+git switch codex/v020-convergence-pushable
+git pull --ff-only origin codex/v020-convergence-pushable
+npm run build
+npm run test:build
+```
+
+重新加载 unpacked extension：
+
+```text
+C:\Code\Mica-for-ChatGPT\dist\mica-dev
+```
+
+确认 Mica popup 显示：
+
+```text
+v0.2.0
+v020-convergence.rc5
+```
+
+### 2. 准备专用 thread
+
+在**当前项目**内准备一个无敏感内容的专用 ChatGPT thread。
+
+URL 必须已经包含 `/c/<conversation-id>`。Project-scoped URL 也支持；使用地址栏中的**完整原始 URL**，不要手动删 path/query。
+
+如果一个全新空 thread 暂时没有 `/c/<id>`，不要为了生成 ID 先发消息。可先使用一个已有、无敏感内容的项目 thread 做 no-send preflight。
+
+### 3. 启用当前 Edge 的远程调试
+
+优先按上面的“复用当前已经登录的 Edge”方式，在 `edge://inspect` 中启用远程调试，然后取得 `$port`。
+
+### 4. 启动 preflight
+
+复制专用 thread 的完整 URL：
+
+```powershell
+$threadUrl = '<完整 ChatGPT thread URL>'
+```
+
+运行：
+
+```powershell
+npm run atlas:preflight -- --thread-url="$threadUrl" --port=$port
+```
+
+### 5. 等待明确 handshake
+
+**什么都不要点**，直到终端出现：
+
+```text
+REAL_EDGE_CDP_ATTACHED = YES
+SAFE_TO_START_ATLAS = YES
+```
+
+### 6. Start / Stop Atlas
+
+看到 `SAFE_TO_START_ATLAS = YES` 后：
+
+1. 打开 Mica popup；
+2. 展开 `Advanced`；
+3. 点击 `Start Atlas`；
+4. 确认显示 `Recording`；
+5. 不输入、不 Send、不选 connector、不上传；
+6. 再次打开 popup；
+7. 点击 `Stop`。
+
+正常让 companion 收到 `atlas_stopped` 后自动收口；不要用 Ctrl+C 提前终止。
+
+### 7. 成功标准
+
+最终必须打印：
+
+```text
+REAL_EDGE_PREFLIGHT = PASS
+```
+
+如果失败，不要立刻重跑。保留终端错误和 raw artifacts，先修真实问题。
+
+---
+
+## 正式专用采集 thread
+
+只有 preflight PASS 后才进入下面 Round 1–5。
+
+正式采集时，Atlas 从 Round 1 开始后应保持**同一个连续 recording session**。除非采集本身失败，否则不要每轮 Stop/Start。
+
+开始前：
+
+1. Reload 当前 `dist/mica-dev`；
+2. 打开专用 capture thread；
+3. 启动只读 CDP companion，使用该 thread 的完整 URL；
+4. 等到终端打印 `SAFE_TO_START_ATLAS = YES`；
+5. Mica popup → `Advanced` → `Start Atlas`；
+6. 确认 Atlas 显示 Recording，CDP companion 也只绑定了这个 exact target。
+
+## Round 1 — 真实输入 / 中文 IME / 粘贴
+
+目的：采集普通 composer focus、英文/中文输入、IME composition、删除修正、粘贴、输入延迟，以及第一次普通手动 Send 生命周期。
+
+发送前手动操作：
+
+1. 输入：`Mica Atlas typing test: ABC 123 `
+2. 使用中文输入法输入：`中文输入法测试`
+3. Backspace 删除最后两个中文字符，再重新输入
+4. 精确粘贴：` | pasted-segment | `
+5. 清理 composer，使最终发送内容只保留下面这句话，然后**手动点击 Send 一次**：
 
 ```text
 Mica Atlas baseline round. 请只用一句中文回复：Baseline capture complete.
 ```
 
-Wait until the answer is fully settled and its normal assistant action bar is visible.
+等待回答完全结束，并出现正常 assistant action bar。
 
-## Round 2 — Rich answer / Copy ground truth
+## Round 2 — Rich Markdown / LaTeX / Copy ground truth
 
-Purpose: capture the real assistant DOM for Markdown/LaTeX, action-bar geometry, native Copy area, and Mica Copy output.
+目的：采集真实 Markdown/LaTeX assistant DOM、action bar 几何、原生 Copy 区域和 Mica Copy 输出。
 
-Send exactly:
+精确发送：
 
 ```text
 这是一个浏览器渲染与复制测试。请不要调用任何工具或联网，只生成一份短测试答案，并严格包含以下结构：
@@ -93,91 +232,89 @@ Send exactly:
 不要加入额外章节，也不要使用附件、工具、搜索或连接器。
 ```
 
-After the answer settles:
+回答结束后：
 
-1. Wait until the native assistant action bar is visible.
-2. Manually invoke Mica Copy once.
-3. Keep the copied Markdown for the final Atlas handoff; do not edit it before comparison.
+1. 等原生 assistant action bar 出现；
+2. 手动执行一次 Mica Copy；
+3. 保留复制出来的 Markdown，最终交给 Atlas 后处理比较，不要手工修改。
 
-Expected Copy invariant: display math should serialize with `$$ ... $$`, not `\[ ... \]`.
+Copy 的预期约束：展示公式应输出为 `$$ ... $$`，不是 `\[ ... \]`。
 
-## Round 3 — Streaming cadence / longer answer
+## Round 3 — 长回答 / streaming cadence
 
-Purpose: capture a longer real streaming sequence, mutation cadence, settled transition, action-bar appearance, mounted-turn window changes, Long Animation Frames, and long-task evidence.
+目的：采集较长的真实 streaming、mutation cadence、settled transition、action bar 出现时间、mounted-turn window 变化、Long Animation Frames 和 long-task evidence。
 
-Send exactly:
+精确发送：
 
 ```text
 请不要调用任何工具或联网。用大约 1200 至 1600 个中文字解释“偏差—方差权衡”，面向已经学过基础统计但还没有系统学机器学习的读者。要求分成 5 个小节，每节有清楚标题；包含一个简单公式、一个具体数字例子和一个最后总结。不要故意缩短答案，也不要超过 1800 个中文字。
 ```
 
-During generation, do not click Stop or interact with the answer. Wait for full settlement and the normal action bar.
+生成过程中不要点 Stop，也不要操作回答。等待完全结束和 action bar 出现。
 
-## Round 4 — Composer lifecycle without Send
+## Round 4 — Composer 生命周期，不发送
 
-Purpose: capture edit/clear/cut/focus behavior without consuming a server-side Send.
+目的：采集编辑、清空、剪切、focus/blur；本轮不产生 server-side Send。
 
-Do **not** send anything in this round.
+**本轮不要发送任何内容。**
 
-1. In the composer, type exactly:
-   `Atlas composer lifecycle 123 中文测试 ABC`
-2. Press `Ctrl+A`, then Delete.
-3. Type exactly:
-   `Atlas second draft — 不发送`
-4. Select only `second draft` and cut it with `Ctrl+X`.
-5. Click a harmless blank area outside the composer to blur it.
-6. Click the composer again to focus it.
-7. Clear the remaining draft with `Ctrl+A` -> Delete.
-8. End with an empty composer.
+1. 在 composer 输入：`Atlas composer lifecycle 123 中文测试 ABC`
+2. `Ctrl+A` → Delete
+3. 输入：`Atlas second draft — 不发送`
+4. 只选中 `second draft`，用 `Ctrl+X` 剪切
+5. 点击 composer 外的无害空白区域，使其 blur
+6. 再点击 composer，使其 focus
+7. `Ctrl+A` → Delete 清空剩余草稿
+8. 最终保持空 composer
 
-## Round 5 — Connector chooser / pill / remount without Send
+## Round 5 — Connector chooser / pill / remount，不发送
 
-Purpose: capture real connector chooser, selected connector pill, composer identity/remount behavior, geometry, and removal without executing the connector.
+目的：采集真实 connector chooser、selected pill、composer identity/remount、几何和移除过程，但不执行 connector。
 
-Do **not** send anything in this round.
+**本轮不要发送任何内容。**
 
-1. Manually type `@GitHub`.
-2. Manually select the GitHub connector from the chooser.
-3. Wait briefly until the connector pill and composer are visually stable.
-4. Type exactly: `Atlas connector UI only — do not send`.
-5. Observe that ordinary typing remains smooth.
-6. Remove/clear the connector and draft using normal UI/editor actions.
-7. End with an empty composer.
+1. 手动输入 `@GitHub`
+2. 手动从 chooser 选择 GitHub connector
+3. 等 connector pill 和 composer 视觉稳定
+4. 输入：`Atlas connector UI only — do not send`
+5. 观察普通输入是否仍然流畅
+6. 用正常 UI/editor 操作移除 connector 并清空草稿
+7. 最终保持空 composer
 
-Only the user may select `@GitHub`. Agents/CDP/Computer Use must not select it.
+只有用户本人可以选择 `@GitHub`。Agent / CDP / Computer Use 不得代替用户选择。
 
-## Round 6 — Optional connector Send + final Mica 0.2.0 acceptance
+## Round 6 — 可选：Connector Send + Mica 0.2.0 最终验收
 
-Run this only after Rounds 1–5 have captured successfully and the pre-send gates remain green.
+只有 Round 1–5 全部采集成功、pre-send gates 仍为绿色时才运行。
 
-This round may double as the final Mica `0.2.0` manual connector acceptance.
+这一轮可以同时作为 Mica `0.2.0` 的最终 connector 人工验收。
 
-The user manually selects `@GitHub` and manually sends the following read-only request:
+用户手动选择 `@GitHub`，并手动发送：
 
 ```text
 @GitHub 仅做只读检查：读取 YuukiAS/Mica-for-ChatGPT 仓库的 README.md 第一行，并用一句中文告诉我这一行是什么。禁止创建、修改、删除、合并、评论、打标签或执行任何其他 GitHub 写操作。
 ```
 
-After completion, verify manually:
+完成后人工确认：
 
-- only one user turn was committed;
-- composer clears correctly;
-- no stale sent text reappears;
-- composer remains usable and typing stays smooth;
-- assistant/tool UI settles normally;
-- Mica overlay does not obstruct native ChatGPT UI.
+- 只提交了一个 user turn；
+- composer 正确清空；
+- 已发送文本不会残留或重新出现；
+- composer 仍可正常输入且流畅；
+- assistant/tool UI 正常 settle；
+- Mica overlay 没有挡住 ChatGPT 原生 UI。
 
-If connector execution is not desired, skip Round 6 and perform the final `0.2.0` acceptance later with a plain harmless Send instead.
+如果不想在本轮执行 connector，可跳过 Round 6，稍后用普通无害 Send 单独做最终 `0.2.0` acceptance。
 
-## End of capture
+## 采集结束
 
-After the final chosen round:
+最后一轮完成后：
 
-1. Stop Atlas once.
-2. Copy the Atlas report once.
-3. Stop the read-only CDP companion cleanly.
-4. Keep raw capture under `artifacts/live-atlas/<session-id>/`; raw artifacts must remain gitignored.
-5. Run the complete post-processing pipeline before interpreting the result:
+1. 只 Stop Atlas 一次；
+2. `Copy Atlas report` 可作为人工备份，但正常管线已自动 ingest recorder report；
+3. 让只读 CDP companion 正常收到 terminal marker 并退出；
+4. raw capture 保留在 `artifacts/live-atlas/<session-id>/`，必须保持 gitignored；
+5. 在解释结果前运行完整后处理：
 
 ```text
 npm run atlas:sanitize -- --input=<raw-session>
@@ -187,12 +324,12 @@ npm run test:atlas
 npm run test:integration
 ```
 
-6. Compare Round 2 Mica Copy against the expected structure and `$$` display-math invariant.
-7. Audit every remaining lifecycle timing constant against the real timing ledger. Prefer event-driven transitions; retain only justified safety caps.
+6. 比较 Round 2 的 Mica Copy 与预期结构，并检查 `$$` 展示公式约束；
+7. 根据真实 timing ledger 审计剩余 lifecycle timing constants：优先改为 event-driven，只保留真正有必要的 safety cap。
 
-## Capture success gate
+## Bootstrap capture 成功门槛
 
-The bootstrap session is complete only when all are true:
+只有以下全部成立，第一次 Atlas bootstrap 才算完成：
 
 ```text
 REAL_CDP_ATTACHED = YES
@@ -209,4 +346,4 @@ AUTOMATED_UPLOAD = NO
 AUTOMATED_CONNECTOR_ACTION = NO
 ```
 
-If any required real surface remains `MISSING`, keep it marked `MISSING`; do not hand-draw an approximation and call it ground truth.
+任何要求的真实 surface 如果没有观察到，就保持 `MISSING`。不得手画一个近似组件再称其为 ground truth。
