@@ -28,85 +28,109 @@ const STYLE_PROBE = [
 ];
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const args = parseArgs(process.argv.slice(2));
-const userDataDir = args.userDataDir || defaultEdgeUserDataDir();
-const sessionId = `live-failure-${Date.now()}`;
-const outDir = path.resolve(root, args.out || path.join("artifacts", "live-failure", sessionId));
-const contractDir = path.resolve(root, args.contractOut || path.join("tests", "contracts", "chatgpt-live", "real-live-failure-2026-09-13"));
 
-if (!userDataDir) throw new Error("probe:live-failure requires --user-data-dir or LOCALAPPDATA Edge user data");
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    console.error(error?.stack || error?.message || error);
+    process.exitCode = 1;
+  });
+}
 
-const targetUrl = args.threadUrl || "";
-if (targetUrl) validateAtlasThreadUrl(targetUrl);
+export async function main(argv = process.argv.slice(2)) {
+  const args = parseArgs(argv);
+  const userDataDir = args.userDataDir || defaultEdgeUserDataDir();
+  const sessionId = `live-failure-${Date.now()}`;
+  const outDir = path.resolve(root, args.out || path.join("artifacts", "live-failure", sessionId));
+  const contractDir = path.resolve(root, args.contractOut || path.join("tests", "contracts", "chatgpt-live", "real-live-failure-2026-09-13"));
 
-progress("reading DevToolsActivePort");
-const activePort = await readDevToolsActivePort(userDataDir);
-progress(`connecting browser websocket ${activePort.port}`);
-const client = await withTimeout(connectWebSocket(activePort.webSocketDebuggerUrl), "connectWebSocket", 8000);
-try {
-  progress("Target.getTargets");
-  const targetResult = await sendWithTimeout(client, "Target.getTargets", {}, { rootSession: true });
-  const targetInfos = Array.isArray(targetResult.targetInfos) ? targetResult.targetInfos : [];
-  const pageTargets = targetInfos.filter((target) => target.type === "page" && isChatGptConversationUrl(target.url));
-  if (args.listTargets) {
+  if (!userDataDir) throw new Error("probe:live-failure requires --user-data-dir or LOCALAPPDATA Edge user data");
+
+  const targetUrl = args.threadUrl || "";
+  if (targetUrl) validateAtlasThreadUrl(targetUrl);
+
+  progress("reading DevToolsActivePort");
+  const activePort = await readDevToolsActivePort(userDataDir);
+  progress(`connecting browser websocket ${activePort.port}`);
+  const client = await withTimeout(connectWebSocket(activePort.webSocketDebuggerUrl), "connectWebSocket", 8000);
+  try {
+    progress("Target.getTargets");
+    const targetResult = await sendWithTimeout(client, "Target.getTargets", {}, { rootSession: true });
+    const targetInfos = Array.isArray(targetResult.targetInfos) ? targetResult.targetInfos : [];
+    const pageTargets = targetInfos.filter((target) => target.type === "page" && isChatGptConversationUrl(target.url));
+    if (args.listTargets) {
     console.log(JSON.stringify({
       passed: true,
       chatgptConversationTargetCount: pageTargets.length,
       targets: pageTargets.map((target) => sanitizeTarget(target))
     }, null, 2));
-    process.exit(0);
-  }
-  const selectedTargets = targetUrl
-    ? pageTargets.filter((target) => target.url === targetUrl)
-    : pageTargets;
-  if (targetUrl && selectedTargets.length !== 1) {
-    throw new Error(`Expected exactly one target for --thread-url; found ${selectedTargets.length}`);
-  }
-  if (!targetUrl && selectedTargets.length === 0) {
-    throw new Error("No chatgpt.com/c/<conversation-id> page target found in current Edge");
-  }
+      return;
+    }
+    const selectedTargets = targetUrl
+      ? pageTargets.filter((target) => target.url === targetUrl)
+      : pageTargets;
+    if (targetUrl && selectedTargets.length !== 1) {
+      throw new Error(`Expected exactly one target for --thread-url; found ${selectedTargets.length}`);
+    }
+    if (!targetUrl && selectedTargets.length === 0) {
+      throw new Error("No chatgpt.com/c/<conversation-id> page target found in current Edge");
+    }
 
-  const probed = [];
-  for (const target of selectedTargets) {
-    probed.push(await probeTarget(client, target));
-    if (targetUrl) break;
-  }
-  const chosen = chooseFailureCandidate(probed);
-  if (!chosen) {
-    const summary = probed.map((item) => ({
-      targetHash: hashText(item.target.url).slice(0, 16),
-      stalePayloadSameAsLatestUser: item.contract.staleComposer.samePayloadAsLatestUserTurn,
-      micaCopyNativeSibling: item.contract.actionBar.micaCopy?.sameParentAsNativeCopy ?? null,
-      micaCopyAdjacent: item.contract.actionBar.micaCopy?.adjacentToNativeCopy ?? null
-    }));
-    throw new Error(`Unable to identify the failed live page from ${probed.length} ChatGPT target(s): ${JSON.stringify(summary)}`);
-  }
+    const probed = [];
+    for (const target of selectedTargets) {
+      probed.push(await probeTarget(client, target));
+      if (targetUrl) break;
+    }
+    const chosen = chooseFailureCandidate(probed);
+    if (!chosen) {
+      const summary = probed.map((item) => ({
+        targetHash: hashText(item.target.url).slice(0, 16),
+        stalePayloadSameAsLatestUser: item.contract.staleComposer.samePayloadAsLatestUserTurn,
+        micaCopyNativeSibling: item.contract.actionBar.micaCopy?.sameParentAsNativeCopy ?? null,
+        micaCopyAdjacent: item.contract.actionBar.micaCopy?.adjacentToNativeCopy ?? null
+      }));
+      throw new Error(`Unable to identify the failed live page from ${probed.length} ChatGPT target(s): ${JSON.stringify(summary)}`);
+    }
 
-  await mkdir(outDir, { recursive: true });
-  await mkdir(contractDir, { recursive: true });
-  await writeJson(path.join(outDir, "raw-dom-snapshot.json"), chosen.raw);
-  await writeJson(path.join(outDir, "sanitized-live-failure-contract.json"), chosen.contract);
-  await writeJson(path.join(contractDir, "live-failure-contract.json"), chosen.contract);
-  await writeFile(path.join(contractDir, "README.md"), `${readmeForContract(chosen.contract)}\n`);
+    await mkdir(outDir, { recursive: true });
+    await mkdir(contractDir, { recursive: true });
+    await writeJson(path.join(outDir, "raw-dom-snapshot.json"), chosen.raw);
+    await writeJson(path.join(outDir, "sanitized-live-failure-contract.json"), chosen.contract);
+    await writeJson(path.join(contractDir, "live-failure-contract.json"), chosen.contract);
+    await writeFile(path.join(contractDir, "README.md"), `${readmeForContract(chosen.contract)}\n`);
 
-  console.log(JSON.stringify({
-    passed: true,
-    sessionId,
-    outDir,
-    contractDir,
-    targetHash: chosen.contract.target.targetHash,
-    actionBarGroundTruth: chosen.contract.actionBar.status,
-    staleComposerGroundTruth: chosen.contract.staleComposer.status,
-    samePayloadAsLatestUserTurn: chosen.contract.staleComposer.samePayloadAsLatestUserTurn,
-    micaCopySameParentAsNativeCopy: chosen.contract.actionBar.micaCopy?.sameParentAsNativeCopy ?? null,
-    micaCopyAdjacentToNativeCopy: chosen.contract.actionBar.micaCopy?.adjacentToNativeCopy ?? null,
-    automatedSend: false,
-    automatedEnter: false,
-    automatedUpload: false,
-    automatedConnectorAction: false
-  }, null, 2));
-} finally {
-  await client.close();
+    console.log(JSON.stringify({
+      passed: true,
+      sessionId,
+      outDir,
+      contractDir,
+      targetHash: chosen.contract.target.targetHash,
+      actionBarGroundTruth: groundTruthStatus(chosen.contract.actionBar),
+      nativeCopyResolved: chosen.contract.actionBar.nativeCopy?.source === "ACCESSIBILITY+BACKEND_NODE",
+      nativeCopySource: chosen.contract.actionBar.nativeCopy?.source || null,
+      nativeCopyParentChain: Array.isArray(chosen.contract.actionBar.nativeCopyParentChain) && chosen.contract.actionBar.nativeCopyParentChain.length > 0 ? "PRESENT" : "MISSING",
+      actionClusterSiblingOrder: Array.isArray(chosen.contract.actionBar.actionCluster?.siblingOrder) && chosen.contract.actionBar.actionCluster.siblingOrder.length > 0 ? "PRESENT" : "MISSING",
+      micaCopyRelationship: chosen.contract.actionBar.micaCopy ? "PRESENT" : "MISSING",
+      staleComposerGroundTruth: groundTruthStatus(chosen.contract.staleComposer),
+      composerControlKind: chosen.contract.staleComposer.composerControlKind || null,
+      composerValueSource: chosen.contract.staleComposer.composerValueSource || null,
+      composerBodyHash: chosen.contract.staleComposer.bodyHash ? "PRESENT" : "MISSING",
+      latestUserTurnHash: chosen.contract.staleComposer.latestCommittedUserTurn?.textHash ? "PRESENT" : "MISSING",
+      samePayloadAsLatestUserTurn: chosen.contract.staleComposer.samePayloadAsLatestUserTurn,
+      micaCopySameParentAsNativeCopy: chosen.contract.actionBar.micaCopy?.sameParentAsNativeCopy ?? null,
+      micaCopyAdjacentToNativeCopy: chosen.contract.actionBar.micaCopy?.adjacentToNativeCopy ?? null,
+      automatedSend: false,
+      automatedEnter: false,
+      automatedUpload: false,
+      automatedConnectorAction: false
+    }, null, 2));
+  } finally {
+    await client.close();
+  }
+}
+
+function groundTruthStatus(section) {
+  if (!section || section.status === "MISSING") return "MISSING";
+  return section.groundTruth || section.status || "MISSING";
 }
 
 async function probeTarget(client, target) {
@@ -122,8 +146,10 @@ async function probeTarget(client, target) {
   const layout = await sendWithTimeout(client, "Page.getLayoutMetrics");
   progress("DOMSnapshot.captureSnapshot");
   const snapshot = await sendWithTimeout(client, "DOMSnapshot.captureSnapshot", { computedStyles: STYLE_PROBE }, {}, 20000);
+  progress("Accessibility.getFullAXTree");
+  const axTree = await sendWithTimeout(client, "Accessibility.getFullAXTree", {}, {}, 20000);
   const model = buildModel(snapshot);
-  const contract = buildContract({ target, layout, snapshot, model });
+  const contract = buildContract({ target, layout, snapshot, model, axTree });
   return {
     target,
     contract,
@@ -134,18 +160,19 @@ async function probeTarget(client, target) {
       privacy: { localOnly: true, containsRawDomText: true, doNotCommit: true },
       target,
       layout,
-      snapshot
+      snapshot,
+      axTree
     }
   };
 }
 
-function buildContract({ target, layout, model }) {
+export function buildContract({ target, layout, model, axTree = null }) {
   const composer = findComposer(model);
   const userTurns = findRoleTurns(model, "user");
   const assistantTurns = findRoleTurns(model, "assistant");
   const latestUser = lastByDocumentOrder(userTurns);
   const latestAssistant = lastByDocumentOrder(assistantTurns);
-  const actionBar = buildActionBarContract(model, latestAssistant);
+  const actionBar = buildActionBarContract(model, latestAssistant, axTree);
   const staleComposer = buildStaleComposerContract(model, composer, latestUser);
   return {
     schemaVersion: 1,
@@ -168,13 +195,19 @@ function buildContract({ target, layout, model }) {
   };
 }
 
-function buildActionBarContract(model, assistantTurn) {
+function buildActionBarContract(model, assistantTurn, axTree = null) {
   if (!assistantTurn) return { status: "MISSING", reason: "assistant_turn_missing" };
-  const buttonNodes = descendants(model, assistantTurn.index).filter((index) => isButtonLike(model, index));
-  const nativeCopy = buttonNodes.find((index) => isNativeCopyButton(model, index));
-  const micaCopy = buttonNodes.find((index) => model.attrs(index)["data-mica-copy-action"] === "true");
-  if (nativeCopy == null) return { status: "MISSING", reason: "native_copy_missing", owningAssistantTurn: turnSummary(model, assistantTurn.index) };
-  const nativeParent = model.parent(nativeCopy);
+  const nativeCopyMatch = findNativeCopyButton(model, assistantTurn.index, axTree);
+  const nativeCopy = nativeCopyMatch?.nodeIndex ?? null;
+  if (nativeCopy == null) return {
+    status: "MISSING",
+    reason: "native_copy_missing",
+    owningAssistantTurn: turnSummary(model, assistantTurn.index),
+    nativeCopySource: axTree ? "ACCESSIBILITY_TREE_NO_MATCH" : "NO_ACCESSIBILITY_TREE"
+  };
+  const actionClusterIndex = findActionCluster(model, assistantTurn.index, nativeCopy);
+  const micaCopy = findMicaCopyButton(model, assistantTurn.index, nativeCopy, actionClusterIndex);
+  const nativeParent = actionClusterIndex ?? model.parent(nativeCopy);
   const micaParent = micaCopy == null ? null : model.parent(micaCopy);
   const siblings = nativeParent == null ? [] : model.children(nativeParent).filter((index) => isElement(model, index)).map((index) => semanticNode(model, index));
   const nativeSiblingIndex = nativeParent == null ? -1 : model.children(nativeParent).indexOf(nativeCopy);
@@ -188,8 +221,11 @@ function buildActionBarContract(model, assistantTurn) {
   }));
   return {
     status: "OBSERVED",
+    groundTruth: nativeCopyMatch.source === "ACCESSIBILITY+BACKEND_NODE" ? "EXACT" : "PARTIAL",
     owningAssistantTurn: turnSummary(model, assistantTurn.index),
     nativeCopy: {
+      source: nativeCopyMatch.source,
+      accessibleName: nativeCopyMatch.accessibleName || null,
       node: semanticNode(model, nativeCopy),
       rect: roundRect(model.rect(nativeCopy)),
       parentNode: nativeParent == null ? null : semanticNode(model, nativeParent),
@@ -227,10 +263,14 @@ function buildStaleComposerContract(model, composer, latestUser) {
   const userHash = hashText(latestUserText);
   return {
     status: "OBSERVED",
+    groundTruth: composer.valueSource === "DOMSNAPSHOT_TEXT_VALUE" || composer.valueSource === "DOMSNAPSHOT_INPUT_VALUE" || composer.valueSource === "CONTENTEDITABLE_TEXT" ? "EXACT" : "PARTIAL",
     composerPresent: true,
+    composerControlKind: composer.controlKind,
+    composerValueSource: composer.valueSource,
     composerRoot: composer.rootIndex == null ? null : semanticNode(model, composer.rootIndex),
     editable: semanticNode(model, composer.editableIndex),
     editableRect: roundRect(model.rect(composer.editableIndex)),
+    composerVisibleBodyLength: composerBody.length,
     bodyLength: composerBody.length,
     bodyHash: composerHash.slice(0, 24),
     connectorPillPresent: composer.connectorPillPresent,
@@ -268,12 +308,18 @@ function findComposer(model) {
   const rootForPill = rootIndex ?? editableIndex;
   const connectorNodes = descendants(model, rootForPill).filter((index) => isConnectorPill(model, index));
   const excluded = new Set(connectorNodes.flatMap((index) => [index, ...descendants(model, index)]));
-  const bodyText = canonicalize(model.text(editableIndex, excluded));
+  const control = model.controlValue(editableIndex);
+  const tag = model.tag(editableIndex);
+  const rawBodyText = control.value !== null ? control.value : model.text(editableIndex, excluded);
+  const bodyText = canonicalize(rawBodyText);
+  const valueSource = control.value !== null ? control.source : (tag === "textarea" || tag === "input" ? "DOM_TEXT_FALLBACK" : "CONTENTEDITABLE_TEXT");
   const connectorPillTextLength = connectorNodes.reduce((sum, index) => sum + model.text(index).length, 0);
   return {
     rootIndex,
     editableIndex,
     bodyText,
+    controlKind: control.kind || (tag === "textarea" || tag === "input" ? tag : "contenteditable"),
+    valueSource,
     connectorPillPresent: connectorNodes.length > 0,
     connectorPillCount: connectorNodes.length,
     connectorPillTextLength
@@ -298,13 +344,18 @@ function chooseFailureCandidate(items) {
   return null;
 }
 
-function buildModel(snapshot) {
+export function buildModel(snapshot) {
   if (!Array.isArray(snapshot?.documents) || !Array.isArray(snapshot?.strings)) {
     throw new Error("DOMSnapshot must use official top-level documents/strings schema");
   }
   const doc = snapshot.documents[0];
   const strings = snapshot.strings;
   const parentIndex = doc.nodes?.parentIndex || [];
+  const backendNodeId = doc.nodes?.backendNodeId || [];
+  const nodeIndexByBackendId = new Map();
+  backendNodeId.forEach((id, index) => {
+    if (id != null) nodeIndexByBackendId.set(Number(id), index);
+  });
   const children = new Map();
   parentIndex.forEach((parent, index) => {
     if (!children.has(parent)) children.set(parent, []);
@@ -326,6 +377,8 @@ function buildModel(snapshot) {
     attrs: (index) => attrsFor(snapshot, doc, strings, index),
     rect: (index) => layoutRectByNode.get(index) || null,
     styles: (index) => styleByNode.get(index) || [],
+    controlValue: (index) => controlValueForNode(doc, strings, index),
+    nodeIndexForBackendId: (id) => nodeIndexByBackendId.get(Number(id)),
     text: (index, excluded = new Set()) => textFor(model, index, excluded),
     elementIndexes: () => {
       const count = doc.nodes?.nodeName?.length || 0;
@@ -339,7 +392,35 @@ function textFor(model, index, excluded = new Set()) {
   if (excluded.has(index)) return "";
   const tag = model.tag(index);
   if (tag === "#text") return stringAt(model.strings, model.doc.nodes?.nodeValue?.[index]);
+  const control = model.controlValue(index);
+  if (control.value !== null) return control.value;
   return model.children(index).map((child) => textFor(model, child, excluded)).join("");
+}
+
+function controlValueForNode(doc, strings, index) {
+  const tag = stringAt(strings, doc.nodes?.nodeName?.[index]).toLowerCase();
+  if (tag === "textarea") {
+    return { kind: "textarea", source: "DOMSNAPSHOT_TEXT_VALUE", value: rareStringAt(doc.nodes?.textValue, strings, index) };
+  }
+  if (tag === "input") {
+    return { kind: "input", source: "DOMSNAPSHOT_INPUT_VALUE", value: rareStringAt(doc.nodes?.inputValue, strings, index) };
+  }
+  return { kind: null, source: null, value: null };
+}
+
+function rareStringAt(data, strings, nodeIndex) {
+  if (!data) return null;
+  if (Array.isArray(data)) {
+    const value = data[nodeIndex];
+    if (value === undefined || value === null || value === -1) return null;
+    return stringAt(strings, value);
+  }
+  if (Array.isArray(data.index) && Array.isArray(data.value)) {
+    const position = data.index.indexOf(nodeIndex);
+    if (position < 0) return null;
+    return stringAt(strings, data.value[position]);
+  }
+  return null;
 }
 
 function attrsFor(_snapshot, doc, strings, index) {
@@ -386,6 +467,105 @@ function isNativeCopyButton(model, index) {
   if (attrs["data-mica-copy-action"] === "true") return false;
   const signal = `${attrs["aria-label"] || ""} ${attrs.title || ""} ${attrs["data-testid"] || ""} ${model.text(index) || ""}`;
   return /\bcopy\b|复制/i.test(signal);
+}
+
+function findNativeCopyButton(model, assistantTurnIndex, axTree = null) {
+  const axMatch = findNativeCopyButtonFromAx(model, assistantTurnIndex, axTree);
+  if (axMatch) return axMatch;
+  const buttonNodes = descendants(model, assistantTurnIndex).filter((index) => isButtonLike(model, index));
+  const nodeIndex = buttonNodes.find((index) => isNativeCopyButton(model, index));
+  return nodeIndex == null ? null : { nodeIndex, source: "DOM_TEXT_OR_ATTRIBUTE" };
+}
+
+function findNativeCopyButtonFromAx(model, assistantTurnIndex, axTree = null) {
+  const nodes = Array.isArray(axTree?.nodes) ? axTree.nodes : [];
+  for (const axNode of nodes) {
+    const name = axValue(axNode?.name);
+    if (!isCopyAccessibleName(name)) continue;
+    const role = axValue(axNode?.role);
+    if (role && !/button|menuitem/i.test(role)) continue;
+    const mappedNode = model.nodeIndexForBackendId(axNode.backendDOMNodeId);
+    if (mappedNode == null) continue;
+    const buttonNode = closest(model, mappedNode, (index) => isButtonLike(model, index)) ?? mappedNode;
+    if (!isButtonLike(model, buttonNode)) continue;
+    if (!isDescendantOrSelf(model, assistantTurnIndex, buttonNode)) continue;
+    if (model.attrs(buttonNode)["data-mica-copy-action"] === "true") continue;
+    return { nodeIndex: buttonNode, source: "ACCESSIBILITY+BACKEND_NODE", accessibleName: genericLabel(name) };
+  }
+  return null;
+}
+
+function findActionCluster(model, assistantTurnIndex, nativeCopyIndex) {
+  let current = model.parent(nativeCopyIndex);
+  while (current != null && current >= 0 && current !== assistantTurnIndex && isDescendantOrSelf(model, assistantTurnIndex, current)) {
+    const children = model.children(current).filter((index) => isElement(model, index));
+    const actionChildren = children.filter((index) => isButtonLike(model, index) || hasButtonDescendant(model, index));
+    const ownsNativeCopy = isDescendantOrSelf(model, current, nativeCopyIndex);
+    if (ownsNativeCopy && actionChildren.length >= 2) return current;
+    current = model.parent(current);
+  }
+  return model.parent(nativeCopyIndex);
+}
+
+function findMicaCopyButton(model, assistantTurnIndex, nativeCopyIndex, actionClusterIndex = null) {
+  const candidates = model.elementIndexes().filter((index) => {
+    const attrs = model.attrs(index);
+    return attrs["data-mica-copy-action"] === "true" && isButtonLike(model, index);
+  });
+  if (candidates.length === 0) return null;
+  const nativeParent = model.parent(nativeCopyIndex);
+  const sameParent = candidates.find((index) => model.parent(index) === nativeParent);
+  if (sameParent != null) return sameParent;
+  if (actionClusterIndex != null) {
+    const insideCluster = candidates.find((index) => isDescendantOrSelf(model, actionClusterIndex, index));
+    if (insideCluster != null) return insideCluster;
+  }
+  const insideAssistant = candidates.find((index) => isDescendantOrSelf(model, assistantTurnIndex, index));
+  if (insideAssistant != null) return insideAssistant;
+  return nearestByRect(model, nativeCopyIndex, candidates);
+}
+
+function nearestByRect(model, anchorIndex, candidates) {
+  const anchor = model.rect(anchorIndex);
+  if (!anchor) return candidates[0] ?? null;
+  let best = null;
+  let bestDistance = Infinity;
+  for (const candidate of candidates) {
+    const rect = model.rect(candidate);
+    if (!rect) continue;
+    const distance = Math.hypot((rect.x + rect.width / 2) - (anchor.x + anchor.width / 2), (rect.y + rect.height / 2) - (anchor.y + anchor.height / 2));
+    if (distance < bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+  return best ?? candidates[0] ?? null;
+}
+
+function hasButtonDescendant(model, nodeIndex) {
+  return descendants(model, nodeIndex).some((index) => isButtonLike(model, index));
+}
+
+function isDescendantOrSelf(model, ancestor, nodeIndex) {
+  let current = nodeIndex;
+  while (current != null && current >= 0) {
+    if (current === ancestor) return true;
+    current = model.parent(current);
+  }
+  return false;
+}
+
+function isCopyAccessibleName(value) {
+  const text = String(value || "").trim();
+  return /^copy$/i.test(text) || text === "复制";
+}
+
+function axValue(value) {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value.value === "string") return value.value;
+  if (typeof value.value === "number") return String(value.value);
+  return "";
 }
 
 function isConnectorPill(model, index) {
@@ -452,9 +632,21 @@ function sanitizeTarget(target) {
     type: target.type,
     titleLength: String(target.title || "").length,
     hostname: parsed?.hostname || null,
-    pathShape: parsed?.pathname?.replace(/\/c\/[^/?#]+/, "/c/<conversation-id>") || null,
+    pathShape: parsed ? sanitizePathShape(parsed.pathname) : null,
     targetHash: hashText(target.url).slice(0, 24)
   };
+}
+
+function sanitizePathShape(pathname) {
+  const segments = String(pathname || "").split("/").filter(Boolean);
+  return `/${segments.map((segment, index) => {
+    const previous = segments[index - 1];
+    if (previous === "c") return "<conversation-id>";
+    if (previous === "g") return "<gpt-id>";
+    if (previous === "project") return "<project-id>";
+    if (/^[0-9a-f-]{12,}$/i.test(segment) || /^g-[a-z0-9_-]+/i.test(segment)) return "<id>";
+    return segment;
+  }).join("/")}`;
 }
 
 function sanitizeLayout(layout) {
@@ -571,6 +763,12 @@ This contract is sanitized evidence from a one-shot read-only DevToolsActivePort
 - It is intended to reproduce the native action-bar placement failure and long connector send residual failure offline.
 
 Target hash: \`${contract.target.targetHash}\`
+Action bar ground truth: \`${groundTruthStatus(contract.actionBar)}\`
+Native Copy source: \`${contract.actionBar.nativeCopy?.source ?? "missing"}\`
+Native Copy parent chain: \`${Array.isArray(contract.actionBar.nativeCopyParentChain) && contract.actionBar.nativeCopyParentChain.length > 0 ? "present" : "missing"}\`
+Action cluster sibling order: \`${Array.isArray(contract.actionBar.actionCluster?.siblingOrder) && contract.actionBar.actionCluster.siblingOrder.length > 0 ? "present" : "missing"}\`
+Stale composer ground truth: \`${groundTruthStatus(contract.staleComposer)}\`
+Composer value source: \`${contract.staleComposer.composerValueSource ?? "missing"}\`
 Composer residual equals latest user turn: \`${contract.staleComposer.samePayloadAsLatestUserTurn}\`
 Mica Copy adjacent to native Copy: \`${contract.actionBar.micaCopy?.adjacentToNativeCopy ?? "missing"}\`
 `;

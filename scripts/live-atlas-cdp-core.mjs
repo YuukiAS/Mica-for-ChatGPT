@@ -10,6 +10,7 @@ export const READ_ONLY_CDP_COMMANDS = new Set([
   "Log.enable",
   "Target.getTargets",
   "Target.attachToTarget",
+  "Accessibility.getFullAXTree",
   "DOMSnapshot.captureSnapshot",
   "Page.getLayoutMetrics",
   "Page.captureScreenshot",

@@ -27,6 +27,7 @@
     "atlas:preflight": "node scripts/live-atlas-real-edge-preflight.mjs",
     "atlas:final-acceptance": "node scripts/live-atlas-final-acceptance.mjs",
     "probe:live-failure": "node scripts/live-failure-probe.mjs",
+    "probe:live-failure:selftest": "node scripts/live-failure-probe-selftest.mjs",
     "test:atlas": "node scripts/test-atlas.mjs",
     "package:release": "npm run build && node scripts/package-release.mjs && node scripts/validate-release.mjs"
   },
