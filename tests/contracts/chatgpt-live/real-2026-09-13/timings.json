@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "kind": "mica.liveSurfaceAtlas.contractTimings",
+  "sourceArtifactId": "capture-1789266647815",
+  "privacy": {
+    "localOnly": true,
+    "telemetryUploaded": false,
+    "promptTextIncluded": false,
+    "answerTextIncluded": false,
+    "rawDomIncluded": false,
+    "fullPageScreenshotIncluded": false,
+    "headersIncluded": false,
+    "cookiesIncluded": false,
+    "requestBodiesIncluded": false
+  },
+  "safety": {
+    "automatedSend": false,
+    "automatedEnter": false,
+    "automatedUpload": false,
+    "automatedConnectorAction": false,
+    "playwrightRealSiteTraceUsed": false,
+    "computerUseRequired": false,
+    "cdpConnection": true
+  },
+  "measurementDisturbed": true,
+  "notProductPerformanceBaseline": true,
+  "durationMs": 311878.9,
+  "inputEventCount": 80,
+  "longAnimationFrameCount": 80,
+  "longTaskCount": 80,
+  "layoutShiftCount": 80,
+  "visualCapture": {
+    "oldHeavyCaptureCount": 168,
+    "replayHeavyCaptureCount": 30,
+    "round6OldHeavyCaptureCount": 39,
+    "round6ReplayHeavyCaptureCount": 2,
+    "maxConcurrentHeavyCapture": 1
+  }
+}

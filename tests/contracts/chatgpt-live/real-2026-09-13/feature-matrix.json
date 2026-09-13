@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "kind": "mica.liveSurfaceAtlas.featureMatrix",
+  "sourceArtifactId": "capture-1789266647815",
+  "privacy": {
+    "localOnly": true,
+    "telemetryUploaded": false,
+    "promptTextIncluded": false,
+    "answerTextIncluded": false,
+    "rawDomIncluded": false,
+    "fullPageScreenshotIncluded": false,
+    "headersIncluded": false,
+    "cookiesIncluded": false,
+    "requestBodiesIncluded": false
+  },
+  "safety": {
+    "automatedSend": false,
+    "automatedEnter": false,
+    "automatedUpload": false,
+    "automatedConnectorAction": false,
+    "playwrightRealSiteTraceUsed": false,
+    "computerUseRequired": false,
+    "cdpConnection": true
+  },
+  "statuses": {
+    "longThreadOptimization": {
+      "status": "NOT_EXERCISED",
+      "evidence": "real run kept native-only path"
+    },
+    "micaMarkdownCopy": {
+      "status": "NOT_EXERCISED",
+      "evidence": "micaCopy surface missing in real run; local replay fixture required"
+    },
+    "composerRecovery": {
+      "status": "OBSERVED_NATIVE_ONLY",
+      "evidence": "composer remount lifecycle observed without accepted Mica recovery trigger"
+    },
+    "connectorContinuity": {
+      "status": "OBSERVED_NATIVE_ONLY",
+      "evidence": "native connector UI completed; Mica continuity not inferred as accepted"
+    },
+    "sendResidualRecovery": {
+      "status": "OBSERVED_NATIVE_ONLY",
+      "evidence": "send lifecycle observed; residual failure condition not exercised"
+    },
+    "autoDismissKnownInterruptions": {
+      "status": "NOT_EXERCISED",
+      "evidence": "no known interruption surface observed"
+    },
+    "atlasRecorderOffOverhead": {
+      "status": "EXERCISED_AND_PASS",
+      "evidence": "covered by local atlas hotpath regression"
+    },
+    "atlasRecorderOnLowOverheadCapture": {
+      "status": "EXERCISED_AND_PASS",
+      "evidence": "real lifecycle replay selects sparse semantic heavy captures"
+    }
+  },
+  "replayCases": {
+    "composerLifecycle": "real contract pack fixture preserves focus blur event evidence and remount variants",
+    "assistantGeneration": "real contract pack fixture preserves five generation lifecycle",
+    "richMarkdownAndMicaCopy": "rich Markdown is real-derived; Mica Copy remains explicit local fixture until real invocation",
+    "longThreadOptimization": "derived real turn window fixture forces old-turn containment replay",
+    "connectorContinuityAndSendResidual": "connector and send events are replayed locally without asserting native completion as Mica pass"
+  }
+}

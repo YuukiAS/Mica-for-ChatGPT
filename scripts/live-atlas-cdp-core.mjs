@@ -816,6 +816,7 @@ export function resolveSurfaceMatch(snapshot, surfaceKey, checkpoint = {}, optio
     const documentRect = rectFromBounds(bounds[index]);
     if (!documentRect) continue;
     const viewportRect = documentRectToViewportRect(documentRect, viewportOffset);
+    if (!surfaceCandidateIsSemanticallyValid(snapshot, doc, nodeIndex, surfaceKey, documentRect)) continue;
     const identity = surfaceTurnIdentity(snapshot, doc, nodeIndex, surfaceKey, checkpoint);
     if ((turnBound || ownerTurnBound) && expectedTurnId && identity.turnId !== expectedTurnId) continue;
     candidates.push({
@@ -1132,18 +1133,70 @@ function nodeMatchesSurface(snapshot, doc, nodeIndex, surfaceKey, checkpoint = {
   const tag = stringAt(strings, doc.nodes?.nodeName?.[nodeIndex] || "").toLowerCase();
   const checkpointRole = checkpoint.role || checkpoint.surfaceRole || null;
   if (checkpointRole && attrs["data-message-author-role"] && attrs["data-message-author-role"] !== checkpointRole) return false;
-  if (surfaceKey === "composer") return attrs["data-composer-surface"] === "true" || /composer/i.test(attrs["data-testid"] || "");
-  if (surfaceKey === "mentionChooser") return attrs.role === "listbox" || /mention|composer-menu/i.test(attrs["data-testid"] || "");
+  if (surfaceKey === "composer") {
+    if (tag === "button") return false;
+    return attrs["data-composer-surface"] === "true"
+      || attrs.contenteditable === "true"
+      || tag === "textarea"
+      || (tag === "form" && hasEditableOrInputDescendant(snapshot, doc, nodeIndex))
+      || (/composer/i.test(attrs["data-testid"] || "") && hasEditableOrInputDescendant(snapshot, doc, nodeIndex));
+  }
+  if (surfaceKey === "mentionChooser") {
+    if (attrs.role === "tooltip") return false;
+    return /^(listbox|menu|group)$/.test(attrs.role || "") || /mention|composer-menu|composer-intelligence-picker/i.test(attrs["data-testid"] || "");
+  }
   if (surfaceKey === "connectorPill") return attrs["data-inline-selection-pill"] !== undefined || /plugin:/.test(attrs["data-id"] || "");
-  if (surfaceKey === "assistantActionBar" || surfaceKey === "nativeCopyArea") return attrs.role === "toolbar" || /action|copy/i.test(attrs["data-testid"] || attrs["aria-label"] || "");
+  if (surfaceKey === "assistantActionBar") return attrs.role === "toolbar" || /action-bar|actions/i.test(attrs["data-testid"] || "");
+  if (surfaceKey === "nativeCopyArea") return /copy/i.test(attrs["data-testid"] || attrs["aria-label"] || "");
   if (surfaceKey === "micaCopy") return attrs["data-testid"] === "mica-copy" || /mica.*copy/i.test(attrs["data-testid"] || attrs["aria-label"] || "");
   if (surfaceKey === "micaOverlay") return attrs["data-mica-root"] === "true" || tag === "mica-overlay";
   if (surfaceKey === "userTurn") return attrs["data-message-author-role"] === "user" || /conversation-turn/i.test(attrs["data-testid"] || "") && checkpointRole === "user";
   if (surfaceKey === "assistantStreaming" || surfaceKey === "assistantSettled" || surfaceKey === "richMarkdown") {
     return attrs["data-message-author-role"] === "assistant" || /conversation-turn/i.test(attrs["data-testid"] || "") && checkpointRole !== "user";
   }
-  if (surfaceKey === "longThreadMountedWindow") return /conversation|thread|scroll/i.test(attrs["data-testid"] || attrs.role || "");
+  if (surfaceKey === "longThreadMountedWindow") {
+    const hint = `${attrs["data-testid"] || ""} ${attrs.role || ""}`;
+    if (/thread-header|actions-container|button/i.test(hint)) return false;
+    return tag === "main" || attrs.role === "main" || /conversation|scroll|thread|messages/i.test(hint);
+  }
   return false;
+}
+
+function surfaceCandidateIsSemanticallyValid(snapshot, doc, nodeIndex, surfaceKey, documentRect) {
+  const attrs = nodeAttributes(snapshot, doc, nodeIndex);
+  const strings = snapshotStrings(snapshot);
+  const tag = stringAt(strings, doc.nodes?.nodeName?.[nodeIndex] || "").toLowerCase();
+  if (!documentRect || documentRect.width <= 0 || documentRect.height <= 0) return false;
+  if (surfaceKey === "composer") {
+    return tag !== "button"
+      && documentRect.width >= 280
+      && documentRect.height >= 30
+      && (attrs["data-composer-surface"] === "true" || hasEditableOrInputDescendant(snapshot, doc, nodeIndex));
+  }
+  if (surfaceKey === "longThreadMountedWindow") {
+    return documentRect.width >= 500 && documentRect.height >= 300 && !/thread-header|actions-container/i.test(attrs["data-testid"] || "");
+  }
+  if (surfaceKey === "mentionChooser") return documentRect.width >= 60 && documentRect.height >= 24;
+  if (surfaceKey === "connectorPill") return documentRect.width >= 24 && documentRect.height >= 16;
+  if (surfaceKey === "assistantActionBar") return tag !== "button" && documentRect.width >= 24 && documentRect.height >= 20;
+  if (surfaceKey === "nativeCopyArea" || surfaceKey === "micaCopy") return documentRect.width >= 16 && documentRect.height >= 16;
+  if (surfaceKey === "userTurn" || surfaceKey === "assistantStreaming" || surfaceKey === "assistantSettled" || surfaceKey === "richMarkdown") {
+    return documentRect.width >= 240 && documentRect.height >= 20;
+  }
+  if (surfaceKey === "micaOverlay") return documentRect.width >= 16 && documentRect.height >= 16;
+  return true;
+}
+
+function hasEditableOrInputDescendant(snapshot, doc, nodeIndex) {
+  const strings = snapshotStrings(snapshot);
+  const self = nodeAttributes(snapshot, doc, nodeIndex);
+  const selfTag = stringAt(strings, doc.nodes?.nodeName?.[nodeIndex] || "").toLowerCase();
+  if (self.contenteditable === "true" || selfTag === "textarea" || selfTag === "input") return true;
+  return findDescendantNodeIndex(snapshot, doc, nodeIndex, (childIndex) => {
+    const attrs = nodeAttributes(snapshot, doc, childIndex);
+    const tag = stringAt(strings, doc.nodes?.nodeName?.[childIndex] || "").toLowerCase();
+    return attrs.contenteditable === "true" || tag === "textarea" || tag === "input";
+  }) !== null;
 }
 
 function isTurnBoundSurface(surfaceKey) {
@@ -1206,13 +1259,16 @@ function roleForNode(snapshot, doc, nodeIndex) {
 }
 
 function findDescendantRoleNodeIndex(snapshot, doc, nodeIndex, role) {
+  return findDescendantNodeIndex(snapshot, doc, nodeIndex, (current) => nodeAttributes(snapshot, doc, current)["data-message-author-role"] === role);
+}
+
+function findDescendantNodeIndex(snapshot, doc, nodeIndex, predicate) {
   const pending = childIndexesOf(doc, nodeIndex).slice(0, 64);
   let inspected = 0;
   while (pending.length && inspected < 256) {
     inspected += 1;
     const current = pending.shift();
-    const attrs = nodeAttributes(snapshot, doc, current);
-    if (attrs["data-message-author-role"] === role) return current;
+    if (predicate(current)) return current;
     pending.push(...childIndexesOf(doc, current).slice(0, 32));
   }
   return null;
@@ -1336,23 +1392,11 @@ export function screenshotClipForDocumentRect(documentRect, layoutMetrics = null
   const rect = normalizeTargetRect(documentRect);
   if (!rect) return { x: 0, y: 0, width: 1, height: 1, scale: 1 };
   const zoom = zoomForScreenshot(layoutMetrics);
-  const cssContent = layoutMetrics?.cssContentSize || {};
-  const legacyContent = layoutMetrics?.contentSize || {};
-  const maxWidthCss = firstFinite(cssContent.width, normalizeDeprecatedMetric(legacyContent.width, zoom), rect.x + rect.width);
-  const maxHeightCss = firstFinite(cssContent.height, normalizeDeprecatedMetric(legacyContent.height, zoom), rect.y + rect.height);
-  const xCss = Math.max(0, Math.min(rect.x, Math.max(0, maxWidthCss - 1)));
-  const yCss = Math.max(0, Math.min(rect.y, Math.max(0, maxHeightCss - 1)));
-  const clippedCss = {
-    x: xCss,
-    y: yCss,
-    width: Math.max(1, Math.min(rect.width, Math.max(1, maxWidthCss - xCss))),
-    height: Math.max(1, Math.min(rect.height, Math.max(1, maxHeightCss - yCss)))
-  };
   return {
-    x: round(clippedCss.x * zoom),
-    y: round(clippedCss.y * zoom),
-    width: round(clippedCss.width * zoom),
-    height: round(clippedCss.height * zoom),
+    x: round(Math.max(0, rect.x) * zoom),
+    y: round(Math.max(0, rect.y) * zoom),
+    width: Math.max(1, round(rect.width * zoom)),
+    height: Math.max(1, round(rect.height * zoom)),
     scale: 1
   };
 }

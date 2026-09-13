@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "kind": "mica.liveSurfaceAtlas.contractPack",
+  "contractPackId": "real-2026-09-13",
+  "createdAt": "2026-09-13T02:36:56.975Z",
+  "sourceArtifactId": "capture-1789266647815",
+  "rawPathCommitted": false,
+  "rawScreenshotsCommitted": false,
+  "measurementDisturbed": true,
+  "oldHeavyCaptureCount": 168,
+  "replayHeavyCaptureCount": 30,
+  "round6OldHeavyCaptureCount": 39,
+  "round6ReplayHeavyCaptureCount": 2,
+  "privacy": {
+    "localOnly": true,
+    "telemetryUploaded": false,
+    "promptTextIncluded": false,
+    "answerTextIncluded": false,
+    "rawDomIncluded": false,
+    "fullPageScreenshotIncluded": false,
+    "headersIncluded": false,
+    "cookiesIncluded": false,
+    "requestBodiesIncluded": false
+  },
+  "safety": {
+    "automatedSend": false,
+    "automatedEnter": false,
+    "automatedUpload": false,
+    "automatedConnectorAction": false,
+    "playwrightRealSiteTraceUsed": false,
+    "computerUseRequired": false,
+    "cdpConnection": true
+  }
+}

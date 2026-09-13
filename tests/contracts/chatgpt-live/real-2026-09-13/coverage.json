@@ -1,0 +1,67 @@
+{
+  "composer": {
+    "status": "OBSERVED",
+    "count": 2,
+    "source": "atlas-recorder-skeleton"
+  },
+  "userTurn": {
+    "status": "OBSERVED",
+    "count": 5,
+    "source": "real-cdp-companion"
+  },
+  "assistantStreaming": {
+    "status": "OBSERVED",
+    "count": 5,
+    "source": "real-cdp-companion"
+  },
+  "assistantSettled": {
+    "status": "OBSERVED",
+    "count": 5,
+    "source": "real-cdp-companion"
+  },
+  "assistantActionBar": {
+    "status": "OBSERVED",
+    "count": 5,
+    "source": "atlas-recorder-geometry"
+  },
+  "nativeCopyArea": {
+    "status": "MISSING",
+    "count": 0,
+    "source": "materializer"
+  },
+  "richMarkdown": {
+    "status": "OBSERVED",
+    "count": 3,
+    "source": "real-cdp-companion"
+  },
+  "mentionChooser": {
+    "status": "OBSERVED",
+    "count": 1,
+    "source": "atlas-recorder-skeleton"
+  },
+  "connectorPill": {
+    "status": "OBSERVED",
+    "count": 3,
+    "source": "real-cdp-companion"
+  },
+  "micaOverlay": {
+    "status": "OBSERVED",
+    "count": 1,
+    "source": "atlas-recorder-geometry"
+  },
+  "longThreadMountedWindow": {
+    "status": "OBSERVED",
+    "count": 1,
+    "source": "derived-from-real-turn-structure"
+  },
+  "toolFileAuthSurface": {
+    "status": "MISSING",
+    "count": 0,
+    "source": "materializer"
+  },
+  "micaCopy": {
+    "status": "MISSING",
+    "count": 0,
+    "source": "materializer"
+  }
+}

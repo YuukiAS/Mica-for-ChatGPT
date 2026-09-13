@@ -1,0 +1,728 @@
+{
+  "schemaVersion": 1,
+  "kind": "mica.liveSurfaceAtlas.contractPackAudit",
+  "sourceArtifactId": "capture-1789266647815",
+  "createdAt": "2026-09-13T02:36:56.975Z",
+  "privacy": {
+    "localOnly": true,
+    "telemetryUploaded": false,
+    "promptTextIncluded": false,
+    "answerTextIncluded": false,
+    "rawDomIncluded": false,
+    "fullPageScreenshotIncluded": false,
+    "headersIncluded": false,
+    "cookiesIncluded": false,
+    "requestBodiesIncluded": false
+  },
+  "safety": {
+    "automatedSend": false,
+    "automatedEnter": false,
+    "automatedUpload": false,
+    "automatedConnectorAction": false,
+    "playwrightRealSiteTraceUsed": false,
+    "computerUseRequired": false,
+    "cdpConnection": true
+  },
+  "rawArtifactCommitted": false,
+  "rawScreenshotsCommitted": false,
+  "rejectedCdpCaptures": 114,
+  "screenshotIntegrity": {
+    "rawScreenshotCount": 145,
+    "probableWhiteOrCollapsedCaptures": 93,
+    "coordinateIntegrityRequired": true,
+    "collapsedCaptureRegressionCovered": true
+  },
+  "surfaces": {
+    "composer": {
+      "rawCount": 71,
+      "materialized": "OBSERVED",
+      "variantCount": 2,
+      "sources": [
+        "atlas-recorder-skeleton"
+      ],
+      "rejected": [
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_present",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_identity_changed",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_present",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_identity_changed",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_present",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_identity_changed",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "collapsed_screenshot_clip",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_present",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_identity_changed",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_identity_changed",
+          "generationId": null
+        },
+        {
+          "reason": "collapsed_screenshot_clip",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "collapsed_screenshot_clip",
+          "stateClass": "atlas_started",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_focus",
+          "generationId": null
+        },
+        {
+          "reason": "composer_resolved_to_button",
+          "stateClass": "composer_blur",
+          "generationId": null
+        }
+      ]
+    },
+    "userTurn": {
+      "rawCount": 5,
+      "materialized": "OBSERVED",
+      "variantCount": 5,
+      "sources": [
+        "real-cdp-companion"
+      ],
+      "rejected": []
+    },
+    "assistantStreaming": {
+      "rawCount": 16,
+      "materialized": "OBSERVED",
+      "variantCount": 5,
+      "sources": [
+        "real-cdp-companion"
+      ],
+      "rejected": [
+        {
+          "reason": "not_observed",
+          "stateClass": "assistant_turn_mounted",
+          "generationId": 5
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "assistant_turn_mounted",
+          "generationId": 5
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "assistant_turn_mounted",
+          "generationId": 1
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "assistant_turn_mounted",
+          "generationId": 1
+        },
+        {
+          "reason": "collapsed_screenshot_clip",
+          "stateClass": "assistant_turn_mounted",
+          "generationId": 2
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "assistant_turn_mounted",
+          "generationId": 2
+        },
+        {
+          "reason": "collapsed_screenshot_clip",
+          "stateClass": "assistant_turn_mounted",
+          "generationId": 2
+        },
+        {
+          "reason": "collapsed_screenshot_clip",
+          "stateClass": "assistant_turn_mounted",
+          "generationId": 3
+        }
+      ]
+    },
+    "assistantSettled": {
+      "rawCount": 31,
+      "materialized": "OBSERVED",
+      "variantCount": 5,
+      "sources": [
+        "real-cdp-companion"
+      ],
+      "rejected": [
+        {
+          "reason": "not_observed",
+          "stateClass": "assistant_settled",
+          "generationId": 3
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "assistant_settled",
+          "generationId": 1
+        },
+        {
+          "reason": "collapsed_screenshot_clip",
+          "stateClass": "assistant_settled",
+          "generationId": 2
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "assistant_settled",
+          "generationId": 3
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "assistant_settled",
+          "generationId": 3
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "assistant_settled",
+          "generationId": 3
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "assistant_settled",
+          "generationId": 3
+        }
+      ]
+    },
+    "assistantActionBar": {
+      "rawCount": 6,
+      "materialized": "OBSERVED",
+      "variantCount": 5,
+      "sources": [
+        "atlas-recorder-geometry"
+      ],
+      "rejected": [
+        {
+          "reason": "action_bar_not_toolbar",
+          "stateClass": "assistant_action_bar_visible",
+          "generationId": 4
+        },
+        {
+          "reason": "action_bar_not_toolbar",
+          "stateClass": "assistant_action_bar_visible",
+          "generationId": 5
+        },
+        {
+          "reason": "action_bar_not_toolbar",
+          "stateClass": "assistant_action_bar_visible",
+          "generationId": 5
+        },
+        {
+          "reason": "action_bar_not_toolbar",
+          "stateClass": "assistant_action_bar_visible",
+          "generationId": 1
+        },
+        {
+          "reason": "action_bar_not_toolbar",
+          "stateClass": "assistant_action_bar_visible",
+          "generationId": 2
+        },
+        {
+          "reason": "action_bar_not_toolbar",
+          "stateClass": "assistant_action_bar_visible",
+          "generationId": 3
+        }
+      ]
+    },
+    "nativeCopyArea": {
+      "rawCount": 0,
+      "materialized": "MISSING",
+      "variantCount": 0,
+      "sources": [],
+      "rejected": []
+    },
+    "richMarkdown": {
+      "rawCount": 16,
+      "materialized": "OBSERVED",
+      "variantCount": 3,
+      "sources": [
+        "real-cdp-companion"
+      ],
+      "rejected": [
+        {
+          "reason": "not_observed",
+          "stateClass": "rich_markdown_settled",
+          "generationId": 3
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "rich_markdown_settled",
+          "generationId": 3
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "rich_markdown_settled",
+          "generationId": 3
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "rich_markdown_settled",
+          "generationId": 3
+        }
+      ]
+    },
+    "mentionChooser": {
+      "rawCount": 3,
+      "materialized": "OBSERVED",
+      "variantCount": 1,
+      "sources": [
+        "atlas-recorder-skeleton"
+      ],
+      "rejected": [
+        {
+          "reason": "not_observed",
+          "stateClass": "mention_chooser_visible",
+          "generationId": null
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "mention_chooser_visible",
+          "generationId": null
+        },
+        {
+          "reason": "not_observed",
+          "stateClass": "mention_chooser_visible",
+          "generationId": null
+        }
+      ]
+    },
+    "connectorPill": {
+      "rawCount": 9,
+      "materialized": "OBSERVED",
+      "variantCount": 3,
+      "sources": [
+        "real-cdp-companion",
+        "atlas-recorder-skeleton"
+      ],
+      "rejected": [
+        {
+          "reason": "collapsed_screenshot_clip",
+          "stateClass": "connector_pill_visible",
+          "generationId": null
+        },
+        {
+          "reason": "collapsed_screenshot_clip",
+          "stateClass": "connector_pill_visible",
+          "generationId": null
+        },
+        {
+          "reason": "collapsed_screenshot_clip",
+          "stateClass": "connector_pill_visible",
+          "generationId": null
+        },
+        {
+          "reason": "collapsed_screenshot_clip",
+          "stateClass": "connector_pill_visible",
+          "generationId": null
+        }
+      ]
+    },
+    "micaOverlay": {
+      "rawCount": 1,
+      "materialized": "OBSERVED",
+      "variantCount": 1,
+      "sources": [
+        "atlas-recorder-geometry"
+      ],
+      "rejected": [
+        {
+          "reason": "collapsed_screenshot_clip",
+          "stateClass": "mica_overlay_state",
+          "generationId": null
+        }
+      ]
+    },
+    "longThreadMountedWindow": {
+      "rawCount": 10,
+      "materialized": "OBSERVED",
+      "variantCount": 1,
+      "sources": [
+        "derived-from-real-turn-structure"
+      ],
+      "rejected": [
+        {
+          "reason": "mounted_window_rect_too_small",
+          "stateClass": "mounted_turn_window_changed",
+          "generationId": 4
+        },
+        {
+          "reason": "mounted_window_rect_too_small",
+          "stateClass": "mounted_turn_window_changed",
+          "generationId": 5
+        },
+        {
+          "reason": "mounted_window_rect_too_small",
+          "stateClass": "mounted_turn_window_changed",
+          "generationId": 5
+        },
+        {
+          "reason": "mounted_window_rect_too_small",
+          "stateClass": "mounted_turn_window_changed",
+          "generationId": 5
+        },
+        {
+          "reason": "mounted_window_rect_too_small",
+          "stateClass": "mounted_turn_window_changed",
+          "generationId": 1
+        },
+        {
+          "reason": "mounted_window_rect_too_small",
+          "stateClass": "mounted_turn_window_changed",
+          "generationId": null
+        },
+        {
+          "reason": "mounted_window_rect_too_small",
+          "stateClass": "mounted_turn_window_changed",
+          "generationId": 1
+        },
+        {
+          "reason": "mounted_window_rect_too_small",
+          "stateClass": "mounted_turn_window_changed",
+          "generationId": 2
+        },
+        {
+          "reason": "mounted_window_rect_too_small",
+          "stateClass": "mounted_turn_window_changed",
+          "generationId": 3
+        },
+        {
+          "reason": "mounted_window_rect_too_small",
+          "stateClass": "mounted_turn_window_changed",
+          "generationId": 3
+        }
+      ]
+    },
+    "toolFileAuthSurface": {
+      "rawCount": 0,
+      "materialized": "MISSING",
+      "variantCount": 0,
+      "sources": [],
+      "rejected": []
+    },
+    "micaCopy": {
+      "rawCount": 0,
+      "materialized": "MISSING",
+      "variantCount": 0,
+      "sources": [],
+      "rejected": []
+    }
+  }
+}

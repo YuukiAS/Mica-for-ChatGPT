@@ -1,0 +1,3244 @@
+{
+  "schemaVersion": 1,
+  "kind": "mica.liveSurfaceAtlas.contractLifecycle",
+  "sourceArtifactId": "capture-1789266647815",
+  "privacy": {
+    "localOnly": true,
+    "telemetryUploaded": false,
+    "promptTextIncluded": false,
+    "answerTextIncluded": false,
+    "rawDomIncluded": false,
+    "fullPageScreenshotIncluded": false,
+    "headersIncluded": false,
+    "cookiesIncluded": false,
+    "requestBodiesIncluded": false
+  },
+  "safety": {
+    "automatedSend": false,
+    "automatedEnter": false,
+    "automatedUpload": false,
+    "automatedConnectorAction": false,
+    "playwrightRealSiteTraceUsed": false,
+    "computerUseRequired": false,
+    "cdpConnection": true
+  },
+  "measurementDisturbed": true,
+  "eventCount": 214,
+  "stateCounts": {
+    "composer_present": 5,
+    "composer_identity_changed": 5,
+    "mounted_turn_window_changed": 14,
+    "assistant_action_bar_visible": 10,
+    "baseline_existing": 1,
+    "mica_overlay_state": 1,
+    "atlas_started": 1,
+    "composer_focus": 34,
+    "composer_blur": 34,
+    "mention_chooser_visible": 3,
+    "manual_send_intent": 5,
+    "assistant_first_content_mutation": 11,
+    "user_turn_mounted": 5,
+    "assistant_turn_mounted": 16,
+    "assistant_settled": 41,
+    "assistant_copy_action_visible_or_invoked": 2,
+    "rich_markdown_settled": 16,
+    "composer_missing": 1,
+    "connector_pill_visible": 9
+  },
+  "composer": {
+    "focusCount": 34,
+    "blurCount": 34,
+    "identityChangedCount": 5,
+    "focusBlurEventOnly": true,
+    "events": [
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_present",
+        "generationId": null,
+        "relativeTimeMs": 1.5,
+        "rect": {
+          "x": 233.8,
+          "y": 918.5,
+          "width": 640,
+          "height": 52
+        },
+        "textLength": 0
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_identity_changed",
+        "generationId": null,
+        "relativeTimeMs": 2.1,
+        "rect": {
+          "x": 233.8,
+          "y": 918.5,
+          "width": 640,
+          "height": 52
+        },
+        "textLength": null
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_focus",
+        "generationId": null,
+        "relativeTimeMs": 2232.1,
+        "rect": {
+          "x": 233.8,
+          "y": 918.5,
+          "width": 640,
+          "height": 52
+        },
+        "textLength": 0
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_blur",
+        "generationId": null,
+        "relativeTimeMs": 12361,
+        "rect": {
+          "x": 233.8,
+          "y": 918.5,
+          "width": 640,
+          "height": 52
+        },
+        "textLength": 30
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_focus",
+        "generationId": null,
+        "relativeTimeMs": 13770.4,
+        "rect": {
+          "x": 233.8,
+          "y": 918.5,
+          "width": 640,
+          "height": 52
+        },
+        "textLength": 30
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_blur",
+        "generationId": null,
+        "relativeTimeMs": 26114.7,
+        "rect": {
+          "x": 233.8,
+          "y": 918.5,
+          "width": 640,
+          "height": 52
+        },
+        "textLength": 37
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_focus",
+        "generationId": null,
+        "relativeTimeMs": 27425.8,
+        "rect": {
+          "x": 233.8,
+          "y": 918.5,
+          "width": 640,
+          "height": 52
+        },
+        "textLength": 37
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_blur",
+        "generationId": null,
+        "relativeTimeMs": 41941.4,
+        "rect": {
+          "x": 233.8,
+          "y": 918.5,
+          "width": 640,
+          "height": 52
+        },
+        "textLength": 0
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_focus",
+        "generationId": null,
+        "relativeTimeMs": 43026.4,
+        "rect": {
+          "x": 233.8,
+          "y": 918.5,
+          "width": 640,
+          "height": 52
+        },
+        "textLength": 0
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_blur",
+        "generationId": null,
+        "relativeTimeMs": 45407.7,
+        "rect": {
+          "x": 233.8,
+          "y": 868.5,
+          "width": 640,
+          "height": 102
+        },
+        "textLength": 63
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_focus",
+        "generationId": null,
+        "relativeTimeMs": 45891.7,
+        "rect": {
+          "x": 233.8,
+          "y": 868.5,
+          "width": 640,
+          "height": 102
+        },
+        "textLength": 63
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_blur",
+        "generationId": null,
+        "relativeTimeMs": 46050.3,
+        "rect": {
+          "x": 16,
+          "y": 52,
+          "width": 0,
+          "height": 124
+        },
+        "textLength": 63
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_focus",
+        "generationId": null,
+        "relativeTimeMs": 46636.1,
+        "rect": {
+          "x": 233.8,
+          "y": 868.5,
+          "width": 640,
+          "height": 102
+        },
+        "textLength": 63
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_blur",
+        "generationId": null,
+        "relativeTimeMs": 46798.9,
+        "rect": {
+          "x": 16,
+          "y": 52,
+          "width": 0,
+          "height": 124
+        },
+        "textLength": 63
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_focus",
+        "generationId": null,
+        "relativeTimeMs": 47492.4,
+        "rect": {
+          "x": 233.8,
+          "y": 868.5,
+          "width": 640,
+          "height": 102
+        },
+        "textLength": 63
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_blur",
+        "generationId": null,
+        "relativeTimeMs": 54153.4,
+        "rect": {
+          "x": 233.8,
+          "y": 868.5,
+          "width": 640,
+          "height": 102
+        },
+        "textLength": 63
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_focus",
+        "generationId": null,
+        "relativeTimeMs": 54154.6,
+        "rect": {
+          "x": 233.8,
+          "y": 868.5,
+          "width": 640,
+          "height": 102
+        },
+        "textLength": 63
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_blur",
+        "generationId": null,
+        "relativeTimeMs": 58140,
+        "rect": {
+          "x": 233.8,
+          "y": 918.5,
+          "width": 640,
+          "height": 52
+        },
+        "textLength": 0
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_focus",
+        "generationId": null,
+        "relativeTimeMs": 68520.9,
+        "rect": {
+          "x": 233.8,
+          "y": 918.5,
+          "width": 640,
+          "height": 52
+        },
+        "textLength": 0
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_blur",
+        "generationId": null,
+        "relativeTimeMs": 75539.2,
+        "rect": {
+          "x": 233.8,
+          "y": 628.1,
+          "width": 640,
+          "height": 342.3
+        },
+        "textLength": 290
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_focus",
+        "generationId": null,
+        "relativeTimeMs": 75541.2,
+        "rect": {
+          "x": 233.8,
+          "y": 628.1,
+          "width": 640,
+          "height": 342.3
+        },
+        "textLength": 290
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_blur",
+        "generationId": null,
+        "relativeTimeMs": 76191,
+        "rect": {
+          "x": 233.8,
+          "y": 918.5,
+          "width": 640,
+          "height": 52
+        },
+        "textLength": 0
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_focus",
+        "generationId": null,
+        "relativeTimeMs": 79339.5,
+        "rect": {
+          "x": 233.8,
+          "y": 918.4,
+          "width": 640,
+          "height": 52
+        },
+        "textLength": 0
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "composer_blur",
+        "generationId": null,
+        "relativeTimeMs": 81252.8,
+        "rect": {
+          "x": 233.8,
+          "y": 918.4,
+          "width": 640,
+          "height": 52
+        },
+        "textLength": 0
+      }
+    ]
+  },
+  "connector": {
+    "mentionChooserEpisodes": 3,
+    "connectorPillEpisodes": 9,
+    "events": [
+      {
+        "type": "checkpoint",
+        "stateClass": "mention_chooser_visible",
+        "generationId": null,
+        "relativeTimeMs": 45561.9,
+        "rect": {
+          "x": 641.7,
+          "y": 833.3,
+          "width": 260,
+          "height": 88
+        },
+        "textLength": null
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "mention_chooser_visible",
+        "generationId": null,
+        "relativeTimeMs": 107616.9,
+        "rect": {
+          "x": 235.6,
+          "y": 845.6,
+          "width": 80.5,
+          "height": 29.1
+        },
+        "textLength": null
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "mention_chooser_visible",
+        "generationId": null,
+        "relativeTimeMs": 238313.7,
+        "rect": {
+          "x": 306.1,
+          "y": 845,
+          "width": 131.2,
+          "height": 45.1
+        },
+        "textLength": null
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "connector_pill_visible",
+        "generationId": null,
+        "relativeTimeMs": 251106.2,
+        "rect": {
+          "x": 284.8,
+          "y": 930.9,
+          "width": 86.6,
+          "height": 26
+        },
+        "textLength": 6
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "connector_pill_visible",
+        "generationId": null,
+        "relativeTimeMs": 287224.9,
+        "rect": {
+          "x": 251.8,
+          "y": 779,
+          "width": 86.6,
+          "height": 26
+        },
+        "textLength": 6
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "connector_pill_visible",
+        "generationId": null,
+        "relativeTimeMs": 290262.6,
+        "rect": {
+          "x": 251.8,
+          "y": 831,
+          "width": 86.6,
+          "height": 26
+        },
+        "textLength": 6
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "connector_pill_visible",
+        "generationId": null,
+        "relativeTimeMs": 295394.5,
+        "rect": {
+          "x": 441.8,
+          "y": 952.6,
+          "width": 86.6,
+          "height": 24
+        },
+        "textLength": 6
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "connector_pill_visible",
+        "generationId": null,
+        "relativeTimeMs": 295600.2,
+        "rect": {
+          "x": 441.8,
+          "y": 674.8,
+          "width": 86.6,
+          "height": 24
+        },
+        "textLength": 6
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "connector_pill_visible",
+        "generationId": null,
+        "relativeTimeMs": 295900.9,
+        "rect": {
+          "x": 441.8,
+          "y": 190.9,
+          "width": 86.6,
+          "height": 24
+        },
+        "textLength": 6
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "connector_pill_visible",
+        "generationId": null,
+        "relativeTimeMs": 296125.6,
+        "rect": {
+          "x": 441.8,
+          "y": 173.7,
+          "width": 86.6,
+          "height": 24
+        },
+        "textLength": 6
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "connector_pill_visible",
+        "generationId": null,
+        "relativeTimeMs": 300229.4,
+        "rect": {
+          "x": 441.8,
+          "y": 173.8,
+          "width": 86.6,
+          "height": 24
+        },
+        "textLength": 6
+      },
+      {
+        "type": "checkpoint",
+        "stateClass": "connector_pill_visible",
+        "generationId": null,
+        "relativeTimeMs": 302711.8,
+        "rect": {
+          "x": 441.8,
+          "y": 173.7,
+          "width": 86.6,
+          "height": 24
+        },
+        "textLength": 6
+      }
+    ]
+  },
+  "generations": [
+    {
+      "generationId": 1,
+      "states": {
+        "manual_send_intent": 54267.1,
+        "mounted_turn_window_changed": 54629.4,
+        "user_turn_mounted": 54629.7,
+        "assistant_turn_mounted": 54630,
+        "assistant_first_content_mutation": 57544.4,
+        "assistant_action_bar_visible": 58431.4,
+        "assistant_settled": 60276.1
+      },
+      "eventCount": 21
+    },
+    {
+      "generationId": 2,
+      "states": {
+        "manual_send_intent": 75655.6,
+        "mounted_turn_window_changed": 76025.7,
+        "user_turn_mounted": 76026,
+        "assistant_turn_mounted": 76026.1,
+        "assistant_first_content_mutation": 76234,
+        "assistant_action_bar_visible": 76278.1,
+        "assistant_settled": 78314.6
+      },
+      "eventCount": 10
+    },
+    {
+      "generationId": 3,
+      "states": {
+        "manual_send_intent": 85297.9,
+        "mounted_turn_window_changed": 85639.4,
+        "user_turn_mounted": 85639.8,
+        "assistant_turn_mounted": 85639.9,
+        "assistant_first_content_mutation": 87444.1,
+        "assistant_settled": 89265.5,
+        "rich_markdown_settled": 93867.4,
+        "assistant_action_bar_visible": 94170.8
+      },
+      "eventCount": 28
+    },
+    {
+      "generationId": 4,
+      "states": {
+        "manual_send_intent": 174503.1,
+        "mounted_turn_window_changed": 174824.6,
+        "user_turn_mounted": 174824.9,
+        "assistant_turn_mounted": 174825.1,
+        "assistant_first_content_mutation": 178773.3,
+        "assistant_settled": 180594.5,
+        "rich_markdown_settled": 180594.7,
+        "assistant_action_bar_visible": 194584.6
+      },
+      "eventCount": 19
+    },
+    {
+      "generationId": 5,
+      "states": {
+        "manual_send_intent": 294968.4,
+        "mounted_turn_window_changed": 295391.8,
+        "user_turn_mounted": 295393.8,
+        "assistant_turn_mounted": 295394,
+        "assistant_first_content_mutation": 300078.3,
+        "assistant_action_bar_visible": 300228.5,
+        "assistant_settled": 302022.2,
+        "rich_markdown_settled": 302022.3
+      },
+      "eventCount": 27
+    }
+  ],
+  "timeline": [
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_present",
+      "generationId": null,
+      "relativeTimeMs": 1.5,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_identity_changed",
+      "generationId": null,
+      "relativeTimeMs": 2.1,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mounted_turn_window_changed",
+      "generationId": null,
+      "relativeTimeMs": 2.3,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_action_bar_visible",
+      "generationId": null,
+      "relativeTimeMs": 2.8,
+      "rect": {
+        "x": 259.8,
+        "y": 261,
+        "width": 32,
+        "height": 32
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "baseline_existing",
+      "generationId": null,
+      "relativeTimeMs": 2.9,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mica_overlay_state",
+      "generationId": null,
+      "relativeTimeMs": 3.3,
+      "rect": {
+        "x": 1017,
+        "y": 956,
+        "width": 26,
+        "height": 26
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "atlas_started",
+      "generationId": null,
+      "relativeTimeMs": 3.5,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 2232.1,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 12361,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 30
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 13770.4,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 30
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 26114.7,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 37
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 27425.8,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 37
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 41941.4,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 43026.4,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 45407.7,
+      "rect": {
+        "x": 233.8,
+        "y": 868.5,
+        "width": 640,
+        "height": 102
+      },
+      "textLength": 63
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mention_chooser_visible",
+      "generationId": null,
+      "relativeTimeMs": 45561.9,
+      "rect": {
+        "x": 641.7,
+        "y": 833.3,
+        "width": 260,
+        "height": 88
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 45891.7,
+      "rect": {
+        "x": 233.8,
+        "y": 868.5,
+        "width": 640,
+        "height": 102
+      },
+      "textLength": 63
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 46050.3,
+      "rect": {
+        "x": 16,
+        "y": 52,
+        "width": 0,
+        "height": 124
+      },
+      "textLength": 63
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 46636.1,
+      "rect": {
+        "x": 233.8,
+        "y": 868.5,
+        "width": 640,
+        "height": 102
+      },
+      "textLength": 63
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 46798.9,
+      "rect": {
+        "x": 16,
+        "y": 52,
+        "width": 0,
+        "height": 124
+      },
+      "textLength": 63
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 47492.4,
+      "rect": {
+        "x": 233.8,
+        "y": 868.5,
+        "width": 640,
+        "height": 102
+      },
+      "textLength": 63
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 54153.4,
+      "rect": {
+        "x": 233.8,
+        "y": 868.5,
+        "width": 640,
+        "height": 102
+      },
+      "textLength": 63
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 54154.6,
+      "rect": {
+        "x": 233.8,
+        "y": 868.5,
+        "width": 640,
+        "height": 102
+      },
+      "textLength": 63
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "manual_send_intent",
+      "generationId": 1,
+      "relativeTimeMs": 54267.1,
+      "rect": {
+        "x": 233.8,
+        "y": 868.5,
+        "width": 640,
+        "height": 102
+      },
+      "textLength": 63
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_first_content_mutation",
+      "generationId": null,
+      "relativeTimeMs": 54451,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mounted_turn_window_changed",
+      "generationId": 1,
+      "relativeTimeMs": 54629.4,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "user_turn_mounted",
+      "generationId": 1,
+      "relativeTimeMs": 54629.7,
+      "rect": {
+        "x": 68.7,
+        "y": 354,
+        "width": 970.2,
+        "height": 108
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_turn_mounted",
+      "generationId": 1,
+      "relativeTimeMs": 54630,
+      "rect": {
+        "x": 68.7,
+        "y": 462,
+        "width": 970.2,
+        "height": 64
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_turn_mounted",
+      "generationId": 1,
+      "relativeTimeMs": 54630.1,
+      "rect": {
+        "x": 233.8,
+        "y": 462,
+        "width": 640,
+        "height": 32
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mounted_turn_window_changed",
+      "generationId": 1,
+      "relativeTimeMs": 55505.9,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": null,
+      "relativeTimeMs": 56272.2,
+      "rect": {
+        "x": 68.7,
+        "y": 68.4,
+        "width": 970.2,
+        "height": 78
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_first_content_mutation",
+      "generationId": 1,
+      "relativeTimeMs": 57544.4,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mounted_turn_window_changed",
+      "generationId": 1,
+      "relativeTimeMs": 57586.2,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_turn_mounted",
+      "generationId": 1,
+      "relativeTimeMs": 57586.4,
+      "rect": {
+        "x": 233.8,
+        "y": 306.4,
+        "width": 640,
+        "height": 32
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 58140,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_action_bar_visible",
+      "generationId": 1,
+      "relativeTimeMs": 58431.4,
+      "rect": {
+        "x": 227.8,
+        "y": 343.4,
+        "width": 32,
+        "height": 32
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": null,
+      "relativeTimeMs": 60051.2,
+      "rect": {
+        "x": 68.7,
+        "y": 68.4,
+        "width": 970.2,
+        "height": 78
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 1,
+      "relativeTimeMs": 60276.1,
+      "rect": {
+        "x": 68.7,
+        "y": 306.4,
+        "width": 970.2,
+        "height": 110
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 68520.9,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": null,
+      "relativeTimeMs": 71051.4,
+      "rect": {
+        "x": 68.7,
+        "y": 68.4,
+        "width": 970.2,
+        "height": 78
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 1,
+      "relativeTimeMs": 71051.6,
+      "rect": {
+        "x": 68.7,
+        "y": 306.4,
+        "width": 970.2,
+        "height": 110
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 75539.2,
+      "rect": {
+        "x": 233.8,
+        "y": 628.1,
+        "width": 640,
+        "height": 342.3
+      },
+      "textLength": 290
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 75541.2,
+      "rect": {
+        "x": 233.8,
+        "y": 628.1,
+        "width": 640,
+        "height": 342.3
+      },
+      "textLength": 290
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "manual_send_intent",
+      "generationId": 2,
+      "relativeTimeMs": 75655.6,
+      "rect": {
+        "x": 233.8,
+        "y": 628.1,
+        "width": 640,
+        "height": 342.3
+      },
+      "textLength": 290
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mounted_turn_window_changed",
+      "generationId": 2,
+      "relativeTimeMs": 76025.7,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "user_turn_mounted",
+      "generationId": 2,
+      "relativeTimeMs": 76026,
+      "rect": {
+        "x": 68.7,
+        "y": 384.4,
+        "width": 970.2,
+        "height": 404
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_turn_mounted",
+      "generationId": 2,
+      "relativeTimeMs": 76026.1,
+      "rect": {
+        "x": 68.7,
+        "y": 788.4,
+        "width": 970.2,
+        "height": 64
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_turn_mounted",
+      "generationId": 2,
+      "relativeTimeMs": 76026.2,
+      "rect": {
+        "x": 233.8,
+        "y": 788.4,
+        "width": 640,
+        "height": 32
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 76191,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_first_content_mutation",
+      "generationId": 2,
+      "relativeTimeMs": 76234,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_action_bar_visible",
+      "generationId": 2,
+      "relativeTimeMs": 76278.1,
+      "rect": {
+        "x": 233.8,
+        "y": 748.4,
+        "width": 640,
+        "height": 69.1
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_turn_mounted",
+      "generationId": 2,
+      "relativeTimeMs": 76278.2,
+      "rect": {
+        "x": 233.8,
+        "y": 748.4,
+        "width": 640,
+        "height": 77.1
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_action_bar_visible",
+      "generationId": 2,
+      "relativeTimeMs": 76278.4,
+      "rect": {
+        "x": 233.8,
+        "y": 748.4,
+        "width": 640,
+        "height": 69.1
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": null,
+      "relativeTimeMs": 78055.3,
+      "rect": {
+        "x": 68.7,
+        "y": 28.4,
+        "width": 970.2,
+        "height": 78
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 1,
+      "relativeTimeMs": 78055.6,
+      "rect": {
+        "x": 68.7,
+        "y": 266.4,
+        "width": 970.2,
+        "height": 78
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 2,
+      "relativeTimeMs": 78314.6,
+      "rect": {
+        "x": 233.8,
+        "y": 748.4,
+        "width": 640,
+        "height": 91.1
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 79339.5,
+      "rect": {
+        "x": 233.8,
+        "y": 918.4,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 81252.8,
+      "rect": {
+        "x": 233.8,
+        "y": 918.4,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_copy_action_visible_or_invoked",
+      "generationId": null,
+      "relativeTimeMs": 81349.5,
+      "rect": {
+        "x": 809.8,
+        "y": 712.4,
+        "width": 32,
+        "height": 32
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": null,
+      "relativeTimeMs": 81891.9,
+      "rect": {
+        "x": 68.7,
+        "y": 28.4,
+        "width": 970.2,
+        "height": 78
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 1,
+      "relativeTimeMs": 81892.2,
+      "rect": {
+        "x": 68.7,
+        "y": 266.4,
+        "width": 970.2,
+        "height": 78
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 82006.3,
+      "rect": {
+        "x": 233.8,
+        "y": 918.4,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 83584.3,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 83597.2,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": null,
+      "relativeTimeMs": 84453.4,
+      "rect": {
+        "x": 68.7,
+        "y": 35.6,
+        "width": 970.2,
+        "height": 78
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 1,
+      "relativeTimeMs": 84453.6,
+      "rect": {
+        "x": 68.7,
+        "y": 273.6,
+        "width": 970.2,
+        "height": 78
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 85184.8,
+      "rect": {
+        "x": 233.8,
+        "y": 628.1,
+        "width": 640,
+        "height": 342.3
+      },
+      "textLength": 290
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 85186.3,
+      "rect": {
+        "x": 233.8,
+        "y": 628.1,
+        "width": 640,
+        "height": 342.3
+      },
+      "textLength": 290
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "manual_send_intent",
+      "generationId": 3,
+      "relativeTimeMs": 85297.9,
+      "rect": {
+        "x": 233.8,
+        "y": 628.1,
+        "width": 640,
+        "height": 342.3
+      },
+      "textLength": 290
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mounted_turn_window_changed",
+      "generationId": 3,
+      "relativeTimeMs": 85639.4,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "user_turn_mounted",
+      "generationId": 3,
+      "relativeTimeMs": 85639.8,
+      "rect": {
+        "x": 68.7,
+        "y": 719.6,
+        "width": 970.2,
+        "height": 356
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_turn_mounted",
+      "generationId": 3,
+      "relativeTimeMs": 85639.9,
+      "rect": {
+        "x": 68.7,
+        "y": 1075.5,
+        "width": 970.2,
+        "height": 64
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_turn_mounted",
+      "generationId": 3,
+      "relativeTimeMs": 85640,
+      "rect": {
+        "x": 233.8,
+        "y": 1075.5,
+        "width": 640,
+        "height": 32
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": null,
+      "relativeTimeMs": 87276.7,
+      "rect": {
+        "x": 68.7,
+        "y": -733.8,
+        "width": 970.2,
+        "height": 78
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 1,
+      "relativeTimeMs": 87277,
+      "rect": {
+        "x": 68.7,
+        "y": -495.8,
+        "width": 970.2,
+        "height": 78
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_first_content_mutation",
+      "generationId": 3,
+      "relativeTimeMs": 87444.1,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mounted_turn_window_changed",
+      "generationId": 3,
+      "relativeTimeMs": 87632.6,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 3,
+      "relativeTimeMs": 89265.5,
+      "rect": {
+        "x": 68.7,
+        "y": 454.6,
+        "width": 970.2,
+        "height": 64
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_turn_mounted",
+      "generationId": 3,
+      "relativeTimeMs": 92051.5,
+      "rect": {
+        "x": 233.8,
+        "y": 602.4,
+        "width": 640,
+        "height": 66
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_first_content_mutation",
+      "generationId": 3,
+      "relativeTimeMs": 92292,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 3,
+      "relativeTimeMs": 93867.1,
+      "rect": {
+        "x": 68.7,
+        "y": 574.6,
+        "width": 970.2,
+        "height": 656.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "rich_markdown_settled",
+      "generationId": 3,
+      "relativeTimeMs": 93867.4,
+      "rect": {
+        "x": 68.7,
+        "y": 574.6,
+        "width": 970.2,
+        "height": 656.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 93982,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_action_bar_visible",
+      "generationId": 3,
+      "relativeTimeMs": 94170.8,
+      "rect": {
+        "x": 744.1,
+        "y": 901.1,
+        "width": 123.1,
+        "height": 36
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_action_bar_visible",
+      "generationId": 3,
+      "relativeTimeMs": 94171.1,
+      "rect": {
+        "x": 744.1,
+        "y": 901.1,
+        "width": 123.1,
+        "height": 36
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": null,
+      "relativeTimeMs": 95871.5,
+      "rect": {
+        "x": 68.7,
+        "y": -526,
+        "width": 970.2,
+        "height": 78
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 1,
+      "relativeTimeMs": 95871.9,
+      "rect": {
+        "x": 68.7,
+        "y": -288,
+        "width": 970.2,
+        "height": 78
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 3,
+      "relativeTimeMs": 96014.7,
+      "rect": {
+        "x": 233.8,
+        "y": 277.9,
+        "width": 640,
+        "height": 682.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "rich_markdown_settled",
+      "generationId": 3,
+      "relativeTimeMs": 96014.9,
+      "rect": {
+        "x": 233.8,
+        "y": 277.9,
+        "width": 640,
+        "height": 682.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": null,
+      "relativeTimeMs": 98584,
+      "rect": {
+        "x": 68.7,
+        "y": -526,
+        "width": 970.2,
+        "height": 78
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 1,
+      "relativeTimeMs": 98584.3,
+      "rect": {
+        "x": 68.7,
+        "y": -288,
+        "width": 970.2,
+        "height": 78
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 3,
+      "relativeTimeMs": 98584.3,
+      "rect": {
+        "x": 68.7,
+        "y": 277.9,
+        "width": 970.2,
+        "height": 760.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "rich_markdown_settled",
+      "generationId": 3,
+      "relativeTimeMs": 98584.4,
+      "rect": {
+        "x": 68.7,
+        "y": 277.9,
+        "width": 970.2,
+        "height": 760.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 104340.5,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mention_chooser_visible",
+      "generationId": null,
+      "relativeTimeMs": 107616.9,
+      "rect": {
+        "x": 235.6,
+        "y": 845.6,
+        "width": 80.5,
+        "height": 29.1
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 108378.5,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_copy_action_visible_or_invoked",
+      "generationId": null,
+      "relativeTimeMs": 108446.8,
+      "rect": {
+        "x": 259.8,
+        "y": 805.6,
+        "width": 32,
+        "height": 32
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 3,
+      "relativeTimeMs": 110377,
+      "rect": {
+        "x": 68.7,
+        "y": 117.9,
+        "width": 970.2,
+        "height": 760.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "rich_markdown_settled",
+      "generationId": 3,
+      "relativeTimeMs": 110377.2,
+      "rect": {
+        "x": 68.7,
+        "y": 117.9,
+        "width": 970.2,
+        "height": 760.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 3,
+      "relativeTimeMs": 112390,
+      "rect": {
+        "x": 68.7,
+        "y": 117.9,
+        "width": 970.2,
+        "height": 760.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "rich_markdown_settled",
+      "generationId": 3,
+      "relativeTimeMs": 112390.2,
+      "rect": {
+        "x": 68.7,
+        "y": 117.9,
+        "width": 970.2,
+        "height": 760.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 113061.9,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 120102.5,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 168963.3,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 169006,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 169058.6,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 169069,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 169090.7,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 174441.6,
+      "rect": {
+        "x": 233.8,
+        "y": 790.5,
+        "width": 640,
+        "height": 180
+      },
+      "textLength": 139
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 174443.3,
+      "rect": {
+        "x": 233.8,
+        "y": 790.5,
+        "width": 640,
+        "height": 180
+      },
+      "textLength": 139
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "manual_send_intent",
+      "generationId": 4,
+      "relativeTimeMs": 174503.1,
+      "rect": {
+        "x": 233.8,
+        "y": 790.5,
+        "width": 640,
+        "height": 180
+      },
+      "textLength": 139
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mounted_turn_window_changed",
+      "generationId": 4,
+      "relativeTimeMs": 174824.6,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "user_turn_mounted",
+      "generationId": 4,
+      "relativeTimeMs": 174824.9,
+      "rect": {
+        "x": 233.8,
+        "y": 894.6,
+        "width": 640,
+        "height": 140
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_turn_mounted",
+      "generationId": 4,
+      "relativeTimeMs": 174825.1,
+      "rect": {
+        "x": 233.8,
+        "y": 1074.6,
+        "width": 640,
+        "height": 32
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mounted_turn_window_changed",
+      "generationId": 4,
+      "relativeTimeMs": 175204.6,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": null,
+      "relativeTimeMs": 176511.4,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 1,
+      "relativeTimeMs": 176511.7,
+      "rect": {
+        "x": 68.7,
+        "y": -1083.9,
+        "width": 970.2,
+        "height": 78
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 3,
+      "relativeTimeMs": 176513.5,
+      "rect": {
+        "x": 68.7,
+        "y": -517.9,
+        "width": 970.2,
+        "height": 728.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "rich_markdown_settled",
+      "generationId": 3,
+      "relativeTimeMs": 176513.7,
+      "rect": {
+        "x": 68.7,
+        "y": -517.9,
+        "width": 970.2,
+        "height": 728.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_first_content_mutation",
+      "generationId": 4,
+      "relativeTimeMs": 178773.3,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_turn_mounted",
+      "generationId": 4,
+      "relativeTimeMs": 178804.8,
+      "rect": {
+        "x": 233.8,
+        "y": 402.7,
+        "width": 640,
+        "height": 32
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_first_content_mutation",
+      "generationId": 4,
+      "relativeTimeMs": 179160.8,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 180091.8,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 4,
+      "relativeTimeMs": 180594.5,
+      "rect": {
+        "x": 68.7,
+        "y": 402.7,
+        "width": 970.2,
+        "height": 176
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "rich_markdown_settled",
+      "generationId": 4,
+      "relativeTimeMs": 180594.7,
+      "rect": {
+        "x": 68.7,
+        "y": 402.7,
+        "width": 970.2,
+        "height": 176
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_action_bar_visible",
+      "generationId": 4,
+      "relativeTimeMs": 194584.6,
+      "rect": {
+        "x": 227.8,
+        "y": 2036.4,
+        "width": 32,
+        "height": 32
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 4,
+      "relativeTimeMs": 195003.3,
+      "rect": {
+        "x": 233.8,
+        "y": 402.7,
+        "width": 640,
+        "height": 1628.7
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "rich_markdown_settled",
+      "generationId": 4,
+      "relativeTimeMs": 195003.5,
+      "rect": {
+        "x": 233.8,
+        "y": 402.7,
+        "width": 640,
+        "height": 1628.7
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 1,
+      "relativeTimeMs": 196248.2,
+      "rect": {
+        "x": 68.7,
+        "y": -1083.9,
+        "width": 970.2,
+        "height": 78
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 3,
+      "relativeTimeMs": 196248.5,
+      "rect": {
+        "x": 68.7,
+        "y": -517.9,
+        "width": 970.2,
+        "height": 728.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "rich_markdown_settled",
+      "generationId": 3,
+      "relativeTimeMs": 196248.6,
+      "rect": {
+        "x": 68.7,
+        "y": -517.9,
+        "width": 970.2,
+        "height": 728.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 4,
+      "relativeTimeMs": 196527.1,
+      "rect": {
+        "x": 68.7,
+        "y": 402.7,
+        "width": 970.2,
+        "height": 1706.7
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "rich_markdown_settled",
+      "generationId": 4,
+      "relativeTimeMs": 196527.2,
+      "rect": {
+        "x": 68.7,
+        "y": 402.7,
+        "width": 970.2,
+        "height": 1706.7
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 208259.3,
+      "rect": {
+        "x": 233.8,
+        "y": 918.3,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 221243.2,
+      "rect": {
+        "x": 233.8,
+        "y": 918.3,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 14
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 223599.5,
+      "rect": {
+        "x": 233.8,
+        "y": 918.3,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 14
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 224827.3,
+      "rect": {
+        "x": 233.8,
+        "y": 918.3,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 14
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 226605.7,
+      "rect": {
+        "x": 233.8,
+        "y": 918.3,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 14
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 234785.3,
+      "rect": {
+        "x": 233.8,
+        "y": 918.3,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 5
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 234849.7,
+      "rect": {
+        "x": 233.8,
+        "y": 918.3,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 5
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mention_chooser_visible",
+      "generationId": null,
+      "relativeTimeMs": 238313.7,
+      "rect": {
+        "x": 306.1,
+        "y": 845,
+        "width": 131.2,
+        "height": 45.1
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 239138.2,
+      "rect": {
+        "x": 233.8,
+        "y": 918.3,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 5
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 239162.7,
+      "rect": {
+        "x": 233.8,
+        "y": 918.3,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 5
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 249406.7,
+      "rect": {
+        "x": 233.8,
+        "y": 918.3,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 8
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_missing",
+      "generationId": null,
+      "relativeTimeMs": 249537.8,
+      "rect": null,
+      "textLength": 0
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 250944.4,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 8
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_present",
+      "generationId": null,
+      "relativeTimeMs": 251105,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 8
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_identity_changed",
+      "generationId": null,
+      "relativeTimeMs": 251105.5,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "connector_pill_visible",
+      "generationId": null,
+      "relativeTimeMs": 251106.2,
+      "rect": {
+        "x": 284.8,
+        "y": 930.9,
+        "width": 86.6,
+        "height": 26
+      },
+      "textLength": 6
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 268258.3,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 38
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 268896.4,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 38
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_present",
+      "generationId": null,
+      "relativeTimeMs": 269166.8,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 38
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_identity_changed",
+      "generationId": null,
+      "relativeTimeMs": 269166.8,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 270493.6,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 38
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 270542.4,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 38
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 270580.4,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 38
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 270622.1,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 38
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 281948.1,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 8
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 282607.2,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 8
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_present",
+      "generationId": null,
+      "relativeTimeMs": 282913.3,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 8
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_identity_changed",
+      "generationId": null,
+      "relativeTimeMs": 282913.4,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 284344.6,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 8
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 286521.1,
+      "rect": {
+        "x": 233.8,
+        "y": 918.5,
+        "width": 640,
+        "height": 52
+      },
+      "textLength": 8
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "connector_pill_visible",
+      "generationId": null,
+      "relativeTimeMs": 287224.9,
+      "rect": {
+        "x": 251.8,
+        "y": 779,
+        "width": 86.6,
+        "height": 26
+      },
+      "textLength": 6
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "connector_pill_visible",
+      "generationId": null,
+      "relativeTimeMs": 290262.6,
+      "rect": {
+        "x": 251.8,
+        "y": 831,
+        "width": 86.6,
+        "height": 26
+      },
+      "textLength": 6
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 294903.5,
+      "rect": {
+        "x": 233.8,
+        "y": 816.5,
+        "width": 640,
+        "height": 154
+      },
+      "textLength": 116
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 294960.9,
+      "rect": {
+        "x": 233.8,
+        "y": 816.5,
+        "width": 640,
+        "height": 154
+      },
+      "textLength": 116
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "manual_send_intent",
+      "generationId": 5,
+      "relativeTimeMs": 294968.4,
+      "rect": {
+        "x": 233.8,
+        "y": 816.5,
+        "width": 640,
+        "height": 154
+      },
+      "textLength": 116
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 295270.2,
+      "rect": {
+        "x": 233.8,
+        "y": 816.5,
+        "width": 640,
+        "height": 154
+      },
+      "textLength": 110
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mounted_turn_window_changed",
+      "generationId": 5,
+      "relativeTimeMs": 295391.8,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "user_turn_mounted",
+      "generationId": 5,
+      "relativeTimeMs": 295393.8,
+      "rect": {
+        "x": 68.7,
+        "y": 894.6,
+        "width": 970.2,
+        "height": 204
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_turn_mounted",
+      "generationId": 5,
+      "relativeTimeMs": 295394,
+      "rect": {
+        "x": 68.7,
+        "y": 1098.6,
+        "width": 970.2,
+        "height": 64
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_turn_mounted",
+      "generationId": 5,
+      "relativeTimeMs": 295394.1,
+      "rect": {
+        "x": 233.8,
+        "y": 1098.6,
+        "width": 640,
+        "height": 32
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "connector_pill_visible",
+      "generationId": null,
+      "relativeTimeMs": 295394.5,
+      "rect": {
+        "x": 441.8,
+        "y": 952.6,
+        "width": 86.6,
+        "height": 24
+      },
+      "textLength": 6
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mounted_turn_window_changed",
+      "generationId": 5,
+      "relativeTimeMs": 295573.6,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "connector_pill_visible",
+      "generationId": null,
+      "relativeTimeMs": 295600.2,
+      "rect": {
+        "x": 441.8,
+        "y": 674.8,
+        "width": 86.6,
+        "height": 24
+      },
+      "textLength": 6
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "connector_pill_visible",
+      "generationId": null,
+      "relativeTimeMs": 295900.9,
+      "rect": {
+        "x": 441.8,
+        "y": 190.9,
+        "width": 86.6,
+        "height": 24
+      },
+      "textLength": 6
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mounted_turn_window_changed",
+      "generationId": 5,
+      "relativeTimeMs": 296125.1,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "connector_pill_visible",
+      "generationId": null,
+      "relativeTimeMs": 296125.6,
+      "rect": {
+        "x": 441.8,
+        "y": 173.7,
+        "width": 86.6,
+        "height": 24
+      },
+      "textLength": 6
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 296228.1,
+      "rect": {
+        "x": 233.8,
+        "y": 816.5,
+        "width": 640,
+        "height": 154
+      },
+      "textLength": 110
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 296319.1,
+      "rect": {
+        "x": 233.8,
+        "y": 816.5,
+        "width": 640,
+        "height": 154
+      },
+      "textLength": 116
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_focus",
+      "generationId": null,
+      "relativeTimeMs": 297023,
+      "rect": {
+        "x": 233.8,
+        "y": 816.5,
+        "width": 640,
+        "height": 154
+      },
+      "textLength": 116
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 1,
+      "relativeTimeMs": 297089,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 3,
+      "relativeTimeMs": 297089.3,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "rich_markdown_settled",
+      "generationId": 3,
+      "relativeTimeMs": 297089.3,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 4,
+      "relativeTimeMs": 297089.5,
+      "rect": {
+        "x": 68.7,
+        "y": -1559,
+        "width": 970.2,
+        "height": 1674.7
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "rich_markdown_settled",
+      "generationId": 4,
+      "relativeTimeMs": 297089.6,
+      "rect": {
+        "x": 68.7,
+        "y": -1559,
+        "width": 970.2,
+        "height": 1674.7
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_present",
+      "generationId": null,
+      "relativeTimeMs": 297275,
+      "rect": {
+        "x": 233.8,
+        "y": 816.5,
+        "width": 640,
+        "height": 154
+      },
+      "textLength": 116
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_identity_changed",
+      "generationId": null,
+      "relativeTimeMs": 297275.2,
+      "rect": {
+        "x": 233.8,
+        "y": 816.5,
+        "width": 640,
+        "height": 154
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_first_content_mutation",
+      "generationId": 5,
+      "relativeTimeMs": 300078.3,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_first_content_mutation",
+      "generationId": 5,
+      "relativeTimeMs": 300198.9,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mounted_turn_window_changed",
+      "generationId": 5,
+      "relativeTimeMs": 300228,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_turn_mounted",
+      "generationId": 5,
+      "relativeTimeMs": 300228.3,
+      "rect": {
+        "x": 68.7,
+        "y": -2453.5,
+        "width": 970.2,
+        "height": 702.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_action_bar_visible",
+      "generationId": 5,
+      "relativeTimeMs": 300228.5,
+      "rect": {
+        "x": 744.1,
+        "y": -2061.1,
+        "width": 123.1,
+        "height": 36
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_turn_mounted",
+      "generationId": 5,
+      "relativeTimeMs": 300228.6,
+      "rect": {
+        "x": 233.8,
+        "y": -2453.5,
+        "width": 640,
+        "height": 656.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_action_bar_visible",
+      "generationId": 5,
+      "relativeTimeMs": 300228.8,
+      "rect": {
+        "x": 744.1,
+        "y": -2061.1,
+        "width": 123.1,
+        "height": 36
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "connector_pill_visible",
+      "generationId": null,
+      "relativeTimeMs": 300229.4,
+      "rect": {
+        "x": 441.8,
+        "y": 173.8,
+        "width": 86.6,
+        "height": 24
+      },
+      "textLength": 6
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 5,
+      "relativeTimeMs": 302022.2,
+      "rect": {
+        "x": 68.7,
+        "y": -2479.6,
+        "width": 970.2,
+        "height": 728.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "rich_markdown_settled",
+      "generationId": 5,
+      "relativeTimeMs": 302022.3,
+      "rect": {
+        "x": 68.7,
+        "y": -2479.6,
+        "width": 970.2,
+        "height": 728.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 5,
+      "relativeTimeMs": 302096.5,
+      "rect": {
+        "x": 233.8,
+        "y": -2479.6,
+        "width": 640,
+        "height": 682.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "rich_markdown_settled",
+      "generationId": 5,
+      "relativeTimeMs": 302096.7,
+      "rect": {
+        "x": 233.8,
+        "y": -2479.6,
+        "width": 640,
+        "height": 682.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_first_content_mutation",
+      "generationId": 5,
+      "relativeTimeMs": 302591.9,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "mounted_turn_window_changed",
+      "generationId": 5,
+      "relativeTimeMs": 302710.8,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_action_bar_visible",
+      "generationId": 5,
+      "relativeTimeMs": 302711.2,
+      "rect": {
+        "x": 233.8,
+        "y": 319.7,
+        "width": 640,
+        "height": 24
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_turn_mounted",
+      "generationId": 5,
+      "relativeTimeMs": 302711.3,
+      "rect": {
+        "x": 233.8,
+        "y": 359.7,
+        "width": 640,
+        "height": 32
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "connector_pill_visible",
+      "generationId": null,
+      "relativeTimeMs": 302711.8,
+      "rect": {
+        "x": 441.8,
+        "y": 173.7,
+        "width": 86.6,
+        "height": 24
+      },
+      "textLength": 6
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_first_content_mutation",
+      "generationId": 5,
+      "relativeTimeMs": 303341.1,
+      "rect": null,
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 5,
+      "relativeTimeMs": 305111.3,
+      "rect": {
+        "x": 68.7,
+        "y": -2479.6,
+        "width": 970.2,
+        "height": 728.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "rich_markdown_settled",
+      "generationId": 5,
+      "relativeTimeMs": 305111.5,
+      "rect": {
+        "x": 68.7,
+        "y": -2479.6,
+        "width": 970.2,
+        "height": 728.6
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 4,
+      "relativeTimeMs": 305111.7,
+      "rect": {
+        "x": 68.7,
+        "y": -1559,
+        "width": 970.2,
+        "height": 1674.7
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "rich_markdown_settled",
+      "generationId": 4,
+      "relativeTimeMs": 305111.8,
+      "rect": {
+        "x": 68.7,
+        "y": -1559,
+        "width": 970.2,
+        "height": 1674.7
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 5,
+      "relativeTimeMs": 305162.7,
+      "rect": {
+        "x": 233.8,
+        "y": 359.7,
+        "width": 640,
+        "height": 32
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "assistant_settled",
+      "generationId": 5,
+      "relativeTimeMs": 305435.5,
+      "rect": {
+        "x": 68.7,
+        "y": 319.7,
+        "width": 970.2,
+        "height": 150
+      },
+      "textLength": null
+    },
+    {
+      "type": "checkpoint",
+      "stateClass": "composer_blur",
+      "generationId": null,
+      "relativeTimeMs": 309117.3,
+      "rect": {
+        "x": 233.8,
+        "y": 816.5,
+        "width": 640,
+        "height": 154
+      },
+      "textLength": 116
+    }
+  ]
+}

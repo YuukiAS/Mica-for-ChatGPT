@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "kind": "mica.liveSurfaceAtlas.selectorInvariants",
+  "sourceArtifactId": "capture-1789266647815",
+  "privacy": {
+    "localOnly": true,
+    "telemetryUploaded": false,
+    "promptTextIncluded": false,
+    "answerTextIncluded": false,
+    "rawDomIncluded": false,
+    "fullPageScreenshotIncluded": false,
+    "headersIncluded": false,
+    "cookiesIncluded": false,
+    "requestBodiesIncluded": false
+  },
+  "safety": {
+    "automatedSend": false,
+    "automatedEnter": false,
+    "automatedUpload": false,
+    "automatedConnectorAction": false,
+    "playwrightRealSiteTraceUsed": false,
+    "computerUseRequired": false,
+    "cdpConnection": true
+  },
+  "surfaces": {
+    "composer": {
+      "mustNotMatchTag": "button",
+      "requiresAny": [
+        "form with editable or input descendant",
+        "contenteditable editor owner"
+      ]
+    },
+    "longThreadMountedWindow": {
+      "minWidth": 500,
+      "minHeight": 300,
+      "rejects": [
+        "thread-header-right-actions-container"
+      ]
+    },
+    "mentionChooser": {
+      "requiresAny": [
+        "role menu",
+        "role listbox",
+        "composer intelligence picker group"
+      ],
+      "priority": "HIGH"
+    },
+    "connectorPill": {
+      "requiresAny": [
+        "data-inline-selection-pill",
+        "ecosystemMention",
+        "anonymous plugin pill"
+      ],
+      "priority": "HIGH"
+    },
+    "assistantActionBar": {
+      "requiresOwningAssistantTurn": true,
+      "mustNotMatchTag": "button"
+    },
+    "nativeCopyArea": {
+      "requiresOwningAssistantTurn": true,
+      "requiresGenericLabel": "Copy"
+    },
+    "micaOverlay": {
+      "requiresAny": [
+        "data-mica-root",
+        "mica-overlay"
+      ]
+    }
+  }
+}

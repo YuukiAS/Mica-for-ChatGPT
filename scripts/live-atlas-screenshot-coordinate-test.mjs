@@ -33,6 +33,11 @@ try {
   assertRect(assistantMatch.viewportRect, { x: 40, y: 320, width: 820, height: 180 }, "assistant viewportRect");
   const helperClip = screenshotClipForDocumentRect(assistantMatch.documentRect, layoutMetrics);
   assertRect(helperClip, { x: 50, y: 1650, width: 1025, height: 225 }, "helper screenshot clip");
+  const offscreenClip = screenshotClipForDocumentRect({ x: 435.2, y: 1667.6, width: 64.8, height: 64.8 }, {
+    cssVisualViewport: { clientWidth: 1054, clientHeight: 993, pageX: 0, pageY: 0, zoom: 0.9 },
+    cssContentSize: { x: 0, y: 0, width: 1054, height: 994 }
+  });
+  assertRect(offscreenClip, { x: 391.7, y: 1500.8, width: 58.3, height: 58.3 }, "offscreen screenshot clip must not collapse to content edge");
 
   const assistantCapture = await captureCheckpoint(fakeClient(), checkpoint("assistant_settled", "coord:assistant", currentAssistantHint, { x: 40, y: 320, width: 820, height: 180 }), { screenshotsDir, surfacesDir });
   const assistantSurface = JSON.parse(await readFile(assistantCapture.surfaceFile, "utf8"));
@@ -64,6 +69,7 @@ try {
     cssViewportMetricsPreferred: true,
     nonzeroScrollScreenshotClip: true,
     zoomScreenshotClip: true,
+    offscreenScreenshotClip: true,
     currentTurnScreenshotRegion: true,
     selectedAssistant: "currentAssistantC",
     assistantScreenshotClip: assistantClip,
