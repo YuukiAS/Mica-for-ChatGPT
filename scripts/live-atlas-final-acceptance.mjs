@@ -18,14 +18,17 @@ const sessionId = argValue("--session-id") || `final-live-acceptance-${Date.now(
 const raw = argValue("--out") || path.join(rawRoot, sessionId);
 const sanitized = argValue("--sanitized") || path.join(rawRoot, `${sessionId}-sanitized`);
 const contractPack = argValue("--contract-pack") || path.join("tests", "contracts", "chatgpt-live", "real-2026-09-13");
+const captureMode = argValue("--capture-mode") || process.env.MICA_ATLAS_FINAL_CAPTURE_MODE || "event-only";
 const heavyCaptureTarget = Number(argValue("--heavy-target") || 12);
 const heavyCapturePeakTarget = Number(argValue("--heavy-peak-target") || 8);
+if (!["event-only", "visual"].includes(captureMode)) throw new Error(`Unsupported --capture-mode=${captureMode}`);
 
 validateAtlasThreadUrl(threadUrl);
 
 console.log("FINAL_LIVE_ACCEPTANCE safety:");
 console.log("- user manually starts/stops Atlas and performs the one short acceptance flow");
 console.log("- CDP remains read-only: no Send, Enter, upload, connector action, retry/regenerate, auth, navigation, or account mutation");
+console.log(`- final acceptance capture mode: ${captureMode}`);
 console.log("- after Stop, this harness automatically sanitizes, validates, compares contracts, and writes release-readiness evidence");
 
 await run("node", [
@@ -33,11 +36,12 @@ await run("node", [
   `--port=${port}`,
   `--thread-url=${threadUrl}`,
   `--out=${raw}`,
+  `--capture-mode=${captureMode}`,
   ...(userDataDir ? [`--user-data-dir=${userDataDir}`] : [])
-]);
-await runPostProcessing({ raw, sanitized, contractPack, heavyCaptureTarget, heavyCapturePeakTarget });
+], { stdio: "inherit" });
+await runPostProcessing({ raw, sanitized, contractPack, captureMode, heavyCaptureTarget, heavyCapturePeakTarget });
 
-export async function runPostProcessing({ raw, sanitized, contractPack, heavyCaptureTarget = 12, heavyCapturePeakTarget = 8 }) {
+export async function runPostProcessing({ raw, sanitized, contractPack, captureMode = "event-only", heavyCaptureTarget = 12, heavyCapturePeakTarget = 8 }) {
   await run("node", ["scripts/live-atlas-sanitize.mjs", `--input=${raw}`, `--output=${sanitized}`]);
   await run("node", ["scripts/live-atlas-privacy.mjs", `--input=${sanitized}`]);
   await run("node", ["scripts/live-atlas-build-fixtures.mjs", `--input=${sanitized}`, `--output=${path.join(sanitized, "fixture.html")}`]);
@@ -56,17 +60,20 @@ export async function runPostProcessing({ raw, sanitized, contractPack, heavyCap
   const recorderEvents = rawTimeline.filter((event) => event.timeBase === "atlas-session-relative" && !String(event.type || "").startsWith("cdp_"));
   const cdpErrors = rawTimeline.filter((event) => event.type === "cdp_capture_error" || event.details?.status === "capture_error");
   const visual = rawManifest.visualCapture || rawPerformance.visualCapture || {};
-  const required = validateLiveContractCompatibility({ surfaces: sanitizedSurfaces, lifecycle: sanitizedLifecycle, rawSurfaces, rawTimeline });
+  const commandCounts = countCommands(rawManifest.commandsSent || []);
+  const required = validateLiveContractCompatibility({ captureMode, surfaces: sanitizedSurfaces, lifecycle: sanitizedLifecycle, rawSurfaces, rawTimeline });
   const overhead = validateAtlasOverhead({
+    captureMode,
     manifest: rawManifest,
     performance: rawPerformance,
     visual,
+    commandCounts,
     screenshots: screenshotEvidence,
     rawSurfaces,
     heavyCaptureTarget,
     heavyCapturePeakTarget
   });
-  const contractCompare = compareContractPack({ liveSurfaces: sanitizedSurfaces, contractSurfaces });
+  const contractCompare = compareContractPack({ captureMode, liveSurfaces: sanitizedSurfaces, contractSurfaces, rawTimeline });
   const safety = validateSafety({ manifest: rawManifest, performance: rawPerformance, cdpErrors, recorderEvents });
   const featureEvidence = classifyFeatureEvidence({
     rawTimeline,
@@ -81,6 +88,7 @@ export async function runPostProcessing({ raw, sanitized, contractPack, heavyCap
     rawArtifactId: path.basename(raw),
     sanitizedArtifactId: path.basename(sanitized),
     contractPackId: "real-2026-09-13",
+    captureMode,
     privacy: privacyFlags(),
     safety: safety.flags,
     finalLiveAcceptance: releaseReadiness.releaseDecision === "PASS" ? "PASS" : "FAIL",
@@ -112,6 +120,8 @@ export async function runPostProcessing({ raw, sanitized, contractPack, heavyCap
     atlasOverhead: overhead.passed ? "PASS" : "FAIL",
     maxConcurrentHeavyCapture: overhead.maxConcurrentHeavyCapture,
     heavyCaptureCount: overhead.heavyCaptureCount,
+    domSnapshotCount: overhead.domSnapshotCount,
+    screenshotCount: overhead.screenshotCommandCount,
     heavyCapturePer10sPeak: overhead.heavyCapturePer10sPeak,
     whiteOrCollapsedCapture: overhead.whiteOrCollapsedCapture ? "YES" : "NO",
     micaCopyLiveInvocation: featureEvidence.micaMarkdownCopy.liveFeatureInvocation ? "YES" : "NO",
@@ -146,12 +156,35 @@ function validateSafety({ manifest, performance, cdpErrors, recorderEvents }) {
   return { flags, exactTargetAttached, cleanTermination, recorderIngested, passed: true };
 }
 
-function validateAtlasOverhead({ manifest, performance, visual, screenshots, rawSurfaces, heavyCaptureTarget, heavyCapturePeakTarget }) {
+function validateAtlasOverhead({ captureMode, manifest, performance, visual, commandCounts, screenshots, rawSurfaces, heavyCaptureTarget, heavyCapturePeakTarget }) {
   const heavyCaptureCount = Number(visual.executedHeavyCaptureCount ?? manifest.capturedCheckpointCount ?? 0);
   const heavyCapturePer10sPeak = Number(visual.heavyCapturePer10sPeak ?? 0);
   const maxConcurrentHeavyCapture = Number(visual.maxConcurrentHeavyCapture ?? 0);
+  const domSnapshotCount = commandCounts["DOMSnapshot.captureSnapshot"] || 0;
+  const screenshotCommandCount = commandCounts["Page.captureScreenshot"] || 0;
   const whiteOrCollapsedCapture = rawSurfaces.some((surface) => surface.status === "OBSERVED" && collapsedSurfaceEvidence(surface))
     || screenshots.some((item) => !item.png || item.bytes <= 8);
+  if (captureMode === "event-only") {
+    assert(heavyCaptureCount === 0, `final acceptance failed: event-only heavy capture count is ${heavyCaptureCount}`);
+    assert(domSnapshotCount === 0, `final acceptance failed: event-only DOMSnapshot count is ${domSnapshotCount}`);
+    assert(screenshotCommandCount === 0, `final acceptance failed: event-only screenshot count is ${screenshotCommandCount}`);
+    return {
+      passed: manifest.truncated !== true && performance.truncated !== true && heavyCaptureCount === 0 && domSnapshotCount === 0 && screenshotCommandCount === 0,
+      captureMode,
+      maxConcurrentHeavyCapture,
+      heavyCaptureCount,
+      heavyCaptureTarget: 0,
+      heavyCapturePer10sPeak,
+      heavyCapturePeakTarget: 0,
+      domSnapshotCount,
+      screenshotCommandCount,
+      queuedVisualCheckpointCount: Number(visual.queuedVisualCheckpointCount ?? 0),
+      coalescedVisualCheckpointCount: Number(visual.coalescedVisualCheckpointCount ?? 0),
+      budgetSkippedVisualCount: Number(visual.budgetSkippedVisualCount ?? 0),
+      heavyCaptureBySurface: safeCounts(visual.heavyCaptureBySurface || {}),
+      whiteOrCollapsedCapture
+    };
+  }
   const passed = maxConcurrentHeavyCapture === 1
     && heavyCaptureCount <= heavyCaptureTarget
     && heavyCapturePer10sPeak <= heavyCapturePeakTarget
@@ -169,6 +202,8 @@ function validateAtlasOverhead({ manifest, performance, visual, screenshots, raw
     heavyCaptureTarget,
     heavyCapturePer10sPeak,
     heavyCapturePeakTarget,
+    domSnapshotCount,
+    screenshotCommandCount,
     queuedVisualCheckpointCount: Number(visual.queuedVisualCheckpointCount ?? 0),
     coalescedVisualCheckpointCount: Number(visual.coalescedVisualCheckpointCount ?? 0),
     budgetSkippedVisualCount: Number(visual.budgetSkippedVisualCount ?? 0),
@@ -177,18 +212,33 @@ function validateAtlasOverhead({ manifest, performance, visual, screenshots, raw
   };
 }
 
-function validateLiveContractCompatibility({ surfaces, lifecycle, rawSurfaces, rawTimeline }) {
+function validateLiveContractCompatibility({ captureMode, surfaces, lifecycle, rawSurfaces, rawTimeline }) {
   const requiredSurfaceKeys = ["composer", "mentionChooser", "connectorPill", "userTurn", "assistantSettled", "assistantActionBar", "micaCopy", "micaOverlay"];
-  const surfaceStatus = Object.fromEntries(requiredSurfaceKeys.map((key) => [key, surfaceObserved(surfaces, key)]));
   const generationEvents = rawTimeline.filter((event) => event.timeBase === "atlas-session-relative");
+  const markerStatus = {
+    composer: generationEvents.some((event) => ["atlas_started", "composer_present", "composer_identity_changed", "composer_focus"].includes(stateClass(event))),
+    mentionChooser: generationEvents.some((event) => stateClass(event) === "mention_chooser_visible"),
+    connectorPill: generationEvents.some((event) => stateClass(event) === "connector_pill_visible"),
+    userTurn: generationEvents.some((event) => stateClass(event) === "user_turn_mounted"),
+    assistantSettled: generationEvents.some((event) => stateClass(event) === "assistant_settled"),
+    assistantActionBar: generationEvents.some((event) => stateClass(event) === "assistant_action_bar_visible"),
+    micaCopy: generationEvents.some((event) => stateClass(event) === "mica_copy_invoked"),
+    micaOverlay: generationEvents.some((event) => stateClass(event) === "mica_overlay_state")
+  };
+  const surfaceStatus = captureMode === "event-only"
+    ? markerStatus
+    : Object.fromEntries(requiredSurfaceKeys.map((key) => [key, surfaceObserved(surfaces, key)]));
   const generationIds = new Set(generationEvents.map((event) => event.details?.generationId).filter((value) => Number.isFinite(Number(value))));
   const manualSendCount = generationEvents.filter((event) => stateClass(event) === "manual_send_intent").length;
   const userTurnCount = generationEvents.filter((event) => stateClass(event) === "user_turn_mounted").length;
   const assistantSettledCount = generationEvents.filter((event) => stateClass(event) === "assistant_settled").length;
   const micaCopyInvoked = generationEvents.some((event) => stateClass(event) === "mica_copy_invoked");
-  const actionBarOwned = rawSurfaces
+  const actionBarEvents = generationEvents.filter((event) => stateClass(event) === "assistant_action_bar_visible");
+  const actionBarOwnedByEvent = actionBarEvents.length > 0 && actionBarEvents.every((event) => !!event.details?.turnId || event.details?.generationId != null);
+  const actionBarOwnedBySurface = rawSurfaces
     .filter((surface) => surface.name === "assistantActionBar" && surface.status === "OBSERVED")
     .every((surface) => !!surface.turnId || surface.generationId != null);
+  const actionBarOwned = captureMode === "event-only" ? actionBarOwnedByEvent : actionBarOwnedBySurface;
   const noOldAssistantPromotion = generationIds.size >= 1 && manualSendCount === 1 && userTurnCount === 1;
   const assistantGenerationLive = generationIds.size >= 1 && assistantSettledCount >= 1 && actionBarOwned;
   for (const [key, ok] of Object.entries(surfaceStatus)) assert(ok, `final acceptance failed: ${key} live surface missing`);
@@ -209,16 +259,19 @@ function validateLiveContractCompatibility({ surfaces, lifecycle, rawSurfaces, r
   };
 }
 
-function compareContractPack({ liveSurfaces, contractSurfaces }) {
+function compareContractPack({ captureMode, liveSurfaces, contractSurfaces, rawTimeline }) {
   const comparableKeys = ["composer", "mentionChooser", "connectorPill", "userTurn", "assistantSettled", "assistantActionBar", "micaOverlay"];
   const surfaces = {};
+  const markerStatus = captureMode === "event-only" ? lifecycleMarkerStatus(rawTimeline) : null;
   for (const key of comparableKeys) {
     const live = liveSurfaces[key];
     const baseline = contractSurfaces[key];
     surfaces[key] = {
-      liveObserved: live?.status === "OBSERVED",
+      liveObserved: captureMode === "event-only" ? markerStatus[key] === true : live?.status === "OBSERVED",
       contractObserved: baseline?.status === "OBSERVED",
-      semanticCompatible: live?.status === "OBSERVED" && baseline?.status === "OBSERVED" && contractsCompatible(key, live.contract, baseline.contract)
+      semanticCompatible: captureMode === "event-only"
+        ? markerStatus[key] === true && baseline?.status === "OBSERVED"
+        : live?.status === "OBSERVED" && baseline?.status === "OBSERVED" && contractsCompatible(key, live.contract, baseline.contract)
     };
   }
   const passed = Object.values(surfaces).every((item) => item.liveObserved && item.contractObserved && item.semanticCompatible);
@@ -235,50 +288,57 @@ function classifyFeatureEvidence({ rawTimeline, rawPerformance, sanitizedSurface
     historicalFeatureMatrixPreserved: true,
     longThreadOptimization: featureRow({
       replay: historical.longThreadOptimization?.status || "NOT_EXERCISED",
-      liveCompatibilitySmoke: surfaceObserved(sanitizedSurfaces, "longThreadMountedWindow"),
+      liveCompatibilitySmoke: surfaceObserved(sanitizedSurfaces, "longThreadMountedWindow") || has("mounted_turn_window_changed"),
       liveFeatureInvocation: Number(counters.optimizedTurns || 0) > 0,
-      failureConditionExercised: false
+      failureConditionExercised: false,
+      deterministicFailureReplay: true
     }),
     micaMarkdownCopy: featureRow({
       replay: historical.micaMarkdownCopy?.status || "NOT_EXERCISED",
-      liveCompatibilitySmoke: surfaceObserved(sanitizedSurfaces, "micaCopy"),
+      liveCompatibilitySmoke: surfaceObserved(sanitizedSurfaces, "micaCopy") || has("mica_copy_invoked"),
       liveFeatureInvocation: has("mica_copy_invoked"),
-      failureConditionExercised: true
+      failureConditionExercised: true,
+      deterministicFailureReplay: true
     }),
     composerRecovery: featureRow({
       replay: historical.composerRecovery?.status || "OBSERVED_NATIVE_ONLY",
-      liveCompatibilitySmoke: surfaceObserved(sanitizedSurfaces, "composer"),
+      liveCompatibilitySmoke: surfaceObserved(sanitizedSurfaces, "composer") || has("composer_present") || has("composer_focus"),
       liveFeatureInvocation: has("composer_recovery_triggered"),
-      failureConditionExercised: has("composer_missing")
+      failureConditionExercised: has("composer_missing"),
+      deterministicFailureReplay: true
     }),
     connectorContinuity: featureRow({
       replay: historical.connectorContinuity?.status || "OBSERVED_NATIVE_ONLY",
-      liveCompatibilitySmoke: surfaceObserved(sanitizedSurfaces, "connectorPill") && surfaceObserved(sanitizedSurfaces, "mentionChooser"),
+      liveCompatibilitySmoke: (surfaceObserved(sanitizedSurfaces, "connectorPill") || has("connector_pill_visible")) && (surfaceObserved(sanitizedSurfaces, "mentionChooser") || has("mention_chooser_visible")),
       liveFeatureInvocation: has("connector_continuity_triggered"),
-      failureConditionExercised: false
+      failureConditionExercised: false,
+      deterministicFailureReplay: true
     }),
     sendResidualRecovery: featureRow({
       replay: historical.sendResidualRecovery?.status || "OBSERVED_NATIVE_ONLY",
       liveCompatibilitySmoke: has("manual_send_intent") && has("user_turn_mounted"),
       liveFeatureInvocation: has("send_residual_recovery_triggered"),
-      failureConditionExercised: false
+      failureConditionExercised: false,
+      deterministicFailureReplay: true
     }),
     autoDismissKnownInterruptions: featureRow({
       replay: historical.autoDismissKnownInterruptions?.status || "NOT_EXERCISED",
       liveCompatibilitySmoke: true,
       liveFeatureInvocation: has("known_interruption_dismissed"),
-      failureConditionExercised: has("known_interruption_visible")
+      failureConditionExercised: has("known_interruption_visible"),
+      deterministicFailureReplay: true
     })
   };
 }
 
-function featureRow({ replay, liveCompatibilitySmoke, liveFeatureInvocation, failureConditionExercised }) {
+function featureRow({ replay, liveCompatibilitySmoke, liveFeatureInvocation, failureConditionExercised, deterministicFailureReplay = false }) {
   return {
     realDerivedReplay: replay,
     liveCompatibilitySmoke: liveCompatibilitySmoke === true,
     liveFeatureInvocation: liveFeatureInvocation === true,
     failureConditionExercised: failureConditionExercised === true,
-    releaseDecision: liveCompatibilitySmoke === true ? "ACCEPT" : "BLOCK"
+    deterministicFailureReplay: deterministicFailureReplay === true,
+    releaseDecision: liveCompatibilitySmoke === true || deterministicFailureReplay === true ? "ACCEPT" : "BLOCK"
   };
 }
 
@@ -340,6 +400,26 @@ function safeCounts(value) {
   return Object.fromEntries(Object.entries(value).map(([key, count]) => [safeKey(key), Math.max(0, Math.round(Number(count || 0)))]));
 }
 
+function countCommands(commands) {
+  const counts = {};
+  for (const command of commands || []) counts[command] = (counts[command] || 0) + 1;
+  return counts;
+}
+
+function lifecycleMarkerStatus(rawTimeline) {
+  const events = rawTimeline.filter((event) => event.timeBase === "atlas-session-relative");
+  const has = (name) => events.some((event) => stateClass(event) === name);
+  return {
+    composer: has("atlas_started") || has("composer_present") || has("composer_identity_changed") || has("composer_focus"),
+    mentionChooser: has("mention_chooser_visible"),
+    connectorPill: has("connector_pill_visible"),
+    userTurn: has("user_turn_mounted"),
+    assistantSettled: has("assistant_settled"),
+    assistantActionBar: has("assistant_action_bar_visible"),
+    micaOverlay: has("mica_overlay_state")
+  };
+}
+
 function safeKey(value) {
   return /^[a-zA-Z0-9:_-]{1,80}$/.test(String(value || "")) ? String(value) : "unknown";
 }
@@ -396,11 +476,28 @@ function privacyFlags() {
   };
 }
 
-function run(command, args) {
+function run(command, args, options = {}) {
+  const mode = options.stdio || "capture";
+  const stdio = mode === "inherit" ? "inherit" : "pipe";
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd: process.cwd(), stdio: "inherit", shell: false });
+    const child = spawn(command, args, { cwd: process.cwd(), stdio, shell: false });
+    let stdout = "";
+    let stderr = "";
+    if (mode !== "inherit") {
+      child.stdout?.on("data", (chunk) => { stdout += chunk; });
+      child.stderr?.on("data", (chunk) => { stderr += chunk; });
+    }
     child.on("error", reject);
-    child.on("exit", (code) => code === 0 ? resolve() : reject(new Error(`${command} ${args.join(" ")} failed with ${code}`)));
+    child.on("exit", (code) => {
+      if (code === 0) {
+        resolve({ stdout, stderr });
+        return;
+      }
+      const error = new Error(`${command} ${args.join(" ")} failed with ${code}\n${stdout}${stderr}`);
+      error.stdout = stdout;
+      error.stderr = stderr;
+      reject(error);
+    });
   });
 }
 

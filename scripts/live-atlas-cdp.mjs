@@ -3,6 +3,8 @@ import {
   DEFAULT_DRAIN_MS,
   DEFAULT_INACTIVITY_HARD_CAP_MS,
   DEFAULT_MAX_CHECKPOINTS,
+  CAPTURE_MODE_EVENT_ONLY,
+  CAPTURE_MODE_VISUAL,
   READ_ONLY_CDP_COMMANDS,
   STYLE_WHITELIST,
   runReadOnlyCaptureSession,
@@ -18,6 +20,10 @@ const out = argValue("--out") || path.join(rawRoot, `capture-${Date.now()}`);
 const idleMs = Number(argValue("--idle-ms") || process.env.MICA_ATLAS_IDLE_MS || DEFAULT_INACTIVITY_HARD_CAP_MS);
 const drainMs = Number(argValue("--drain-ms") || process.env.MICA_ATLAS_DRAIN_MS || DEFAULT_DRAIN_MS);
 const maxCheckpoints = Number(argValue("--max-checkpoints") || process.env.MICA_ATLAS_MAX_CHECKPOINTS || DEFAULT_MAX_CHECKPOINTS);
+const captureMode = argValue("--capture-mode") || process.env.MICA_ATLAS_CAPTURE_MODE || CAPTURE_MODE_VISUAL;
+if (![CAPTURE_MODE_VISUAL, CAPTURE_MODE_EVENT_ONLY].includes(captureMode)) {
+  throw new Error(`Unsupported --capture-mode=${captureMode}`);
+}
 
 console.log("Mica Atlas CDP companion safety summary:");
 console.log("- read-only CDP command allowlist only");
@@ -26,7 +32,12 @@ console.log("- captures only named MICA_ATLAS_CHECKPOINT markers");
 console.log("- normal termination requires atlas_stopped marker or local Ctrl+C/operator stop");
 console.log("- supports Edge DevToolsActivePort browser WebSocket auto-connect via --user-data-dir");
 console.log("- --idle-ms is an inactivity hard cap and is re-armed after each checkpoint");
-console.log("- Page.captureScreenshot always uses a surface clip; no full-page screenshot policy");
+console.log(`- captureMode: ${captureMode}`);
+if (captureMode === CAPTURE_MODE_EVENT_ONLY) {
+  console.log("- event-only mode sends zero DOMSnapshot.captureSnapshot and zero Page.captureScreenshot commands");
+} else {
+  console.log("- visual mode Page.captureScreenshot always uses a surface clip; no full-page screenshot policy");
+}
 console.log("- automatedSend/Enter/Upload/ConnectorAction: false");
 
 validateAtlasThreadUrl(threadUrl);
@@ -46,6 +57,7 @@ const session = await runReadOnlyCaptureSession({
   idleMs,
   drainMs,
   maxCheckpoints,
+  captureMode,
   abortSignal: controller.signal,
   onAttached: () => {
     console.log("REAL_EDGE_CDP_ATTACHED = YES");
@@ -65,6 +77,7 @@ console.log(JSON.stringify({
   queuedVisualCheckpointCount: session.queuedVisualCheckpointCount,
   executedHeavyCaptureCount: session.executedHeavyCaptureCount,
   coalescedVisualCheckpointCount: session.coalescedVisualCheckpointCount,
+  captureMode: session.captureMode,
   terminationReason: session.terminationReason,
   explicitStop: session.explicitStop,
   inactivityHardCapMs: session.inactivityHardCapMs,

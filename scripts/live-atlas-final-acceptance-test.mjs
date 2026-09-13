@@ -80,8 +80,8 @@ try {
   assert(result.stdout.includes('"FINAL_LIVE_ACCEPTANCE": "PASS"'), "final acceptance did not print PASS");
   assert(commands.some((item) => item.method === "Target.getTargets"), "browser Target.getTargets was not used");
   assert(commands.some((item) => item.method === "Target.attachToTarget" && item.params.flatten === true), "flatten session attach was not used");
-  assert(commands.some((item) => item.method === "DOMSnapshot.captureSnapshot" && item.sessionId === pageSessionId), "DOMSnapshot was not routed through the page session");
-  assert(commands.some((item) => item.method === "Page.captureScreenshot" && item.sessionId === pageSessionId), "screenshot was not routed through the page session");
+  assert(!commands.some((item) => item.method === "DOMSnapshot.captureSnapshot"), "event-only final acceptance sent DOMSnapshot.captureSnapshot");
+  assert(!commands.some((item) => item.method === "Page.captureScreenshot"), "event-only final acceptance sent Page.captureScreenshot");
   assert(!commands.some((item) => /^Input\.|^Network\.|^Fetch\.|^Tracing\./.test(item.method) || item.method === "Page.navigate" || item.method === "Page.reload"), "forbidden CDP command was sent");
 
   const report = await readJson(path.join(sanitized, "final-acceptance-report.json"));
@@ -92,6 +92,10 @@ try {
   assert(report.contractCompare.passed === true, "contract comparison failed");
   assert(report.featureEvidence.historicalFeatureMatrixPreserved === true, "historical feature matrix preservation was not recorded");
   assert(report.featureEvidence.micaMarkdownCopy.liveFeatureInvocation === true, "Mica Copy live invocation was not classified");
+  assert(report.atlasOverhead.captureMode === "event-only", "final acceptance did not run event-only mode");
+  assert(report.atlasOverhead.domSnapshotCount === 0, "event-only report did not prove zero DOMSnapshot");
+  assert(report.atlasOverhead.screenshotCommandCount === 0, "event-only report did not prove zero screenshot");
+  assert(report.atlasOverhead.heavyCaptureCount === 0, "event-only report did not prove zero heavy capture");
   assert(readiness.releaseDecision === "PASS", "release readiness did not pass");
   console.log(JSON.stringify({
     passed: true,
@@ -101,6 +105,8 @@ try {
     releaseReadiness: readiness.releaseDecision,
     maxConcurrentHeavyCapture: report.atlasOverhead.maxConcurrentHeavyCapture,
     heavyCaptureCount: report.atlasOverhead.heavyCaptureCount,
+    domSnapshotCount: report.atlasOverhead.domSnapshotCount,
+    screenshotCount: report.atlasOverhead.screenshotCommandCount,
     heavyCapturePer10sPeak: report.atlasOverhead.heavyCapturePer10sPeak,
     automatedSend: false,
     automatedEnter: false,

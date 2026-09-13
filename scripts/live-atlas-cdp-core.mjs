@@ -52,6 +52,8 @@ export const DEFAULT_TOTAL_HEAVY_CAPTURE_BUDGET = 30;
 export const DEFAULT_NORMAL_HEAVY_CAPTURE_BUDGET = 22;
 export const DEFAULT_HEAVY_CAPTURE_PER_10S_BUDGET = 8;
 export const CONNECTOR_BURST_WINDOW_MS = 10_000;
+export const CAPTURE_MODE_VISUAL = "visual";
+export const CAPTURE_MODE_EVENT_ONLY = "event-only";
 
 export function assertReadOnlyCommand(command) {
   if (FORBIDDEN_CDP_COMMANDS.has(command) || FORBIDDEN_CDP_PREFIXES.some((prefix) => command.startsWith(prefix))) {
@@ -196,6 +198,7 @@ export async function runReadOnlyCaptureSession(options) {
     totalHeavyCaptureBudget = DEFAULT_TOTAL_HEAVY_CAPTURE_BUDGET,
     normalHeavyCaptureBudget = DEFAULT_NORMAL_HEAVY_CAPTURE_BUDGET,
     heavyCapturePer10sBudget = DEFAULT_HEAVY_CAPTURE_PER_10S_BUDGET,
+    captureMode = CAPTURE_MODE_VISUAL,
     idleMs = DEFAULT_INACTIVITY_HARD_CAP_MS,
     drainMs = DEFAULT_DRAIN_MS,
     abortSignal = null,
@@ -204,6 +207,9 @@ export async function runReadOnlyCaptureSession(options) {
     connect = connectWebSocket,
     onAttached = null
   } = options;
+  if (![CAPTURE_MODE_VISUAL, CAPTURE_MODE_EVENT_ONLY].includes(captureMode)) {
+    throw new Error(`Unsupported Atlas capture mode: ${captureMode}`);
+  }
   const endpoint = await resolveCaptureEndpoint({ port, threadUrl, userDataDir, fetchImpl, readFileImpl });
   const client = await connect(endpoint.webSocketDebuggerUrl);
   let target = endpoint.target || null;
@@ -241,6 +247,7 @@ export async function runReadOnlyCaptureSession(options) {
   let visualWorkerPromise = null;
   let activeHeavyCaptures = 0;
   const visualCapture = {
+    captureMode,
     maxConcurrentHeavyCapture: 0,
     receivedVisualCheckpointCount: 0,
     queuedVisualCheckpointCount: 0,
@@ -341,6 +348,7 @@ export async function runReadOnlyCaptureSession(options) {
     drainMs,
     inactivityHardCapMs: idleMs,
     maxCheckpoints,
+    captureMode,
     visualCapture,
     maxConcurrentHeavyCapture: visualCapture.maxConcurrentHeavyCapture,
     queuedVisualCheckpointCount: visualCapture.queuedVisualCheckpointCount,
@@ -389,6 +397,18 @@ export async function runReadOnlyCaptureSession(options) {
       details: safeCheckpointTimelineDetails(checkpoint)
     });
     if (!isVisualCheckpoint(checkpoint)) {
+      if (terminal) requestFinish("atlas_stopped");
+      return;
+    }
+    if (captureMode === CAPTURE_MODE_EVENT_ONLY) {
+      visualCapture.receivedVisualCheckpointCount += 1;
+      visualCapture.skippedVisualCheckpointCount += 1;
+      timeline.push(cdpLifecycleEvent("cdp_visual_checkpoint_event_only", {
+        checkpointId: checkpoint.checkpointId || null,
+        stateClass: checkpoint.stateClass || null,
+        surfaceKey: surfaceKeyForCheckpoint(checkpoint.stateClass),
+        reason: "event_only"
+      }));
       if (terminal) requestFinish("atlas_stopped");
       return;
     }
@@ -883,6 +903,7 @@ export function createManifest({ threadUrl, target, commandsSent, session = null
     explicitStop: session?.explicitStop || false,
     checkpointCount: session?.checkpointCount ?? null,
     capturedCheckpointCount: session?.capturedCheckpointCount ?? null,
+    captureMode: session?.captureMode || session?.visualCapture?.captureMode || CAPTURE_MODE_VISUAL,
     visualCapture: session?.visualCapture || null,
     recorderReportsIngested: session?.recorderReports?.length || 0,
     maxCheckpoints: session?.maxCheckpoints ?? null,
