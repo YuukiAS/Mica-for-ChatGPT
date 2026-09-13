@@ -53,10 +53,18 @@
   }
 
   function ensureCopyButton(turn) {
-    if (turn.querySelector(`[${BUTTON_ATTR}="true"]`)) return;
-    const nativeCopy = findNativeCopyAction(turn);
-    const bar = findActionBar(turn, nativeCopy) || createActionBar(turn);
+    const scope = findTurnScope(turn) || turn;
+    const nativeCopy = findNativeCopyAction(scope) || (scope !== turn ? findNativeCopyAction(turn) : null);
+    const bar = findActionBar(scope, nativeCopy) || (scope !== turn ? findActionBar(turn, nativeCopy) : null) || createActionBar(turn);
     if (!bar) return;
+    const existing = findExistingCopyButton(scope) || (scope !== turn ? findExistingCopyButton(turn) : null);
+    if (existing && isCorrectlyPlaced(existing, nativeCopy, bar)) return;
+    if (existing) existing.remove();
+    const button = createCopyButton(turn);
+    insertCopyButton(button, nativeCopy, bar);
+  }
+
+  function createCopyButton(turn) {
     const button = document.createElement("button");
     button.type = "button";
     button.setAttribute(BUTTON_ATTR, "true");
@@ -95,6 +103,10 @@
         if (button.isConnected) setCopyButtonState(button, "idle");
       }, 1400);
     });
+    return button;
+  }
+
+  function insertCopyButton(button, nativeCopy, bar) {
     if (nativeCopy?.parentElement === bar) {
       bar.insertBefore(button, nativeCopy);
     } else if (nativeCopy?.parentElement && nativeCopy.parentElement.parentElement === bar) {
@@ -115,6 +127,36 @@
       const label = `${node.getAttribute("aria-label") || ""} ${node.getAttribute("title") || ""} ${node.getAttribute("data-testid") || ""} ${node.textContent || ""}`;
       return /\bcopy\b|复制/i.test(label) || hasCopyIconSignature(node);
     }) || null;
+  }
+
+  function findExistingCopyButton(turn) {
+    const node = turn.querySelector(`[${BUTTON_ATTR}="true"]`);
+    return node instanceof HTMLElement ? node : null;
+  }
+
+  function findTurnScope(turn) {
+    if (!(turn instanceof HTMLElement)) return null;
+    return turn.closest("[data-testid^='conversation-turn-'], [data-testid*='conversation-turn']") ||
+      turn.closest("article, section") ||
+      turn;
+  }
+
+  function isCorrectlyPlaced(button, nativeCopy, bar) {
+    if (!(button instanceof HTMLElement) || !(bar instanceof HTMLElement)) return false;
+    if (!(nativeCopy instanceof HTMLElement)) return button.parentElement === bar;
+    if (nativeCopy.parentElement === bar) {
+      return button.parentElement === bar && areAdjacentSiblings(button, nativeCopy);
+    }
+    if (nativeCopy.parentElement?.parentElement === bar) {
+      return button.parentElement === bar && areAdjacentSiblings(button, nativeCopy.parentElement);
+    }
+    return button.parentElement === bar;
+  }
+
+  function areAdjacentSiblings(left, right) {
+    if (!left?.parentElement || left.parentElement !== right?.parentElement) return false;
+    const siblings = Array.from(left.parentElement.children);
+    return Math.abs(siblings.indexOf(left) - siblings.indexOf(right)) === 1;
   }
 
   function findActionBar(turn, nativeCopy = null) {

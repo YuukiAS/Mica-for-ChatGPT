@@ -1,7 +1,7 @@
 (() => {
-  const VERSION = "0.2.1";
-  const VERSION_NAME = "0.2.1";
-  const BUILD_LABEL = "0.2.1";
+  const VERSION = "0.2.2";
+  const VERSION_NAME = "0.2.2";
+  const BUILD_LABEL = "0.2.2";
   const DEFAULT_SETTINGS = {
     enabled: true,
     showStatus: true,

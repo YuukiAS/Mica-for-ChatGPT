@@ -1,13 +1,33 @@
 {
   "schemaVersion": 1,
   "kind": "mica.chatgptLiveFailure.contract",
-  "source": "limited-from-user-screenshot-and-real-2026-09-13-contract-pack",
-  "acquisition": {
-    "liveProbeAttempted": true,
-    "liveProbeStatus": "UNAVAILABLE_IN_CURRENT_CODEX_SANDBOX",
-    "liveProbeFailure": "connectWebSocket timed out after 8000ms without elevated loopback access; elevated retry was rejected by safety review",
-    "userRetryRequested": false,
-    "pageRefreshRequested": false
+  "source": "one-shot-read-only-devtools-active-port-probe",
+  "capturedAt": "2026-09-13T16:44:44.969Z",
+  "target": {
+    "type": "page",
+    "titleLength": 23,
+    "hostname": "chatgpt.com",
+    "pathShape": "/g/<gpt-id>/c/<conversation-id>",
+    "targetHash": "b508815426620aca0881a7a9"
+  },
+  "layout": {
+    "cssVisualViewport": {
+      "clientWidth": 1238.888916015625,
+      "clientHeight": 994.4445190429688,
+      "pageX": 0,
+      "pageY": 0,
+      "zoom": 0.8999999761581421
+    },
+    "cssLayoutViewport": {
+      "clientWidth": 1238,
+      "clientHeight": 994,
+      "pageX": 0,
+      "pageY": 0
+    },
+    "cssContentSize": {
+      "width": 1238,
+      "height": 994
+    }
   },
   "privacy": {
     "localOnly": true,
@@ -27,25 +47,501 @@
     "automatedConnectorAction": false,
     "playwrightRealSiteTraceUsed": false,
     "computerUseRequired": false,
-    "cdpConnection": false
+    "cdpConnection": true
   },
   "actionBar": {
-    "status": "LIMITED_OBSERVED_FROM_SCREENSHOT",
-    "nativeCopyVisible": true,
-    "nativeActionClusterVisible": true,
-    "requiredInvariant": {
+    "status": "OBSERVED",
+    "groundTruth": "EXACT",
+    "owningAssistantTurn": {
+      "role": "assistant",
+      "turnHint": "turn:ccf5a24eb6e5",
+      "scopeNode": {
+        "tag": "section",
+        "role": null,
+        "dataTestId": "conversation-turn-12",
+        "ariaLabel": null,
+        "contenteditable": null,
+        "micaCopyAction": false,
+        "connectorPill": false,
+        "textCategory": "long",
+        "textLength": 34618
+      },
+      "rect": {
+        "x": 470.6,
+        "y": 812,
+        "width": 1382.4,
+        "height": 57.6
+      },
+      "textLength": 17
+    },
+    "nativeCopy": {
+      "source": "ACCESSIBILITY+BACKEND_NODE",
+      "accessibleName": "Copy",
+      "node": {
+        "tag": "button",
+        "role": null,
+        "dataTestId": "copy-turn-action-button",
+        "ariaLabel": "Copy",
+        "contenteditable": null,
+        "micaCopyAction": false,
+        "connectorPill": false,
+        "textCategory": "empty",
+        "textLength": 0
+      },
+      "rect": {
+        "x": 517.4,
+        "y": 878.6,
+        "width": 57.6,
+        "height": 57.6
+      },
+      "parentNode": {
+        "tag": "div",
+        "role": "group",
+        "dataTestId": null,
+        "ariaLabel": "label-length-4",
+        "contenteditable": null,
+        "micaCopyAction": false,
+        "connectorPill": false,
+        "textCategory": "long",
+        "textLength": 34585
+      },
+      "siblingIndex": 1
+    },
+    "micaCopy": {
+      "node": {
+        "tag": "button",
+        "role": null,
+        "dataTestId": null,
+        "ariaLabel": "Copy",
+        "contenteditable": null,
+        "micaCopyAction": true,
+        "connectorPill": false,
+        "textCategory": "empty",
+        "textLength": 0
+      },
+      "rect": {
+        "x": 2142.4,
+        "y": 1020.8,
+        "width": 57.6,
+        "height": 57.6
+      },
+      "parentNode": {
+        "tag": "div",
+        "role": "toolbar",
+        "dataTestId": null,
+        "ariaLabel": null,
+        "contenteditable": null,
+        "micaCopyAction": false,
+        "connectorPill": false,
+        "textCategory": "empty",
+        "textLength": 0
+      },
+      "siblingIndex": 0,
+      "sameParentAsNativeCopy": false,
+      "adjacentToNativeCopy": false,
+      "detachedFromNativeCluster": true
+    },
+    "actionCluster": {
+      "node": {
+        "tag": "div",
+        "role": "group",
+        "dataTestId": null,
+        "ariaLabel": "label-length-4",
+        "contenteditable": null,
+        "micaCopyAction": false,
+        "connectorPill": false,
+        "textCategory": "long",
+        "textLength": 34585
+      },
+      "rect": {
+        "x": 452.6,
+        "y": 862.4,
+        "width": 1400.4,
+        "height": 90
+      },
+      "styles": {
+        "display": "flex",
+        "position": "static",
+        "justify-content": "normal",
+        "align-items": "center",
+        "gap": "16px normal",
+        "column-gap": "normal",
+        "row-gap": "16px",
+        "flex-direction": "row",
+        "grid-auto-flow": "row",
+        "width": "777.995px",
+        "height": "49.9913px",
+        "margin-left": "-10px",
+        "margin-right": "-4px"
+      },
+      "siblingOrder": [
+        {
+          "tag": "saveai-chat-export-btn",
+          "role": null,
+          "dataTestId": null,
+          "ariaLabel": null,
+          "contenteditable": null,
+          "micaCopyAction": false,
+          "connectorPill": false,
+          "textCategory": "long",
+          "textLength": 34585
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "dataTestId": "copy-turn-action-button",
+          "ariaLabel": "Copy",
+          "contenteditable": null,
+          "micaCopyAction": false,
+          "connectorPill": false,
+          "textCategory": "empty",
+          "textLength": 0
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "dataTestId": "feedback-turn-action-button",
+          "ariaLabel": "label-length-4",
+          "contenteditable": null,
+          "micaCopyAction": false,
+          "connectorPill": false,
+          "textCategory": "empty",
+          "textLength": 0
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "dataTestId": "project-save-turn-action-button",
+          "ariaLabel": "label-length-6",
+          "contenteditable": null,
+          "micaCopyAction": false,
+          "connectorPill": false,
+          "textCategory": "empty",
+          "textLength": 0
+        },
+        {
+          "tag": "span",
+          "role": null,
+          "dataTestId": null,
+          "ariaLabel": null,
+          "contenteditable": null,
+          "micaCopyAction": false,
+          "connectorPill": false,
+          "textCategory": "empty",
+          "textLength": 0
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "dataTestId": null,
+          "ariaLabel": "label-length-4",
+          "contenteditable": null,
+          "micaCopyAction": false,
+          "connectorPill": false,
+          "textCategory": "empty",
+          "textLength": 0
+        }
+      ]
+    },
+    "nativeCopyParentChain": [
+      {
+        "tag": "button",
+        "role": null,
+        "dataTestId": "copy-turn-action-button",
+        "ariaLabel": "Copy",
+        "contenteditable": null,
+        "micaCopyAction": false,
+        "connectorPill": false,
+        "textCategory": "empty",
+        "textLength": 0,
+        "rect": {
+          "x": 517.4,
+          "y": 878.6,
+          "width": 57.6,
+          "height": 57.6
+        },
+        "styles": {
+          "display": "block",
+          "position": "static",
+          "justify-content": "normal",
+          "align-items": "normal",
+          "gap": "normal",
+          "column-gap": "normal",
+          "row-gap": "normal",
+          "flex-direction": "row",
+          "grid-auto-flow": "row",
+          "width": "31.9965px",
+          "height": "31.9965px",
+          "margin-left": "0px",
+          "margin-right": "0px"
+        }
+      },
+      {
+        "tag": "div",
+        "role": "group",
+        "dataTestId": null,
+        "ariaLabel": "label-length-4",
+        "contenteditable": null,
+        "micaCopyAction": false,
+        "connectorPill": false,
+        "textCategory": "long",
+        "textLength": 34585,
+        "rect": {
+          "x": 452.6,
+          "y": 862.4,
+          "width": 1400.4,
+          "height": 90
+        },
+        "styles": {
+          "display": "flex",
+          "position": "static",
+          "justify-content": "normal",
+          "align-items": "center",
+          "gap": "16px normal",
+          "column-gap": "normal",
+          "row-gap": "16px",
+          "flex-direction": "row",
+          "grid-auto-flow": "row",
+          "width": "777.995px",
+          "height": "49.9913px",
+          "margin-left": "-10px",
+          "margin-right": "-4px"
+        }
+      },
+      {
+        "tag": "div",
+        "role": null,
+        "dataTestId": null,
+        "ariaLabel": null,
+        "contenteditable": null,
+        "micaCopyAction": false,
+        "connectorPill": false,
+        "textCategory": "long",
+        "textLength": 34585,
+        "rect": {
+          "x": 470.6,
+          "y": 869.6,
+          "width": 1382.4,
+          "height": 82.8
+        },
+        "styles": {
+          "display": "flex",
+          "position": "static",
+          "justify-content": "flex-start",
+          "align-items": "normal",
+          "gap": "normal",
+          "column-gap": "normal",
+          "row-gap": "normal",
+          "flex-direction": "row",
+          "grid-auto-flow": "row",
+          "width": "767.995px",
+          "height": "45.9983px",
+          "margin-left": "0px",
+          "margin-right": "0px"
+        }
+      },
+      {
+        "tag": "div",
+        "role": null,
+        "dataTestId": null,
+        "ariaLabel": null,
+        "contenteditable": null,
+        "micaCopyAction": false,
+        "connectorPill": false,
+        "textCategory": "long",
+        "textLength": 34608,
+        "rect": {
+          "x": 470.6,
+          "y": 740,
+          "width": 1382.4,
+          "height": 212.4
+        },
+        "styles": {
+          "display": "flex",
+          "position": "relative",
+          "justify-content": "normal",
+          "align-items": "normal",
+          "gap": "normal",
+          "column-gap": "normal",
+          "row-gap": "normal",
+          "flex-direction": "column",
+          "grid-auto-flow": "row",
+          "width": "767.995px",
+          "height": "117.986px",
+          "margin-left": "128.785px",
+          "margin-right": "128.793px"
+        }
+      },
+      {
+        "tag": "div",
+        "role": null,
+        "dataTestId": null,
+        "ariaLabel": null,
+        "contenteditable": null,
+        "micaCopyAction": false,
+        "connectorPill": false,
+        "textCategory": "long",
+        "textLength": 34608,
+        "rect": {
+          "x": 123.6,
+          "y": 740,
+          "width": 2076.4,
+          "height": 270
+        },
+        "styles": {
+          "display": "block",
+          "position": "static",
+          "justify-content": "normal",
+          "align-items": "normal",
+          "gap": "normal",
+          "column-gap": "normal",
+          "row-gap": "normal",
+          "flex-direction": "row",
+          "grid-auto-flow": "row",
+          "width": "1153.56px",
+          "height": "149.983px",
+          "margin-left": "0px",
+          "margin-right": "0px"
+        }
+      },
+      {
+        "tag": "section",
+        "role": null,
+        "dataTestId": "conversation-turn-12",
+        "ariaLabel": null,
+        "contenteditable": null,
+        "micaCopyAction": false,
+        "connectorPill": false,
+        "textCategory": "long",
+        "textLength": 34618,
+        "rect": {
+          "x": 123.6,
+          "y": 740,
+          "width": 2076.4,
+          "height": 338.4
+        },
+        "styles": {
+          "display": "block",
+          "position": "static",
+          "justify-content": "normal",
+          "align-items": "normal",
+          "gap": "normal",
+          "column-gap": "normal",
+          "row-gap": "normal",
+          "flex-direction": "row",
+          "grid-auto-flow": "row",
+          "width": "1153.56px",
+          "height": "187.977px",
+          "margin-left": "0px",
+          "margin-right": "0px"
+        }
+      },
+      {
+        "tag": "div",
+        "role": null,
+        "dataTestId": null,
+        "ariaLabel": null,
+        "contenteditable": null,
+        "micaCopyAction": false,
+        "connectorPill": false,
+        "textCategory": "long",
+        "textLength": 34618,
+        "rect": {
+          "x": 123.6,
+          "y": 740,
+          "width": 2076.4,
+          "height": 338.4
+        },
+        "styles": {
+          "display": "block",
+          "position": "static",
+          "justify-content": "normal",
+          "align-items": "normal",
+          "gap": "normal",
+          "column-gap": "normal",
+          "row-gap": "normal",
+          "flex-direction": "row",
+          "grid-auto-flow": "row",
+          "width": "1153.56px",
+          "height": "187.977px",
+          "margin-left": "0px",
+          "margin-right": "0px"
+        }
+      }
+    ],
+    "expectedPlacementInvariant": {
       "micaCopySameParentAsNativeCopy": true,
       "micaCopyAdjacentToNativeCopy": true,
       "broadDetachedContainerRejected": true
-    },
-    "fixtureModel": "native copy may be icon-only without aria/text copy label; resolver must use semantic icon/sibling cluster evidence"
+    }
   },
   "staleComposer": {
-    "status": "LIMITED_OBSERVED_FROM_SCREENSHOT",
+    "status": "OBSERVED",
+    "groundTruth": "EXACT",
     "composerPresent": true,
+    "composerControlKind": "textarea",
+    "composerValueSource": "DOMSNAPSHOT_TEXT_VALUE",
+    "composerRoot": {
+      "tag": "form",
+      "role": null,
+      "dataTestId": null,
+      "ariaLabel": null,
+      "contenteditable": null,
+      "micaCopyAction": false,
+      "connectorPill": false,
+      "textCategory": "long",
+      "textLength": 2452
+    },
+    "editable": {
+      "tag": "textarea",
+      "role": null,
+      "dataTestId": null,
+      "ariaLabel": "label-length-12",
+      "contenteditable": null,
+      "micaCopyAction": false,
+      "connectorPill": false,
+      "textCategory": "empty",
+      "textLength": 0
+    },
+    "editableRect": null,
+    "composerVisibleBodyLength": 0,
+    "bodyLength": 0,
+    "bodyHash": "e3b0c44298fc1c149afbf4c8",
     "connectorPillPresent": true,
-    "committedUserTurnVisible": true,
-    "samePayloadAsLatestUserTurn": true,
-    "fixtureModel": "new committed user turn can replace an old mounted turn so total mounted user-turn count stays constant"
+    "connectorPillCount": 1,
+    "connectorPillTextLength": 6,
+    "latestCommittedUserTurn": {
+      "node": {
+        "tag": "div",
+        "role": null,
+        "dataTestId": null,
+        "ariaLabel": null,
+        "contenteditable": null,
+        "micaCopyAction": false,
+        "connectorPill": false,
+        "textCategory": "long",
+        "textLength": 2067
+      },
+      "rect": {
+        "x": 470.6,
+        "y": 99.3,
+        "width": 1382.4,
+        "height": 568.8
+      },
+      "textLength": 2067,
+      "textHash": "cc70a9b6fb732a2fc30921a3"
+    },
+    "samePayloadAsLatestUserTurn": false,
+    "evidence": {
+      "comparison": "canonical composer body vs latest committed user turn text",
+      "rawTextStoredOnlyUnderArtifacts": true
+    }
+  },
+  "pageShape": {
+    "mountedUserTurnCount": 4,
+    "mountedAssistantTurnCount": 4,
+    "composerPresent": true,
+    "latestUserTurnPresent": true,
+    "latestAssistantTurnPresent": true
   }
 }

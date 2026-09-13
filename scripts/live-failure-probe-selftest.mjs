@@ -46,7 +46,7 @@ function testContenteditable() {
 }
 
 function testAxIconOnlyCopy() {
-  const fixture = buildFixture({ composerKind: "textarea", composerValue: LONG_PAYLOAD, copyAccessibleName: "复制" });
+  const fixture = buildFixture({ composerKind: "textarea", composerValue: LONG_PAYLOAD, copyAccessibleName: "复制回复" });
   const model = buildModel(fixture.snapshot);
   const contract = buildContract(fixtureContractInput(fixture, model));
   assert.equal(contract.actionBar.status, "OBSERVED");
@@ -141,12 +141,15 @@ function buildFixture({ composerKind, composerValue, copyAccessibleName = "Copy"
   }, { bounds: [120, 100, 620, 160] });
   builder.text(userTurn, LONG_PAYLOAD);
 
-  const assistantTurn = builder.node(main, "div", {
+  const assistantSection = builder.node(main, "section", {
+    "data-testid": "conversation-turn-12"
+  }, { bounds: [110, 280, 660, 300] });
+  const assistantTurn = builder.node(assistantSection, "div", {
     "data-message-author-role": "assistant",
     "data-testid": "assistant-turn-final"
   }, { bounds: [120, 300, 620, 220] });
   builder.text(assistantTurn, "README result answer text");
-  const actionCluster = builder.node(assistantTurn, "div", {
+  const actionCluster = builder.node(assistantSection, "div", {
     role: "toolbar",
     "data-testid": "assistant-actions"
   }, { bounds: [120, 520, 260, 40] });

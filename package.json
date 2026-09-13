@@ -1,6 +1,6 @@
 {
   "name": "mica-for-chatgpt",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "Local Chromium extension for ChatGPT long-thread render recovery.",
   "type": "module",
@@ -28,6 +28,7 @@
     "atlas:final-acceptance": "node scripts/live-atlas-final-acceptance.mjs",
     "probe:live-failure": "node scripts/live-failure-probe.mjs",
     "probe:live-failure:selftest": "node scripts/live-failure-probe-selftest.mjs",
+    "probe:live-failure:contract-test": "node scripts/live-failure-contract-test.mjs",
     "test:atlas": "node scripts/test-atlas.mjs",
     "package:release": "npm run build && node scripts/package-release.mjs && node scripts/validate-release.mjs"
   },

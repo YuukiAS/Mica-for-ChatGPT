@@ -15,6 +15,7 @@ const steps = [
   ["atlas:real-contract-pack", "node", ["scripts/live-atlas-real-contract-pack-test.mjs"]],
   ["atlas:final-acceptance", "node", ["scripts/live-atlas-final-acceptance-test.mjs"]],
   ["probe:live-failure:selftest", "node", ["scripts/live-failure-probe-selftest.mjs"]],
+  ["probe:live-failure:contract-test", "node", ["scripts/live-failure-contract-test.mjs"]],
   ["atlas:devtools-active-port", "node", ["scripts/live-atlas-devtools-active-port-test.mjs"]],
   ["atlas:cdp-long-session", "node", ["scripts/live-atlas-cdp-long-session-test.mjs"]],
   ["atlas:preflight", "node", ["scripts/live-atlas-preflight-test.mjs"]],

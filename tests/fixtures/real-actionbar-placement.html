@@ -7,65 +7,75 @@
     <style>
       body { margin: 0; font: 14px/1.45 system-ui, sans-serif; background: #fff; color: #171717; }
       main { width: 780px; margin: 40px auto; }
-      article { position: relative; padding: 12px 0; }
+      section { position: relative; padding: 12px 0; }
       .answer { display: grid; gap: 10px; }
       .footer-row { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 36px; }
       .native-cluster { display: flex; align-items: center; gap: 6px; width: max-content; }
       .native-cluster button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: #5f6368; }
       .footer-spacer { flex: 1 1 auto; }
+      .detached-toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 6px; }
       #actionbar-result { position: fixed; left: 8px; top: 8px; max-width: 50vw; white-space: pre-wrap; font-size: 11px; }
     </style>
   </head>
   <body>
     <pre id="actionbar-result">Idle</pre>
     <main>
-      <article id="answer" data-testid="conversation-turn-actionbar-real">
-        <div data-message-author-role="assistant" class="answer">
+      <section id="turn-scope" data-testid="conversation-turn-12">
+        <div id="answer" data-message-author-role="assistant" class="answer">
           <p>Sanitized answer placeholder.</p>
-          <div class="footer-row" data-live-contract="broad-footer-row">
-            <div id="native-cluster" class="native-cluster" data-live-contract="true-native-action-cluster">
-              <button id="read-aloud" type="button"><svg data-icon="camera" viewBox="0 0 24 24"></svg></button>
-              <button id="native-copy" type="button"><svg data-icon="copy" viewBox="0 0 24 24"></svg></button>
-              <button id="thumbs-up" type="button"><svg data-icon="thumbs-up" viewBox="0 0 24 24"></svg></button>
-              <button id="regenerate" type="button"><svg data-icon="refresh-cw" viewBox="0 0 24 24"></svg></button>
-              <button id="more" type="button"><svg data-icon="ellipsis" viewBox="0 0 24 24"></svg></button>
-            </div>
-            <div class="footer-spacer" aria-hidden="true"></div>
+          <div id="old-detached-toolbar" class="detached-toolbar" role="toolbar" data-live-contract="old-detached-mica-toolbar">
+            <button id="old-detached-mica-copy" type="button" data-mica-copy-action="true" aria-label="Copy as Markdown with Mica">
+              <svg aria-hidden="true" viewBox="0 0 24 24"></svg>
+            </button>
           </div>
         </div>
-      </article>
+        <div class="footer-row" data-live-contract="broad-footer-row">
+          <div id="native-cluster" class="native-cluster" role="group" aria-label="复制回复" data-live-contract="true-native-action-cluster">
+            <button id="read-aloud" type="button" aria-label="Read aloud"><svg data-icon="camera" viewBox="0 0 24 24"></svg></button>
+            <button id="native-copy" type="button" data-testid="copy-turn-action-button" aria-label="复制回复"><svg data-icon="copy" viewBox="0 0 24 24"></svg></button>
+            <button id="thumbs-up" type="button" data-testid="feedback-turn-action-button" aria-label="Good response"><svg data-icon="thumbs-up" viewBox="0 0 24 24"></svg></button>
+            <button id="save" type="button" data-testid="project-save-turn-action-button" aria-label="Save"><svg data-icon="download" viewBox="0 0 24 24"></svg></button>
+            <button id="regenerate" type="button" aria-label="Regenerate"><svg data-icon="refresh-cw" viewBox="0 0 24 24"></svg></button>
+            <button id="more" type="button" aria-label="More"><svg data-icon="ellipsis" viewBox="0 0 24 24"></svg></button>
+          </div>
+          <div class="footer-spacer" aria-hidden="true"></div>
+        </div>
+      </section>
     </main>
     <script src="../../dist/mica-dev/markdown-copy.js"></script>
     <script>
       const resultNode = document.getElementById("actionbar-result");
       try {
         const answer = document.getElementById("answer");
+        const scope = document.getElementById("turn-scope");
         const cluster = document.getElementById("native-cluster");
         const nativeCopy = document.getElementById("native-copy");
+        const oldDetached = document.getElementById("old-detached-mica-copy");
         window.MicaMarkdownCopy.sync([answer]);
         window.MicaMarkdownCopy.sync([answer]);
-        const micaCopy = answer.querySelector("[data-mica-copy-action='true']");
+        const micaCopy = scope.querySelector("[data-mica-copy-action='true']");
         const order = Array.from(cluster.children).map((node) => node.id || node.getAttribute("aria-label") || node.getAttribute("data-mica-copy-action") || node.tagName);
         const nativeIndex = order.indexOf("native-copy");
         const micaIndex = Array.from(cluster.children).indexOf(micaCopy);
         const checks = [
           ["native copy preserved", nativeCopy instanceof HTMLButtonElement && nativeCopy.isConnected],
           ["mica copy exists", micaCopy instanceof HTMLButtonElement],
+          ["old detached copy removed", !oldDetached.isConnected],
           ["mica copy parent is native cluster", micaCopy?.parentElement === cluster],
           ["mica copy adjacent to native copy", Math.abs(micaIndex - nativeIndex) === 1],
           ["mica copy not appended to broad footer", micaCopy?.parentElement?.dataset.liveContract !== "broad-footer-row"],
-          ["remount/sync no duplicate", answer.querySelectorAll("[data-mica-copy-action='true']").length === 1],
+          ["remount/sync no duplicate", scope.querySelectorAll("[data-mica-copy-action='true']").length === 1],
           ["icon only", micaCopy instanceof HTMLButtonElement && micaCopy.textContent.trim() === "" && !!micaCopy.querySelector("svg")]
         ].map(([name, passed]) => ({ name, passed: !!passed }));
         resultNode.textContent = JSON.stringify({
           passed: checks.every((check) => check.passed),
-          source: "real-derived-actionbar-contract",
+          source: "exact-live-actionbar-contract",
           checks,
           ui: {
             clusterOrder: order,
             micaParentContract: micaCopy?.parentElement?.dataset.liveContract || null,
             nativeParentContract: nativeCopy.parentElement?.dataset.liveContract || null,
-            duplicateCount: answer.querySelectorAll("[data-mica-copy-action='true']").length
+            duplicateCount: scope.querySelectorAll("[data-mica-copy-action='true']").length
           }
         }, null, 2);
       } catch (error) {

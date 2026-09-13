@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -42,6 +42,21 @@ export async function main(argv = process.argv.slice(2)) {
   const sessionId = `live-failure-${Date.now()}`;
   const outDir = path.resolve(root, args.out || path.join("artifacts", "live-failure", sessionId));
   const contractDir = path.resolve(root, args.contractOut || path.join("tests", "contracts", "chatgpt-live", "real-live-failure-2026-09-13"));
+
+  if (args.fromRaw) {
+    const chosen = await materializeContractFromRaw(args.fromRaw);
+    await mkdir(contractDir, { recursive: true });
+    await writeJson(path.join(contractDir, "live-failure-contract.json"), chosen.contract);
+    await writeFile(path.join(contractDir, "README.md"), `${readmeForContract(chosen.contract)}\n`);
+    console.log(JSON.stringify(summaryForContract({
+      passed: true,
+      sessionId: path.basename(path.dirname(path.resolve(args.fromRaw))),
+      outDir: path.dirname(path.resolve(args.fromRaw)),
+      contractDir,
+      contract: chosen.contract
+    }), null, 2));
+    return;
+  }
 
   if (!userDataDir) throw new Error("probe:live-failure requires --user-data-dir or LOCALAPPDATA Edge user data");
 
@@ -98,34 +113,57 @@ export async function main(argv = process.argv.slice(2)) {
     await writeJson(path.join(contractDir, "live-failure-contract.json"), chosen.contract);
     await writeFile(path.join(contractDir, "README.md"), `${readmeForContract(chosen.contract)}\n`);
 
-    console.log(JSON.stringify({
+    console.log(JSON.stringify(summaryForContract({
       passed: true,
       sessionId,
       outDir,
       contractDir,
-      targetHash: chosen.contract.target.targetHash,
-      actionBarGroundTruth: groundTruthStatus(chosen.contract.actionBar),
-      nativeCopyResolved: chosen.contract.actionBar.nativeCopy?.source === "ACCESSIBILITY+BACKEND_NODE",
-      nativeCopySource: chosen.contract.actionBar.nativeCopy?.source || null,
-      nativeCopyParentChain: Array.isArray(chosen.contract.actionBar.nativeCopyParentChain) && chosen.contract.actionBar.nativeCopyParentChain.length > 0 ? "PRESENT" : "MISSING",
-      actionClusterSiblingOrder: Array.isArray(chosen.contract.actionBar.actionCluster?.siblingOrder) && chosen.contract.actionBar.actionCluster.siblingOrder.length > 0 ? "PRESENT" : "MISSING",
-      micaCopyRelationship: chosen.contract.actionBar.micaCopy ? "PRESENT" : "MISSING",
-      staleComposerGroundTruth: groundTruthStatus(chosen.contract.staleComposer),
-      composerControlKind: chosen.contract.staleComposer.composerControlKind || null,
-      composerValueSource: chosen.contract.staleComposer.composerValueSource || null,
-      composerBodyHash: chosen.contract.staleComposer.bodyHash ? "PRESENT" : "MISSING",
-      latestUserTurnHash: chosen.contract.staleComposer.latestCommittedUserTurn?.textHash ? "PRESENT" : "MISSING",
-      samePayloadAsLatestUserTurn: chosen.contract.staleComposer.samePayloadAsLatestUserTurn,
-      micaCopySameParentAsNativeCopy: chosen.contract.actionBar.micaCopy?.sameParentAsNativeCopy ?? null,
-      micaCopyAdjacentToNativeCopy: chosen.contract.actionBar.micaCopy?.adjacentToNativeCopy ?? null,
-      automatedSend: false,
-      automatedEnter: false,
-      automatedUpload: false,
-      automatedConnectorAction: false
-    }, null, 2));
+      contract: chosen.contract
+    }), null, 2));
   } finally {
     await client.close();
   }
+}
+
+async function materializeContractFromRaw(rawPath) {
+  const raw = JSON.parse(await readFile(path.resolve(rawPath), "utf8"));
+  const snapshot = raw.snapshot;
+  const model = buildModel(snapshot);
+  const contract = buildContract({
+    target: raw.target || { type: "page", title: "", url: "" },
+    layout: raw.layout || {},
+    model,
+    axTree: raw.axTree || null
+  });
+  return { contract, raw };
+}
+
+function summaryForContract({ passed, sessionId, outDir, contractDir, contract }) {
+  return {
+    passed,
+    sessionId,
+    outDir,
+    contractDir,
+    targetHash: contract.target.targetHash,
+    actionBarGroundTruth: groundTruthStatus(contract.actionBar),
+    nativeCopyResolved: contract.actionBar.nativeCopy?.source === "ACCESSIBILITY+BACKEND_NODE",
+    nativeCopySource: contract.actionBar.nativeCopy?.source || null,
+    nativeCopyParentChain: Array.isArray(contract.actionBar.nativeCopyParentChain) && contract.actionBar.nativeCopyParentChain.length > 0 ? "PRESENT" : "MISSING",
+    actionClusterSiblingOrder: Array.isArray(contract.actionBar.actionCluster?.siblingOrder) && contract.actionBar.actionCluster.siblingOrder.length > 0 ? "PRESENT" : "MISSING",
+    micaCopyRelationship: contract.actionBar.micaCopy ? "PRESENT" : "MISSING",
+    staleComposerGroundTruth: groundTruthStatus(contract.staleComposer),
+    composerControlKind: contract.staleComposer.composerControlKind || null,
+    composerValueSource: contract.staleComposer.composerValueSource || null,
+    composerBodyHash: contract.staleComposer.bodyHash ? "PRESENT" : "MISSING",
+    latestUserTurnHash: contract.staleComposer.latestCommittedUserTurn?.textHash ? "PRESENT" : "MISSING",
+    samePayloadAsLatestUserTurn: contract.staleComposer.samePayloadAsLatestUserTurn,
+    micaCopySameParentAsNativeCopy: contract.actionBar.micaCopy?.sameParentAsNativeCopy ?? null,
+    micaCopyAdjacentToNativeCopy: contract.actionBar.micaCopy?.adjacentToNativeCopy ?? null,
+    automatedSend: false,
+    automatedEnter: false,
+    automatedUpload: false,
+    automatedConnectorAction: false
+  };
 }
 
 function groundTruthStatus(section) {
@@ -197,16 +235,17 @@ export function buildContract({ target, layout, model, axTree = null }) {
 
 function buildActionBarContract(model, assistantTurn, axTree = null) {
   if (!assistantTurn) return { status: "MISSING", reason: "assistant_turn_missing" };
-  const nativeCopyMatch = findNativeCopyButton(model, assistantTurn.index, axTree);
+  const actionScopeIndex = assistantTurn.scopeIndex ?? assistantTurn.index;
+  const nativeCopyMatch = findNativeCopyButton(model, actionScopeIndex, axTree);
   const nativeCopy = nativeCopyMatch?.nodeIndex ?? null;
   if (nativeCopy == null) return {
     status: "MISSING",
     reason: "native_copy_missing",
-    owningAssistantTurn: turnSummary(model, assistantTurn.index),
+    owningAssistantTurn: turnSummary(model, assistantTurn.index, actionScopeIndex),
     nativeCopySource: axTree ? "ACCESSIBILITY_TREE_NO_MATCH" : "NO_ACCESSIBILITY_TREE"
   };
-  const actionClusterIndex = findActionCluster(model, assistantTurn.index, nativeCopy);
-  const micaCopy = findMicaCopyButton(model, assistantTurn.index, nativeCopy, actionClusterIndex);
+  const actionClusterIndex = findActionCluster(model, actionScopeIndex, nativeCopy);
+  const micaCopy = findMicaCopyButton(model, actionScopeIndex, nativeCopy, actionClusterIndex);
   const nativeParent = actionClusterIndex ?? model.parent(nativeCopy);
   const micaParent = micaCopy == null ? null : model.parent(micaCopy);
   const siblings = nativeParent == null ? [] : model.children(nativeParent).filter((index) => isElement(model, index)).map((index) => semanticNode(model, index));
@@ -222,7 +261,7 @@ function buildActionBarContract(model, assistantTurn, axTree = null) {
   return {
     status: "OBSERVED",
     groundTruth: nativeCopyMatch.source === "ACCESSIBILITY+BACKEND_NODE" ? "EXACT" : "PARTIAL",
-    owningAssistantTurn: turnSummary(model, assistantTurn.index),
+    owningAssistantTurn: turnSummary(model, assistantTurn.index, actionScopeIndex),
     nativeCopy: {
       source: nativeCopyMatch.source,
       accessibleName: nativeCopyMatch.accessibleName || null,
@@ -329,7 +368,7 @@ function findComposer(model) {
 function findRoleTurns(model, role) {
   return model.elementIndexes()
     .filter((index) => model.attrs(index)["data-message-author-role"] === role)
-    .map((index) => ({ index, rect: model.rect(index) }));
+    .map((index) => ({ index, scopeIndex: turnScopeIndex(model, index), rect: model.rect(index) }));
 }
 
 function chooseFailureCandidate(items) {
@@ -445,15 +484,27 @@ function semanticNode(model, index) {
   };
 }
 
-function turnSummary(model, index) {
+function turnSummary(model, index, scopeIndex = index) {
   const attrs = model.attrs(index);
-  const stable = attrs["data-testid"] || attrs["data-message-id"] || `${model.tag(index)}:${index}`;
+  const scopeAttrs = scopeIndex == null ? {} : model.attrs(scopeIndex);
+  const stable = scopeAttrs["data-testid"] || attrs["data-testid"] || scopeAttrs["data-message-id"] || attrs["data-message-id"] || `${model.tag(index)}:${index}`;
   return {
     role: safeAttr(attrs["data-message-author-role"]),
     turnHint: `turn:${hashText(stable).slice(0, 12)}`,
+    scopeNode: scopeIndex == null ? null : semanticNode(model, scopeIndex),
     rect: roundRect(model.rect(index)),
     textLength: model.text(index).length
   };
+}
+
+function turnScopeIndex(model, roleIndex) {
+  const scoped = closest(model, roleIndex, (index) => {
+    const attrs = model.attrs(index);
+    return /^conversation-turn-\d+$/i.test(attrs["data-testid"] || "");
+  });
+  if (scoped != null) return scoped;
+  const section = closest(model, roleIndex, (index) => ["article", "section"].includes(model.tag(index)));
+  return section ?? roleIndex;
 }
 
 function isButtonLike(model, index) {
@@ -557,7 +608,7 @@ function isDescendantOrSelf(model, ancestor, nodeIndex) {
 
 function isCopyAccessibleName(value) {
   const text = String(value || "").trim();
-  return /^copy$/i.test(text) || text === "复制";
+  return /^copy(\b|\s|$)/i.test(text) || text.includes("复制");
 }
 
 function axValue(value) {
@@ -702,7 +753,7 @@ function textCategory(length) {
 
 function genericLabel(value) {
   const text = String(value || "");
-  if (/^copy$/i.test(text) || text === "复制") return "Copy";
+  if (isCopyAccessibleName(text)) return "Copy";
   if (/regenerate|重新生成/i.test(text)) return "Regenerate";
   if (/retry|重试/i.test(text)) return "Retry";
   if (/like|thumbs up|赞/i.test(text)) return "Like";
@@ -745,6 +796,7 @@ function parseArgs(argv) {
     else if (key === "--user-data-dir") out.userDataDir = value;
     else if (key === "--out") out.out = value;
     else if (key === "--contract-out") out.contractOut = value;
+    else if (key === "--from-raw") out.fromRaw = value;
     else if (key === "--list-targets") {
       out.listTargets = true;
       if (inline === undefined) i -= 1;
