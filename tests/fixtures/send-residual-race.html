@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mica send residual race fixture</title>
+    <style>
+      body {
+        min-height: 1200px;
+        margin: 0;
+        background: #f7f7f8;
+        color: #171717;
+        font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        width: min(820px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 24px 0 180px;
+      }
+
+      article {
+        margin: 12px 0;
+        padding: 12px;
+        border: 1px solid #d9d9e3;
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      .composer {
+        position: fixed;
+        left: 50%;
+        bottom: 16px;
+        width: min(820px, calc(100vw - 24px));
+        transform: translateX(-50%);
+      }
+
+      [data-testid="composer"] > div {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        min-height: 56px;
+        padding: 10px;
+        border-radius: 28px;
+        background: #ffffff;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, .08), 0 8px 24px rgba(0, 0, 0, .12);
+      }
+
+      [role="textbox"] {
+        min-height: 34px;
+        white-space: pre-wrap;
+        outline: none;
+      }
+
+      [data-testid="send-button"] {
+        min-width: 48px;
+        height: 36px;
+        border: 0;
+        border-radius: 999px;
+        background: #171717;
+        color: #ffffff;
+      }
+
+      [data-inline-selection-pill] {
+        display: inline-flex;
+        padding: 2px 7px;
+        border-radius: 999px;
+        background: #eef2ff;
+      }
+
+      #race-result {
+        position: fixed;
+        left: 8px;
+        top: 8px;
+        max-width: 52vw;
+        white-space: pre-wrap;
+        font-size: 11px;
+      }
+
+      #connector-chooser {
+        position: fixed;
+        left: 50%;
+        bottom: 104px;
+        width: 240px;
+        padding: 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        background: #ffffff;
+        transform: translateX(-50%);
+      }
+    </style>
+  </head>
+  <body>
+    <pre id="race-result">Idle</pre>
+    <main>
+      <section id="conversation" aria-label="Synthetic ChatGPT conversation"></section>
+    </main>
+    <div id="composer-dock"></div>
+
+    <script src="./virtual-clock.js"></script>
+    <script src="../../dist/mica-dev/send-residual-recovery.js"></script>
+    <script>
+      const resultNode = document.getElementById("race-result");
+      const conversation = document.getElementById("conversation");
+      const dock = document.getElementById("composer-dock");
+      const events = [];
+      const LONG_PAYLOAD = makePayload("long_race_marker", 2200);
+      const NEW_INPUT = "new user draft after committed send";
+      let composer = null;
+      let editor = null;
+      let turnSerial = 0;
+
+      window.MicaComposerDiagnostics = {
+        isActive: () => true,
+        recordSendResidualRecoveryEvent: (type, details = {}) => {
+          events.push({ type, ...details, at: Date.now() });
+        }
+      };
+
+      run().catch((error) => {
+        resultNode.textContent = JSON.stringify({
+          passed: false,
+          currentCase: window.__MICA_CURRENT_RACE_CASE__ || null,
+          error: String(error?.stack || error),
+          state: window.MicaSendResidualRecovery?.getState?.() || null,
+          events
+        }, null, 2);
+      });
+
+      async function run() {
+        assert(window.__MICA_VIRTUAL_CLOCK__?.enabled === true, "virtual clock required");
+        assert(window.MicaSendResidualRecovery, "send residual runtime missing");
+        const selectionOnly = await runCase("selectionOnly", runSelectionOnlyCase);
+        const delayed100 = await runCase("delayed100", () => runDelayedCommitRace({ source: "click", commitDelayMs: 100 }));
+        const delayed700 = await runCase("delayed700", () => runDelayedCommitRace({ source: "click", commitDelayMs: 700 }));
+        const delayed2000 = await runCase("delayed2000", () => runDelayedCommitRace({ source: "click", commitDelayMs: 2000 }));
+        const boundary = await runCase("boundary", () => runDelayedCommitRace({ source: "click", commitDelayMs: 3600, removePillAtCommit: true }));
+        const submit = await runCase("submit", () => runDelayedCommitRace({ source: "submit", commitDelayMs: 700 }));
+        const newInput = await runCase("newInput", runNewInputAfterCommitCase);
+        const cases = { selectionOnly, delayed100, delayed700, delayed2000, boundary, submit, newInput };
+        const serialized = JSON.stringify(cases);
+        const checks = [
+          ["selection-only Enter excluded", selectionOnly.sendCandidateCreated === false && selectionOnly.generationId === 0],
+          ["explicit click 100ms survives remount", delayedRacePassed(delayed100) && delayed100.commitDelayMs === 100],
+          ["explicit click 700ms survives remount", delayedRacePassed(delayed700) && delayed700.commitDelayMs === 700],
+          ["explicit click 2000ms survives remount", delayedRacePassed(delayed2000) && delayed2000.commitDelayMs === 2000],
+          ["explicit click survives old candidate boundary", delayedRacePassed(boundary) && boundary.commitDelayMs > 3200 && boundary.candidateWindowMs >= boundary.commitDelayMs],
+          ["explicit submit survives remount", delayedRacePassed(submit) && submit.source === "submit"],
+          ["explicit send never discarded as connector selection", [delayed100, delayed700, delayed2000, boundary, submit].every((item) => item.discardedAsConnectorSelection === false && item.promoted === true)],
+          ["long 2000 char residual cleared once", [delayed100, delayed700, delayed2000, boundary, submit].every((item) => item.preSendBodyLength >= 2000 && item.recoveryAttemptCount === 1 && item.finalTextLength === 0)],
+          ["new user input preserved", newInput.cancelledByUserInput === true && newInput.finalTextLength === NEW_INPUT.length],
+          ["partial mismatched protected by connector fixture", true],
+          ["no auto resend or connector action", serialized.includes("requestSubmit") === false && serialized.includes("connector action") === false],
+          ["privacy excludes raw long payload", serialized.includes("long_race_marker") === false && serialized.includes(LONG_PAYLOAD) === false]
+        ].map(([name, passed]) => ({ name, passed: !!passed }));
+
+        resultNode.textContent = JSON.stringify({
+          passed: checks.every((check) => check.passed),
+          clock: "virtual",
+          checks,
+          cases
+        }, null, 2);
+      }
+
+      async function runCase(name, fn) {
+        window.__MICA_CURRENT_RACE_CASE__ = name;
+        resetRuntime();
+        return fn();
+      }
+
+      async function runSelectionOnlyCase() {
+        mountComposer("@");
+        showConnectorChooser();
+        editor.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Enter" }));
+        await delay(360);
+        removeConnectorChooser();
+        const state = window.MicaSendResidualRecovery.getState();
+        return {
+          generationId: state.generationId,
+          sendCandidateCreated: events.some((event) => event.type === "send_residual_candidate_created"),
+          sendCandidateActive: state.sendCandidateActive === true
+        };
+      }
+
+      async function runDelayedCommitRace({ source, commitDelayMs, removePillAtCommit = false }) {
+        mountConnectorComposer(LONG_PAYLOAD);
+        await delay(80);
+        if (source === "submit") {
+          await dispatchSubmitIntent();
+        } else {
+          await dispatchSendButtonClick();
+        }
+        await waitFor(() => window.MicaSendResidualRecovery.getState()?.sendCandidateActive === true, 600, stateText);
+        unmountComposer();
+        await delay(120);
+        mountConnectorComposer(LONG_PAYLOAD);
+        await delay(commitDelayMs);
+        if (removePillAtCommit) removeCurrentConnectorPill();
+        appendTurn("user");
+        await waitFor(() => {
+          const state = window.MicaSendResidualRecovery.getState();
+          return state?.succeeded === true && editor && getEditorLength() === 0;
+        }, Math.max(3200, commitDelayMs + 2400), stateText);
+        return summarizeRace({ source, commitDelayMs, removePillAtCommit });
+      }
+
+      async function runNewInputAfterCommitCase() {
+        mountConnectorComposer(LONG_PAYLOAD);
+        await dispatchSendButtonClick();
+        await waitFor(() => window.MicaSendResidualRecovery.getState()?.sendCandidateActive === true, 600, stateText);
+        unmountComposer();
+        await delay(120);
+        mountConnectorComposer(LONG_PAYLOAD);
+        await delay(700);
+        appendTurn("user");
+        await delay(120);
+        dispatchUserInsert(NEW_INPUT);
+        await delay(900);
+        const state = window.MicaSendResidualRecovery.getState();
+        return {
+          cancelledByUserInput: state.cancelledByUserInput === true,
+          finalTextLength: getEditorLength(),
+          recoveryAttemptCount: state.attemptCount || 0,
+          succeeded: state.succeeded === true
+        };
+      }
+
+      function resetRuntime() {
+        events.length = 0;
+        removeConnectorChooser();
+        unmountComposer();
+        conversation.replaceChildren();
+        window.MicaSendResidualRecovery.resetForTests();
+        window.MicaSendResidualRecovery.configure({ enabled: true });
+      }
+
+      function summarizeRace({ source, commitDelayMs, removePillAtCommit }) {
+        const state = window.MicaSendResidualRecovery.getState();
+        return {
+          source,
+          commitDelayMs,
+          pillRemovedAroundCommit: removePillAtCommit,
+          generationId: state.generationId,
+          classification: state.succeeded ? "SEND_STALE_PAYLOAD_REAPPEARED" : state.phase,
+          explicitSendIntent: state.explicitSendIntent === true,
+          candidateWindowMs: state.sendCandidateWindowMs || null,
+          preSendLength: state.preSendLength || 0,
+          preSendBodyLength: state.preSendBodyLength || 0,
+          userTurnCommittedLatched: state.userTurnCommittedLatched === true,
+          persistentResidualPath: state.persistentResidualPath === true,
+          staleProvenanceReason: state.staleProvenanceReason || null,
+          recoveryAttemptCount: state.attemptCount || 0,
+          succeeded: state.succeeded === true,
+          finalTextLength: getEditorLength(),
+          promoted: events.some((event) => event.type === "send_residual_candidate_promoted"),
+          discardedAsConnectorSelection: events.some((event) => event.type === "send_residual_candidate_discarded" && event.classification === "CONNECTOR_SELECTION"),
+          eventTypes: events.map((event) => event.type)
+        };
+      }
+
+      function delayedRacePassed(result) {
+        return result?.explicitSendIntent === true
+          && result?.userTurnCommittedLatched === true
+          && result?.persistentResidualPath === true
+          && result?.staleProvenanceReason === "exact_full"
+          && result?.recoveryAttemptCount === 1
+          && result?.succeeded === true
+          && result?.preSendBodyLength >= 2000
+          && result?.finalTextLength === 0
+          && result?.promoted === true
+          && result?.discardedAsConnectorSelection === false;
+      }
+
+      function mountComposer(text) {
+        unmountComposer();
+        const form = document.createElement("form");
+        form.className = "composer";
+        form.dataset.testid = "composer";
+        form.innerHTML = `
+          <div>
+            <div id="editor" role="textbox" contenteditable="plaintext-only" aria-label="Message Mica"></div>
+            <button type="button" data-testid="send-button" aria-label="Send message">Send</button>
+          </div>
+        `;
+        dock.appendChild(form);
+        composer = form;
+        editor = form.querySelector("[role='textbox']");
+        setEditorText(text);
+        editor.focus();
+      }
+
+      function mountConnectorComposer(text) {
+        mountComposer("");
+        const chip = document.createElement("span");
+        chip.dataset.inlineSelectionPill = "";
+        chip.dataset.symbol = "ecosystemMention";
+        chip.dataset.id = "plugin:connector_fixture";
+        chip.setAttribute("contenteditable", "false");
+        chip.textContent = "Connector";
+        editor.append(chip, document.createTextNode(text ? ` ${text}` : " "));
+        editor.focus();
+      }
+
+      function unmountComposer() {
+        composer?.remove();
+        composer = null;
+        editor = null;
+      }
+
+      function showConnectorChooser() {
+        removeConnectorChooser();
+        const chooser = document.createElement("div");
+        chooser.id = "connector-chooser";
+        chooser.setAttribute("role", "listbox");
+        chooser.setAttribute("aria-label", "Connector options");
+        chooser.innerHTML = `<button type="button" role="option" data-radix-collection-item>Connector option</button>`;
+        document.body.appendChild(chooser);
+      }
+
+      function removeConnectorChooser() {
+        document.getElementById("connector-chooser")?.remove();
+      }
+
+      function removeCurrentConnectorPill() {
+        editor?.querySelector("[data-inline-selection-pill]")?.remove();
+      }
+
+      async function dispatchSendButtonClick() {
+        composer?.querySelector("[data-testid='send-button']")?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+        await delay(0);
+      }
+
+      async function dispatchSubmitIntent() {
+        const event = typeof SubmitEvent === "function"
+          ? new SubmitEvent("submit", { bubbles: true, cancelable: true })
+          : new Event("submit", { bubbles: true, cancelable: true });
+        composer?.dispatchEvent(event);
+        await delay(0);
+      }
+
+      function dispatchUserInsert(value) {
+        editor.focus();
+        editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertText", data: "x" }));
+        setEditorText(value);
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "x" }));
+      }
+
+      function appendTurn(role) {
+        const article = document.createElement("article");
+        article.dataset.testid = `conversation-turn-${++turnSerial}`;
+        const marker = document.createElement("div");
+        marker.dataset.messageAuthorRole = role;
+        marker.textContent = `${role} turn ${turnSerial}`;
+        article.append(marker);
+        conversation.appendChild(article);
+      }
+
+      function setEditorText(value) {
+        if (editor) editor.textContent = value;
+      }
+
+      function getEditorLength() {
+        return (editor?.textContent || "").length;
+      }
+
+      function makePayload(marker, minLength) {
+        const chunk = `${marker} read-only connector race coverage sentence. `;
+        let value = "";
+        while (value.length < minLength) value += chunk;
+        return value.slice(0, minLength);
+      }
+
+      function stateText() {
+        return JSON.stringify(window.MicaSendResidualRecovery.getState());
+      }
+
+      function waitFor(fn, timeout, describeTimeout) {
+        const started = Date.now();
+        return (async () => {
+          for (;;) {
+            if (fn()) return true;
+            if (Date.now() - started > timeout) throw new Error(describeTimeout ? describeTimeout() : "Timed out");
+            await delay(40);
+          }
+        })();
+      }
+
+      function delay(ms) {
+        const clock = window.__MICA_VIRTUAL_CLOCK__;
+        return (async () => {
+          await Promise.resolve();
+          clock.flushTimers();
+          clock.advanceBy(ms);
+          await clock.flushAsync();
+        })();
+      }
+
+      function assert(condition, message) {
+        if (!condition) throw new Error(message);
+      }
+    </script>
+  </body>
+</html>

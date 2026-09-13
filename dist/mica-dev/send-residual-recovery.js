@@ -9,6 +9,7 @@
   const MIN_PARTIAL_RESIDUAL_LENGTH = 8;
   const MAX_ATTEMPTS = 3;
   const SEND_CANDIDATE_WINDOW_MS = 3200;
+  const EXPLICIT_SEND_CANDIDATE_WINDOW_MS = 4800;
 
   const defaultBridge = {
     countUserTurns: () => countUserTurns(),
@@ -135,7 +136,12 @@
   }
 
   function handleUserInput(event) {
-    if (!shouldObserveEvent(event) || recoveryApplying || !generation?.userTurnCommittedLatched) return;
+    if (!shouldObserveEvent(event) || recoveryApplying) return;
+    if (sendCandidate && !generation) {
+      finishCandidate("new_user_input");
+      return;
+    }
+    if (!generation?.userTurnCommittedLatched) return;
     cancelGeneration("new_user_input");
   }
 
@@ -152,6 +158,9 @@
     sendCandidate = {
       candidateId,
       source,
+      intentClass: explicitSendIntentForSource(source) ? "explicit_send" : "unknown",
+      explicitSendIntent: explicitSendIntentForSource(source),
+      candidateWindowMs: candidateWindowMsForSource(source),
       startedAt: Date.now(),
       preSendLength: snapshot.textLength,
       preSendCanonical: canonical,
@@ -179,6 +188,9 @@
     record("send_residual_candidate_created", {
       candidateId: sendCandidate.candidateId,
       source,
+      intentClass: sendCandidate.intentClass,
+      explicitSendIntent: sendCandidate.explicitSendIntent,
+      candidateWindowMs: sendCandidate.candidateWindowMs,
       preSendLength: sendCandidate.preSendLength,
       mentionSignalObserved: sendCandidate.mentionSignalObserved,
       mentionSignalSource: sendCandidate.mentionSignalSource,
@@ -198,6 +210,9 @@
       generationId,
       phase: "COMMITTED",
       source: promoted.source,
+      intentClass: promoted.intentClass,
+      explicitSendIntent: promoted.explicitSendIntent,
+      candidateWindowMs: promoted.candidateWindowMs,
       startedAt: promoted.startedAt,
       preSendLength: promoted.preSendLength,
       preSendCanonical: promoted.preSendCanonical,
@@ -377,10 +392,12 @@
     trackCandidateComposerPresence(snapshot);
     if (!sendCandidate) return;
     if ((sendCandidate.remountSeen || sendCandidate.unmountSeen) && hasResolvedConnectorContext(snapshot.root, snapshot.editable)) {
-      finishCandidate("connector_selection", snapshot);
-      return;
+      if (!sendCandidate.explicitSendIntent) {
+        finishCandidate("connector_selection", snapshot);
+        return;
+      }
     }
-    if (Date.now() - sendCandidate.startedAt >= SEND_CANDIDATE_WINDOW_MS) {
+    if (Date.now() - sendCandidate.startedAt >= sendCandidate.candidateWindowMs) {
       finishCandidate("expired", snapshot);
       return;
     }
@@ -414,6 +431,8 @@
       candidateId: discarded.candidateId,
       source: discarded.source,
       classification: discarded.classification,
+      intentClass: discarded.intentClass,
+      explicitSendIntent: discarded.explicitSendIntent,
       unmountSeen: !!discarded.unmountSeen,
       remountSeen: !!discarded.remountSeen,
       resolvedConnectorContext: hasResolvedConnectorContext(snapshot.root, snapshot.editable)
@@ -624,6 +643,8 @@
       generationId: active.generationId,
       phase: active.phase,
       source: active.source,
+      intentClass: active.intentClass || null,
+      explicitSendIntent: active.explicitSendIntent === true,
       preSendLength: active.preSendLength,
       preSendBodyLength: active.preSendBodyLength || 0,
       preSendFingerprintCaptured: active.preSendFingerprintCaptured,
@@ -663,6 +684,7 @@
       nonmatchingGraceMs: NONMATCHING_GRACE_MS,
       persistentResidualGraceMs: PERSISTENT_RESIDUAL_GRACE_MS,
       minPartialResidualLength: MIN_PARTIAL_RESIDUAL_LENGTH,
+      sendCandidateWindowMs: active.candidateWindowMs || SEND_CANDIDATE_WINDOW_MS,
       elapsedMs: elapsedMs(active),
       cleanupReason: active.cleanupReason
     };
@@ -676,6 +698,8 @@
       generationId,
       phase: "CANDIDATE",
       source: candidate.source,
+      intentClass: candidate.intentClass || null,
+      explicitSendIntent: candidate.explicitSendIntent === true,
       preSendLength: candidate.preSendLength,
       preSendBodyLength: candidate.preSendBodyLength || 0,
       preSendFingerprintCaptured: candidate.preSendFingerprintCaptured,
@@ -715,6 +739,7 @@
       nonmatchingGraceMs: NONMATCHING_GRACE_MS,
       persistentResidualGraceMs: PERSISTENT_RESIDUAL_GRACE_MS,
       minPartialResidualLength: MIN_PARTIAL_RESIDUAL_LENGTH,
+      sendCandidateWindowMs: candidate.candidateWindowMs || SEND_CANDIDATE_WINDOW_MS,
       elapsedMs: Date.now() - candidate.startedAt,
       cleanupReason: reason,
       sendCandidateActive: reason ? false : true,
@@ -730,6 +755,8 @@
       generationId,
       phase: "IDLE",
       source: null,
+      intentClass: null,
+      explicitSendIntent: false,
       preSendLength: 0,
       preSendBodyLength: 0,
       preSendFingerprintCaptured: false,
@@ -769,6 +796,7 @@
       nonmatchingGraceMs: NONMATCHING_GRACE_MS,
       persistentResidualGraceMs: PERSISTENT_RESIDUAL_GRACE_MS,
       minPartialResidualLength: MIN_PARTIAL_RESIDUAL_LENGTH,
+      sendCandidateWindowMs: SEND_CANDIDATE_WINDOW_MS,
       elapsedMs: 0,
       cleanupReason: null
     };
@@ -1072,6 +1100,14 @@
     const root = findComposerRoot(editable);
     if (hasResolvedConnectorContext(root, editable)) return false;
     return /(^|\s)@[\p{L}\p{N}_-]{0,64}$/u.test(readComposerText(editable).trimEnd());
+  }
+
+  function explicitSendIntentForSource(source) {
+    return source === "click" || source === "submit" || source === "enter";
+  }
+
+  function candidateWindowMsForSource(source) {
+    return explicitSendIntentForSource(source) ? EXPLICIT_SEND_CANDIDATE_WINDOW_MS : SEND_CANDIDATE_WINDOW_MS;
   }
 
   function shouldObserveEvent(event) {

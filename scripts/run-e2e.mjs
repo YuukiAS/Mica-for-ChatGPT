@@ -89,6 +89,10 @@ try {
     connectorResult.screenshotRegression = await runConnectorContinuityScreenshotCase();
     console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: connectorResult }, null, 2));
     process.exitCode = 0;
+  } else if (caseFilter === "send-residual-race") {
+    const raceResult = await runSendResidualRaceCase();
+    console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: raceResult }, null, 2));
+    process.exitCode = 0;
   } else if (caseFilter === "overlay-placement-matrix") {
     const overlayResult = await runOverlayPlacementMatrixCase();
     console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: overlayResult }, null, 2));
@@ -110,6 +114,8 @@ try {
     results.push(popupAtlasResult);
     const connectorResult = await runConnectorMentionLifecycleCase();
     results.push(connectorResult);
+    const sendResidualRaceResult = await runSendResidualRaceCase();
+    results.push(sendResidualRaceResult);
     const overlayControlsHitTestResult = await runOverlayControlsHitTestCase();
     results.push({ ...overlayControlsHitTestResult, mode: "overlay-controls-hit-test", width: 900 });
     const failed = results.filter((result) => !result.passed);
@@ -177,6 +183,8 @@ try {
     const connectorResult = await runConnectorMentionLifecycleCase();
     connectorResult.screenshotRegression = await runConnectorContinuityScreenshotCase();
     results.push(connectorResult);
+    const sendResidualRaceResult = await runSendResidualRaceCase();
+    results.push(sendResidualRaceResult);
     const overlayControlsHitTestResult = await runOverlayControlsHitTestCase();
     results.push({ ...overlayControlsHitTestResult, mode: "overlay-controls-hit-test", width: 900 });
     const overlayResult = await runOverlayPlacementMatrixCase();
@@ -248,6 +256,48 @@ async function runConnectorMentionLifecycleCase() {
   assert(JSON.stringify(payload).includes("long connector residual recovered after commit"), "Connector fixture did not cover long connector residual", payload);
   assert(JSON.stringify(payload).includes("connector pill removal does not refresh continuity snapshot"), "Connector fixture did not cover pill-removal snapshot regression", payload);
   assert(JSON.stringify(payload).includes("repeated remount stale clear waits for quiet window"), "Connector fixture did not cover stale-clear quiet-window regression", payload);
+  return payload;
+}
+
+async function runSendResidualRaceCase() {
+  console.error("Running E2E case send-residual-race@900px");
+  const page = await browser.newPage({ viewport: { width: 900, height: 820 } });
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  const url = `${baseUrl}/tests/fixtures/send-residual-race.html?clock=virtual&t=${Date.now()}`;
+  let payload;
+  try {
+    await page.goto(url, { waitUntil: "load" });
+    await page.waitForFunction(() => {
+      const text = document.getElementById("race-result")?.textContent || "";
+      return text.trim().startsWith("{");
+    }, null, { timeout: 15000 });
+    payload = JSON.parse(await page.locator("#race-result").textContent());
+  } catch (error) {
+    const resultText = await page.locator("#race-result").textContent().catch(() => "");
+    await page.close();
+    throw Object.assign(new Error(`Send residual race fixture failed before producing a result: ${error?.message || error}`), {
+      details: { resultText, errors }
+    });
+  }
+  await page.close();
+
+  payload.width = 900;
+  payload.mode = "send-residual-race";
+  payload.errors = errors;
+  if (errors.length > 0) payload.passed = false;
+  assert(payload.passed, "Send residual race fixture failed", payload);
+  assert(payload.clock === "virtual", "Send residual race fixture did not run with virtual clock", payload);
+  assert(JSON.stringify(payload).includes("explicit click 100ms survives remount"), "Race fixture missing 100ms delayed commit case", payload);
+  assert(JSON.stringify(payload).includes("explicit click 700ms survives remount"), "Race fixture missing 700ms delayed commit case", payload);
+  assert(JSON.stringify(payload).includes("explicit click 2000ms survives remount"), "Race fixture missing 2000ms delayed commit case", payload);
+  assert(JSON.stringify(payload).includes("explicit click survives old candidate boundary"), "Race fixture missing candidate boundary case", payload);
+  assert(JSON.stringify(payload).includes("explicit submit survives remount"), "Race fixture missing submit delayed commit case", payload);
+  assert(JSON.stringify(payload).includes("selection-only Enter excluded"), "Race fixture missing connector selection guard case", payload);
+  assert(JSON.stringify(payload).includes("new user input preserved"), "Race fixture missing new input preservation case", payload);
   return payload;
 }
 
