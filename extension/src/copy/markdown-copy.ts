@@ -113,14 +113,14 @@
     return candidates.find((node) => {
       if (!(node instanceof HTMLElement) || node.getAttribute(BUTTON_ATTR) === "true") return false;
       const label = `${node.getAttribute("aria-label") || ""} ${node.getAttribute("title") || ""} ${node.getAttribute("data-testid") || ""} ${node.textContent || ""}`;
-      return /\bcopy\b|复制/i.test(label);
+      return /\bcopy\b|复制/i.test(label) || hasCopyIconSignature(node);
     }) || null;
   }
 
   function findActionBar(turn, nativeCopy = null) {
     if (nativeCopy instanceof HTMLElement) {
-      const bar = nativeCopy.closest("[role='toolbar'], menu, [data-testid*='message-actions' i], [class*='action' i], div");
-      if (bar instanceof HTMLElement && !bar.closest("[data-mica-root='true']")) return bar;
+      const cluster = findTightNativeActionCluster(turn, nativeCopy);
+      if (cluster) return cluster;
     }
     const selectors = [
       "[data-testid*='copy']",
@@ -134,6 +134,39 @@
       if (bar instanceof HTMLElement && !bar.closest("[data-mica-root='true']")) return bar;
     }
     return null;
+  }
+
+  function hasCopyIconSignature(button) {
+    if (!(button instanceof Element)) return false;
+    if (button.querySelector("svg[data-icon*='copy' i], svg[data-lucide*='copy' i], [class*='copy' i]")) return true;
+    const svg = button.querySelector("svg");
+    const pathCount = svg?.querySelectorAll?.("path, rect, use")?.length || 0;
+    return pathCount >= 2 && /copy/i.test(`${svg?.getAttribute("aria-label") || ""} ${svg?.getAttribute("data-testid") || ""}`);
+  }
+
+  function findTightNativeActionCluster(turn, nativeCopy) {
+    let current = nativeCopy.parentElement;
+    while (current && current !== turn && !current.closest("[data-mica-root='true']")) {
+      const buttons = actionButtonsWithin(current);
+      if (buttons.includes(nativeCopy) && buttons.length >= 2 && !isBroadDetachedActionContainer(current, buttons)) return current;
+      current = current.parentElement;
+    }
+    return null;
+  }
+
+  function actionButtonsWithin(root) {
+    return Array.from(root.querySelectorAll("button, [role='button']")).filter((node) => node instanceof HTMLElement && node.getAttribute(BUTTON_ATTR) !== "true");
+  }
+
+  function isBroadDetachedActionContainer(container, buttons) {
+    const rect = container.getBoundingClientRect?.();
+    if (!rect || rect.width <= 0) return false;
+    const buttonRects = buttons.map((button) => button.getBoundingClientRect?.()).filter((item) => item && item.width > 0);
+    if (buttonRects.length < 2) return false;
+    const left = Math.min(...buttonRects.map((item) => item.left));
+    const right = Math.max(...buttonRects.map((item) => item.right));
+    const buttonSpan = Math.max(1, right - left);
+    return rect.width > Math.max(360, buttonSpan * 3);
   }
 
   function createActionBar(turn) {

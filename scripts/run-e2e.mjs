@@ -93,6 +93,14 @@ try {
     const raceResult = await runSendResidualRaceCase();
     console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: raceResult }, null, 2));
     process.exitCode = 0;
+  } else if (caseFilter === "real-actionbar-placement") {
+    const actionbarResult = await runRealActionbarPlacementCase();
+    console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: actionbarResult }, null, 2));
+    process.exitCode = 0;
+  } else if (caseFilter === "real-long-residual") {
+    const residualResult = await runRealLongResidualCase();
+    console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: residualResult }, null, 2));
+    process.exitCode = 0;
   } else if (caseFilter === "overlay-placement-matrix") {
     const overlayResult = await runOverlayPlacementMatrixCase();
     console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: overlayResult }, null, 2));
@@ -116,6 +124,10 @@ try {
     results.push(connectorResult);
     const sendResidualRaceResult = await runSendResidualRaceCase();
     results.push(sendResidualRaceResult);
+    const realActionbarResult = await runRealActionbarPlacementCase();
+    results.push(realActionbarResult);
+    const realLongResidualResult = await runRealLongResidualCase();
+    results.push(realLongResidualResult);
     const overlayControlsHitTestResult = await runOverlayControlsHitTestCase();
     results.push({ ...overlayControlsHitTestResult, mode: "overlay-controls-hit-test", width: 900 });
     const failed = results.filter((result) => !result.passed);
@@ -185,6 +197,10 @@ try {
     results.push(connectorResult);
     const sendResidualRaceResult = await runSendResidualRaceCase();
     results.push(sendResidualRaceResult);
+    const realActionbarResult = await runRealActionbarPlacementCase();
+    results.push(realActionbarResult);
+    const realLongResidualResult = await runRealLongResidualCase();
+    results.push(realLongResidualResult);
     const overlayControlsHitTestResult = await runOverlayControlsHitTestCase();
     results.push({ ...overlayControlsHitTestResult, mode: "overlay-controls-hit-test", width: 900 });
     const overlayResult = await runOverlayPlacementMatrixCase();
@@ -298,6 +314,60 @@ async function runSendResidualRaceCase() {
   assert(JSON.stringify(payload).includes("explicit submit survives remount"), "Race fixture missing submit delayed commit case", payload);
   assert(JSON.stringify(payload).includes("selection-only Enter excluded"), "Race fixture missing connector selection guard case", payload);
   assert(JSON.stringify(payload).includes("new user input preserved"), "Race fixture missing new input preservation case", payload);
+  return payload;
+}
+
+async function runRealActionbarPlacementCase() {
+  return runJsonFixtureCase({
+    mode: "real-actionbar-placement",
+    resultId: "actionbar-result",
+    fixturePath: "tests/fixtures/real-actionbar-placement.html",
+    viewport: { width: 900, height: 760 },
+    timeout: 8000
+  });
+}
+
+async function runRealLongResidualCase() {
+  return runJsonFixtureCase({
+    mode: "real-long-residual",
+    resultId: "real-residual-result",
+    fixturePath: "tests/fixtures/real-long-residual.html?clock=virtual",
+    viewport: { width: 900, height: 820 },
+    timeout: 15000
+  });
+}
+
+async function runJsonFixtureCase({ mode, resultId, fixturePath, viewport, timeout }) {
+  console.error(`Running E2E case ${mode}@${viewport.width}px`);
+  const page = await browser.newPage({ viewport });
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  const separator = fixturePath.includes("?") ? "&" : "?";
+  const url = `${baseUrl}/${fixturePath}${separator}t=${Date.now()}`;
+  let payload;
+  try {
+    await page.goto(url, { waitUntil: "load" });
+    await page.waitForFunction((id) => {
+      const text = document.getElementById(id)?.textContent || "";
+      return text.trim().startsWith("{");
+    }, resultId, { timeout });
+    payload = JSON.parse(await page.locator(`#${resultId}`).textContent());
+  } catch (error) {
+    const resultText = await page.locator(`#${resultId}`).textContent().catch(() => "");
+    await page.close();
+    throw Object.assign(new Error(`${mode} fixture failed before producing a result: ${error?.message || error}`), {
+      details: { resultText, errors }
+    });
+  }
+  await page.close();
+  payload.width = viewport.width;
+  payload.mode = mode;
+  payload.errors = errors;
+  if (errors.length > 0) payload.passed = false;
+  assert(payload.passed, `${mode} fixture failed`, payload);
   return payload;
 }
 

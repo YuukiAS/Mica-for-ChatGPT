@@ -179,6 +179,8 @@
       selectionWindowActiveAtGesture: !!connectorLifecycle?.selectionWindowActive,
       baselineUserTurns: safeCall(bridge.countUserTurns, countUserTurns()),
       lastUserTurns: safeCall(bridge.countUserTurns, countUserTurns()),
+      baselineUserTurnKeys: snapshot.userTurnKeys || [],
+      baselineLatestUserTurnHash: snapshot.latestUserTurnBodyHash || null,
       previousComposerExists: snapshot.exists,
       unmountSeen: false,
       remountSeen: false,
@@ -229,6 +231,11 @@
       connectorLifecycleLatched: promoted.connectorLifecycleLatched,
       baselineUserTurns: promoted.baselineUserTurns,
       lastUserTurns: safeCall(bridge.countUserTurns, countUserTurns()),
+      baselineUserTurnKeys: promoted.baselineUserTurnKeys || [],
+      baselineLatestUserTurnHash: promoted.baselineLatestUserTurnHash || null,
+      userTurnIdentityCommitObserved: false,
+      userTurnPayloadCommitObserved: false,
+      userTurnCommitReason: null,
       userTurnCommitSignalObserved: false,
       userTurnCommittedLatched: false,
       userTurnDelta: 0,
@@ -285,17 +292,22 @@
     if (!generation) return;
     generation.userTurnCommitSignalObserved = true;
     generation.userTurnCommittedLatched = true;
+    generation.userTurnIdentityCommitObserved = delta?.reason === "user_turn_identity" || delta?.reason === "latest_user_payload";
+    generation.userTurnPayloadCommitObserved = delta?.reason === "latest_user_payload";
+    generation.userTurnCommitReason = delta?.reason || "count_delta";
     generation.firstCommitAt = Date.now();
     generation.userTurnDelta = safeCall(bridge.countUserTurns, snapshot.userTurns) - generation.baselineUserTurns;
     generation.userTurnDeltaHistory.push({
       elapsedMs: elapsedMs(generation),
-      delta,
+      delta: typeof delta === "number" ? delta : delta?.countDelta ?? 0,
+      reason: delta?.reason || "count_delta",
       totalDelta: generation.userTurnDelta
     });
     generation.phase = "COMMITTED";
     record("send_residual_commit_latched", {
       generationId: generation.generationId,
-      delta,
+      delta: typeof delta === "number" ? delta : delta?.countDelta ?? 0,
+      reason: delta?.reason || "count_delta",
       totalDelta: generation.userTurnDelta,
       connectorLifecycleLatched: generation.connectorLifecycleLatched,
       armed: isArmed(generation),
@@ -407,11 +419,11 @@
   function trackCandidateUserTurnDelta(snapshot) {
     if (!sendCandidate) return;
     const current = safeCall(bridge.countUserTurns, snapshot.userTurns);
-    if (current === sendCandidate.lastUserTurns) return;
     const delta = current - sendCandidate.lastUserTurns;
     sendCandidate.lastUserTurns = current;
-    if (delta > 0) {
-      promoteCandidateToGeneration(snapshot, delta);
+    const commit = detectCandidateUserTurnCommit(snapshot, delta);
+    if (commit.committed) {
+      promoteCandidateToGeneration(snapshot, commit);
     }
   }
 
@@ -652,8 +664,12 @@
       mentionSignalSource: active.mentionSignalSource,
       connectorLifecycleDetected: !!active.connectorLifecycleDetected,
       connectorLifecycleLatched: !!active.connectorLifecycleLatched,
+      baselineUserTurns: active.baselineUserTurns,
       userTurnCommitSignalObserved: active.userTurnCommitSignalObserved,
       userTurnCommittedLatched: active.userTurnCommittedLatched,
+      userTurnIdentityCommitObserved: active.userTurnIdentityCommitObserved === true,
+      userTurnPayloadCommitObserved: active.userTurnPayloadCommitObserved === true,
+      userTurnCommitReason: active.userTurnCommitReason || null,
       userTurnDelta: active.userTurnDelta,
       userTurnDeltaHistory: active.userTurnDeltaHistory.slice(),
       composerUnmountCountAfterSend: active.unmountCountAfterSend,
@@ -819,8 +835,29 @@
       bodyTextLength: parts.editableBodyText.length,
       connectorPillTextLength: parts.connectorPillTextLength,
       attachmentOrNonEditableTokenLength: parts.attachmentOrNonEditableTokenLength,
-      userTurns: safeCall(bridge.countUserTurns, countUserTurns())
+      userTurns: safeCall(bridge.countUserTurns, countUserTurns()),
+      userTurnKeys: collectUserTurnKeys(),
+      latestUserTurnBodyHash: latestUserTurnBodyHash()
     };
+  }
+
+  function detectCandidateUserTurnCommit(snapshot, countDelta) {
+    if (!sendCandidate) return { committed: false };
+    if (countDelta > 0) return { committed: true, countDelta, reason: "count_delta" };
+    const baseline = new Set(sendCandidate.baselineUserTurnKeys || []);
+    const currentKeys = snapshot.userTurnKeys || [];
+    if (currentKeys.some((key) => !baseline.has(key))) {
+      return { committed: true, countDelta, reason: "user_turn_identity" };
+    }
+    if (
+      snapshot.latestUserTurnBodyHash
+      && sendCandidate.preSendBodyHash
+      && snapshot.latestUserTurnBodyHash === sendCandidate.preSendBodyHash
+      && snapshot.latestUserTurnBodyHash !== sendCandidate.baselineLatestUserTurnHash
+    ) {
+      return { committed: true, countDelta, reason: "latest_user_payload" };
+    }
+    return { committed: false };
   }
 
   function matchesPreSendPayload(text, active) {
@@ -997,6 +1034,32 @@
     const main = document.querySelector("main") || document.body;
     if (!main) return 0;
     return Array.from(main.querySelectorAll("[data-message-author-role='user']")).length;
+  }
+
+  function collectUserTurnKeys() {
+    const main = document.querySelector("main") || document.body;
+    if (!main) return [];
+    return Array.from(main.querySelectorAll("[data-message-author-role='user']")).map((node) => userTurnKey(node)).filter(Boolean);
+  }
+
+  function latestUserTurnBodyHash() {
+    const main = document.querySelector("main") || document.body;
+    const turns = main ? Array.from(main.querySelectorAll("[data-message-author-role='user']")) : [];
+    const latest = turns[turns.length - 1];
+    const canonical = canonicalize(readComposerText(latest)).trim();
+    return canonical ? fingerprintCanonical(canonical) : null;
+  }
+
+  function userTurnKey(node) {
+    const element = node instanceof Element ? node : null;
+    const owner = element?.closest?.("[data-testid], [data-message-id]") || element;
+    const stable = [
+      element?.getAttribute?.("data-testid"),
+      element?.getAttribute?.("data-message-id"),
+      owner?.getAttribute?.("data-testid"),
+      owner?.getAttribute?.("data-message-id")
+    ].filter(Boolean).join("|");
+    return stable ? fingerprintCanonical(stable) : null;
   }
 
   function extractComposerText(editable, root) {

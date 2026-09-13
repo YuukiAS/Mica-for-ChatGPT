@@ -24,7 +24,6 @@ const elements = {
   reason: document.getElementById("reason"),
   counts: document.getElementById("counts"),
   version: document.getElementById("version"),
-  buildLabel: document.getElementById("buildLabel"),
   enabled: document.getElementById("enabled"),
   showStatus: document.getElementById("showStatus"),
   longThreadOptimization: document.getElementById("longThreadOptimization"),
@@ -72,7 +71,6 @@ elements.copyAtlasReport.addEventListener("click", copyAtlasReport);
 async function load() {
   const manifest = chrome.runtime.getManifest();
   elements.version.textContent = `v${manifest.version_name || manifest.version}`;
-  elements.buildLabel.textContent = "v020-convergence.rc11";
   const settings = await getStorage(DEFAULT_SETTINGS);
   elements.enabled.checked = settings.enabled;
   elements.showStatus.checked = settings.showStatus;

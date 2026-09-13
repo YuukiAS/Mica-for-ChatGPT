@@ -140,7 +140,13 @@
 
       async function runOverlayFixtureTest(mode) {
         const results = [];
-        await waitFor(() => document.querySelector("[data-mica-root='true']")?.shadowRoot?.querySelector(".mica-status"));
+        await waitFor(() => {
+          const host = document.querySelector("[data-mica-root='true']");
+          const status = host?.shadowRoot?.querySelector(".mica-status");
+          const placement = window.__MICA_OVERLAY_DEBUG__?.placement
+            || host?.shadowRoot?.getElementById("mica-overlay")?.dataset?.placement;
+          return status && placement === "bottom-right-static";
+        });
         results.push(assertCase("overlay exists", () => !!document.querySelector("[data-mica-root='true']")));
         const initial = readOverlay();
         results.push(assertCase("initial status is compact", () => initial.statusClass.includes("compact")));

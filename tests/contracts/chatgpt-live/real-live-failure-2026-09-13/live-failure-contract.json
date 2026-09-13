@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "kind": "mica.chatgptLiveFailure.contract",
+  "source": "limited-from-user-screenshot-and-real-2026-09-13-contract-pack",
+  "acquisition": {
+    "liveProbeAttempted": true,
+    "liveProbeStatus": "UNAVAILABLE_IN_CURRENT_CODEX_SANDBOX",
+    "liveProbeFailure": "connectWebSocket timed out after 8000ms without elevated loopback access; elevated retry was rejected by safety review",
+    "userRetryRequested": false,
+    "pageRefreshRequested": false
+  },
+  "privacy": {
+    "localOnly": true,
+    "telemetryUploaded": false,
+    "promptTextIncluded": false,
+    "answerTextIncluded": false,
+    "rawDomIncluded": false,
+    "fullPageScreenshotIncluded": false,
+    "headersIncluded": false,
+    "cookiesIncluded": false,
+    "requestBodiesIncluded": false
+  },
+  "safety": {
+    "automatedSend": false,
+    "automatedEnter": false,
+    "automatedUpload": false,
+    "automatedConnectorAction": false,
+    "playwrightRealSiteTraceUsed": false,
+    "computerUseRequired": false,
+    "cdpConnection": false
+  },
+  "actionBar": {
+    "status": "LIMITED_OBSERVED_FROM_SCREENSHOT",
+    "nativeCopyVisible": true,
+    "nativeActionClusterVisible": true,
+    "requiredInvariant": {
+      "micaCopySameParentAsNativeCopy": true,
+      "micaCopyAdjacentToNativeCopy": true,
+      "broadDetachedContainerRejected": true
+    },
+    "fixtureModel": "native copy may be icon-only without aria/text copy label; resolver must use semantic icon/sibling cluster evidence"
+  },
+  "staleComposer": {
+    "status": "LIMITED_OBSERVED_FROM_SCREENSHOT",
+    "composerPresent": true,
+    "connectorPillPresent": true,
+    "committedUserTurnVisible": true,
+    "samePayloadAsLatestUserTurn": true,
+    "fixtureModel": "new committed user turn can replace an old mounted turn so total mounted user-turn count stays constant"
+  }
+}

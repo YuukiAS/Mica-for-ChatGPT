@@ -73,6 +73,7 @@ const sendResidualRecovery = render(await readFile(path.join(srcDir, "reliabilit
 const markdownCopy = render(await readFile(path.join(srcDir, "copy", "markdown-copy.ts"), "utf8"));
 const atlasRecorder = render(await readFile(path.join(srcDir, "atlas", "atlas-recorder.ts"), "utf8"));
 const popup = render(await readFile(path.join(popupDir, "popup.ts"), "utf8"));
+const popupHtml = render(await readFile(path.join(popupDir, "index.html"), "utf8"));
 
 await writeFile(path.join(outDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 await writeFile(path.join(outDir, "known-interruptions.js"), knownInterruptions);
@@ -85,7 +86,7 @@ await writeFile(path.join(outDir, "markdown-copy.js"), markdownCopy);
 await writeFile(path.join(outDir, "atlas-recorder.js"), atlasRecorder);
 await writeFile(path.join(outDir, "content.js"), content);
 await writeFile(path.join(outDir, "popup", "popup.js"), popup);
-await cp(path.join(popupDir, "index.html"), path.join(outDir, "popup", "index.html"));
+await writeFile(path.join(outDir, "popup", "index.html"), popupHtml);
 await cp(path.join(popupDir, "popup.css"), path.join(outDir, "popup", "popup.css"));
 await cp(iconsDir, path.join(outDir, "icons"), { recursive: true });
 

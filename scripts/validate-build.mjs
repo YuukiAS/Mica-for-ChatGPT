@@ -1,7 +1,7 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DEV_DIST_DIR_NAME, ICON_SIZES, MACHINE_VERSION, REQUIRED_EXTENSION_FILES, VERSION_NAME } from "./release-config.mjs";
+import { DEV_DIST_DIR_NAME, ICON_SIZES, MACHINE_VERSION, REQUIRED_EXTENSION_FILES, VERSION, VERSION_NAME } from "./release-config.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = path.join(root, "dist", DEV_DIST_DIR_NAME);
@@ -11,9 +11,12 @@ for (const relative of REQUIRED_EXTENSION_FILES) {
 }
 
 const manifest = JSON.parse(await readFile(path.join(distDir, "manifest.json"), "utf8"));
+const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+assert(packageJson.version === VERSION, "package version must match release config VERSION");
 assert(manifest.manifest_version === 3, "manifest_version must be 3");
 assert(manifest.version === MACHINE_VERSION, "manifest version must match release config");
 assert(manifest.version_name === VERSION_NAME, "manifest version_name must match release config");
+assert(manifest.version === VERSION && manifest.version_name === VERSION, "manifest versions must use canonical patch semver");
 assert(manifest.action?.default_popup === "popup/index.html", "action.default_popup missing");
 assert(manifest.action?.default_title === "Mica", "action.default_title missing");
 assert(manifest.permissions?.includes("storage"), "storage permission missing");
@@ -262,6 +265,12 @@ for (const token of ["Performance", "Copy", "Reliability", "Run one-shot diagnos
   assert(popupHtml.includes(token), `popup missing ${token}`);
 }
 assert(!popupHtml.includes("Start diagnostics"), "popup should not expose the old engineering diagnostics grid");
+assert(!/v020-convergence|rc\d+/i.test(popupHtml), "popup HTML must not expose rc/build labels");
+const popupJs = await readFile(path.join(distDir, "popup", "popup.js"), "utf8");
+assert(!/buildLabel|v020-convergence|rc\d+/i.test(popupJs), "popup JS must not expose rc/build labels");
+for (const source of [content, sendResidualRecovery, markdownCopy]) {
+  assert(!/v020-convergence|rc\d+/i.test(source), "runtime output must not contain rc labels");
+}
 
 console.log("Build validation passed");
 

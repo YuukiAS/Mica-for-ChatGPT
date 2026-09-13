@@ -2333,7 +2333,7 @@
       height: size.height
     };
     globalThis.__MICA_OVERLAY_DEBUG__ = {
-      placement: placement.name,
+      placement: name,
       mode: getOverlayMode(),
       toastVisible: overlayState.toastVisible,
       toastCount: overlayState.toastCount,

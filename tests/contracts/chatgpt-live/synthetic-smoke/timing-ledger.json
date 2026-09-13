@@ -282,6 +282,12 @@
     },
     {
       "file": "extension/src/reliability/send-residual-recovery.ts",
+      "name": "EXPLICIT_SEND_CANDIDATE_WINDOW_MS",
+      "value": "4800",
+      "classification": "lifecycle heuristic"
+    },
+    {
+      "file": "extension/src/reliability/send-residual-recovery.ts",
       "name": "HARD_LIFETIME_MS",
       "value": "5600",
       "classification": "safety hard cap"

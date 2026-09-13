@@ -1,7 +1,7 @@
 (() => {
-  const VERSION = "0.2.0";
-  const VERSION_NAME = "0.2.0";
-  const BUILD_LABEL = "v020-convergence.rc11";
+  const VERSION = "0.2.1";
+  const VERSION_NAME = "0.2.1";
+  const BUILD_LABEL = "0.2.1";
   const DEFAULT_SETTINGS = {
     enabled: true,
     showStatus: true,
@@ -2333,7 +2333,7 @@
       height: size.height
     };
     globalThis.__MICA_OVERLAY_DEBUG__ = {
-      placement: placement.name,
+      placement: name,
       mode: getOverlayMode(),
       toastVisible: overlayState.toastVisible,
       toastCount: overlayState.toastCount,

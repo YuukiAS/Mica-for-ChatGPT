@@ -64,12 +64,14 @@ Mica 的版本号首先用于区分“用户实际加载的是哪一份运行代
 
 `scripts/release-config.mjs` 是版本 source of truth。
 
+从 `0.2.1` 开始，日常 runtime candidate 不再使用 `v020-convergence.rcN` 作为用户可见 build label。用户侧只检查 canonical extension version，例如 `v0.2.1`。如果后续 runtime 继续变化，按 patch 号递增为 `0.2.2`、`0.2.3`，而不是继续追加 rc label。
+
 从 `0.1.4` 开始：
 
 - `MACHINE_VERSION` 使用新的三段式版本，例如 `0.1.4`；
 - `VERSION_NAME` 应与 `MACHINE_VERSION` 一致，或在后续清理中直接取消额外 display version；
 - 不允许出现 `MACHINE_VERSION = 0.1.0`、`VERSION_NAME = 0.1.0-alpha.3` 长期复用但 runtime 已变化的情况；
-- `BUILD_LABEL` 可以继续保留为内部诊断描述，例如 `composer-guided-diagnostics.1`，但它不能代替正式版本号。
+- `BUILD_LABEL` 只能作为内部兼容字段；普通 popup 不再显示独立 build label，且不得继续使用 `rcN` 作为用户确认 loaded build 的必要条件。
 
 用户判断“我到底加载了哪版”时，版本号应该已经足够区分；`BUILD_LABEL` 只负责补充说明该版本的实现主题。
 

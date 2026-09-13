@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mica real-derived long connector residual fixture</title>
+    <style>
+      body { min-height: 1200px; margin: 0; background: #f7f7f8; color: #171717; font: 14px/1.45 system-ui, sans-serif; }
+      main { width: min(820px, calc(100vw - 32px)); margin: 0 auto; padding: 24px 0 180px; }
+      article { margin: 12px 0; padding: 12px; border-radius: 8px; background: #fff; }
+      .composer { position: fixed; left: 50%; bottom: 16px; width: min(820px, calc(100vw - 24px)); transform: translateX(-50%); }
+      [data-testid="composer"] > div { display: grid; grid-template-columns: 1fr auto; gap: 8px; min-height: 56px; padding: 10px; border-radius: 28px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.12); }
+      [role="textbox"] { min-height: 34px; white-space: pre-wrap; outline: none; }
+      [data-testid="send-button"] { min-width: 48px; height: 36px; border: 0; border-radius: 999px; background: #171717; color: #fff; }
+      [data-inline-selection-pill] { display: inline-flex; padding: 2px 7px; border-radius: 999px; background: #eef2ff; }
+      #real-residual-result { position: fixed; left: 8px; top: 8px; max-width: 52vw; white-space: pre-wrap; font-size: 11px; }
+    </style>
+  </head>
+  <body>
+    <pre id="real-residual-result">Idle</pre>
+    <main><section id="conversation"></section></main>
+    <div id="composer-dock"></div>
+    <script src="./virtual-clock.js"></script>
+    <script src="../../dist/mica-dev/send-residual-recovery.js"></script>
+    <script>
+      const resultNode = document.getElementById("real-residual-result");
+      const conversation = document.getElementById("conversation");
+      const dock = document.getElementById("composer-dock");
+      const events = [];
+      const PAYLOADS = {
+        short: makePayload("short_live_residual_marker", 80),
+        medium: makePayload("medium_live_residual_marker", 620),
+        long: makePayload("long_live_residual_marker", 2200)
+      };
+      const NEW_INPUT = "draft typed after real committed turn";
+      let composer = null;
+      let editor = null;
+      let turnSerial = 0;
+
+      window.MicaComposerDiagnostics = {
+        isActive: () => true,
+        recordSendResidualRecoveryEvent: (type, details = {}) => events.push({ type, ...details, at: Date.now() })
+      };
+
+      run().catch((error) => {
+        resultNode.textContent = JSON.stringify({ passed: false, currentCase: window.__MICA_CURRENT_REAL_RESIDUAL_CASE__ || null, error: String(error?.stack || error), state: window.MicaSendResidualRecovery?.getState?.() || null, events }, null, 2);
+      });
+
+      async function run() {
+        assert(window.__MICA_VIRTUAL_CLOCK__?.enabled === true, "virtual clock required");
+        const shortCase = await runCase("short", () => runCountNeutralCommit(PAYLOADS.short, { removePillAtCommit: false }));
+        const mediumCase = await runCase("medium", () => runCountNeutralCommit(PAYLOADS.medium, { removePillAtCommit: true }));
+        const longCase = await runCase("long", () => runCountNeutralCommit(PAYLOADS.long, { removePillBeforeCommit: true }));
+        const newInput = await runCase("newInput", runNewInputPreserved);
+        const cases = { shortCase, mediumCase, longCase, newInput };
+        const serialized = JSON.stringify(cases);
+        const checks = [
+          ["short count-neutral committed residual recovered", residualPassed(shortCase) && shortCase.preSendBodyLength >= 80],
+          ["medium count-neutral committed residual recovered", residualPassed(mediumCase) && mediumCase.preSendBodyLength >= 500],
+          ["long 2000 char count-neutral committed residual recovered", residualPassed(longCase) && longCase.preSendBodyLength >= 2000],
+          ["committed user turn DOM changed while count stayed constant", [shortCase, mediumCase, longCase].every((item) => item.baselineUserTurns === item.finalUserTurns && item.userTurnKeyChanged === true)],
+          ["new input preserved", newInput.cancelledByUserInput === true && newInput.finalTextLength === NEW_INPUT.length && newInput.recoveryAttemptCount === 0],
+          ["no auto resend or connector action", serialized.includes("requestSubmit") === false && serialized.includes("connector action") === false],
+          ["privacy excludes raw payload", !serialized.includes("live_residual_marker") && !Object.values(PAYLOADS).some((value) => serialized.includes(value))]
+        ].map(([name, passed]) => ({ name, passed: !!passed }));
+        resultNode.textContent = JSON.stringify({ passed: checks.every((check) => check.passed), clock: "virtual", checks, cases }, null, 2);
+      }
+
+      async function runCase(name, fn) {
+        window.__MICA_CURRENT_REAL_RESIDUAL_CASE__ = name;
+        resetRuntime();
+        return fn();
+      }
+
+      async function runCountNeutralCommit(payload, options = {}) {
+        seedBaselineTurns(4);
+        const baselineKeys = userTurnKeys();
+        mountConnectorComposer(payload);
+        await delay(80);
+        await dispatchSendButtonClick();
+        await waitFor(() => window.MicaSendResidualRecovery.getState()?.sendCandidateActive === true, 600, stateText);
+        unmountComposer();
+        await delay(120);
+        mountConnectorComposer(payload);
+        await delay(700);
+        if (options.removePillBeforeCommit) removeCurrentConnectorPill();
+        removeOldestUserTurn();
+        appendUserTurn(payload, "current-live-committed");
+        if (options.removePillAtCommit) removeCurrentConnectorPill();
+        await waitFor(() => {
+          const state = window.MicaSendResidualRecovery.getState();
+          return state?.succeeded === true && editor && getEditorBodyLength() === 0;
+        }, 3600, stateText);
+        return summarize(payload, baselineKeys);
+      }
+
+      async function runNewInputPreserved() {
+        seedBaselineTurns(4);
+        const payload = PAYLOADS.long;
+        mountConnectorComposer(payload);
+        await dispatchSendButtonClick();
+        await waitFor(() => window.MicaSendResidualRecovery.getState()?.sendCandidateActive === true, 600, stateText);
+        unmountComposer();
+        await delay(120);
+        mountConnectorComposer(payload);
+        await delay(700);
+        removeOldestUserTurn();
+        appendUserTurn(payload, "current-live-committed");
+        await delay(120);
+        dispatchUserInsert(NEW_INPUT);
+        await delay(900);
+        const state = window.MicaSendResidualRecovery.getState();
+        return {
+          cancelledByUserInput: state.cancelledByUserInput === true,
+          finalTextLength: getEditorBodyLength(),
+          recoveryAttemptCount: state.attemptCount || 0,
+          succeeded: state.succeeded === true
+        };
+      }
+
+      function resetRuntime() {
+        events.length = 0;
+        unmountComposer();
+        conversation.replaceChildren();
+        turnSerial = 0;
+        window.MicaSendResidualRecovery.resetForTests();
+        window.MicaSendResidualRecovery.configure({ enabled: true });
+      }
+
+      function residualPassed(result) {
+        return result.userTurnCommittedLatched === true
+          && result.userTurnDelta === 0
+          && result.userTurnKeyChanged === true
+          && result.staleProvenanceReason === "exact_full"
+          && result.recoveryAttemptCount === 1
+          && result.succeeded === true
+          && result.finalTextLength === 0;
+      }
+
+      function summarize(payload, baselineKeys) {
+        const state = window.MicaSendResidualRecovery.getState();
+        const finalKeys = userTurnKeys();
+        return {
+          generationId: state.generationId,
+          source: state.source,
+          explicitSendIntent: state.explicitSendIntent === true,
+          baselineUserTurns: state.baselineUserTurns,
+          finalUserTurns: finalKeys.length,
+          userTurnDelta: state.userTurnDelta,
+          userTurnCommittedLatched: state.userTurnCommittedLatched === true,
+          userTurnKeyChanged: finalKeys.some((key) => !baselineKeys.includes(key)),
+          preSendBodyLength: state.preSendBodyLength || 0,
+          persistentResidualPath: state.persistentResidualPath === true,
+          staleProvenanceReason: state.staleProvenanceReason || null,
+          recoveryAttemptCount: state.attemptCount || 0,
+          succeeded: state.succeeded === true,
+          finalTextLength: getEditorBodyLength(),
+          eventTypes: events.map((event) => event.type)
+        };
+      }
+
+      function seedBaselineTurns(count) {
+        for (let index = 0; index < count; index += 1) appendUserTurn(`baseline ${index}`, `baseline-${index}`);
+      }
+
+      function appendUserTurn(text, key) {
+        const article = document.createElement("article");
+        article.dataset.testid = `conversation-turn-${key}-${++turnSerial}`;
+        const marker = document.createElement("div");
+        marker.dataset.messageAuthorRole = "user";
+        marker.dataset.messageId = `msg-${key}`;
+        marker.textContent = text;
+        article.append(marker);
+        conversation.appendChild(article);
+        return article;
+      }
+
+      function removeOldestUserTurn() {
+        conversation.querySelector("[data-message-author-role='user']")?.closest("article")?.remove();
+      }
+
+      function userTurnKeys() {
+        return Array.from(conversation.querySelectorAll("[data-message-author-role='user']")).map((node) => `${node.getAttribute("data-message-id") || ""}:${node.closest("article")?.getAttribute("data-testid") || ""}`);
+      }
+
+      function mountConnectorComposer(text) {
+        unmountComposer();
+        const form = document.createElement("form");
+        form.className = "composer";
+        form.dataset.testid = "composer";
+        form.innerHTML = `
+          <div>
+            <div id="editor" role="textbox" contenteditable="plaintext-only" aria-label="Message Mica"></div>
+            <button type="button" data-testid="send-button" aria-label="Send message">Send</button>
+          </div>
+        `;
+        dock.appendChild(form);
+        composer = form;
+        editor = form.querySelector("[role='textbox']");
+        const chip = document.createElement("span");
+        chip.dataset.inlineSelectionPill = "";
+        chip.dataset.symbol = "ecosystemMention";
+        chip.dataset.id = "plugin:connector_fixture";
+        chip.setAttribute("contenteditable", "false");
+        chip.textContent = "GitHub";
+        editor.append(chip, document.createTextNode(text ? ` ${text}` : ""));
+        editor.focus();
+      }
+
+      function unmountComposer() {
+        composer?.remove();
+        composer = null;
+        editor = null;
+      }
+
+      function removeCurrentConnectorPill() {
+        editor?.querySelector("[data-inline-selection-pill]")?.remove();
+      }
+
+      async function dispatchSendButtonClick() {
+        composer?.querySelector("[data-testid='send-button']")?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+        await delay(0);
+      }
+
+      function dispatchUserInsert(value) {
+        editor.focus();
+        editor.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertText", data: "x" }));
+        editor.textContent = value;
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "x" }));
+      }
+
+      function getEditorBodyLength() {
+        const clone = editor?.cloneNode(true);
+        clone?.querySelectorAll?.("[data-inline-selection-pill]").forEach((node) => node.remove());
+        return (clone?.textContent || "").trim().length;
+      }
+
+      function makePayload(marker, minLength) {
+        const chunk = `${marker} read-only connector residual live shape coverage sentence. `;
+        let value = "";
+        while (value.length < minLength) value += chunk;
+        return value.slice(0, minLength);
+      }
+
+      function waitFor(fn, timeout, describeTimeout) {
+        const started = Date.now();
+        return (async () => {
+          for (;;) {
+            if (fn()) return true;
+            if (Date.now() - started > timeout) throw new Error(describeTimeout ? describeTimeout() : "Timed out");
+            await delay(40);
+          }
+        })();
+      }
+
+      function stateText() {
+        return JSON.stringify(window.MicaSendResidualRecovery.getState());
+      }
+
+      function delay(ms) {
+        const clock = window.__MICA_VIRTUAL_CLOCK__;
+        return (async () => {
+          await Promise.resolve();
+          clock.flushTimers();
+          clock.advanceBy(ms);
+          await clock.flushAsync();
+        })();
+      }
+
+      function assert(condition, message) {
+        if (!condition) throw new Error(message);
+      }
+    </script>
+  </body>
+</html>

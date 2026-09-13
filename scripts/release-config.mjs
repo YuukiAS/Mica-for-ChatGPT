@@ -1,6 +1,7 @@
-export const MACHINE_VERSION = "0.2.0";
-export const VERSION_NAME = "0.2.0";
-export const BUILD_LABEL = "v020-convergence.rc11";
+export const VERSION = "0.2.1";
+export const MACHINE_VERSION = VERSION;
+export const VERSION_NAME = VERSION;
+export const BUILD_LABEL = VERSION;
 export const RELEASE_TAG = `v${VERSION_NAME}`;
 export const DEV_DIST_DIR_NAME = "mica-dev";
 export const RELEASE_BASENAME = `mica-for-chatgpt-v${VERSION_NAME}`;

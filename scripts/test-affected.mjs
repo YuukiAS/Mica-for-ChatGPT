@@ -88,6 +88,7 @@ function buildPlan(files) {
     if (/^extension\/src\/copy\//.test(normalized)) {
       addStatic("copy_change");
       addCase("markdown-copy", "copy_change");
+      addCase("real-actionbar-placement", "copy_change");
       addCase("typing-hotpath", "copy_change");
       continue;
     }
@@ -116,6 +117,7 @@ function buildPlan(files) {
       addStatic("composer_recovery_change");
       addCase("typing-hotpath", "composer_recovery_change");
       addCase("connector-mention-lifecycle", "composer_recovery_change");
+      addCase("real-long-residual", "composer_recovery_change");
       addCase("guided-composer-diagnostics", "composer_recovery_change");
       continue;
     }
@@ -126,6 +128,16 @@ function buildPlan(files) {
     if (/^tests\/fixtures\/(connector-mention-lifecycle|virtual-clock)\.js$/.test(normalized) || /^tests\/fixtures\/connector-mention-lifecycle\.html$/.test(normalized)) {
       addStatic("connector_fixture_change");
       addCase("connector-mention-lifecycle", "connector_fixture_change");
+      continue;
+    }
+    if (/^tests\/fixtures\/real-actionbar-placement\.html$/.test(normalized)) {
+      addStatic("real_actionbar_fixture_change");
+      addCase("real-actionbar-placement", "real_actionbar_fixture_change");
+      continue;
+    }
+    if (/^tests\/fixtures\/real-long-residual\.html$/.test(normalized)) {
+      addStatic("real_long_residual_fixture_change");
+      addCase("real-long-residual", "real_long_residual_fixture_change");
       continue;
     }
     if (/^tests\/fixtures\/overlay/.test(normalized)) {
@@ -146,6 +158,7 @@ function buildPlan(files) {
     if (/^tests\/fixtures\/markdown-copy\.html$/.test(normalized)) {
       addStatic("copy_fixture_change");
       addCase("markdown-copy", "copy_fixture_change");
+      addCase("real-actionbar-placement", "copy_fixture_change");
       continue;
     }
     if (/^tests\/fixtures\/final-send-check\.html$/.test(normalized)) {
