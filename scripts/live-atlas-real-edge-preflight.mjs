@@ -47,6 +47,7 @@ const composer = surfaces.composer;
 const overlay = surfaces.micaOverlay;
 const observedSurfaces = Object.values(surfaces).filter((surface) => surface.status === "OBSERVED");
 const recorderEvents = timeline.filter((event) => event.timeBase === "atlas-session-relative" && !String(event.type || "").startsWith("cdp_"));
+const visualCapture = manifest.visualCapture || performanceJson.visualCapture || {};
 if (manifest.attached !== true || manifest.targetUrlExactMatch !== true) {
   throw new Error("REAL_EDGE_PREFLIGHT failed: exact target was not attached");
 }
@@ -55,6 +56,9 @@ if (!["atlas_stopped", "operator_stop"].includes(manifest.terminationReason) || 
 }
 if (timeline.some((event) => event.type === "cdp_capture_error" || event.details?.status === "capture_error")) {
   throw new Error("REAL_EDGE_PREFLIGHT failed: capture_error was recorded");
+}
+if (visualCapture.maxConcurrentHeavyCapture !== 1) {
+  throw new Error(`REAL_EDGE_PREFLIGHT failed: heavy capture was not serialized (maxConcurrentHeavyCapture=${visualCapture.maxConcurrentHeavyCapture ?? "missing"})`);
 }
 if (composer?.status !== "OBSERVED" || !contractHasStructure(composer.contract) || composer.source !== "real-cdp-companion") {
   throw new Error("REAL_EDGE_PREFLIGHT failed: composer real CDP contract was not observed");
@@ -100,6 +104,10 @@ console.log(JSON.stringify({
   sanitized,
   checkpointCount: manifest.checkpointCount,
   capturedVisualCount: manifest.capturedCheckpointCount,
+  maxConcurrentHeavyCapture: visualCapture.maxConcurrentHeavyCapture ?? null,
+  queuedVisualCheckpointCount: visualCapture.queuedVisualCheckpointCount ?? null,
+  executedHeavyCaptureCount: visualCapture.executedHeavyCaptureCount ?? null,
+  coalescedVisualCheckpointCount: visualCapture.coalescedVisualCheckpointCount ?? null,
   recorderEventCount: recorderEvents.length,
   screenshotCount: screenshotEvidence.length,
   screenshotCoordinateEvidenceCount: observedRawSurfaces.length,

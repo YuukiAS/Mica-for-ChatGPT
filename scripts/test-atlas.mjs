@@ -9,6 +9,7 @@ const steps = [
   ["atlas:screenshot-coordinate", "node", ["scripts/live-atlas-screenshot-coordinate-test.mjs"]],
   ["atlas:handshake", "node", ["scripts/live-atlas-handshake-test.mjs"]],
   ["atlas:cdp-protocol", "node", ["scripts/live-atlas-cdp-protocol-test.mjs"]],
+  ["atlas:visual-capture-queue", "node", ["scripts/live-atlas-visual-capture-queue-test.mjs"]],
   ["atlas:devtools-active-port", "node", ["scripts/live-atlas-devtools-active-port-test.mjs"]],
   ["atlas:cdp-long-session", "node", ["scripts/live-atlas-cdp-long-session-test.mjs"]],
   ["atlas:preflight", "node", ["scripts/live-atlas-preflight-test.mjs"]],

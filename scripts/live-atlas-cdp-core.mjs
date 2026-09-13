@@ -45,6 +45,8 @@ export const REPORT_PREFIX = "MICA_ATLAS_REPORT_CHUNK ";
 export const DEFAULT_INACTIVITY_HARD_CAP_MS = 15 * 60 * 1000;
 export const DEFAULT_DRAIN_MS = 750;
 export const DEFAULT_MAX_CHECKPOINTS = 500;
+export const DEFAULT_MAX_VISUAL_QUEUE = 80;
+export const DEFAULT_VISUAL_COALESCE_MS = 80;
 
 export function assertReadOnlyCommand(command) {
   if (FORBIDDEN_CDP_COMMANDS.has(command) || FORBIDDEN_CDP_PREFIXES.some((prefix) => command.startsWith(prefix))) {
@@ -183,6 +185,8 @@ export async function runReadOnlyCaptureSession(options) {
     out,
     userDataDir = null,
     maxCheckpoints = DEFAULT_MAX_CHECKPOINTS,
+    maxVisualQueue = DEFAULT_MAX_VISUAL_QUEUE,
+    visualCoalesceMs = DEFAULT_VISUAL_COALESCE_MS,
     idleMs = DEFAULT_INACTIVITY_HARD_CAP_MS,
     drainMs = DEFAULT_DRAIN_MS,
     abortSignal = null,
@@ -217,8 +221,24 @@ export async function runReadOnlyCaptureSession(options) {
   let inactivityTimer = null;
   let drainTimer = null;
   let finishSession = null;
-  const pendingCaptures = new Set();
   const reportChunks = new Map();
+  const visualQueue = new Map();
+  const capturedVisualKeys = new Set();
+  const inFlightVisualKeys = new Set();
+  let visualWorkerTimer = null;
+  let visualWorkerPromise = null;
+  let activeHeavyCaptures = 0;
+  const visualCapture = {
+    maxConcurrentHeavyCapture: 0,
+    receivedVisualCheckpointCount: 0,
+    queuedVisualCheckpointCount: 0,
+    executedHeavyCaptureCount: 0,
+    coalescedVisualCheckpointCount: 0,
+    skippedVisualCheckpointCount: 0,
+    maxVisualQueueDepth: 0,
+    maxVisualQueue,
+    visualCoalesceMs
+  };
   const sessionDone = new Promise((resolve) => {
     finishSession = resolve;
   });
@@ -242,10 +262,6 @@ export async function runReadOnlyCaptureSession(options) {
     }
     finishSession();
   };
-  const trackCapture = (promise) => {
-    pendingCaptures.add(promise);
-    promise.finally(() => pendingCaptures.delete(promise));
-  };
   const onAbort = () => requestFinish("operator_stop");
   if (abortSignal) {
     if (abortSignal.aborted) requestFinish("operator_stop");
@@ -257,15 +273,16 @@ export async function runReadOnlyCaptureSession(options) {
     if (stopped) return;
     const checkpoint = parseCheckpointMessage(message);
     if (!checkpoint) return;
-    const capture = handleCheckpoint(checkpoint).catch((error) => {
+    try {
+      handleCheckpoint(checkpoint);
+    } catch (error) {
       timeline.push(cdpLifecycleEvent("cdp_capture_error", {
         checkpointId: checkpoint.checkpointId || null,
         stateClass: checkpoint.stateClass || null,
         message: error.message
       }));
       requestFinish("capture_error");
-    });
-    trackCapture(capture);
+    }
   });
   messageListenerActive = true;
 
@@ -279,7 +296,7 @@ export async function runReadOnlyCaptureSession(options) {
   armInactivityTimer();
   await sessionDone;
   if (drainTimer) clearTimeout(drainTimer);
-  await Promise.allSettled([...pendingCaptures]);
+  await flushVisualQueue();
   stopped = true;
   if (abortSignal) abortSignal.removeEventListener("abort", onAbort);
   clearInactivityTimer();
@@ -301,11 +318,16 @@ export async function runReadOnlyCaptureSession(options) {
     drainMs,
     inactivityHardCapMs: idleMs,
     maxCheckpoints,
+    visualCapture,
+    maxConcurrentHeavyCapture: visualCapture.maxConcurrentHeavyCapture,
+    queuedVisualCheckpointCount: visualCapture.queuedVisualCheckpointCount,
+    executedHeavyCaptureCount: visualCapture.executedHeavyCaptureCount,
+    coalescedVisualCheckpointCount: visualCapture.coalescedVisualCheckpointCount,
     truncated: !!truncation,
     truncation
   };
 
-  async function handleCheckpoint(checkpoint) {
+  function handleCheckpoint(checkpoint) {
     if (isRecorderReportCheckpoint(checkpoint)) {
       armInactivityTimer();
       const report = checkpoint.report || assembleRecorderReportChunk(checkpoint, reportChunks);
@@ -347,27 +369,152 @@ export async function runReadOnlyCaptureSession(options) {
       if (terminal) requestFinish("atlas_stopped");
       return;
     }
-    const captured = await captureCheckpoint(client, checkpoint, { screenshotsDir, surfacesDir });
-    if (captured.status === "OBSERVED") capturedCheckpointCount += 1;
-    timeline.push({
-      schemaVersion: 1,
-      type: "cdp_checkpoint_capture",
-      timeBase: "cdp-page-monotonic",
-      relativeTimeMs: null,
-      details: {
-        checkpointId: checkpoint.checkpointId,
-        stateClass: checkpoint.stateClass,
-        generationId: checkpoint.generationId ?? null,
-        turnId: captured.turnId || null,
-        surfaceKey: captured.surfaceKey,
-        screenshot: captured.screenshotFile ? path.basename(captured.screenshotFile) : null,
-        clipped: !!captured.screenshotFile,
-        status: captured.status,
-        missingReason: captured.missingReason || null
-      }
-    });
-    if (captured.status === "OBSERVED") surfaces.push(captured.surfaceKey);
+    enqueueVisualCheckpoint(checkpoint);
     if (terminal) requestFinish("atlas_stopped");
+  }
+
+  function enqueueVisualCheckpoint(checkpoint) {
+    const surfaceKey = surfaceKeyForCheckpoint(checkpoint.stateClass);
+    if (!surfaceKey) return;
+    visualCapture.receivedVisualCheckpointCount += 1;
+    const key = visualCoalesceKey(checkpoint, surfaceKey);
+    if (shouldSkipVisualCheckpoint(checkpoint, surfaceKey, key)) {
+      visualCapture.skippedVisualCheckpointCount += 1;
+      visualCapture.coalescedVisualCheckpointCount += 1;
+      timeline.push(cdpLifecycleEvent("cdp_visual_checkpoint_coalesced", {
+        checkpointId: checkpoint.checkpointId || null,
+        stateClass: checkpoint.stateClass || null,
+        surfaceKey,
+        key,
+        reason: visualSkipReason(checkpoint, surfaceKey, key)
+      }));
+      return;
+    }
+    if (visualQueue.has(key)) {
+      visualQueue.set(key, { checkpoint, surfaceKey, key });
+      visualCapture.coalescedVisualCheckpointCount += 1;
+      timeline.push(cdpLifecycleEvent("cdp_visual_checkpoint_coalesced", {
+        checkpointId: checkpoint.checkpointId || null,
+        stateClass: checkpoint.stateClass || null,
+        surfaceKey,
+        key,
+        reason: "pending_replaced"
+      }));
+      return;
+    }
+    if (visualQueue.size >= maxVisualQueue) {
+      if (!truncation) {
+        truncation = {
+          reason: "visual_queue_capacity_exceeded",
+          maxVisualQueue,
+          firstDroppedCheckpointId: checkpoint.checkpointId || null,
+          firstDroppedStateClass: checkpoint.stateClass || null
+        };
+        timeline.push(cdpLifecycleEvent("cdp_visual_queue_truncation", truncation));
+        requestFinish("visual_queue_capacity_exceeded");
+      }
+      return;
+    }
+    visualQueue.set(key, { checkpoint, surfaceKey, key });
+    visualCapture.queuedVisualCheckpointCount += 1;
+    visualCapture.maxVisualQueueDepth = Math.max(visualCapture.maxVisualQueueDepth, visualQueue.size);
+    scheduleVisualWorker();
+  }
+
+  function shouldSkipVisualCheckpoint(checkpoint, surfaceKey, key) {
+    if (capturedVisualKeys.has(key)) return true;
+    if (inFlightVisualKeys.has(key)) return true;
+    if ((surfaceKey === "assistantActionBar" || surfaceKey === "nativeCopyArea") && checkpoint.generationId == null) return true;
+    if (isTurnBoundSurface(surfaceKey) && checkpoint.generationId == null) return true;
+    return false;
+  }
+
+  function visualSkipReason(checkpoint, surfaceKey, key) {
+    if (capturedVisualKeys.has(key)) return "already_captured";
+    if (inFlightVisualKeys.has(key)) return "in_flight_duplicate";
+    if ((surfaceKey === "assistantActionBar" || surfaceKey === "nativeCopyArea") && checkpoint.generationId == null) return "baseline_owned_surface";
+    if (isTurnBoundSurface(surfaceKey) && checkpoint.generationId == null) return "baseline_turn_surface";
+    return "coalesced";
+  }
+
+  function scheduleVisualWorker() {
+    if (visualWorkerTimer || visualWorkerPromise) return;
+    visualWorkerTimer = setTimeout(() => {
+      visualWorkerTimer = null;
+      visualWorkerPromise = runVisualWorker().finally(() => {
+        visualWorkerPromise = null;
+        if (visualQueue.size && !stopped) scheduleVisualWorker();
+      });
+    }, Math.max(0, visualCoalesceMs));
+  }
+
+  async function flushVisualQueue() {
+    if (visualWorkerTimer) {
+      clearTimeout(visualWorkerTimer);
+      visualWorkerTimer = null;
+    }
+    if (visualWorkerPromise) await visualWorkerPromise;
+    while (visualQueue.size) {
+      visualWorkerPromise = runVisualWorker().finally(() => {
+        visualWorkerPromise = null;
+      });
+      await visualWorkerPromise;
+    }
+  }
+
+  async function runVisualWorker() {
+    while (visualQueue.size) {
+      const nextKey = visualQueue.keys().next().value;
+      const item = visualQueue.get(nextKey);
+      visualQueue.delete(nextKey);
+      if (!item || shouldSkipVisualCheckpoint(item.checkpoint, item.surfaceKey, item.key)) {
+        visualCapture.skippedVisualCheckpointCount += 1;
+        continue;
+      }
+      await executeVisualCapture(item);
+    }
+  }
+
+  async function executeVisualCapture(item) {
+    activeHeavyCaptures += 1;
+    inFlightVisualKeys.add(item.key);
+    visualCapture.maxConcurrentHeavyCapture = Math.max(visualCapture.maxConcurrentHeavyCapture, activeHeavyCaptures);
+    try {
+      const captured = await captureCheckpoint(client, item.checkpoint, { screenshotsDir, surfacesDir });
+      visualCapture.executedHeavyCaptureCount += 1;
+      if (captured.status === "OBSERVED") {
+        capturedCheckpointCount += 1;
+        surfaces.push(captured.surfaceKey);
+        capturedVisualKeys.add(item.key);
+      }
+      timeline.push({
+        schemaVersion: 1,
+        type: "cdp_checkpoint_capture",
+        timeBase: "cdp-page-monotonic",
+        relativeTimeMs: null,
+        details: {
+          checkpointId: item.checkpoint.checkpointId,
+          stateClass: item.checkpoint.stateClass,
+          generationId: item.checkpoint.generationId ?? null,
+          turnId: captured.turnId || null,
+          surfaceKey: captured.surfaceKey,
+          screenshot: captured.screenshotFile ? path.basename(captured.screenshotFile) : null,
+          clipped: !!captured.screenshotFile,
+          status: captured.status,
+          missingReason: captured.missingReason || null
+        }
+      });
+    } catch (error) {
+      timeline.push(cdpLifecycleEvent("cdp_capture_error", {
+        checkpointId: item.checkpoint.checkpointId || null,
+        stateClass: item.checkpoint.stateClass || null,
+        message: error.message
+      }));
+      requestFinish("capture_error");
+    } finally {
+      inFlightVisualKeys.delete(item.key);
+      activeHeavyCaptures -= 1;
+    }
   }
 }
 
@@ -392,6 +539,7 @@ export async function writeRawSessionBundle({ out, threadUrl, session }) {
     privacy: privacyFlags(),
     safety: safetyFlags(),
     cdpMetricsCaptured: session.commandsSent.includes("Performance.getMetrics"),
+    visualCapture: session.visualCapture || null,
     recorderReportsIngested: recorderReports.length,
     recorderPerformanceIngested: recorderReports.some((report) => !!report.performance),
     recorderPerformance: mergeRecorderPerformance(recorderReports),
@@ -606,6 +754,7 @@ export function createManifest({ threadUrl, target, commandsSent, session = null
     explicitStop: session?.explicitStop || false,
     checkpointCount: session?.checkpointCount ?? null,
     capturedCheckpointCount: session?.capturedCheckpointCount ?? null,
+    visualCapture: session?.visualCapture || null,
     recorderReportsIngested: session?.recorderReports?.length || 0,
     maxCheckpoints: session?.maxCheckpoints ?? null,
     inactivityHardCapMs: session?.inactivityHardCapMs ?? null,
@@ -1099,6 +1248,39 @@ function variantForCheckpoint(checkpoint) {
   const stateClass = checkpoint.stateClass || "unknown";
   const generation = checkpoint.generationId ? `g${checkpoint.generationId}` : "global";
   return `${generation}:${stateClass}`;
+}
+
+function visualCoalesceKey(checkpoint, surfaceKey) {
+  const rect = rectKey(normalizeTargetRect(checkpoint.targetRect || checkpoint.rect));
+  const generation = checkpoint.generationId == null ? "global" : `g${checkpoint.generationId}`;
+  const turnId = safeCheckpointTurnId(checkpoint.turnId) || "no-turn";
+  if (surfaceKey === "composer") {
+    const identity = stableKeyPart(checkpoint.composerId || checkpoint.composerIdentity || checkpoint.identityHint || "");
+    return `composer:stable:${identity}`;
+  }
+  if (surfaceKey === "micaOverlay") {
+    const recording = checkpoint.recording === true || checkpoint.overlay?.recording === true ? "recording" : "idle";
+    const mode = stableKeyPart(checkpoint.mode || checkpoint.overlay?.mode || checkpoint.state || "");
+    return `micaOverlay:${recording}:${mode}:${rect}`;
+  }
+  if (surfaceKey === "longThreadMountedWindow") return `longThreadMountedWindow:${rect}`;
+  if (surfaceKey === "assistantActionBar" || surfaceKey === "nativeCopyArea") {
+    return `${surfaceKey}:${generation}:${turnId}:${rect}`;
+  }
+  if (isTurnBoundSurface(surfaceKey)) {
+    return `${surfaceKey}:${generation}:${turnId}:${checkpoint.stateClass || "unknown"}:${rect}`;
+  }
+  return `${surfaceKey}:${generation}:${checkpoint.stateClass || "unknown"}:${rect}`;
+}
+
+function rectKey(rect) {
+  if (!rect) return "no-rect";
+  return [rect.x, rect.y, rect.width, rect.height].map((value) => String(Math.round(Number(value || 0) / 4) * 4)).join(",");
+}
+
+function stableKeyPart(value) {
+  const text = String(value || "");
+  return /^[a-zA-Z0-9:_-]{1,80}$/.test(text) ? text : text ? `len${text.length}` : "none";
 }
 
 function safeCheckpointTimelineDetails(checkpoint) {

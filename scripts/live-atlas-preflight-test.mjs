@@ -76,9 +76,12 @@ try {
   assert(result.stdout.includes('"REAL_EDGE_PREFLIGHT": "PASS"'), "preflight did not print PASS");
   assert(result.stdout.includes("REAL_EDGE_CDP_ATTACHED = YES") && result.stdout.includes("SAFE_TO_START_ATLAS = YES"), "preflight did not expose CDP ready handshake");
   assert(/"screenshotCoordinateEvidenceCount":\s*[1-9]/.test(result.stdout), "preflight did not report screenshot coordinate evidence");
+  assert(/"maxConcurrentHeavyCapture":\s*1/.test(result.stdout), "preflight did not report serialized heavy capture evidence");
   assert(manifest.targetUrlExactMatch === true && manifest.attached === true, "preflight did not prove exact attachment");
   assert(manifest.terminationReason === "atlas_stopped" && manifest.truncated === false, "preflight did not prove clean termination");
+  assert(manifest.visualCapture?.maxConcurrentHeavyCapture === 1, "manifest did not prove serialized heavy capture");
   assert(performanceJson.recorderReportsIngested === 1 && performanceJson.recorderPerformanceIngested === true, "preflight did not prove recorder ingestion");
+  assert(performanceJson.visualCapture?.maxConcurrentHeavyCapture === 1, "performance.json did not prove serialized heavy capture");
   assert(timeline.some((event) => event.type === "composer_input" && event.timeBase === "atlas-session-relative"), "preflight raw timeline lacks recorder event");
   assert(commands.includes("Page.captureScreenshot") && !commands.some((method) => /^Input\.|^Network\.|^Fetch\.|^Tracing\./.test(method)), "preflight sent forbidden or missing CDP commands");
   console.log(JSON.stringify({
