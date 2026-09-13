@@ -5,6 +5,7 @@
   const SETTLE_MS = 160;
   const VERIFY_MS = 240;
   const NONMATCHING_GRACE_MS = 700;
+  const PERSISTENT_RESIDUAL_GRACE_MS = 620;
   const MIN_PARTIAL_RESIDUAL_LENGTH = 8;
   const MAX_ATTEMPTS = 3;
   const SEND_CANDIDATE_WINDOW_MS = 3200;
@@ -228,6 +229,8 @@
       staleProvenanceMatched: false,
       staleProvenanceReason: null,
       staleReappearanceElapsedMs: null,
+      persistentResidualAfterCommit: false,
+      persistentResidualElapsedMs: null,
       attemptCount: 0,
       succeeded: false,
       cancelledByUserInput: false,
@@ -328,14 +331,6 @@
       lastReport = reportFromGeneration(generation, snapshot);
       return;
     }
-    if (!hasPostSendInvalidationEvidence(generation)) {
-      lastReport = reportFromGeneration(generation, snapshot);
-      return;
-    }
-    if (!canRecoverGeneration(generation)) {
-      lastReport = reportFromGeneration(generation, snapshot);
-      return;
-    }
     const provenance = matchPreSendProvenance(snapshot, generation);
     if (!provenance.matched) {
       generation.nonmatchingTextObserved = true;
@@ -343,6 +338,16 @@
       lastReport = reportFromGeneration(generation, snapshot);
       if (!generation.nonmatchingFirstAt) generation.nonmatchingFirstAt = Date.now();
       if (Date.now() - generation.nonmatchingFirstAt >= NONMATCHING_GRACE_MS) finishGeneration("nonmatching_text", snapshot);
+      return;
+    }
+    if (!hasRecoveryEvidence(generation)) {
+      if (!markPersistentResidualEvidenceIfReady(generation)) {
+        lastReport = reportFromGeneration(generation, snapshot);
+        return;
+      }
+    }
+    if (!canRecoverGeneration(generation)) {
+      lastReport = reportFromGeneration(generation, snapshot);
       return;
     }
     generation.nonmatchingFirstAt = 0;
@@ -474,7 +479,9 @@
     }
     generation.phase = "RECOVERING";
     generation.attemptCount += 1;
-    generation.recoveryEvidencePath = generation.firstComposerZeroBeforeRecoveryAt ? "composer_clear" : "post_send_remount";
+    generation.recoveryEvidencePath = generation.firstComposerZeroBeforeRecoveryAt
+      ? "composer_clear"
+      : hasPostSendRemountEvidence(generation) ? "post_send_remount" : "persistent_same_payload";
     record("send_residual_recovery_attempt", {
       generationId: generation.generationId,
       attemptCount: generation.attemptCount,
@@ -560,13 +567,35 @@
       && active.preSendFingerprintCaptured
       && active.connectorLifecycleLatched
       && active.userTurnCommittedLatched
-      && hasPostSendInvalidationEvidence(active)
+      && hasRecoveryEvidence(active)
       && !active.cancelledByUserInput
       && !active.attemptsExhausted;
   }
 
   function hasPostSendInvalidationEvidence(active) {
-    return !!active?.firstComposerZeroBeforeRecoveryAt || (!!active?.unmountCountAfterSend && !!active?.mountCountAfterSend);
+    return !!active?.firstComposerZeroBeforeRecoveryAt || hasPostSendRemountEvidence(active);
+  }
+
+  function hasPostSendRemountEvidence(active) {
+    return !!active?.unmountCountAfterSend && !!active?.mountCountAfterSend;
+  }
+
+  function hasRecoveryEvidence(active) {
+    return hasPostSendInvalidationEvidence(active) || !!active?.persistentResidualAfterCommit;
+  }
+
+  function markPersistentResidualEvidenceIfReady(active) {
+    if (!active?.userTurnCommittedLatched || !active.firstCommitAt) return false;
+    const elapsed = Date.now() - active.firstCommitAt;
+    if (elapsed < PERSISTENT_RESIDUAL_GRACE_MS) return false;
+    active.persistentResidualAfterCommit = true;
+    active.persistentResidualElapsedMs = elapsed;
+    record("send_residual_persistent_same_payload", {
+      generationId: active.generationId,
+      elapsedMs: Math.round(elapsed),
+      connectorLifecycleLatched: active.connectorLifecycleLatched
+    });
+    return true;
   }
 
   function isArmed(active) {
@@ -582,7 +611,7 @@
     if (!active.preSendFingerprintCaptured) return "no_pre_send_fingerprint";
     if (!active.connectorLifecycleLatched) return "no_connector_lifecycle_latch";
     if (!active.userTurnCommittedLatched) return "waiting_for_user_turn_commit";
-    if (!hasPostSendInvalidationEvidence(active)) return "waiting_for_clear_or_remount";
+    if (!hasRecoveryEvidence(active)) return "waiting_for_clear_remount_or_persistent_payload";
     if (active.cancelledByUserInput) return "cancelled_new_user_input";
     if (active.attemptsExhausted) return "attempts_exhausted";
     if (active.nonmatchingTextObserved && !active.staleFingerprintMatched) return "nonmatching_text";
@@ -610,12 +639,14 @@
       composerMountCountAfterSend: active.mountCountAfterSend,
       observedComposerClearPath: !!active.firstComposerZeroBeforeRecoveryAt,
       postSendRemountPath: !!(active.unmountCountAfterSend && active.mountCountAfterSend),
+      persistentResidualPath: !!active.persistentResidualAfterCommit,
       recoveryEvidencePath: active.recoveryEvidencePath,
       stalePayloadReappeared: active.stalePayloadReappeared,
       staleFingerprintMatched: active.staleFingerprintMatched,
       staleProvenanceMatched: active.staleProvenanceMatched,
       staleProvenanceReason: active.staleProvenanceReason,
       staleReappearanceElapsedMs: roundNullable(active.staleReappearanceElapsedMs),
+      persistentResidualElapsedMs: roundNullable(active.persistentResidualElapsedMs),
       attemptCount: active.attemptCount,
       armed: isArmed(active),
       skippedReason: skipReasonFor(active),
@@ -630,6 +661,7 @@
       maxAttempts: MAX_ATTEMPTS,
       hardLifetimeMs: HARD_LIFETIME_MS,
       nonmatchingGraceMs: NONMATCHING_GRACE_MS,
+      persistentResidualGraceMs: PERSISTENT_RESIDUAL_GRACE_MS,
       minPartialResidualLength: MIN_PARTIAL_RESIDUAL_LENGTH,
       elapsedMs: elapsedMs(active),
       cleanupReason: active.cleanupReason
@@ -659,12 +691,14 @@
       composerMountCountAfterSend: 0,
       observedComposerClearPath: false,
       postSendRemountPath: false,
+      persistentResidualPath: false,
       recoveryEvidencePath: null,
       stalePayloadReappeared: false,
       staleFingerprintMatched: false,
       staleProvenanceMatched: false,
       staleProvenanceReason: null,
       staleReappearanceElapsedMs: null,
+      persistentResidualElapsedMs: null,
       attemptCount: 0,
       armed: false,
       skippedReason: reason || "waiting_for_user_turn_commit",
@@ -679,6 +713,7 @@
       maxAttempts: MAX_ATTEMPTS,
       hardLifetimeMs: HARD_LIFETIME_MS,
       nonmatchingGraceMs: NONMATCHING_GRACE_MS,
+      persistentResidualGraceMs: PERSISTENT_RESIDUAL_GRACE_MS,
       minPartialResidualLength: MIN_PARTIAL_RESIDUAL_LENGTH,
       elapsedMs: Date.now() - candidate.startedAt,
       cleanupReason: reason,
@@ -710,12 +745,14 @@
       composerMountCountAfterSend: 0,
       observedComposerClearPath: false,
       postSendRemountPath: false,
+      persistentResidualPath: false,
       recoveryEvidencePath: null,
       stalePayloadReappeared: false,
       staleFingerprintMatched: false,
       staleProvenanceMatched: false,
       staleProvenanceReason: null,
       staleReappearanceElapsedMs: null,
+      persistentResidualElapsedMs: null,
       attemptCount: 0,
       armed: false,
       skippedReason: enabled ? "no_send_generation" : "disabled",
@@ -730,6 +767,7 @@
       maxAttempts: MAX_ATTEMPTS,
       hardLifetimeMs: HARD_LIFETIME_MS,
       nonmatchingGraceMs: NONMATCHING_GRACE_MS,
+      persistentResidualGraceMs: PERSISTENT_RESIDUAL_GRACE_MS,
       minPartialResidualLength: MIN_PARTIAL_RESIDUAL_LENGTH,
       elapsedMs: 0,
       cleanupReason: null

@@ -207,6 +207,7 @@
         const staleSnapshot = await runNamedCase("staleSnapshot", runStaleSnapshotCase);
         const sendStable = await runNamedCase("sendStable", runSendStableCase);
         const sendResidual = await runNamedCase("sendResidual", runSendResidualCase);
+        const persistentResidual = await runNamedCase("persistentResidual", runPersistentResidualCase);
         const multiResidual = await runNamedCase("multiResidual", runMultiResidualCase);
         const newInput = await runNamedCase("newInput", runNewInputCase);
         const nonmatching = await runNamedCase("nonmatching", runNonmatchingCase);
@@ -214,7 +215,7 @@
         const eventBuffer = await runNamedCase("eventBuffer", runEventBufferCase);
         const toggleIsolation = await runNamedCase("toggleIsolation", runToggleIsolationCase);
 
-        const reports = [sendStable.report, sendResidual.report, multiResidual.report, newInput.report, nonmatching.report];
+        const reports = [sendStable.report, sendResidual.report, persistentResidual.report, multiResidual.report, newInput.report, nonmatching.report];
         const reportText = JSON.stringify({ reports, connectorLatch, continuityOn, continuityOff, eventBuffer, toggleIsolation });
         const checks = [
           ["connector latch survives chooser chip disappearance and remount", connectorLatch.signal?.latched === true && connectorLatch.report?.connectorLifecycle?.latched === true],
@@ -227,6 +228,7 @@
           ["stable send commit latch survives mounted +1 then -1", sendStable.report?.sendLifecycle?.userTurnCommittedLatched === true && sendStable.report?.sendLifecycle?.userTurnDeltaHistory?.some((item) => item.delta > 0) && sendStable.report?.sendLifecycle?.userTurnDeltaHistory?.some((item) => item.delta < 0) && sendStable.report?.sendLifecycle?.classification === "SEND_CLEARED_STABLE"],
           ["stable send does not start recovery", sendStable.recovery?.attemptCount === 0 && sendStable.recovery?.succeeded === false],
           ["partial residual provenance recovered", sendResidual.report?.sendLifecycle?.classification === "SEND_STALE_PAYLOAD_REAPPEARED" && sendResidual.recovery?.armed === true && sendResidual.recovery?.attemptCount >= 1 && sendResidual.recovery?.succeeded === true && sendResidual.recovery?.observedComposerClearPath === false && sendResidual.recovery?.postSendRemountPath === true && sendResidual.recovery?.recoveryEvidencePath === "post_send_remount" && sendResidual.recovery?.staleProvenanceMatched === true && sendResidual.recovery?.staleProvenanceReason === "partial_substring" && sendResidual.finalTextLength === 0],
+          ["persistent connector residual recovered after commit", persistentResidual.report?.sendLifecycle?.classification === "SEND_STALE_PAYLOAD_REAPPEARED" && persistentResidual.recovery?.armed === true && persistentResidual.recovery?.attemptCount >= 1 && persistentResidual.recovery?.succeeded === true && persistentResidual.recovery?.observedComposerClearPath === false && persistentResidual.recovery?.postSendRemountPath === false && persistentResidual.recovery?.persistentResidualPath === true && persistentResidual.recovery?.recoveryEvidencePath === "persistent_same_payload" && persistentResidual.recovery?.staleProvenanceMatched === true && persistentResidual.recovery?.staleProvenanceReason === "exact_full" && persistentResidual.finalTextLength === 0],
           ["multi remount bounded retry", multiResidual.recovery?.succeeded === true && multiResidual.recovery?.attemptCount >= 2 && multiResidual.recovery?.attemptCount <= multiResidual.recovery?.maxAttempts && multiResidual.finalTextLength === 0],
           ["new user input preserved", newInput.recovery?.cancelledByUserInput === true && newInput.finalTextLength === newInput.expectedLength],
           ["nonmatching text preserved", nonmatching.recovery?.nonmatchingTextObserved === true && nonmatching.recovery?.attemptCount === 0 && nonmatching.finalTextLength === nonmatching.expectedLength],
@@ -250,6 +252,7 @@
             staleSnapshot,
             sendStable: summarizeSend(sendStable.report, sendStable.recovery, sendStable.finalTextLength),
             sendResidual: summarizeSend(sendResidual.report, sendResidual.recovery, sendResidual.finalTextLength),
+            persistentResidual: summarizeSend(persistentResidual.report, persistentResidual.recovery, persistentResidual.finalTextLength),
             multiResidual: summarizeSend(multiResidual.report, multiResidual.recovery, multiResidual.finalTextLength),
             newInput: summarizeSend(newInput.report, newInput.recovery, newInput.finalTextLength),
             nonmatching: summarizeSend(nonmatching.report, nonmatching.recovery, nonmatching.finalTextLength),
@@ -484,6 +487,16 @@
           await delay(180);
           setEditorText(PARTIAL_PAYLOAD_15);
           await waitForSendRecoverySucceeded(2200);
+        });
+      }
+
+      async function runPersistentResidualCase() {
+        return captureSendCase(async () => {
+          await prepareConnectorSelectionWithEnter(PAYLOAD_34);
+          await delay(180);
+          await dispatchEnterKey();
+          appendTurn("user", "committed persistent residual turn");
+          await waitForSendRecoverySucceeded(2600);
         });
       }
 

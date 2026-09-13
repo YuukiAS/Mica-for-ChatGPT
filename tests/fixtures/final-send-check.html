@@ -156,8 +156,20 @@
         await delay(100);
         const missingResult = window.__MICA_TEST_CONTROLS__.prepareFinalSendCheck();
 
+        window.__MICA_TEST_CONTROLS__.forceScan();
+        await delay(120);
+        const dynamicAnswer = appendAssistantTurn();
+        window.__MICA_TEST_CONTROLS__.refreshNativeSafeMountedStatus();
+        await delay(120);
+        const dynamicMicaCopyButton = dynamicAnswer.querySelector("[data-mica-copy-action='true']");
+
         const payload = {
           passed: true,
+          markdownCopy: {
+            nativeSafeMode: window.__MICA_TEST_CONTROLS__.getDiagnosticsReport()?.runtime?.nativeSafeMode === true,
+            injectedOnNativeSafeRefresh: dynamicMicaCopyButton instanceof HTMLButtonElement,
+            buttonText: dynamicMicaCopyButton?.textContent || ""
+          },
           empty: {
             prepared: emptyResult?.prepared === true,
             reason: emptyResult?.reason || null,
@@ -204,6 +216,9 @@
           payload.missing.prepared === false,
           payload.missing.reason === "COMPOSER_NOT_FOUND",
           payload.missing.composerTextModified === false,
+          payload.markdownCopy.nativeSafeMode,
+          payload.markdownCopy.injectedOnNativeSafeRefresh,
+          payload.markdownCopy.buttonText === "Mica Copy",
           guard.totalSubmitEvents === 0,
           guard.totalSendClicks === 0,
           guard.totalEnterKeydowns === 0,
@@ -239,6 +254,19 @@
         dock.innerHTML = "";
         composer = null;
         editor = null;
+      }
+
+      function appendAssistantTurn() {
+        const turn = document.createElement("article");
+        turn.dataset.testid = `conversation-turn-dynamic-${Date.now()}`;
+        turn.innerHTML = `
+          <div data-message-author-role="assistant" class="markdown">
+            <p>Dynamic answer for native-safe copy injection.</p>
+            <button type="button" aria-label="Copy">Native Copy</button>
+          </div>
+        `;
+        document.getElementById("conversation").appendChild(turn);
+        return turn;
       }
 
       function setEditorText(value) {

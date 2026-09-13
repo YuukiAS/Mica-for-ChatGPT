@@ -294,6 +294,12 @@
     },
     {
       "file": "extension/src/reliability/send-residual-recovery.ts",
+      "name": "PERSISTENT_RESIDUAL_GRACE_MS",
+      "value": "620",
+      "classification": "lifecycle heuristic"
+    },
+    {
+      "file": "extension/src/reliability/send-residual-recovery.ts",
       "name": "SAMPLE_INTERVAL_MS",
       "value": "80",
       "classification": "sampling/diagnostic cadence"

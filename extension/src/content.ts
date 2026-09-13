@@ -1067,6 +1067,7 @@
     }
     globalCounters.nativeSafeMountedStatusProbes += 1;
     const turns = collectMountedTurnStatusProbe();
+    syncMarkdownCopy(turns);
     updateTurnWindowStats(turns);
 
     if (!settings.enabled) {
@@ -1106,6 +1107,7 @@
   function refreshLongThreadDisabledStatus(_reason) {
     globalCounters.nativeSafeMountedStatusProbes += 1;
     const turns = collectMountedTurnStatusProbe();
+    syncMarkdownCopy(turns);
     updateTurnWindowStats(turns);
     runtimeState.nativeSafeReason = "long-thread optimization disabled";
     setStatusIfChanged(STATUS.NATIVE_ONLY, "Long-thread optimization disabled", turns);

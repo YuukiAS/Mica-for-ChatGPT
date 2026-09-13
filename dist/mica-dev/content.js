@@ -1,7 +1,7 @@
 (() => {
   const VERSION = "0.2.0";
   const VERSION_NAME = "0.2.0";
-  const BUILD_LABEL = "v020-convergence.rc7";
+  const BUILD_LABEL = "v020-convergence.rc8";
   const DEFAULT_SETTINGS = {
     enabled: true,
     showStatus: true,
@@ -1067,6 +1067,7 @@
     }
     globalCounters.nativeSafeMountedStatusProbes += 1;
     const turns = collectMountedTurnStatusProbe();
+    syncMarkdownCopy(turns);
     updateTurnWindowStats(turns);
 
     if (!settings.enabled) {
@@ -1106,6 +1107,7 @@
   function refreshLongThreadDisabledStatus(_reason) {
     globalCounters.nativeSafeMountedStatusProbes += 1;
     const turns = collectMountedTurnStatusProbe();
+    syncMarkdownCopy(turns);
     updateTurnWindowStats(turns);
     runtimeState.nativeSafeReason = "long-thread optimization disabled";
     setStatusIfChanged(STATUS.NATIVE_ONLY, "Long-thread optimization disabled", turns);
