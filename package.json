@@ -25,6 +25,7 @@
     "atlas:analyze-timings": "node scripts/live-atlas-analyze-timings.mjs",
     "atlas:materialize-contracts": "node scripts/live-atlas-materialize-contracts.mjs",
     "atlas:preflight": "node scripts/live-atlas-real-edge-preflight.mjs",
+    "atlas:final-acceptance": "node scripts/live-atlas-final-acceptance.mjs",
     "test:atlas": "node scripts/test-atlas.mjs",
     "package:release": "npm run build && node scripts/package-release.mjs && node scripts/validate-release.mjs"
   },
