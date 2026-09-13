@@ -146,15 +146,17 @@
   function handleMutations(mutations) {
     if (!lifecycle || !enabled) return;
     let composerStructureChanged = false;
-    let connectorStructureChanged = false;
+    let connectorPresenceChanged = false;
+    let connectorSnapshotChanged = false;
     for (const mutation of mutations) {
       if (mutation.type !== "childList" || mutationTouchesMica(mutation)) continue;
       if (mutationTouchesComposerStructure(mutation)) composerStructureChanged = true;
-      if (mutationTouchesConnectorStructure(mutation)) connectorStructureChanged = true;
-      if (composerStructureChanged && connectorStructureChanged) break;
+      if (mutationTouchesConnectorStructure(mutation)) connectorPresenceChanged = true;
+      if (mutationAddsConnectorStructure(mutation)) connectorSnapshotChanged = true;
+      if (composerStructureChanged && connectorPresenceChanged && connectorSnapshotChanged) break;
     }
-    if (connectorStructureChanged) scheduleSnapshotRefresh("connector_structure");
-    if (composerStructureChanged || connectorStructureChanged) scheduleComposerCheck();
+    if (connectorSnapshotChanged) scheduleSnapshotRefresh("connector_structure");
+    if (composerStructureChanged || connectorPresenceChanged) scheduleComposerCheck();
   }
 
   function scheduleComposerCheck() {
@@ -521,6 +523,10 @@
     if (nodeListTouchesSelector(mutation.addedNodes, CONNECTOR_PILL_SELECTOR)) return true;
     if (nodeListTouchesSelector(mutation.removedNodes, CONNECTOR_PILL_SELECTOR)) return true;
     return false;
+  }
+
+  function mutationAddsConnectorStructure(mutation) {
+    return nodeListTouchesSelector(mutation.addedNodes, CONNECTOR_PILL_SELECTOR);
   }
 
   function nodeListTouchesSelector(nodes, selector) {
