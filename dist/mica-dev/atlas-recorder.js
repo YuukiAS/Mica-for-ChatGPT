@@ -408,7 +408,7 @@
           entry = createAssistantEntry(turn, knownBefore);
           state.assistantState.set(turn, entry);
           state.assistantEntries.add(entry);
-          if (baselineMode || knownBefore || !state.currentGeneration || !state.currentGeneration.userTurnObserved) {
+          if (baselineMode || knownBefore || !state.currentGeneration || !state.currentGeneration.userTurnObserved || !canBindAssistantToCurrentGeneration(turnHint)) {
             entry.baselineExisting = true;
           } else {
             state.currentGeneration.assistantTurnObserved = true;
@@ -427,9 +427,9 @@
         const actionBar = findActionBar(turn);
         if (actionBar) {
           markObserved("assistantActionBar");
-          if (!entry.actionBarVisible) {
+          if (!entry.baselineExisting && !entry.actionBarVisible) {
             entry.actionBarVisible = true;
-            checkpoint("assistant_action_bar_visible", { generationId: entry.generationId, role: "assistant", surfaceRole: "toolbar", turnId: nodeId(turn), rect: rectSummary(actionBar), copyAreaVisible: !!actionBar.querySelector?.("[aria-label*='Copy'], [data-testid*='copy']") });
+            checkpoint("assistant_action_bar_visible", { generationId: entry.generationId, role: "assistant", surfaceRole: "toolbar", turnId: entry.turnId, rect: rectSummary(actionBar), copyAreaVisible: !!actionBar.querySelector?.("[aria-label*='Copy'], [data-testid*='copy']") });
           }
         }
       }
@@ -440,7 +440,7 @@
   }
 
   function createAssistantEntry(turn, knownBefore = false) {
-    const generationId = state.currentGeneration?.id || null;
+    const generationId = knownBefore ? null : state.currentGeneration?.id || null;
     const key = turnKey(turn, getTurnRole(turn));
     return {
       mountedAt: now(),
@@ -455,8 +455,33 @@
       pendingStreamBurst: null,
       turnId: key ? safeTurnHint(key) : null,
       knownBefore,
-      mountCheckpointed: false
+      mountCheckpointed: false,
+      baselineExisting: knownBefore
     };
+  }
+
+  function canBindAssistantToCurrentGeneration(turnHint) {
+    if (!state.currentGeneration || !state.currentGeneration.userTurnObserved || !turnHint) return false;
+    return !state.currentGeneration.lastAssistantTurnId || state.currentGeneration.lastAssistantTurnId === turnHint;
+  }
+
+  function isCurrentAssistantEntry(entry) {
+    if (!entry || entry.baselineExisting || !entry.generationId || !entry.turnId) return false;
+    if (!state.currentGeneration || entry.generationId !== state.currentGeneration.id) return false;
+    return !state.currentGeneration.lastAssistantTurnId || state.currentGeneration.lastAssistantTurnId === entry.turnId;
+  }
+
+  function mutationLooksLikeAssistantContent(mutation) {
+    if (mutation.type !== "childList") return false;
+    const changedNodes = [...(mutation.addedNodes || []), ...(mutation.removedNodes || [])];
+    return changedNodes.some((node) => {
+      if (node instanceof CharacterData) return String(node.textContent || "").length > 0;
+      if (!(node instanceof Element)) return false;
+      if (node.closest?.("[role='toolbar'], [data-testid*='action']")) return false;
+      const textLength = textLengthOf(node);
+      if (textLength > 0) return true;
+      return !!node.querySelector?.("p,li,pre,code,table,blockquote,h1,h2,h3,math,.katex,[data-testid*='markdown']");
+    });
   }
 
   function inspectAssistantMutations(mutations, batchSummary = null) {
@@ -464,8 +489,24 @@
       const target = mutation.target instanceof Element ? mutation.target : mutation.target?.parentElement;
       const turn = target?.closest?.(TURN_SELECTOR);
       if (!(turn instanceof HTMLElement) || getTurnRole(turn) !== "assistant") continue;
-      const entry = state.assistantState.get(turn) || createAssistantEntry(turn);
-      if (!state.assistantState.has(turn)) state.assistantEntries.add(entry);
+      const key = turnKey(turn, "assistant");
+      const turnHint = key ? safeTurnHint(key) : null;
+      const knownBefore = key ? state.knownTurnKeys.has(key) : false;
+      const existingEntry = state.assistantState.get(turn);
+      const entry = existingEntry || createAssistantEntry(turn, knownBefore);
+      if (!existingEntry) {
+        if (knownBefore || !state.currentGeneration?.userTurnObserved || !canBindAssistantToCurrentGeneration(turnHint)) entry.baselineExisting = true;
+        else {
+          entry.generationId = state.currentGeneration.id;
+          entry.turnId = turnHint;
+          state.currentGeneration.assistantTurnObserved = true;
+          state.currentGeneration.lastAssistantTurnId = turnHint;
+        }
+        state.assistantState.set(turn, entry);
+        state.assistantEntries.add(entry);
+      }
+      if (!isCurrentAssistantEntry(entry)) continue;
+      if (entry.settled && !mutationLooksLikeAssistantContent(mutation)) continue;
       const timestamp = now();
       if (!entry.firstMutationAt) {
         entry.firstMutationAt = timestamp;
@@ -473,7 +514,6 @@
       }
       entry.lastMutationAt = timestamp;
       entry.settled = false;
-      state.assistantState.set(turn, entry);
       queueAssistantStreamMutation(turn, entry, mutation, batchSummary);
       scheduleAssistantSettled(turn, entry);
     }
@@ -507,8 +547,9 @@
   }
 
   function scheduleAssistantSettled(turn, entry) {
-    clearTimer(entry.settledTimer);
+    if (entry.settledTimer) return;
     entry.settledTimer = setTrackedTimeout(() => {
+      entry.settledTimer = 0;
       if (!state.active || entry.settled) return;
       const gap = now() - (entry.lastMutationAt || entry.mountedAt);
       if (gap >= SETTLED_IDLE_MS) {
@@ -521,6 +562,8 @@
           markObserved("richMarkdown");
           checkpoint("rich_markdown_settled", { generationId: entry.generationId, role: "assistant", surfaceRole: "assistant", turnId: entry.turnId, rect: rectSummary(turn), rich: true });
         }
+      } else {
+        scheduleAssistantSettled(turn, entry);
       }
     }, SETTLED_IDLE_MS + 20);
     if (!entry.hardSettleTimer) {

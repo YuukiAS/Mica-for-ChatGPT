@@ -19,8 +19,7 @@ console.log(JSON.stringify({
   passed: true,
   visualCaptureQueue: true,
   startupCoalescing: true,
-  lateComposerFocusCapture: true,
-  lateComposerBlurCapture: true,
+  composerFocusBlurEventOnly: true,
   lateComposerRemountCapture: true,
   lateMountedWindowCapture: true,
   connectorVariantsPreserved: true,
@@ -116,22 +115,24 @@ async function runLateVariantScenario() {
     assert(result.maxConcurrentHeavyCapture === 1, `late variant heavy capture concurrency was ${result.maxConcurrentHeavyCapture}`);
     assert(probe.maxConcurrentDomSnapshot === 1, `late variant DOMSnapshot concurrency was ${probe.maxConcurrentDomSnapshot}`);
     assert(probe.maxConcurrentScreenshot === 1, `late variant screenshot concurrency was ${probe.maxConcurrentScreenshot}`);
-    assert(result.executedHeavyCaptureCount === 9, `expected 9 late-variant captures, got ${result.executedHeavyCaptureCount}`);
+    assert(result.executedHeavyCaptureCount === 7, `expected 7 semantic late-variant captures, got ${result.executedHeavyCaptureCount}: ${JSON.stringify(captureEvents.map((event) => event.details?.stateClass))}`);
     assert(result.coalescedVisualCheckpointCount >= 2, "startup composer burst did not coalesce in late variant scenario");
-    assert(capturedStateClasses.has("composer_focus"), "late composer focus was not captured");
-    assert(capturedStateClasses.has("composer_blur"), "late composer blur was not captured");
+    assert(!capturedStateClasses.has("composer_focus"), "late composer focus should be event-only");
+    assert(!capturedStateClasses.has("composer_blur"), "late composer blur should be event-only");
+    assert(result.timeline.some((event) => event.type === "cdp_checkpoint_observed" && event.details?.stateClass === "composer_focus"), "late composer focus lifecycle event was not retained");
+    assert(result.timeline.some((event) => event.type === "cdp_checkpoint_observed" && event.details?.stateClass === "composer_blur"), "late composer blur lifecycle event was not retained");
     assert(capturedStateClasses.has("composer_identity_changed"), "late composer identity/remount was not captured");
     assert(countCaptured(captureEvents, "mounted_turn_window_changed") === 2, "late mounted window was not recaptured after cooldown");
     assert(capturedStateClasses.has("mention_chooser_visible"), "late mention chooser was not captured");
     assert(capturedStateClasses.has("connector_pill_visible"), "late connector pill was not captured");
-    assert(surfaceFiles.filter((file) => file.startsWith("composer-")).length === 4, "raw composer variants were not preserved");
+    assert(surfaceFiles.filter((file) => file.startsWith("composer-")).length === 2, "raw composer baseline/remount variants were not preserved");
     assert(surfaceFiles.filter((file) => file.startsWith("longThreadMountedWindow-")).length === 2, "raw mounted-window variants were not preserved");
-    assert(screenshotFiles.length === 9, `expected 9 screenshots for late variants, got ${screenshotFiles.length}`);
-    assert(surfaces.composer?.variants?.length >= 4, "sanitizer merged away later composer variants");
+    assert(screenshotFiles.length === 7, `expected 7 screenshots for late variants, got ${screenshotFiles.length}`);
+    assert(surfaces.composer?.variants?.length >= 2, "sanitizer merged away later composer variants");
     assert(surfaces.longThreadMountedWindow?.variants?.length >= 2, "sanitizer merged away later mounted-window variants");
     assert(surfaces.mentionChooser?.status === "OBSERVED", "sanitizer lost mention chooser variant");
     assert(surfaces.connectorPill?.status === "OBSERVED", "sanitizer lost connector pill variant");
-    assert((fixtureHtml.match(/data-atlas-surface-slot="composer"/g) || []).length >= 4, "fixture builder did not render composer variants");
+    assert(fixtureHtml.includes('data-atlas-variant="global:composer_identity_changed"'), "fixture builder did not render composer remount variant");
     assert(fixtureHtml.includes('data-atlas-surface-slot="connectorPill"'), "fixture builder did not render connector pill");
     assert(probe.captureAfterClose === 0, "late variant scenario captured after close");
   } finally {
@@ -214,13 +215,13 @@ function createFakeProbe({ scenario }) {
 
 function emitScenario(scenario, listeners) {
   if (scenario === "capacity") {
-    for (const [stateClass, checkpointId, rect] of [
+    for (const [stateClass, checkpointId, rect, terminal, extra] of [
       ["composer_present", "cap:1", { x: 40, y: 700, width: 820, height: 88 }],
       ["mention_chooser_visible", "cap:2", { x: 40, y: 520, width: 360, height: 180 }],
       ["connector_pill_visible", "cap:3", { x: 70, y: 710, width: 120, height: 32 }],
       ["mica_overlay_state", "cap:4", { x: 810, y: 732, width: 72, height: 48 }]
     ]) {
-      emitCheckpoint(listeners, stateClass, checkpointId, rect);
+      emitCheckpoint(listeners, stateClass, checkpointId, rect, terminal, extra);
     }
     return;
   }
@@ -261,22 +262,22 @@ function emitLateVariantScenario(listeners) {
     emitCheckpoint(listeners, stateClass, checkpointId, rect);
   }
   setTimeout(() => {
-    for (const [stateClass, checkpointId, rect] of [
+    for (const [stateClass, checkpointId, rect, terminal, extra] of [
       ["composer_focus", "late:focus", composerRect],
       ["composer_blur", "late:blur", composerRect],
       ["composer_identity_changed", "late:remount", { x: 40, y: 690, width: 820, height: 96 }],
-      ["mounted_turn_window_changed", "late:window", { x: 0, y: 0, width: 900, height: 780 }],
+      ["mounted_turn_window_changed", "late:window", { x: 0, y: 0, width: 900, height: 780 }, false, { generationId: 1 }],
       ["mention_chooser_visible", "late:mention", { x: 40, y: 500, width: 360, height: 180 }],
       ["connector_pill_visible", "late:connector", { x: 70, y: 705, width: 120, height: 32 }],
       ["atlas_stopped", "late:stop", null, true]
     ]) {
-      emitCheckpoint(listeners, stateClass, checkpointId, rect);
+      emitCheckpoint(listeners, stateClass, checkpointId, rect, terminal, extra);
     }
   }, 140);
 }
 
-function emitCheckpoint(listeners, stateClass, checkpointId, targetRect, terminal = false) {
-  const checkpoint = { checkpointId, stateClass, monotonicTimestamp: 100, targetRect, terminal };
+function emitCheckpoint(listeners, stateClass, checkpointId, targetRect, terminal = false, extra = {}) {
+  const checkpoint = { checkpointId, stateClass, monotonicTimestamp: 100, targetRect, terminal, ...extra };
   for (const listener of listeners) {
     listener({
       method: "Runtime.consoleAPICalled",
