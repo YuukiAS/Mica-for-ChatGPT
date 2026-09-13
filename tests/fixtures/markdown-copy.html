@@ -31,7 +31,10 @@ console.log(price);</code></pre>
             <math><semantics><mrow></mrow><annotation encoding="application/x-tex">\begin{aligned} x&=1\\ y&=2 \end{aligned}</annotation></semantics></math>
           </div>
           <div class="math-display">\[\begin{cases}x&=1\\y&=2\end{cases}\]</div>
-          <button type="button" aria-label="Copy">Native Copy</button>
+          <div role="toolbar" data-testid="message-actions">
+            <button type="button" aria-label="Copy">Native Copy</button>
+            <button type="button" aria-label="Regenerate">Regenerate</button>
+          </div>
         </div>
       </article>
     </main>
@@ -69,16 +72,59 @@ console.log(price);</code></pre>
 
       const resultNode = document.getElementById("copy-result");
       try {
-        const actual = window.MicaMarkdownCopy.serializeTurn(document.getElementById("answer"));
-        const checks = [
-          ["golden string", actual === expected],
-          ["display math uses dollars", actual.includes("$$\n\\begin{aligned}") && !actual.includes("\\[")],
-          ["inline math uses single dollars", actual.includes("$a^2+b^2=c^2$")],
-          ["code preserves dollars", actual.includes('const price = "$5";')],
-          ["math not duplicated", (actual.match(/\\begin\{aligned\}/g) || []).length === 1],
-          ["ui button excluded", !actual.includes("Native Copy")]
-        ].map(([name, passed]) => ({ name, passed }));
-        resultNode.textContent = JSON.stringify({ passed: checks.every((check) => check.passed), checks, actual, expected }, null, 2);
+        const answer = document.getElementById("answer");
+        const copied = [];
+        Object.defineProperty(navigator, "clipboard", {
+          configurable: true,
+          value: { writeText: async (value) => { copied.push(value); } }
+        });
+        window.MicaMarkdownCopy.sync([answer]);
+        window.MicaMarkdownCopy.sync([answer]);
+        const micaButton = answer.querySelector("[data-mica-copy-action='true']");
+        const nativeCopy = answer.querySelector("[aria-label='Copy']:not([data-mica-copy-action])");
+        const actionBar = answer.querySelector("[role='toolbar']");
+        const firstAction = actionBar?.querySelector("button, [role='button']");
+        const actual = window.MicaMarkdownCopy.serializeTurn(answer);
+        const beforeClickWidth = micaButton?.getBoundingClientRect?.().width || 0;
+        micaButton?.click();
+        setTimeout(() => {
+          try {
+            const afterClickWidth = micaButton?.getBoundingClientRect?.().width || 0;
+            const checks = [
+              ["golden string", actual === expected],
+              ["display math uses dollars", actual.includes("$$\n\\begin{aligned}") && !actual.includes("\\[")],
+              ["inline math uses single dollars", actual.includes("$a^2+b^2=c^2$")],
+              ["code preserves dollars", actual.includes('const price = "$5";')],
+              ["math not duplicated", (actual.match(/\\begin\{aligned\}/g) || []).length === 1],
+              ["ui button excluded", !actual.includes("Native Copy") && !actual.includes("Mica Copy")],
+              ["mica copy icon only", micaButton instanceof HTMLButtonElement && micaButton.textContent.trim() === "" && !!micaButton.querySelector("svg")],
+              ["mica copy accessible label", micaButton?.getAttribute("aria-label") === "Copied as Markdown with Mica" && micaButton?.getAttribute("title") === "Copied as Markdown"],
+              ["mica copy before native copy", firstAction === micaButton && nativeCopy instanceof HTMLButtonElement],
+              ["native copy preserved", nativeCopy instanceof HTMLButtonElement && nativeCopy.textContent === "Native Copy"],
+              ["no duplicate after sync", answer.querySelectorAll("[data-mica-copy-action='true']").length === 1],
+              ["success width stable", Math.abs(afterClickWidth - beforeClickWidth) <= 1],
+              ["clipboard received markdown", copied[0] === expected]
+            ].map(([name, passed]) => ({ name, passed }));
+            resultNode.textContent = JSON.stringify({
+              passed: checks.every((check) => check.passed),
+              checks,
+              actual,
+              expected,
+              ui: {
+                buttonText: micaButton?.textContent || "",
+                ariaLabel: micaButton?.getAttribute("aria-label") || "",
+                title: micaButton?.getAttribute("title") || "",
+                svg: !!micaButton?.querySelector("svg"),
+                order: Array.from(actionBar?.querySelectorAll("button") || []).map((button) => button.getAttribute("aria-label") || button.textContent || ""),
+                duplicateCount: answer.querySelectorAll("[data-mica-copy-action='true']").length,
+                nativeCopyPreserved: nativeCopy instanceof HTMLButtonElement,
+                widthStable: Math.abs(afterClickWidth - beforeClickWidth) <= 1
+              }
+            }, null, 2);
+          } catch (error) {
+            resultNode.textContent = JSON.stringify({ passed: false, error: String(error?.stack || error), actual, expected }, null, 2);
+          }
+        }, 40);
       } catch (error) {
         resultNode.textContent = JSON.stringify({ passed: false, error: String(error?.stack || error) }, null, 2);
       }

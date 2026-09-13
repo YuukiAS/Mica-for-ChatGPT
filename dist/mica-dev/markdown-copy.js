@@ -1,7 +1,7 @@
 (() => {
   const GLOBAL_KEY = "MicaMarkdownCopy";
   const BUTTON_ATTR = "data-mica-copy-action";
-  const BUTTON_TEXT = "Mica Copy";
+  const BUTTON_LABEL = "Copy as Markdown with Mica";
   const DISPLAY_MATH_DELIMITER = "$$";
 
   let enabled = true;
@@ -54,35 +54,74 @@
 
   function ensureCopyButton(turn) {
     if (turn.querySelector(`[${BUTTON_ATTR}="true"]`)) return;
-    const bar = findActionBar(turn) || createActionBar(turn);
+    const nativeCopy = findNativeCopyAction(turn);
+    const bar = findActionBar(turn, nativeCopy) || createActionBar(turn);
     if (!bar) return;
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = BUTTON_TEXT;
     button.setAttribute(BUTTON_ATTR, "true");
-    button.setAttribute("aria-label", "Copy this answer as Mica Markdown");
-    button.style.cssText = "font: inherit; font-size: 12px; line-height: 1.2; padding: 4px 7px; border: 1px solid rgba(95,99,110,.28); border-radius: 6px; background: rgba(255,255,255,.78); color: inherit; cursor: pointer;";
+    button.setAttribute("aria-label", BUTTON_LABEL);
+    button.setAttribute("title", BUTTON_LABEL);
+    button.innerHTML = copyCheckSvg();
+    button.style.cssText = [
+      "display:inline-flex",
+      "align-items:center",
+      "justify-content:center",
+      "width:32px",
+      "height:32px",
+      "min-width:32px",
+      "padding:6px",
+      "border:0",
+      "border-radius:8px",
+      "background:transparent",
+      "color:inherit",
+      "cursor:pointer",
+      "vertical-align:middle"
+    ].join(";");
+    button.addEventListener("mouseenter", () => { button.style.background = "rgba(0,0,0,.06)"; });
+    button.addEventListener("mouseleave", () => { button.style.background = "transparent"; });
+    button.addEventListener("focus", () => { button.style.outline = "2px solid rgba(52,120,246,.45)"; });
+    button.addEventListener("blur", () => { button.style.outline = "none"; });
     button.addEventListener("click", async (event) => {
       event.preventDefault();
       event.stopPropagation();
       try {
         const result = await copyTurn(turn);
-        button.textContent = result.copied ? "Copied" : "Copy failed";
+        setCopyButtonState(button, result.copied ? "copied" : "failed");
       } catch (_error) {
-        button.textContent = "Copy failed";
+        setCopyButtonState(button, "failed");
       }
       setTimeout(() => {
-        if (button.isConnected) button.textContent = BUTTON_TEXT;
+        if (button.isConnected) setCopyButtonState(button, "idle");
       }, 1400);
     });
-    bar.appendChild(button);
+    if (nativeCopy?.parentElement === bar) {
+      bar.insertBefore(button, nativeCopy);
+    } else if (nativeCopy?.parentElement && nativeCopy.parentElement.parentElement === bar) {
+      bar.insertBefore(button, nativeCopy.parentElement);
+    } else {
+      bar.appendChild(button);
+    }
   }
 
   function removeAllButtons() {
     document.querySelectorAll(`[${BUTTON_ATTR}="true"]`).forEach((node) => node.remove());
   }
 
-  function findActionBar(turn) {
+  function findNativeCopyAction(turn) {
+    const candidates = Array.from(turn.querySelectorAll("button, [role='button']"));
+    return candidates.find((node) => {
+      if (!(node instanceof HTMLElement) || node.getAttribute(BUTTON_ATTR) === "true") return false;
+      const label = `${node.getAttribute("aria-label") || ""} ${node.getAttribute("title") || ""} ${node.getAttribute("data-testid") || ""} ${node.textContent || ""}`;
+      return /\bcopy\b|复制/i.test(label);
+    }) || null;
+  }
+
+  function findActionBar(turn, nativeCopy = null) {
+    if (nativeCopy instanceof HTMLElement) {
+      const bar = nativeCopy.closest("[role='toolbar'], menu, [data-testid*='message-actions' i], [class*='action' i], div");
+      if (bar instanceof HTMLElement && !bar.closest("[data-mica-root='true']")) return bar;
+    }
     const selectors = [
       "[data-testid*='copy']",
       "[aria-label*='Copy' i]",
@@ -100,9 +139,22 @@
   function createActionBar(turn) {
     const bar = document.createElement("div");
     bar.setAttribute("data-mica-copy-bar", "true");
-    bar.style.cssText = "display:flex; justify-content:flex-end; gap:6px; margin-top:6px;";
+    bar.setAttribute("role", "toolbar");
+    bar.style.cssText = "display:flex; justify-content:flex-end; align-items:center; gap:4px; margin-top:6px;";
     turn.appendChild(bar);
     return bar;
+  }
+
+  function setCopyButtonState(button, state) {
+    button.dataset.micaCopyState = state;
+    button.style.color = state === "copied" ? "rgb(22, 163, 74)" : state === "failed" ? "rgb(185, 28, 28)" : "inherit";
+    button.setAttribute("title", state === "copied" ? "Copied as Markdown" : state === "failed" ? "Mica Copy failed" : BUTTON_LABEL);
+    button.setAttribute("aria-label", state === "copied" ? "Copied as Markdown with Mica" : state === "failed" ? "Copy as Markdown with Mica failed" : BUTTON_LABEL);
+  }
+
+  function copyCheckSvg() {
+    // Lucide copy-check, ISC license: https://lucide.dev/icons/copy-check
+    return `<svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 15 2 2 4-4"></path><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>`;
   }
 
   function findAnswerRoot(turn) {

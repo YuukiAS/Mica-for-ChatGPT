@@ -187,6 +187,8 @@
       const PARTIAL_PAYLOAD_15 = "1234567890klmno";
       const PARTIAL_PAYLOAD_9 = "123456789";
       const DIFFERENT_PAYLOAD = "zyxwvutsrqponmlkjihgfedcba87654321";
+      const MEDIUM_PAYLOAD = makePayload("medium_residual_marker", 560);
+      const LONG_PAYLOAD = makePayload("long_residual_marker", 2200);
 
       if (!new URLSearchParams(location.search).has("manual")) {
         run().catch((error) => {
@@ -208,6 +210,9 @@
         const sendStable = await runNamedCase("sendStable", runSendStableCase);
         const sendResidual = await runNamedCase("sendResidual", runSendResidualCase);
         const persistentResidual = await runNamedCase("persistentResidual", runPersistentResidualCase);
+        const mediumResidual = await runNamedCase("mediumResidual", runMediumResidualCase);
+        const longResidual = await runNamedCase("longResidual", runLongResidualCase);
+        const pillRemovalContinuity = await runNamedCase("pillRemovalContinuity", runPillRemovalContinuityCase);
         const multiResidual = await runNamedCase("multiResidual", runMultiResidualCase);
         const newInput = await runNamedCase("newInput", runNewInputCase);
         const nonmatching = await runNamedCase("nonmatching", runNonmatchingCase);
@@ -215,8 +220,8 @@
         const eventBuffer = await runNamedCase("eventBuffer", runEventBufferCase);
         const toggleIsolation = await runNamedCase("toggleIsolation", runToggleIsolationCase);
 
-        const reports = [sendStable.report, sendResidual.report, persistentResidual.report, multiResidual.report, newInput.report, nonmatching.report];
-        const reportText = JSON.stringify({ reports, connectorLatch, continuityOn, continuityOff, eventBuffer, toggleIsolation });
+        const reports = [sendStable.report, sendResidual.report, persistentResidual.report, mediumResidual.report, longResidual.report, multiResidual.report, newInput.report, nonmatching.report];
+        const reportText = JSON.stringify({ reports, connectorLatch, continuityOn, continuityOff, pillRemovalContinuity, eventBuffer, toggleIsolation });
         const checks = [
           ["connector latch survives chooser chip disappearance and remount", connectorLatch.signal?.latched === true && connectorLatch.report?.connectorLifecycle?.latched === true],
           ["enter one selects connector without send generation", twoEnter.firstEnterSendGeneration === false && twoEnter.firstEnterSendIntent === false && twoEnter.firstEnterNoResidualCandidate === true],
@@ -229,6 +234,9 @@
           ["stable send does not start recovery", sendStable.recovery?.attemptCount === 0 && sendStable.recovery?.succeeded === false],
           ["partial residual provenance recovered", sendResidual.report?.sendLifecycle?.classification === "SEND_STALE_PAYLOAD_REAPPEARED" && sendResidual.recovery?.armed === true && sendResidual.recovery?.attemptCount >= 1 && sendResidual.recovery?.succeeded === true && sendResidual.recovery?.observedComposerClearPath === false && sendResidual.recovery?.postSendRemountPath === true && sendResidual.recovery?.recoveryEvidencePath === "post_send_remount" && sendResidual.recovery?.staleProvenanceMatched === true && sendResidual.recovery?.staleProvenanceReason === "partial_substring" && sendResidual.finalTextLength === 0],
           ["persistent connector residual recovered after commit", persistentResidual.report?.sendLifecycle?.classification === "SEND_STALE_PAYLOAD_REAPPEARED" && persistentResidual.recovery?.armed === true && persistentResidual.recovery?.attemptCount >= 1 && persistentResidual.recovery?.succeeded === true && persistentResidual.recovery?.observedComposerClearPath === false && persistentResidual.recovery?.postSendRemountPath === false && persistentResidual.recovery?.persistentResidualPath === true && persistentResidual.recovery?.recoveryEvidencePath === "persistent_same_payload" && persistentResidual.recovery?.staleProvenanceMatched === true && persistentResidual.recovery?.staleProvenanceReason === "exact_full" && persistentResidual.finalTextLength === 0],
+          ["medium connector residual recovered after commit", mediumResidual.report?.sendLifecycle?.classification === "SEND_STALE_PAYLOAD_REAPPEARED" && mediumResidual.recovery?.succeeded === true && mediumResidual.recovery?.persistentResidualPath === true && mediumResidual.recovery?.staleProvenanceReason === "exact_full" && mediumResidual.preSendLength >= 500 && mediumResidual.finalTextLength === 0],
+          ["long connector residual recovered after commit", longResidual.report?.sendLifecycle?.classification === "SEND_STALE_PAYLOAD_REAPPEARED" && longResidual.recovery?.succeeded === true && longResidual.recovery?.persistentResidualPath === true && longResidual.recovery?.staleProvenanceReason === "exact_full" && longResidual.preSendLength >= 2000 && longResidual.finalTextLength === 0],
+          ["connector pill removal does not refresh continuity snapshot", pillRemovalContinuity.cachedBeforeRemoval === true && pillRemovalContinuity.cloneCountAfterRemoval === pillRemovalContinuity.cloneCountBeforeRemoval && pillRemovalContinuity.computedStyleAfterRemoval === pillRemovalContinuity.computedStyleBeforeRemoval],
           ["multi remount bounded retry", multiResidual.recovery?.succeeded === true && multiResidual.recovery?.attemptCount >= 2 && multiResidual.recovery?.attemptCount <= multiResidual.recovery?.maxAttempts && multiResidual.finalTextLength === 0],
           ["new user input preserved", newInput.recovery?.cancelledByUserInput === true && newInput.finalTextLength === newInput.expectedLength],
           ["nonmatching text preserved", nonmatching.recovery?.nonmatchingTextObserved === true && nonmatching.recovery?.attemptCount === 0 && nonmatching.finalTextLength === nonmatching.expectedLength],
@@ -236,7 +244,7 @@
           ["event buffer preserves reliability timeline", eventBuffer.preserved === true],
           ["toggle isolation pass", toggleIsolation.passed === true],
           ["stale clear not triggered by send", !reports.some((report) => report?.sendLifecycle?.staleClearRecoveryAttemptedDuringSend === true)],
-          ["privacy excludes raw fixture text", !reportText.includes(PAYLOAD_34) && !reportText.includes(PAYLOAD_28) && !reportText.includes(PAYLOAD_30) && !reportText.includes(PARTIAL_PAYLOAD_15) && !reportText.includes(PARTIAL_PAYLOAD_9) && !reportText.includes(DIFFERENT_PAYLOAD) && !reportText.includes("connector user replacement")]
+          ["privacy excludes raw fixture text", !reportText.includes(PAYLOAD_34) && !reportText.includes(PAYLOAD_28) && !reportText.includes(PAYLOAD_30) && !reportText.includes(PARTIAL_PAYLOAD_15) && !reportText.includes(PARTIAL_PAYLOAD_9) && !reportText.includes(DIFFERENT_PAYLOAD) && !reportText.includes("medium_residual_marker") && !reportText.includes("long_residual_marker") && !reportText.includes("connector user replacement")]
         ].map(([name, passed]) => ({ name, passed: !!passed }));
 
         resultNode.textContent = JSON.stringify({
@@ -253,6 +261,9 @@
             sendStable: summarizeSend(sendStable.report, sendStable.recovery, sendStable.finalTextLength),
             sendResidual: summarizeSend(sendResidual.report, sendResidual.recovery, sendResidual.finalTextLength),
             persistentResidual: summarizeSend(persistentResidual.report, persistentResidual.recovery, persistentResidual.finalTextLength),
+            mediumResidual: summarizeSend(mediumResidual.report, mediumResidual.recovery, mediumResidual.finalTextLength),
+            longResidual: summarizeSend(longResidual.report, longResidual.recovery, longResidual.finalTextLength),
+            pillRemovalContinuity,
             multiResidual: summarizeSend(multiResidual.report, multiResidual.recovery, multiResidual.finalTextLength),
             newInput: summarizeSend(newInput.report, newInput.recovery, newInput.finalTextLength),
             nonmatching: summarizeSend(nonmatching.report, nonmatching.recovery, nonmatching.finalTextLength),
@@ -491,13 +502,55 @@
       }
 
       async function runPersistentResidualCase() {
+        return runPersistentResidualCaseFor(PAYLOAD_34, 2600);
+      }
+
+      async function runMediumResidualCase() {
+        const result = await runPersistentResidualCaseFor(MEDIUM_PAYLOAD, 3200);
+        result.preSendLength = MEDIUM_PAYLOAD.length;
+        return result;
+      }
+
+      async function runLongResidualCase() {
+        const result = await runPersistentResidualCaseFor(LONG_PAYLOAD, 4200);
+        result.preSendLength = LONG_PAYLOAD.length;
+        return result;
+      }
+
+      async function runPersistentResidualCaseFor(payload, timeout) {
         return captureSendCase(async () => {
-          await prepareConnectorSelectionWithEnter(PAYLOAD_34);
+          await prepareConnectorSelectionWithEnter(payload);
           await delay(180);
           await dispatchEnterKey();
           appendTurn("user", "committed persistent residual turn");
-          await waitForSendRecoverySucceeded(2600);
+          await waitForSendRecoverySucceeded(timeout);
         });
+      }
+
+      async function runPillRemovalContinuityCase() {
+        resetRuntimeFeatures({ enabled: true, connectorContinuity: true, sendResidualRecovery: true, staleClearRecovery: true, longThreadOptimization: true });
+        window.__MICA_TEST_CONTROLS__.resetConnectorLifecycleSignalForTests();
+        window.__MICA_TEST_CONTROLS__.resetConnectorContinuityForTests();
+        await prepareConnectorSelectionWithEnter(PAYLOAD_34);
+        await waitFor(() => window.__MICA_TEST_CONTROLS__.getConnectorContinuityState()?.cachedSnapshotAvailable === true, 1400, connectorStateText);
+        const before = window.__MICA_TEST_CONTROLS__.getConnectorContinuityState();
+        const pill = editor?.querySelector("[data-inline-selection-pill]");
+        pill?.remove();
+        await delay(220);
+        const after = window.__MICA_TEST_CONTROLS__.getConnectorContinuityState();
+        return {
+          cachedBeforeRemoval: before?.cachedSnapshotAvailable === true,
+          cloneCountBeforeRemoval: before?.perf?.cloneCount || 0,
+          cloneCountAfterRemoval: after?.perf?.cloneCount || 0,
+          computedStyleBeforeRemoval: before?.perf?.computedStyleCopyCount || 0,
+          computedStyleAfterRemoval: after?.perf?.computedStyleCopyCount || 0,
+          documentDiscoveryBeforeRemoval: before?.perf?.documentDiscoveryCount || 0,
+          documentDiscoveryAfterRemoval: after?.perf?.documentDiscoveryCount || 0,
+          geometryBeforeRemoval: before?.perf?.geometryReadCount || 0,
+          geometryAfterRemoval: after?.perf?.geometryReadCount || 0,
+          activeAfterRemoval: after?.active === true,
+          shellPresentAfterRemoval: after?.shellPresent === true
+        };
       }
 
       async function runMultiResidualCase() {
@@ -939,6 +992,13 @@
 
       function getEditorLength() {
         return (editor?.textContent ?? editor?.innerText ?? "").length;
+      }
+
+      function makePayload(marker, minLength) {
+        const chunk = `${marker} read-only connector residual coverage sentence. `;
+        let value = "";
+        while (value.length < minLength) value += chunk;
+        return value.slice(0, minLength);
       }
 
       function captureNativeComposerVisualMetrics() {

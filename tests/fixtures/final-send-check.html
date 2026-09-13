@@ -162,13 +162,20 @@
         window.__MICA_TEST_CONTROLS__.refreshNativeSafeMountedStatus();
         await delay(120);
         const dynamicMicaCopyButton = dynamicAnswer.querySelector("[data-mica-copy-action='true']");
+        const dynamicNativeCopyButton = dynamicAnswer.querySelector("[aria-label='Copy']:not([data-mica-copy-action])");
+        const dynamicActionBar = dynamicAnswer.querySelector("[role='toolbar']");
 
         const payload = {
           passed: true,
           markdownCopy: {
             nativeSafeMode: window.__MICA_TEST_CONTROLS__.getDiagnosticsReport()?.runtime?.nativeSafeMode === true,
             injectedOnNativeSafeRefresh: dynamicMicaCopyButton instanceof HTMLButtonElement,
-            buttonText: dynamicMicaCopyButton?.textContent || ""
+            buttonText: dynamicMicaCopyButton?.textContent || "",
+            iconOnly: dynamicMicaCopyButton instanceof HTMLButtonElement && dynamicMicaCopyButton.textContent.trim() === "" && !!dynamicMicaCopyButton.querySelector("svg"),
+            ariaLabel: dynamicMicaCopyButton?.getAttribute("aria-label") || "",
+            beforeNativeCopy: dynamicActionBar?.querySelector("button") === dynamicMicaCopyButton,
+            nativeCopyPreserved: dynamicNativeCopyButton instanceof HTMLButtonElement,
+            duplicateCount: dynamicAnswer.querySelectorAll("[data-mica-copy-action='true']").length
           },
           empty: {
             prepared: emptyResult?.prepared === true,
@@ -218,7 +225,11 @@
           payload.missing.composerTextModified === false,
           payload.markdownCopy.nativeSafeMode,
           payload.markdownCopy.injectedOnNativeSafeRefresh,
-          payload.markdownCopy.buttonText === "Mica Copy",
+          payload.markdownCopy.iconOnly,
+          payload.markdownCopy.ariaLabel === "Copy as Markdown with Mica",
+          payload.markdownCopy.beforeNativeCopy,
+          payload.markdownCopy.nativeCopyPreserved,
+          payload.markdownCopy.duplicateCount === 1,
           guard.totalSubmitEvents === 0,
           guard.totalSendClicks === 0,
           guard.totalEnterKeydowns === 0,
@@ -262,7 +273,10 @@
         turn.innerHTML = `
           <div data-message-author-role="assistant" class="markdown">
             <p>Dynamic answer for native-safe copy injection.</p>
-            <button type="button" aria-label="Copy">Native Copy</button>
+            <div role="toolbar" data-testid="message-actions">
+              <button type="button" aria-label="Copy">Native Copy</button>
+              <button type="button" aria-label="Regenerate">Regenerate</button>
+            </div>
           </div>
         `;
         document.getElementById("conversation").appendChild(turn);

@@ -244,6 +244,9 @@ async function runConnectorMentionLifecycleCase() {
   assert(JSON.stringify(payload).includes("stable send commit latch survives mounted +1 then -1"), "Connector fixture did not cover commit latch regression", payload);
   assert(JSON.stringify(payload).includes("enter one selects connector without send generation"), "Connector fixture did not cover connector selection Enter", payload);
   assert(JSON.stringify(payload).includes("partial residual provenance recovered"), "Connector fixture did not cover partial residual provenance", payload);
+  assert(JSON.stringify(payload).includes("medium connector residual recovered after commit"), "Connector fixture did not cover medium connector residual", payload);
+  assert(JSON.stringify(payload).includes("long connector residual recovered after commit"), "Connector fixture did not cover long connector residual", payload);
+  assert(JSON.stringify(payload).includes("connector pill removal does not refresh continuity snapshot"), "Connector fixture did not cover pill-removal snapshot regression", payload);
   assert(JSON.stringify(payload).includes("repeated remount stale clear waits for quiet window"), "Connector fixture did not cover stale-clear quiet-window regression", payload);
   return payload;
 }
