@@ -1,4 +1,5 @@
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -11,12 +12,18 @@ const threadUrl = "https://chatgpt.com/c/atlasVisualQueue_123";
 const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d]);
 
 await runStartupBurstScenario();
+await runLateVariantScenario();
 await runQueueCapacityScenario();
 
 console.log(JSON.stringify({
   passed: true,
   visualCaptureQueue: true,
   startupCoalescing: true,
+  lateComposerFocusCapture: true,
+  lateComposerBlurCapture: true,
+  lateComposerRemountCapture: true,
+  lateMountedWindowCapture: true,
+  connectorVariantsPreserved: true,
   stopDrainsQueue: true,
   automatedSend: false,
   automatedEnter: false,
@@ -68,6 +75,67 @@ async function runStartupBurstScenario() {
     assert(performanceJson.visualCapture?.executedHeavyCaptureCount === 3, "performance.json did not preserve visual capture stats");
   } finally {
     await rm(out, { recursive: true, force: true });
+  }
+}
+
+async function runLateVariantScenario() {
+  const temp = await mkdtemp(path.join(os.tmpdir(), "mica-atlas-late-variants-"));
+  const out = path.join(temp, "raw");
+  const sanitized = path.join(temp, "sanitized");
+  const fixture = path.join(temp, "fixture.html");
+  const probe = createFakeProbe({ scenario: "late-variants" });
+  try {
+    const result = await runReadOnlyCaptureSession({
+      port: 9322,
+      threadUrl,
+      out,
+      fetchImpl: fakeFetch,
+      connect: probe.connect,
+      idleMs: 2000,
+      drainMs: 5,
+      visualCoalesceMs: 5,
+      visualRecaptureCooldownMs: 40,
+      maxCheckpoints: 20,
+      maxVisualQueue: 20
+    });
+    await writeRawSessionBundle({ out, threadUrl, session: result });
+    await run("node", ["scripts/live-atlas-sanitize.mjs", `--input=${out}`, `--output=${sanitized}`]);
+    await run("node", ["scripts/live-atlas-build-fixtures.mjs", `--input=${sanitized}`, `--output=${fixture}`]);
+
+    const surfaceFiles = await readdir(path.join(out, "surfaces"));
+    const screenshotFiles = await readdir(path.join(out, "screenshots"));
+    const surfaces = await readJson(path.join(sanitized, "surfaces.json"));
+    const fixtureHtml = await readFile(fixture, "utf8");
+    const captureEvents = result.timeline.filter((event) => event.type === "cdp_checkpoint_capture");
+    const capturedStateClasses = new Set(captureEvents.map((event) => event.details?.stateClass));
+    const observedTimelineCount = result.timeline.filter((event) => event.type === "cdp_checkpoint_observed").length;
+
+    assert(result.terminationReason === "atlas_stopped", "late variant scenario did not stop cleanly");
+    assert(result.checkpointCount === 12, `late variant lifecycle events were not retained: ${result.checkpointCount}`);
+    assert(observedTimelineCount === result.checkpointCount, "late variant timeline lost checkpoint events");
+    assert(result.maxConcurrentHeavyCapture === 1, `late variant heavy capture concurrency was ${result.maxConcurrentHeavyCapture}`);
+    assert(probe.maxConcurrentDomSnapshot === 1, `late variant DOMSnapshot concurrency was ${probe.maxConcurrentDomSnapshot}`);
+    assert(probe.maxConcurrentScreenshot === 1, `late variant screenshot concurrency was ${probe.maxConcurrentScreenshot}`);
+    assert(result.executedHeavyCaptureCount === 9, `expected 9 late-variant captures, got ${result.executedHeavyCaptureCount}`);
+    assert(result.coalescedVisualCheckpointCount >= 2, "startup composer burst did not coalesce in late variant scenario");
+    assert(capturedStateClasses.has("composer_focus"), "late composer focus was not captured");
+    assert(capturedStateClasses.has("composer_blur"), "late composer blur was not captured");
+    assert(capturedStateClasses.has("composer_identity_changed"), "late composer identity/remount was not captured");
+    assert(countCaptured(captureEvents, "mounted_turn_window_changed") === 2, "late mounted window was not recaptured after cooldown");
+    assert(capturedStateClasses.has("mention_chooser_visible"), "late mention chooser was not captured");
+    assert(capturedStateClasses.has("connector_pill_visible"), "late connector pill was not captured");
+    assert(surfaceFiles.filter((file) => file.startsWith("composer-")).length === 4, "raw composer variants were not preserved");
+    assert(surfaceFiles.filter((file) => file.startsWith("longThreadMountedWindow-")).length === 2, "raw mounted-window variants were not preserved");
+    assert(screenshotFiles.length === 9, `expected 9 screenshots for late variants, got ${screenshotFiles.length}`);
+    assert(surfaces.composer?.variants?.length >= 4, "sanitizer merged away later composer variants");
+    assert(surfaces.longThreadMountedWindow?.variants?.length >= 2, "sanitizer merged away later mounted-window variants");
+    assert(surfaces.mentionChooser?.status === "OBSERVED", "sanitizer lost mention chooser variant");
+    assert(surfaces.connectorPill?.status === "OBSERVED", "sanitizer lost connector pill variant");
+    assert((fixtureHtml.match(/data-atlas-surface-slot="composer"/g) || []).length >= 4, "fixture builder did not render composer variants");
+    assert(fixtureHtml.includes('data-atlas-surface-slot="connectorPill"'), "fixture builder did not render connector pill");
+    assert(probe.captureAfterClose === 0, "late variant scenario captured after close");
+  } finally {
+    await rm(temp, { recursive: true, force: true });
   }
 }
 
@@ -156,6 +224,10 @@ function emitScenario(scenario, listeners) {
     }
     return;
   }
+  if (scenario === "late-variants") {
+    emitLateVariantScenario(listeners);
+    return;
+  }
   const composerRect = { x: 40, y: 700, width: 820, height: 88 };
   const overlayRect = { x: 810, y: 732, width: 72, height: 48 };
   const windowRect = { x: 0, y: 0, width: 900, height: 820 };
@@ -173,6 +245,34 @@ function emitScenario(scenario, listeners) {
   ]) {
     emitCheckpoint(listeners, stateClass, checkpointId, rect);
   }
+}
+
+function emitLateVariantScenario(listeners) {
+  const composerRect = { x: 40, y: 700, width: 820, height: 88 };
+  const overlayRect = { x: 810, y: 732, width: 72, height: 48 };
+  const windowRect = { x: 0, y: 0, width: 900, height: 820 };
+  for (const [stateClass, checkpointId, rect] of [
+    ["composer_present", "late:start:1", composerRect],
+    ["composer_identity_changed", "late:start:2", composerRect],
+    ["atlas_started", "late:start:3", composerRect],
+    ["mounted_turn_window_changed", "late:start:4", windowRect],
+    ["mica_overlay_state", "late:start:5", overlayRect]
+  ]) {
+    emitCheckpoint(listeners, stateClass, checkpointId, rect);
+  }
+  setTimeout(() => {
+    for (const [stateClass, checkpointId, rect] of [
+      ["composer_focus", "late:focus", composerRect],
+      ["composer_blur", "late:blur", composerRect],
+      ["composer_identity_changed", "late:remount", { x: 40, y: 690, width: 820, height: 96 }],
+      ["mounted_turn_window_changed", "late:window", { x: 0, y: 0, width: 900, height: 780 }],
+      ["mention_chooser_visible", "late:mention", { x: 40, y: 500, width: 360, height: 180 }],
+      ["connector_pill_visible", "late:connector", { x: 70, y: 705, width: 120, height: 32 }],
+      ["atlas_stopped", "late:stop", null, true]
+    ]) {
+      emitCheckpoint(listeners, stateClass, checkpointId, rect);
+    }
+  }, 140);
 }
 
 function emitCheckpoint(listeners, stateClass, checkpointId, targetRect, terminal = false) {
@@ -239,8 +339,28 @@ function fakeSnapshot(styles) {
   addNode("DIV", assistant, { role: "toolbar", "aria-label": "Copy" }, { x: 260, y: 260, width: 32, height: 32 });
   addNode("MAIN", body, { "data-testid": "conversation-window" }, { x: 0, y: 0, width: 900, height: 820 });
   addNode("FORM", body, { "data-composer-surface": "true", "data-testid": "composer" }, { x: 40, y: 700, width: 820, height: 88 });
+  addNode("FORM", body, { "data-composer-surface": "true", "data-testid": "composer-remounted" }, { x: 40, y: 690, width: 820, height: 96 });
+  addNode("DIV", body, { role: "listbox", "data-testid": "mention-menu" }, { x: 40, y: 500, width: 360, height: 180 });
+  addNode("DIV", body, { "data-inline-selection-pill": "true", "data-id": "plugin:safe-test" }, { x: 70, y: 705, width: 120, height: 32 });
   addNode("MICA-OVERLAY", body, { "data-mica-root": "true" }, { x: 810, y: 732, width: 72, height: 48 });
   return { strings, documents: [{ nodes: { nodeName, nodeValue, parentIndex, attributes }, layout: { nodeIndex: layoutNodeIndex, bounds, styles: layoutStyles } }] };
+}
+
+function countCaptured(captureEvents, stateClass) {
+  return captureEvents.filter((event) => event.details?.stateClass === stateClass && event.details?.status === "OBSERVED").length;
+}
+
+function run(command, args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { cwd: process.cwd(), stdio: "pipe", shell: false });
+    let stderr = "";
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`${command} ${args.join(" ")} failed with ${code}: ${stderr}`));
+    });
+  });
 }
 
 function delay(ms) {

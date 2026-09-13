@@ -47,6 +47,7 @@ export const DEFAULT_DRAIN_MS = 750;
 export const DEFAULT_MAX_CHECKPOINTS = 500;
 export const DEFAULT_MAX_VISUAL_QUEUE = 80;
 export const DEFAULT_VISUAL_COALESCE_MS = 80;
+export const DEFAULT_VISUAL_RECAPTURE_COOLDOWN_MS = 400;
 
 export function assertReadOnlyCommand(command) {
   if (FORBIDDEN_CDP_COMMANDS.has(command) || FORBIDDEN_CDP_PREFIXES.some((prefix) => command.startsWith(prefix))) {
@@ -187,6 +188,7 @@ export async function runReadOnlyCaptureSession(options) {
     maxCheckpoints = DEFAULT_MAX_CHECKPOINTS,
     maxVisualQueue = DEFAULT_MAX_VISUAL_QUEUE,
     visualCoalesceMs = DEFAULT_VISUAL_COALESCE_MS,
+    visualRecaptureCooldownMs = DEFAULT_VISUAL_RECAPTURE_COOLDOWN_MS,
     idleMs = DEFAULT_INACTIVITY_HARD_CAP_MS,
     drainMs = DEFAULT_DRAIN_MS,
     abortSignal = null,
@@ -223,8 +225,9 @@ export async function runReadOnlyCaptureSession(options) {
   let finishSession = null;
   const reportChunks = new Map();
   const visualQueue = new Map();
-  const capturedVisualKeys = new Set();
+  const lastCapturedAtByKey = new Map();
   const inFlightVisualKeys = new Set();
+  let composerRepresentativeCaptured = false;
   let visualWorkerTimer = null;
   let visualWorkerPromise = null;
   let activeHeavyCaptures = 0;
@@ -237,7 +240,8 @@ export async function runReadOnlyCaptureSession(options) {
     skippedVisualCheckpointCount: 0,
     maxVisualQueueDepth: 0,
     maxVisualQueue,
-    visualCoalesceMs
+    visualCoalesceMs,
+    visualRecaptureCooldownMs
   };
   const sessionDone = new Promise((resolve) => {
     finishSession = resolve;
@@ -377,7 +381,7 @@ export async function runReadOnlyCaptureSession(options) {
     const surfaceKey = surfaceKeyForCheckpoint(checkpoint.stateClass);
     if (!surfaceKey) return;
     visualCapture.receivedVisualCheckpointCount += 1;
-    const key = visualCoalesceKey(checkpoint, surfaceKey);
+    const key = visualCoalesceKey(checkpoint, surfaceKey, { composerRepresentativeCaptured });
     if (shouldSkipVisualCheckpoint(checkpoint, surfaceKey, key)) {
       visualCapture.skippedVisualCheckpointCount += 1;
       visualCapture.coalescedVisualCheckpointCount += 1;
@@ -422,19 +426,25 @@ export async function runReadOnlyCaptureSession(options) {
   }
 
   function shouldSkipVisualCheckpoint(checkpoint, surfaceKey, key) {
-    if (capturedVisualKeys.has(key)) return true;
     if (inFlightVisualKeys.has(key)) return true;
+    if (isWithinRecaptureCooldown(key)) return true;
     if ((surfaceKey === "assistantActionBar" || surfaceKey === "nativeCopyArea") && checkpoint.generationId == null) return true;
     if (isTurnBoundSurface(surfaceKey) && checkpoint.generationId == null) return true;
     return false;
   }
 
   function visualSkipReason(checkpoint, surfaceKey, key) {
-    if (capturedVisualKeys.has(key)) return "already_captured";
     if (inFlightVisualKeys.has(key)) return "in_flight_duplicate";
+    if (isWithinRecaptureCooldown(key)) return "recapture_cooldown";
     if ((surfaceKey === "assistantActionBar" || surfaceKey === "nativeCopyArea") && checkpoint.generationId == null) return "baseline_owned_surface";
     if (isTurnBoundSurface(surfaceKey) && checkpoint.generationId == null) return "baseline_turn_surface";
     return "coalesced";
+  }
+
+  function isWithinRecaptureCooldown(key) {
+    const lastCapturedAt = lastCapturedAtByKey.get(key);
+    if (!Number.isFinite(lastCapturedAt)) return false;
+    return Date.now() - lastCapturedAt < visualRecaptureCooldownMs;
   }
 
   function scheduleVisualWorker() {
@@ -485,7 +495,8 @@ export async function runReadOnlyCaptureSession(options) {
       if (captured.status === "OBSERVED") {
         capturedCheckpointCount += 1;
         surfaces.push(captured.surfaceKey);
-        capturedVisualKeys.add(item.key);
+        lastCapturedAtByKey.set(item.key, Date.now());
+        if (captured.surfaceKey === "composer") composerRepresentativeCaptured = true;
       }
       timeline.push({
         schemaVersion: 1,
@@ -1250,13 +1261,14 @@ function variantForCheckpoint(checkpoint) {
   return `${generation}:${stateClass}`;
 }
 
-function visualCoalesceKey(checkpoint, surfaceKey) {
+function visualCoalesceKey(checkpoint, surfaceKey, context = {}) {
   const rect = rectKey(normalizeTargetRect(checkpoint.targetRect || checkpoint.rect));
   const generation = checkpoint.generationId == null ? "global" : `g${checkpoint.generationId}`;
   const turnId = safeCheckpointTurnId(checkpoint.turnId) || "no-turn";
   if (surfaceKey === "composer") {
     const identity = stableKeyPart(checkpoint.composerId || checkpoint.composerIdentity || checkpoint.identityHint || "");
-    return `composer:stable:${identity}`;
+    const phase = composerVisualPhase(checkpoint.stateClass, context);
+    return `composer:${phase}:${generation}:${identity}:${rect}`;
   }
   if (surfaceKey === "micaOverlay") {
     const recording = checkpoint.recording === true || checkpoint.overlay?.recording === true ? "recording" : "idle";
@@ -1271,6 +1283,14 @@ function visualCoalesceKey(checkpoint, surfaceKey) {
     return `${surfaceKey}:${generation}:${turnId}:${checkpoint.stateClass || "unknown"}:${rect}`;
   }
   return `${surfaceKey}:${generation}:${checkpoint.stateClass || "unknown"}:${rect}`;
+}
+
+function composerVisualPhase(stateClass, context = {}) {
+  if (!context.composerRepresentativeCaptured) return "stable";
+  if (stateClass === "composer_focus") return "focus";
+  if (stateClass === "composer_blur") return "blur";
+  if (stateClass === "composer_identity_changed") return "identity_changed";
+  return "stable";
 }
 
 function rectKey(rect) {
