@@ -10,6 +10,7 @@ Read these first:
 2. `docs/PHASE_1_LONG_THREAD_RECOVERY.md`
 3. `docs/ROADMAP.md`
 4. `docs/VERSIONING.md`
+5. `docs/REAL_BUG_CONVERGENCE_WORKFLOW.md` for any bug that only reproduces on authenticated real ChatGPT
 
 ## P0 rules
 
@@ -35,6 +36,7 @@ Mica runtime versions must identify the actual code the user has loaded. Follow 
 - `BUILD_LABEL` may remain as an internal descriptive diagnostic field, but it never substitutes for a unique formal version.
 - After a bump, verify source, built manifest, popup, diagnostics, and reported unpacked build all agree on the new version.
 - Do not create or rewrite GitHub Releases automatically unless the task explicitly asks for a release. A runtime version bump on `main` does not by itself require a Release.
+- For the current `0.2.x` convergence line, runtime-changing candidates use patch SemVer (`0.2.1`, `0.2.2`, `0.2.3`, ...). Do not reintroduce user-facing `rcN` labels. Probe/tests/docs-only changes do not bump the runtime version.
 
 ### Stable development build path
 
@@ -82,6 +84,39 @@ For the same bug / goal, default to at most one final manual real-site acceptanc
 - If the first real-site acceptance fails, first use the existing diagnostic evidence, improve real-site capture, update the contract/fixture, reproduce locally, and verify automatically.
 - Ask for a second user action only when the failure reveals a previously unknown real-site behavior that cannot be inferred from the existing evidence. State the exact new evidence needed.
 - The user is not the routine QA runner. A real ChatGPT bug should flow through `real-site evidence -> reproducible contract/fixture -> affected tests -> CI/full regression as appropriate -> at most one user acceptance`.
+
+### Real-only bug convergence invariant
+
+For any bug whose decisive behavior only exists on authenticated real ChatGPT, `docs/REAL_BUG_CONVERGENCE_WORKFLOW.md` is mandatory process, not optional guidance.
+
+The required loop is:
+
+**already-failed live state -> exact targeted ground truth -> old code fails faithful fixture -> current/new code passes same fixture -> one final normal live confirmation**
+
+Hard rules:
+
+- Do not ask the user to reproduce a concrete product bug again merely to improve diagnostics. If the failed page still exists, inspect that state. If a probe is insufficient, fix the probe and rerun it against the same state.
+- A successful CDP connection is not enough to call ground truth `PASS`. Classify critical facts as `EXACT`, `PARTIAL`, `LIMITED`, or `MISSING`.
+- If the disputed behavior itself is `PARTIAL`, `LIMITED`, or `MISSING`, do not ask for another product retry yet.
+- Before the user runs a host-side one-shot probe, self-test the probe against fixtures representing the exact evidence class required by the bug.
+- Property-backed form controls must be read as properties/snapshot input values; do not use `textarea.textContent` as visible value evidence.
+- Icon-only controls should be resolved from narrow semantic/accessibility evidence and backend-node identity, not guessed from a broad `div` ancestor or visual position alone.
+- The old implementation must fail the real-derived fixture. If it passes, improve the fixture before touching runtime.
+- Do not fix an unproven stage by merely increasing timeouts.
+- If Codex sandbox cannot reach the user's Edge loopback, prepare/test the probe in sandbox and ask the user to run only the one-shot host command. Do not repeatedly request elevation or reinterpret sandbox networking as a Mica safety failure.
+- After a final live confirmation fails, preserve the failed state and return to targeted acquisition/replay; do not immediately issue another runtime candidate for the user to try.
+
+A real-only blocker is not ready for user retry until the report contains at least:
+
+```text
+GROUND_TRUTH_CRITICAL_FIELDS = EXACT
+OLD_CODE_REAL_FIXTURE = EXPECTED_FAIL
+CURRENT_CODE_REAL_FIXTURE = PASS
+FOCUSED_REGRESSIONS = PASS
+AFFECTED_INTEGRATION_E2E = PASS
+VERSION_CONSISTENCY = PASS
+READY_FOR_SINGLE_FINAL_NORMAL_CONFIRMATION = YES
+```
 
 ### Runtime typing performance invariant
 
@@ -175,7 +210,7 @@ Automated development and regression testing must not depend on the user's norma
 
 - Codex should perform routine iteration with local/synthetic fixtures and, when useful, an isolated test Chromium instance that only opens local fixture pages.
 - Synthetic browser tests should reproduce relevant ChatGPT lifecycle behavior such as composer mount/unmount, message submission, input clearing, streaming mutations, long-thread turn mount/unmount, overlay placement, and resizing.
-- Do not attach to, automate, reload, copy, inspect, or reuse the user's normal Edge profile or its user-data directory.
+- Do not attach to, automate, reload, copy, inspect, or reuse the user's normal Edge profile or its user-data directory **except through the separately authorized Real Edge Safe Probe / targeted real-bug acquisition path below**.
 - Do not create an automated authenticated ChatGPT browsing loop for regression testing. Do not repeatedly open conversations, submit prompts, refresh pages, or otherwise generate real ChatGPT traffic solely for automated Mica testing; this avoids unnecessary account/session risk and rate-limit or anti-abuse triggers.
 - Do not require a separately automated logged-in ChatGPT profile as part of normal development acceptance. If a bug cannot be reproduced faithfully with existing fixtures, improve the synthetic fixture from manually observed evidence instead of repeatedly probing the live service.
 - Before a real-site acceptance pass, leave the repository and unpacked build ready for manual testing and report exactly what the user should refresh or verify.
@@ -189,8 +224,9 @@ Real Edge Safe Probe is a narrow, separately authorized diagnostic path for the 
 Allowed only after explicit current-task authorization:
 
 - read-only page and DOM inspection;
+- narrow accessibility-tree inspection needed to identify icon-only controls;
 - Mica runtime state inspection;
-- composer structure, attributes, geometry, selected computed visual styles, and performance counters;
+- composer structure, attributes, geometry, selected computed visual styles, property-backed input values, and performance counters;
 - privacy-safe composer contract capture;
 - temporary composer text modification only when the composer is originally empty, followed by restoring the original empty state.
 
@@ -202,7 +238,7 @@ Forbidden even inside Safe Probe:
 - `POST`, `PUT`, `PATCH`, `DELETE`, conversation creation, file upload, connector execution, OAuth/auth action, account settings mutation, deleting/editing real conversations, navigation to other real conversations, or page reload;
 - arbitrary selector automation such as `click(selector)`, `press("Enter")`, `submit()`, or unconstrained page evaluation.
 
-Safe Probe APIs must stay narrow, for example `inspectPage`, `inspectComposer`, `inspectMicaRuntime`, `captureComposerContract`, `measureTyping`, `setTemporaryComposerText`, and `restoreComposer`. If a safe connection cannot be established, implement or update the architecture and capture boundary, but do not silently start side-effecting authenticated automation.
+Safe Probe APIs must stay narrow, for example `inspectPage`, `inspectComposer`, `inspectMicaRuntime`, `captureComposerContract`, `measureTyping`, `setTemporaryComposerText`, and `restoreComposer`. If a safe connection cannot be established from Codex sandbox, prepare/test the probe there and run the one-shot command from the user's normal host shell; do not silently escalate to side-effecting authenticated automation.
 
 ## Implementation preference
 
