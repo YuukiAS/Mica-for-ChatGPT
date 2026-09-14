@@ -1,7 +1,7 @@
 (() => {
-  const VERSION = "0.2.2";
-  const VERSION_NAME = "0.2.2";
-  const BUILD_LABEL = "0.2.2";
+  const VERSION = "0.2.3";
+  const VERSION_NAME = "0.2.3";
+  const BUILD_LABEL = "0.2.3";
   const DEFAULT_SETTINGS = {
     enabled: true,
     showStatus: true,
@@ -148,6 +148,7 @@
   let resizeObserver = null;
   let overlayPlacementScheduled = false;
   let scheduled = false;
+  let markdownCopyRefreshScheduled = false;
   let lastUrl = location.href;
   const runtimeState = {
     nativeSafeMode: false,
@@ -270,6 +271,9 @@
           return;
         }
         processKnownInterruptions();
+        if (runtimeState.nativeSafeMode && settings.micaMarkdownCopy && hasMarkdownCopyRelevantMutation(mutations)) {
+          scheduleNativeSafeMarkdownCopyRefresh();
+        }
         scheduleScan();
       });
     }
@@ -1058,6 +1062,40 @@
     } catch (_error) {
       // Copy is an enhancement; failure leaves ChatGPT's native UI untouched.
     }
+  }
+
+  function scheduleNativeSafeMarkdownCopyRefresh() {
+    if (markdownCopyRefreshScheduled) return;
+    markdownCopyRefreshScheduled = true;
+    nextFrame(() => {
+      markdownCopyRefreshScheduled = false;
+      if (!runtimeState.nativeSafeMode || !settings.enabled || !settings.micaMarkdownCopy) return;
+      const turns = collectMountedTurnStatusProbe();
+      syncMarkdownCopy(turns);
+    });
+  }
+
+  function hasMarkdownCopyRelevantMutation(mutations) {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes || []) {
+        if (node instanceof Element && isMarkdownCopyRelevantNode(node)) return true;
+      }
+    }
+    return false;
+  }
+
+  function isMarkdownCopyRelevantNode(node) {
+    const signal = [
+      node.getAttribute?.("data-message-author-role"),
+      node.getAttribute?.("role"),
+      node.getAttribute?.("aria-label"),
+      node.getAttribute?.("title"),
+      node.getAttribute?.("data-testid"),
+      node.className
+    ].filter(Boolean).join(" ");
+    if (/assistant|toolbar|group|copy|复制|message-actions|turn-action/i.test(signal)) return true;
+    if (node.matches?.("button, [role='button'], [data-message-author-role='assistant']")) return true;
+    return !!node.querySelector?.("button, [role='button'], [data-message-author-role='assistant'], [role='toolbar'], [role='group']");
   }
 
   function refreshNativeSafeMountedStatus(reason) {

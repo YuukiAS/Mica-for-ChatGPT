@@ -1,4 +1,4 @@
-export const VERSION = "0.2.2";
+export const VERSION = "0.2.3";
 export const MACHINE_VERSION = VERSION;
 export const VERSION_NAME = VERSION;
 export const BUILD_LABEL = VERSION;

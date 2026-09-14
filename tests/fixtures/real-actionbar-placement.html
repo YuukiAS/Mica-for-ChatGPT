@@ -14,11 +14,15 @@
       .native-cluster button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: #5f6368; }
       .footer-spacer { flex: 1 1 auto; }
       .detached-toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 6px; }
+      .fixed-drift { position: fixed; right: 24px; bottom: 24px; }
       #actionbar-result { position: fixed; left: 8px; top: 8px; max-width: 50vw; white-space: pre-wrap; font-size: 11px; }
     </style>
   </head>
   <body>
     <pre id="actionbar-result">Idle</pre>
+    <button id="body-fixed-mica-copy" class="fixed-drift" type="button" data-mica-copy-action="true" aria-label="Copy as Markdown with Mica">
+      <svg aria-hidden="true" viewBox="0 0 24 24"></svg>
+    </button>
     <main>
       <section id="turn-scope" data-testid="conversation-turn-12">
         <div id="answer" data-message-author-role="assistant" class="answer">
@@ -40,6 +44,16 @@
           </div>
           <div class="footer-spacer" aria-hidden="true"></div>
         </div>
+        <div id="below-row-detached-toolbar" class="detached-toolbar" role="toolbar" data-live-contract="below-row-detached-mica-toolbar">
+          <button id="below-row-mica-copy" type="button" data-mica-copy-action="true" aria-label="Copy as Markdown with Mica">
+            <svg aria-hidden="true" viewBox="0 0 24 24"></svg>
+          </button>
+        </div>
+      </section>
+      <section id="late-turn-scope" data-testid="conversation-turn-13">
+        <div id="late-answer" data-message-author-role="assistant" class="answer">
+          <p>Late action bar placeholder.</p>
+        </div>
       </section>
     </main>
     <script src="../../dist/mica-dev/markdown-copy.js"></script>
@@ -51,21 +65,51 @@
         const cluster = document.getElementById("native-cluster");
         const nativeCopy = document.getElementById("native-copy");
         const oldDetached = document.getElementById("old-detached-mica-copy");
+        const bodyFixed = document.getElementById("body-fixed-mica-copy");
+        const belowRow = document.getElementById("below-row-mica-copy");
+        const lateScope = document.getElementById("late-turn-scope");
+        const lateAnswer = document.getElementById("late-answer");
         window.MicaMarkdownCopy.sync([answer]);
         window.MicaMarkdownCopy.sync([answer]);
+        window.MicaMarkdownCopy.sync([lateAnswer]);
+        const lateBeforeNativeCount = lateScope.querySelectorAll("[data-mica-copy-action='true']").length;
+        lateScope.insertAdjacentHTML("beforeend", `
+          <div class="footer-row" data-live-contract="late-broad-footer-row">
+            <div id="late-native-cluster" class="native-cluster" role="group" aria-label="复制回复" data-live-contract="late-true-native-action-cluster">
+              <button id="late-read-aloud" type="button" aria-label="Read aloud"><svg data-icon="camera" viewBox="0 0 24 24"></svg></button>
+              <button id="late-native-copy" type="button" data-testid="copy-turn-action-button" aria-label="复制回复"><svg data-icon="copy" viewBox="0 0 24 24"></svg></button>
+              <button id="late-more" type="button" aria-label="More"><svg data-icon="ellipsis" viewBox="0 0 24 24"></svg></button>
+            </div>
+            <div class="footer-spacer" aria-hidden="true"></div>
+          </div>
+        `);
+        window.MicaMarkdownCopy.sync([lateAnswer]);
         const micaCopy = scope.querySelector("[data-mica-copy-action='true']");
+        const lateCluster = document.getElementById("late-native-cluster");
+        const lateNativeCopy = document.getElementById("late-native-copy");
+        const lateMicaCopy = lateScope.querySelector("[data-mica-copy-action='true']");
         const order = Array.from(cluster.children).map((node) => node.id || node.getAttribute("aria-label") || node.getAttribute("data-mica-copy-action") || node.tagName);
         const nativeIndex = order.indexOf("native-copy");
         const micaIndex = Array.from(cluster.children).indexOf(micaCopy);
+        const lateOrder = Array.from(lateCluster.children).map((node) => node.id || node.getAttribute("aria-label") || node.getAttribute("data-mica-copy-action") || node.tagName);
+        const lateNativeIndex = lateOrder.indexOf("late-native-copy");
+        const lateMicaIndex = Array.from(lateCluster.children).indexOf(lateMicaCopy);
         const checks = [
           ["native copy preserved", nativeCopy instanceof HTMLButtonElement && nativeCopy.isConnected],
           ["mica copy exists", micaCopy instanceof HTMLButtonElement],
           ["old detached copy removed", !oldDetached.isConnected],
+          ["body fixed drift removed", !bodyFixed.isConnected],
+          ["below row drift removed", !belowRow.isConnected],
           ["mica copy parent is native cluster", micaCopy?.parentElement === cluster],
           ["mica copy adjacent to native copy", Math.abs(micaIndex - nativeIndex) === 1],
           ["mica copy not appended to broad footer", micaCopy?.parentElement?.dataset.liveContract !== "broad-footer-row"],
           ["remount/sync no duplicate", scope.querySelectorAll("[data-mica-copy-action='true']").length === 1],
-          ["icon only", micaCopy instanceof HTMLButtonElement && micaCopy.textContent.trim() === "" && !!micaCopy.querySelector("svg")]
+          ["icon only", micaCopy instanceof HTMLButtonElement && micaCopy.textContent.trim() === "" && !!micaCopy.querySelector("svg")],
+          ["late turn no fallback before native copy", lateBeforeNativeCount === 0],
+          ["late native copy preserved", lateNativeCopy instanceof HTMLButtonElement && lateNativeCopy.isConnected],
+          ["late mica copy parent is native cluster", lateMicaCopy?.parentElement === lateCluster],
+          ["late mica copy adjacent to native copy", Math.abs(lateMicaIndex - lateNativeIndex) === 1],
+          ["late remount/sync no duplicate", lateScope.querySelectorAll("[data-mica-copy-action='true']").length === 1]
         ].map(([name, passed]) => ({ name, passed: !!passed }));
         resultNode.textContent = JSON.stringify({
           passed: checks.every((check) => check.passed),
@@ -75,7 +119,10 @@
             clusterOrder: order,
             micaParentContract: micaCopy?.parentElement?.dataset.liveContract || null,
             nativeParentContract: nativeCopy.parentElement?.dataset.liveContract || null,
-            duplicateCount: scope.querySelectorAll("[data-mica-copy-action='true']").length
+            duplicateCount: scope.querySelectorAll("[data-mica-copy-action='true']").length,
+            lateClusterOrder: lateOrder,
+            lateMicaParentContract: lateMicaCopy?.parentElement?.dataset.liveContract || null,
+            lateDuplicateCount: lateScope.querySelectorAll("[data-mica-copy-action='true']").length
           }
         }, null, 2);
       } catch (error) {

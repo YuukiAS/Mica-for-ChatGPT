@@ -25,6 +25,7 @@
       if (!(turn instanceof HTMLElement) || !isAssistantTurn(turn)) continue;
       ensureCopyButton(turn);
     }
+    cleanupOrphanedButtons();
   }
 
   async function copyTurn(turn) {
@@ -55,11 +56,31 @@
   function ensureCopyButton(turn) {
     const scope = findTurnScope(turn) || turn;
     const nativeCopy = findNativeCopyAction(scope) || (scope !== turn ? findNativeCopyAction(turn) : null);
-    const bar = findActionBar(scope, nativeCopy) || (scope !== turn ? findActionBar(turn, nativeCopy) : null) || createActionBar(turn);
-    if (!bar) return;
-    const existing = findExistingCopyButton(scope) || (scope !== turn ? findExistingCopyButton(turn) : null);
-    if (existing && isCorrectlyPlaced(existing, nativeCopy, bar)) return;
-    if (existing) existing.remove();
+    const bar = nativeCopy instanceof HTMLElement
+      ? findActionBar(scope, nativeCopy) || (scope !== turn ? findActionBar(turn, nativeCopy) : null)
+      : null;
+    const existingButtons = uniqueElements([
+      ...findExistingCopyButtons(scope),
+      ...(scope !== turn ? findExistingCopyButtons(turn) : [])
+    ]);
+
+    if (!(nativeCopy instanceof HTMLElement) || !(bar instanceof HTMLElement)) {
+      existingButtons.forEach((button) => button.remove());
+      removeEmptyMicaBars(scope);
+      return;
+    }
+
+    let keeper = null;
+    for (const existing of existingButtons) {
+      if (!keeper && isCorrectlyPlaced(existing, nativeCopy, bar)) {
+        keeper = existing;
+        continue;
+      }
+      existing.remove();
+    }
+    removeEmptyMicaBars(scope);
+    if (keeper) return;
+
     const button = createCopyButton(turn);
     insertCopyButton(button, nativeCopy, bar);
   }
@@ -129,9 +150,8 @@
     }) || null;
   }
 
-  function findExistingCopyButton(turn) {
-    const node = turn.querySelector(`[${BUTTON_ATTR}="true"]`);
-    return node instanceof HTMLElement ? node : null;
+  function findExistingCopyButtons(turn) {
+    return Array.from(turn.querySelectorAll(`[${BUTTON_ATTR}="true"]`)).filter((node) => node instanceof HTMLElement);
   }
 
   function findTurnScope(turn) {
@@ -163,6 +183,7 @@
     if (nativeCopy instanceof HTMLElement) {
       const cluster = findTightNativeActionCluster(turn, nativeCopy);
       if (cluster) return cluster;
+      return null;
     }
     const selectors = [
       "[data-testid*='copy']",
@@ -201,6 +222,12 @@
   }
 
   function isBroadDetachedActionContainer(container, buttons) {
+    const semanticSignal = [
+      container.getAttribute?.("role"),
+      container.getAttribute?.("aria-label"),
+      container.getAttribute?.("data-testid")
+    ].filter(Boolean).join(" ");
+    if (/toolbar|group|message-actions|turn-action|copy|复制/i.test(semanticSignal)) return false;
     const rect = container.getBoundingClientRect?.();
     if (!rect || rect.width <= 0) return false;
     const buttonRects = buttons.map((button) => button.getBoundingClientRect?.()).filter((item) => item && item.width > 0);
@@ -218,6 +245,28 @@
     bar.style.cssText = "display:flex; justify-content:flex-end; align-items:center; gap:4px; margin-top:6px;";
     turn.appendChild(bar);
     return bar;
+  }
+
+  function cleanupOrphanedButtons() {
+    document.querySelectorAll(`[${BUTTON_ATTR}="true"]`).forEach((node) => {
+      if (!(node instanceof HTMLElement)) return;
+      if (!findContainingTurnScope(node)) node.remove();
+    });
+  }
+
+  function findContainingTurnScope(node) {
+    if (!(node instanceof HTMLElement)) return null;
+    return node.closest("[data-testid^='conversation-turn-'], [data-testid*='conversation-turn'], article, section");
+  }
+
+  function removeEmptyMicaBars(root) {
+    root.querySelectorAll("[data-mica-copy-bar='true']").forEach((node) => {
+      if (node instanceof HTMLElement && node.querySelector(`[${BUTTON_ATTR}="true"]`) == null) node.remove();
+    });
+  }
+
+  function uniqueElements(items) {
+    return Array.from(new Set(items.filter((item) => item instanceof HTMLElement)));
   }
 
   function setCopyButtonState(button, state) {
