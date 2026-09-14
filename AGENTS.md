@@ -105,6 +105,22 @@ Hard rules:
 - Do not fix an unproven stage by merely increasing timeouts.
 - If Codex sandbox cannot reach the user's Edge loopback, prepare/test the probe in sandbox and ask the user to run only the one-shot host command. Do not repeatedly request elevation or reinterpret sandbox networking as a Mica safety failure.
 - After a final live confirmation fails, preserve the failed state and return to targeted acquisition/replay; do not immediately issue another runtime candidate for the user to try.
+- If an already-failed live ChatGPT page still exists but Codex lacks the exact
+  `--thread-url`, ask the user for that URL or provide the exact one-shot
+  host-side probe command before making runtime changes. Do not guess among
+  ChatGPT tabs and do not proceed from screenshots alone when exact DOM/AX
+  evidence is required.
+- A failed attempt to connect to the user's Edge DevTools WebSocket from the
+  Codex host/sandbox is not a substitute for live ground truth. In that case,
+  stop the fix path, report the connection limitation plainly, and ask the
+  user to run the already self-tested host PowerShell probe against the same
+  failed page.
+- Screenshot-only evidence may guide fixture hypotheses, but it is only
+  `LIMITED`. Do not describe a screenshot-derived or prior-contract-derived
+  patch as exact closure, do not claim `READY_FOR_SINGLE_FINAL_NORMAL_CONFIRMATION`
+  for the disputed behavior, and do not commit/push a new runtime candidate for
+  that real-only bug until critical fields are `EXACT` or the user explicitly
+  accepts a limited diagnostic patch.
 
 A real-only blocker is not ready for user retry until the report contains at least:
 
@@ -117,6 +133,86 @@ AFFECTED_INTEGRATION_E2E = PASS
 VERSION_CONSISTENCY = PASS
 READY_FOR_SINGLE_FINAL_NORMAL_CONFIRMATION = YES
 ```
+
+### Failed live confirmation discipline
+
+When a user reports that a final normal live confirmation failed, treat that
+page as the active evidence source. Do not continue as though the previous
+offline gates are still sufficient.
+
+Required sequence:
+
+1. Preserve the failed live state if it still exists.
+2. Identify the exact disputed behavior and the critical fields needed to prove
+   it, for example parent/sibling action-bar placement, visible composer value,
+   native Copy identity, connector selected state, or current turn ownership.
+3. Confirm that the probe or diagnostic can extract those fields in self-tests
+   before asking the user to run it.
+4. Acquire exact targeted ground truth from the same failed page using the
+   narrowest approved read-only path.
+5. Materialize a sanitized real-derived contract/fixture from that evidence.
+6. Prove that the previous bad implementation fails the fixture and the current
+   candidate passes it.
+7. Only then ask for one final normal live confirmation.
+
+Do not skip directly from a screenshot or user-visible symptom to runtime
+changes unless the user explicitly authorizes a limited diagnostic patch. If
+that exception is used, label it as `LIMITED`, not exact closure.
+
+### User handoff for live probes
+
+If exact live evidence requires the user's existing Edge session:
+
+- Ask for the full `https://chatgpt.com/c/<conversation-id>` URL when the probe
+  requires exact target matching and Codex does not already have it.
+- Provide one copy-pasteable PowerShell command that runs the self-tested probe
+  with `--thread-url` and `--user-data-dir`; do not ask the user to inspect
+  DevTools, Elements, Console, raw DOM, or screenshots as the normal path.
+- If Codex cannot connect to the Edge DevTools WebSocket from its own host or
+  sandbox, stop there and ask the user to run that host-side command. Do not
+  keep retrying privileged loopback commands, do not broaden the probe, and do
+  not reinterpret the connection failure as product evidence.
+- Do not guess among multiple ChatGPT tabs, normalize/navigate URLs, refresh the
+  page, or create a new conversation to make acquisition easier.
+
+### Evidence and reporting discipline
+
+Reports must separate these categories explicitly:
+
+- `EXACT`: observed from the current failed live page by a tested read-only
+  probe or built-in privacy-safe diagnostic.
+- `PARTIAL`: observed live, but a critical equality, identity, value source, or
+  relationship is not proven.
+- `LIMITED`: inferred from screenshots, previous contracts, or user-visible
+  description.
+- `MISSING`: not observed.
+
+Never collapse these into generic `PASS`. Do not state or imply that a bug is
+closed, ready for release, ready for another user retry, or fully implemented
+when the disputed live field is `PARTIAL`, `LIMITED`, or `MISSING`.
+
+Final reports after a failed live confirmation must include:
+
+- which evidence came from the user's current failed page;
+- which evidence came from old contracts or screenshots;
+- whether the old implementation failed the exact fixture;
+- whether the new implementation passed that same fixture;
+- which tests were actually run, and which were not run;
+- whether a new runtime candidate was produced, committed, or pushed.
+
+### Runtime-candidate gate after live failure
+
+After a failed final live confirmation, do not create, version-bump, rebuild,
+commit, push, or ask the user to reload a new runtime candidate for the same
+real-only bug until one of these is true:
+
+- critical disputed fields from the failed page are `EXACT`, the old code fails
+  the faithful fixture, and the new code passes it; or
+- the user explicitly accepts a limited diagnostic patch despite the missing
+  exact evidence.
+
+If the second path is used, the response and commit message must say it is a
+limited diagnostic/candidate patch, not an exact live closure.
 
 ### Runtime typing performance invariant
 
