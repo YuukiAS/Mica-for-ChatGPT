@@ -20,6 +20,12 @@ Do not run speculative `fix -> ask user to retry -> fix -> ask user to retry` lo
 
 If the final confirmation still fails, preserve that failed state and return to acquisition/replay. Do not immediately ship another candidate for the user to try.
 
+### One bug = one convergence task
+
+Keep one concrete real-only bug inside the same task/Goal until it is actually closed. A failed probe, partial contract, fixture refinement, runtime fix, and final confirmation are stages of the **same** convergence task, not reasons to create a new speculative Goal every few minutes.
+
+Create a new Goal only when product scope materially changes or the previous bug is closed. This prevents process drift and makes it obvious which evidence belongs to which bug.
+
 ## Phase A — Acquire the already-failed state
 
 Prefer a targeted one-shot probe of the page **as it currently exists after the failure**.
@@ -87,6 +93,12 @@ If even the host probe is unavailable, use existing screenshots + committed real
 
 If a host probe connects but returns `PARTIAL` / `MISSING` for a critical field because the probe extraction is wrong, **do not ask the user to reproduce the product bug again**. Fix and self-test the probe, then rerun the probe against the same already-failed page if it is still available. This is acquisition repair, not another product acceptance cycle.
 
+### Fallback evidence is diagnostic only
+
+`LIMITED` screenshot-derived or reconstructed evidence can be used to decide what the next probe must capture. It must **not** authorize a runtime patch for the disputed real-only behavior.
+
+If the critical disputed fact is not `EXACT`, freeze the corresponding product runtime path. Probe/tests/docs may change; the disputed runtime must not.
+
 ## Phase B — Prove the bug offline before changing runtime
 
 Materialize a commit-safe fixture/contract that represents the real failure.
@@ -139,6 +151,12 @@ For race/lifecycle bugs, the report must state which stage failed, such as:
 - action-bar semantic parent resolution.
 
 Do not fix an unknown stage by only increasing timeouts.
+
+### UI injection must fail closed
+
+For UI features such as Mica Copy, the same structural invariants used by the real-derived fixture must guard runtime insertion.
+
+If Mica cannot prove the exact native insertion cluster, it must **not** create or keep a fallback control in a broad row/container. Missing UI is preferable to a detached/floating control. Existing misplaced injected controls must be removed when the invariant fails.
 
 ## Phase D — One final normal live confirmation
 
