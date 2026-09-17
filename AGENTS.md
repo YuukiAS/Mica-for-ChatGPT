@@ -88,76 +88,56 @@ Mica's composer input path is the highest-priority runtime performance path. Rel
 
 ## Testing ladder
 
-Testing should be proportional to the change. Use this ladder as the canonical
-testing owner: impact audit and focused checks first, then `npm test`, then full
-E2E only when the candidate risk actually reaches Tier 2. Do not run the
-heaviest suite after every small edit merely because it exists.
+Testing should be proportional to the change and should minimize repeated human
+waiting. Use one ladder:
 
-### Development testing budget
+```text
+impact audit + smallest focused checks
+-> npm test
+-> Tier 2 full E2E only when indicated
+-> stress only when indicated
+-> final manual authenticated real-site acceptance
+```
 
-Each Mica development iteration should minimize repeated human waiting and avoid using full E2E as the normal discovery loop.
-
-- Before making changes, perform an impact audit and list every fixture, validator, and runtime module that the iteration is expected to affect. Do not wait for full E2E to reveal old fixture drift one case at a time.
-- During implementation, run only the smallest focused case that covers the current risk. If the same focused case fails twice in a row, statically inspect the source, fixture, and validator contract before a third run; do not continue trial-and-error reruns.
-- If an architecture change affects multiple focused fixtures, run each affected focused case successfully before starting full E2E.
-- Run full E2E only after all related focused tests pass. The target is at most one final full E2E run per candidate.
-- If full E2E fails because an old fixture or validator no longer matches the new architecture, stop and audit all similar old fixtures at once. Run all affected focused cases successfully before one final full E2E rerun.
-- Do not repeat `npm build`, `npm test`, or full E2E merely to confirm. Build only before dist-dependent focused tests or final build validation; otherwise batch edits first.
-- Every iteration report must include elapsed time for focused tests, `npm test`, full E2E, and `npm run build` / `npm run test:build`, even when a category was not run.
-
-### Test tiers and acceptance boundary
-
-**Tier 0 — docs / task only**
-
-- No runtime test is required when only documentation, task files, issue notes, or unused helper scripts change.
-
-**Tier 1 — normal runtime iteration**
-
-Run:
-
-`npm test`
-
-This is the default gate for ordinary source/build/popup/version changes.
-
-**Tier 2 — browser lifecycle / DOM-sensitive change**
-
-Run, after the implementation has settled:
-
-1. `npm test`
-2. `npm run test:e2e`
-
-Use Tier 2 when the change touches composer lifecycle, DOM mounting/unmounting, overlay placement, virtualization, observers/listeners, guided browser diagnostics, or another behavior that static/build checks cannot validate.
-
-Do not rerun the entire E2E suite after every tiny edit. Batch the implementation, run focused/local checks while iterating, then run the Tier 2 gate once on the candidate.
-
-### Focused iteration before full E2E
-
-For DOM/composer lifecycle work, a full Tier 2 gate is still required before a real-site acceptance candidate, but full E2E is not the normal edit loop.
-
-- During implementation, prefer focused unit checks, focused fixture runs, or the smallest available E2E filter for the failing case.
-- If a full E2E run is already in progress, let it complete and record it as that candidate's full gate attempt.
-- If full E2E fails, do not immediately rerun the whole suite after each patch. Identify the failing case, fix it, and rerun only the focused case until it passes.
-- Run the full Tier 2 gate again only when the candidate is stable and ready for manual real-site acceptance, or after a later real-site acceptance failure leads to substantive runtime changes.
-- For a given candidate, once full E2E has passed, do not rerun it for docs, build-label text, manifest/order bookkeeping, small diagnostics fields, selector tweaks, or other changes already covered by focused regression and `npm run test:build`.
-- Final test reports should distinguish focused tests, `npm test`, full E2E run count for the candidate, `npm run test:build`, and stress status.
-
-**Tier 3 — stress / race-condition gate**
-
-Run:
-
-`npm run test:e2e:stress`
-
-only when at least one of these is true:
-
-- the task specifically targets a race condition, intermittent lifecycle failure, or observer timing issue;
-- normal E2E has shown flakiness that needs repeated-loop evidence;
-- a substantial lifecycle/virtualization change is being finalized;
-- a stage/release candidate is about to be packaged and stress evidence is materially useful;
-- the task explicitly requests stress testing.
-
-Do **not** make Tier 3 an automatic requirement for every patch. If Tier 1/Tier 2 are sufficient, report `stress: not run — not indicated by test policy` rather than spending time on it.
-
-If a stress run is already in progress for the current race-condition investigation, let that one run complete and record the result; do not rerun it solely because build-path/documentation changes happened afterward unless runtime lifecycle code changed again.
+- **Impact audit first.** Before changing runtime behavior, list the fixtures,
+  validators and runtime modules expected to be affected. Do not wait for full
+  E2E to reveal old fixture drift one case at a time.
+- **Focused checks are the edit loop.** During implementation, run the smallest
+  unit, fixture, validator or E2E filter that covers the current risk. If the
+  same focused case fails twice in a row, statically inspect the source,
+  fixture and validator contract before a third run.
+- **Tier 0 — docs/task only.** Documentation, task files, issue notes and unused
+  helper changes require no runtime test.
+- **Tier 1 — normal runtime iteration.** Run `npm test` for ordinary
+  source/build/popup/version changes after focused checks are stable.
+- **Tier 2 — browser lifecycle / DOM-sensitive candidate.** Run `npm test` and
+  then `npm run test:e2e` only when the change touches composer lifecycle, DOM
+  mounting/unmounting, overlay placement, virtualization, observers/listeners,
+  guided browser diagnostics or another behavior that static/build checks cannot
+  validate. Architecture changes that affect multiple fixtures must pass each
+  affected focused case before full E2E.
+- **Full E2E is a candidate gate, not the normal discovery loop.** Target at most
+  one final full E2E run per candidate. If full E2E is already running, let it
+  complete and record it. If it fails, identify the failing case, fix it, and
+  rerun only the focused case until stable. Rerun full Tier 2 only when the
+  candidate is stable again or after a later real-site acceptance failure causes
+  substantive runtime changes.
+- **Stress is opt-in by risk.** Run `npm run test:e2e:stress` only for tasks
+  that target races/intermittent lifecycle failures, when normal E2E has shown
+  flakiness needing repeated-loop evidence, when a substantial
+  lifecycle/virtualization change is being finalized, when a stage/release
+  candidate materially benefits from stress evidence, or when the task
+  explicitly requests it. Otherwise report `stress: not run — not indicated by
+  test policy`.
+- **Do not repeat broad commands merely to confirm.** Do not rerun `npm build`,
+  `npm test`, full E2E or stress for docs, build-label text,
+  manifest/bookkeeping, small diagnostics fields, selector tweaks or changes
+  already covered by focused regression and `npm run test:build`. Build only
+  before dist-dependent focused tests or final build validation.
+- **Reports must distinguish evidence.** Each iteration report should list
+  elapsed time for focused checks, `npm test`, full E2E run count,
+  `npm run build` / `npm run test:build`, and stress status, including categories
+  not run and why.
 
 ### P0 acceptance
 
