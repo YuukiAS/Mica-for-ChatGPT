@@ -86,9 +86,12 @@ Mica's composer input path is the highest-priority runtime performance path. Rel
 - Feature correctness tests passing is not enough. Any composer/observer/listener change in Tier 2 must also run the focused typing hot-path regression, including connector-latched typing and composition/IME input.
 - Diagnostics and reliability runtime code both follow this budget. Diagnostics may do heavier observation only while an explicit diagnostic session is active and must still avoid interfering with native input.
 
-## Testing requirements
+## Testing ladder
 
-Testing should be proportional to the change. Do not run the heaviest suite after every small edit merely because it exists.
+Testing should be proportional to the change. Use this ladder as the canonical
+testing owner: impact audit and focused checks first, then `npm test`, then full
+E2E only when the candidate risk actually reaches Tier 2. Do not run the
+heaviest suite after every small edit merely because it exists.
 
 ### Development testing budget
 
@@ -102,7 +105,7 @@ Each Mica development iteration should minimize repeated human waiting and avoid
 - Do not repeat `npm build`, `npm test`, or full E2E merely to confirm. Build only before dist-dependent focused tests or final build validation; otherwise batch edits first.
 - Every iteration report must include elapsed time for focused tests, `npm test`, full E2E, and `npm run build` / `npm run test:build`, even when a category was not run.
 
-### Test tiers
+### Test tiers and acceptance boundary
 
 **Tier 0 — docs / task only**
 
@@ -159,6 +162,9 @@ If a stress run is already in progress for the current race-condition investigat
 ### P0 acceptance
 
 Before calling P0 complete, test a real long conversation and cover the regression checklist in `docs/PHASE_1_LONG_THREAD_RECOVERY.md`. Record enough before/after evidence to show that the optimization is real. A powerful development desktop is not sufficient final evidence if the target symptom only appears on a lower-power machine.
+
+This final real-site pass is manual authenticated acceptance by the user. It is
+not an automated logged-in ChatGPT regression and must not become one.
 
 ### Browser-test boundary
 
