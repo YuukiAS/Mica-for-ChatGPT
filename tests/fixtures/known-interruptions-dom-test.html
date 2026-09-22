@@ -65,6 +65,23 @@
           return getClicks(dialog) === 1;
         }));
 
+        cases.push(await testCase("acknowledgement removes dialog", async () => {
+          const dialog = appendFromHtml(realFixture);
+          attachClickCounter(dialog, { removeOnClick: true });
+          scanRepeated();
+          return getClicks(dialog) === 1 && !dialog.isConnected;
+        }));
+
+        cases.push(await testCase("normal ChatGPT dialog", async () => {
+          const dialog = createDialog({
+            heading: "ChatGPT",
+            body: "一个普通信息提示。",
+            buttons: ["明白了"]
+          });
+          scanRepeated();
+          return getClicks(dialog) === 0;
+        }));
+
         cases.push(await testCase("second action button", async () => {
           const dialog = appendFromHtml(realFixture);
           attachClickCounter(dialog);
@@ -72,6 +89,16 @@
           second.textContent = "稍后";
           second.addEventListener("click", () => incrementClicks(dialog));
           dialog.appendChild(second);
+          scanRepeated();
+          return getClicks(dialog) === 0;
+        }));
+
+        cases.push(await testCase("single confirm button untouched", async () => {
+          const dialog = createDialog({
+            heading: "请求过于频繁",
+            body: "你的请求过于频繁。为保障数据安全，我们已暂时限制你访问对话记录。",
+            buttons: ["确认"]
+          });
           scanRepeated();
           return getClicks(dialog) === 0;
         }));
@@ -96,6 +123,36 @@
           return getClicks(dialog) === 0;
         }));
 
+        cases.push(await testCase("file access authorization", async () => {
+          const dialog = createDialog({
+            heading: "File access",
+            body: "Allow file access before continuing.",
+            buttons: ["Allow"]
+          });
+          scanRepeated();
+          return getClicks(dialog) === 0;
+        }));
+
+        cases.push(await testCase("login prompt", async () => {
+          const dialog = createDialog({
+            heading: "登录",
+            body: "请登录你的 account 后继续。",
+            buttons: ["登录"]
+          });
+          scanRepeated();
+          return getClicks(dialog) === 0;
+        }));
+
+        cases.push(await testCase("generic authorization", async () => {
+          const dialog = createDialog({
+            heading: "授权",
+            body: "需要授权此操作。",
+            buttons: ["授权"]
+          });
+          scanRepeated();
+          return getClicks(dialog) === 0;
+        }));
+
         cases.push(await testCase("delete confirmation", async () => {
           const dialog = createDialog({
             heading: "删除对话",
@@ -113,6 +170,54 @@
             buttons: ["Confirm"]
           });
           scanRepeated();
+          return getClicks(dialog) === 0;
+        }));
+
+        cases.push(await testCase("tool authorization", async () => {
+          const dialog = createDialog({
+            heading: "Tool authorization",
+            body: "Allow this external action to use a tool authorization.",
+            buttons: ["Allow"]
+          });
+          scanRepeated();
+          return getClicks(dialog) === 0;
+        }));
+
+        cases.push(await testCase("heading similar but body mismatch", async () => {
+          const dialog = createDialog({
+            heading: "请求过于频繁",
+            body: "这里是普通说明，没有历史记录访问限制。",
+            buttons: ["明白了"]
+          });
+          scanRepeated();
+          return getClicks(dialog) === 0;
+        }));
+
+        cases.push(await testCase("body similar but heading mismatch", async () => {
+          const dialog = createDialog({
+            heading: "其他提示",
+            body: "你的请求过于频繁。为保障数据安全，我们已暂时限制你访问对话记录。",
+            buttons: ["明白了"]
+          });
+          scanRepeated();
+          return getClicks(dialog) === 0;
+        }));
+
+        cases.push(await testCase("hidden dialog", async () => {
+          const dialog = appendFromHtml(realFixture);
+          attachClickCounter(dialog);
+          dialog.hidden = true;
+          scanRepeated();
+          return getClicks(dialog) === 0;
+        }));
+
+        cases.push(await testCase("non-supported host", async () => {
+          const dialog = appendFromHtml(realFixture);
+          attachClickCounter(dialog);
+          const original = document.documentElement.getAttribute("data-mica-fixture");
+          document.documentElement.removeAttribute("data-mica-fixture");
+          scanRepeated();
+          if (original !== null) document.documentElement.setAttribute("data-mica-fixture", original);
           return getClicks(dialog) === 0;
         }));
 
@@ -197,10 +302,13 @@
         return dialog;
       }
 
-      function attachClickCounter(dialog) {
+      function attachClickCounter(dialog, options = {}) {
         dialog.dataset.clicks = "0";
         for (const button of dialog.querySelectorAll("button")) {
-          button.addEventListener("click", () => incrementClicks(dialog));
+          button.addEventListener("click", () => {
+            incrementClicks(dialog);
+            if (options.removeOnClick) dialog.remove();
+          });
         }
       }
 

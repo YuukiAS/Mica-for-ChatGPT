@@ -225,7 +225,7 @@
           await delay(420);
         });
 
-        window.__MICA_TEST_CONTROLS__.setSettings({ enabled: true });
+        window.__MICA_TEST_CONTROLS__.setSettings({ enabled: true, staleClearRecovery: true });
         window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
         const recoverySingleBackspaceReport = await captureCase(async () => {
           mountComposer("single x");
@@ -591,10 +591,11 @@
         });
 
         window.__MICA_TEST_CONTROLS__.setSettings({ enabled: false });
+        window.__MICA_TEST_CONTROLS__.forceScan();
         await waitFor(() => {
           const report = window.__MICA_TEST_CONTROLS__.getDiagnosticsReport();
           return report?.status?.name === "Disabled" && report?.runtime?.nativeSafeMode === true;
-        }, 3500);
+        }, 3500, () => JSON.stringify(window.__MICA_TEST_CONTROLS__.getDiagnosticsReport()?.runtime || null));
         window.__MICA_TEST_CONTROLS__.resetStaleComposerRecoveryForTests();
         const recoveryDisabledReport = await captureCase(async () => {
           mountComposer("disabled old");

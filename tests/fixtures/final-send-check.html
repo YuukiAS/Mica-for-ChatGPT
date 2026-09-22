@@ -156,6 +156,7 @@
         await delay(100);
         const missingResult = window.__MICA_TEST_CONTROLS__.prepareFinalSendCheck();
 
+        window.__MICA_TEST_CONTROLS__.setSettings({ micaMarkdownCopy: true });
         window.__MICA_TEST_CONTROLS__.forceScan();
         await delay(120);
         const dynamicAnswer = appendAssistantTurn();

@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <title>Mica safe baseline fixture</title>
+    <style>
+      body {
+        min-height: 1200px;
+        margin: 0;
+        color: #171717;
+        background: #f7f7f8;
+        font: 14px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+
+      [role="dialog"] {
+        display: block;
+        width: 420px;
+        min-height: 120px;
+        margin: 24px;
+        padding: 16px;
+        border: 1px solid #999999;
+        background: #ffffff;
+      }
+
+      button {
+        min-width: 72px;
+        min-height: 32px;
+      }
+    </style>
+    <script>
+      (() => {
+        const STORAGE_KEY = "mica-safe-baseline-fixture-storage";
+        const params = new URLSearchParams(location.search);
+        if (params.get("reset") === "old") {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            enabled: false,
+            showStatus: false,
+            autoDismissKnownInterruptions: false,
+            longThreadOptimization: true,
+            staleClearRecovery: true,
+            sendResidualRecovery: true,
+            connectorContinuity: true,
+            micaMarkdownCopy: true,
+            recentTurnKeepCount: 8
+          }));
+        }
+
+        const listeners = [];
+        function readStore() {
+          try {
+            return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+          } catch (_error) {
+            return {};
+          }
+        }
+
+        function writeStore(next) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        }
+
+        window.__MICA_SAFE_BASELINE_STORAGE__ = {
+          read: readStore,
+          write: writeStore,
+          key: STORAGE_KEY
+        };
+
+        window.chrome = {
+          runtime: {
+            lastError: null,
+            onMessage: {
+              addListener() {}
+            }
+          },
+          storage: {
+            local: {
+              get(keys, callback) {
+                const store = readStore();
+                if (Array.isArray(keys)) {
+                  callback(Object.fromEntries(keys.map((key) => [key, store[key]])));
+                  return;
+                }
+                if (keys && typeof keys === "object") {
+                  callback({ ...keys, ...store });
+                  return;
+                }
+                callback({ ...store });
+              },
+              set(value, callback) {
+                const previous = readStore();
+                const next = { ...previous, ...value };
+                writeStore(next);
+                const changes = {};
+                for (const [key, newValue] of Object.entries(value || {})) {
+                  changes[key] = { oldValue: previous[key], newValue };
+                }
+                for (const listener of listeners) listener(changes, "local");
+                callback?.();
+              }
+            },
+            onChanged: {
+              addListener(listener) {
+                listeners.push(listener);
+              }
+            }
+          }
+        };
+      })();
+    </script>
+  </head>
+  <body>
+    <main>
+      <h1>Mica safe baseline fixture</h1>
+      <p>Runtime fixture for defaults, migration, known interruptions, and status dot drag.</p>
+      <div id="stage"></div>
+    </main>
+    <script src="../../dist/mica-dev/known-interruptions.js"></script>
+    <script src="../../dist/mica-dev/connector-lifecycle-signal.js"></script>
+    <script src="../../dist/mica-dev/composer-diagnostics.js"></script>
+    <script src="../../dist/mica-dev/stale-composer-recovery.js"></script>
+    <script src="../../dist/mica-dev/connector-continuity.js"></script>
+    <script src="../../dist/mica-dev/send-residual-recovery.js"></script>
+    <script src="../../dist/mica-dev/markdown-copy.js"></script>
+    <script src="../../dist/mica-dev/atlas-recorder.js"></script>
+    <script src="../../dist/mica-dev/content.js"></script>
+    <script>
+      window.__MICA_SAFE_BASELINE_FIXTURE__ = {
+        addRateLimitDialog() {
+          return addDialog({
+            heading: "请求过于频繁",
+            body: "你的请求过于频繁。为保障数据安全，我们已暂时限制你访问对话记录。请稍等几分钟后再重试。",
+            buttons: ["明白了"],
+            removeOnClick: true
+          });
+        },
+        addUnknownDialog() {
+          return addDialog({
+            heading: "未知提示",
+            body: "这不是 Mica allowlist 中的提示。",
+            buttons: ["确认"]
+          });
+        },
+        addConsequentialDialog() {
+          return addDialog({
+            heading: "Authorize Google Drive",
+            body: "Google Drive requests permission to access files.",
+            buttons: ["Allow"]
+          });
+        },
+        readStorage() {
+          return window.__MICA_SAFE_BASELINE_STORAGE__.read();
+        }
+      };
+
+      function addDialog({ heading, body, buttons, removeOnClick = false }) {
+        const dialog = document.createElement("div");
+        const headingId = `heading-${Math.random().toString(36).slice(2)}`;
+        dialog.setAttribute("role", "dialog");
+        dialog.setAttribute("aria-labelledby", headingId);
+        dialog.innerHTML = `<h2 id="${headingId}"></h2><p></p><div class="actions"></div>`;
+        dialog.querySelector("h2").textContent = heading;
+        dialog.querySelector("p").textContent = body;
+        dialog.dataset.clicks = "0";
+        const actions = dialog.querySelector(".actions");
+        for (const label of buttons) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = label;
+          button.addEventListener("click", () => {
+            dialog.dataset.clicks = String(Number(dialog.dataset.clicks || "0") + 1);
+            if (removeOnClick) dialog.remove();
+          });
+          actions.appendChild(button);
+        }
+        document.getElementById("stage").appendChild(dialog);
+        return dialog;
+      }
+    </script>
+  </body>
+</html>

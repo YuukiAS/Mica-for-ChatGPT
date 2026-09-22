@@ -5,17 +5,30 @@
   const DEFAULT_SETTINGS = {
     enabled: true,
     showStatus: true,
-    longThreadOptimization: true,
-    staleClearRecovery: true,
-    sendResidualRecovery: true,
-    connectorContinuity: true,
-    micaMarkdownCopy: true,
+    longThreadOptimization: false,
+    staleClearRecovery: false,
+    sendResidualRecovery: false,
+    connectorContinuity: false,
+    micaMarkdownCopy: false,
     autoDismissKnownInterruptions: true,
     recentTurnKeepCount: 8,
     nativeOnlyTurnThreshold: 14,
-    viewportBufferMultiple: 1.75
+    viewportBufferMultiple: 1.75,
+    statusDotPosition: null
   };
-  const STORAGE_KEYS = Object.keys(DEFAULT_SETTINGS);
+  const SAFE_BASELINE_MIGRATION_KEY = "safeBaselineMigration";
+  const SAFE_BASELINE_MIGRATION_VALUE = "0.2.4-safe-baseline-applied";
+  const SAFE_BASELINE_SETTINGS = {
+    enabled: true,
+    showStatus: true,
+    autoDismissKnownInterruptions: true,
+    longThreadOptimization: false,
+    staleClearRecovery: false,
+    sendResidualRecovery: false,
+    connectorContinuity: false,
+    micaMarkdownCopy: false
+  };
+  const STORAGE_KEYS = [...Object.keys(DEFAULT_SETTINGS), SAFE_BASELINE_MIGRATION_KEY];
   const STATUS = {
     ACTIVE: "Active",
     NATIVE_VIRTUALIZATION: "Native virtualization",
@@ -56,6 +69,7 @@
   const FRAME_STALL_MS = 50;
   const OVERLAY_MARGIN = 12;
   const OVERLAY_EXPAND_MS = 2600;
+  const OVERLAY_DRAG_THRESHOLD = 5;
   const TOAST_MS = 2800;
   const TOAST_MERGE_MS = 3000;
   const COMPOSER_PROTECTION_MS = 5000;
@@ -168,6 +182,10 @@
     initializedExpansionShown: false,
     forceCompactForPlacement: false,
     placement: "unplaced",
+    drag: null,
+    dragRaf: 0,
+    pendingDragPlacement: null,
+    suppressNextClick: false,
     expandTimer: 0,
     toastTimer: 0,
     toastVisible: false,
@@ -183,7 +201,7 @@
 
   async function initialize() {
     injectStyles();
-    settings = { ...DEFAULT_SETTINGS, ...(await readSettings()) };
+    settings = await readSettings();
     setupBadge();
     setupComposerGuidedDiagnostics();
     setupConnectorLifecycleSignal();
@@ -203,7 +221,13 @@
     return host === "chatgpt.com" || host === "chat.openai.com" || document.documentElement.dataset.micaFixture === "true";
   }
 
-  function readSettings() {
+  async function readSettings() {
+    const stored = await readRawSettings();
+    const migrated = await applySafeBaselineMigration(stored);
+    return { ...DEFAULT_SETTINGS, ...sanitizeSettings(migrated) };
+  }
+
+  function readRawSettings() {
     return new Promise((resolve) => {
       const storage = globalThis.chrome?.storage?.local;
       if (!storage) {
@@ -211,8 +235,35 @@
         return;
       }
       storage.get(STORAGE_KEYS, (items) => {
-        resolve(chrome.runtime?.lastError ? {} : sanitizeSettings(items || {}));
+        resolve(chrome.runtime?.lastError ? {} : (items || {}));
       });
+    });
+  }
+
+  async function applySafeBaselineMigration(stored) {
+    if (stored?.[SAFE_BASELINE_MIGRATION_KEY] === SAFE_BASELINE_MIGRATION_VALUE) {
+      return stored || {};
+    }
+    const migrated = {
+      ...stored,
+      ...SAFE_BASELINE_SETTINGS,
+      [SAFE_BASELINE_MIGRATION_KEY]: SAFE_BASELINE_MIGRATION_VALUE
+    };
+    await writeRawSettings({
+      ...SAFE_BASELINE_SETTINGS,
+      [SAFE_BASELINE_MIGRATION_KEY]: SAFE_BASELINE_MIGRATION_VALUE
+    });
+    return migrated;
+  }
+
+  function writeRawSettings(next) {
+    return new Promise((resolve) => {
+      const storage = globalThis.chrome?.storage?.local;
+      if (!storage) {
+        resolve();
+        return;
+      }
+      storage.set(next, () => resolve());
     });
   }
 
@@ -241,6 +292,13 @@
     if (Number.isFinite(value.recentTurnKeepCount)) next.recentTurnKeepCount = clamp(Math.round(value.recentTurnKeepCount), 4, 20);
     if (Number.isFinite(value.nativeOnlyTurnThreshold)) next.nativeOnlyTurnThreshold = clamp(Math.round(value.nativeOnlyTurnThreshold), 6, 40);
     if (Number.isFinite(value.viewportBufferMultiple)) next.viewportBufferMultiple = clamp(Number(value.viewportBufferMultiple), 1, 4);
+    if (value.statusDotPosition === null) next.statusDotPosition = null;
+    if (value.statusDotPosition && Number.isFinite(value.statusDotPosition.x) && Number.isFinite(value.statusDotPosition.y)) {
+      next.statusDotPosition = {
+        x: Math.round(value.statusDotPosition.x),
+        y: Math.round(value.statusDotPosition.y)
+      };
+    }
     return next;
   }
 
@@ -282,9 +340,9 @@
       if (settings.enabled && settings.longThreadOptimization && !runtimeState.nativeSafeMode && !isComposerLifecycleUnstable()) scheduleScan();
     }, { passive: true, capture: true });
     addEventListener("resize", () => {
+      scheduleOverlayPlacement();
       if (settings.enabled && settings.longThreadOptimization && !runtimeState.nativeSafeMode && !isComposerLifecycleUnstable()) {
         scheduleScan();
-        scheduleOverlayPlacement();
       }
     }, { passive: true });
     setInterval(() => {
@@ -478,6 +536,7 @@
       if (areaName !== "local") return;
       const next = {};
       for (const key of STORAGE_KEYS) {
+        if (key === SAFE_BASELINE_MIGRATION_KEY) continue;
         if (Object.prototype.hasOwnProperty.call(changes, key)) {
           next[key] = changes[key].newValue;
         }
@@ -778,6 +837,21 @@
       },
       forceScan() {
         scanAndApply();
+      },
+      processKnownInterruptions() {
+        return processKnownInterruptions();
+      },
+      getSafeBaselineMigration() {
+        return SAFE_BASELINE_MIGRATION_VALUE;
+      },
+      getStatusDotPosition() {
+        return settings.statusDotPosition ? { ...settings.statusDotPosition } : null;
+      },
+      setStatusDotPosition(position) {
+        const next = sanitizeSettings({ statusDotPosition: position }).statusDotPosition || null;
+        settings = { ...settings, statusDotPosition: next };
+        scheduleOverlayPlacement();
+        return next;
       },
       getDiagnosticsReport() {
         return buildDiagnosticsReport();
@@ -1100,6 +1174,11 @@
 
   function refreshNativeSafeMountedStatus(reason) {
     if (!runtimeState.nativeSafeMode) return currentStatus;
+    if (!settings.enabled) {
+      runtimeState.nativeSafeReason = "disabled";
+      setStatusIfChanged(STATUS.DISABLED, "Disabled by user", []);
+      return currentStatus;
+    }
     if (!settings.longThreadOptimization) {
       return refreshLongThreadDisabledStatus(reason);
     }
@@ -1108,11 +1187,6 @@
     syncMarkdownCopy(turns);
     updateTurnWindowStats(turns);
 
-    if (!settings.enabled) {
-      runtimeState.nativeSafeReason = "disabled";
-      setStatusIfChanged(STATUS.DISABLED, "Disabled by user", turns);
-      return currentStatus;
-    }
     if (turns.length === 0) {
       const conversationPath = isConversationPath();
       const hasTimedOut = Date.now() - bootTime > 5000;
@@ -1718,12 +1792,12 @@
   }
 
   function processKnownInterruptions() {
-    if (!settings.enabled) return;
+    if (!settings.enabled) return null;
     recordComposerDiagnosticRuntimeCallback("known_interruption_check");
     globalCounters.knownInterruptionScans += 1;
     const api = globalThis.MicaKnownInterruptions;
-    if (!api || typeof api.scan !== "function") return;
-    api.scan({
+    if (!api || typeof api.scan !== "function") return null;
+    return api.scan({
       enabled: settings.enabled && settings.autoDismissKnownInterruptions,
       onDismiss: ({ ruleId }) => {
         globalCounters.knownInterruptionDismissals += 1;
@@ -2253,10 +2327,118 @@
     <span class="mica-label">${escapeHtml(recording ? "Recording" : formatExpandedStatusLabel(currentStatus.name, currentStatus.mountedTurns, currentStatus.optimizedTurns))}</span>
   </button>
 </div>`;
-    badgeRoot.querySelector(".mica-status")?.addEventListener("click", () => {
-      expandOverlay(true);
-    });
+    const statusButton = badgeRoot.querySelector(".mica-status");
+    if (statusButton) attachOverlayInteraction(statusButton);
     scheduleOverlayPlacement();
+  }
+
+  function attachOverlayInteraction(statusButton) {
+    statusButton.addEventListener("pointerdown", handleOverlayPointerDown);
+    statusButton.addEventListener("pointermove", handleOverlayPointerMove);
+    statusButton.addEventListener("pointerup", handleOverlayPointerUp);
+    statusButton.addEventListener("pointercancel", handleOverlayPointerCancel);
+    statusButton.addEventListener("click", handleOverlayClick);
+  }
+
+  function handleOverlayClick(event) {
+    if (overlayState.suppressNextClick) {
+      overlayState.suppressNextClick = false;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    expandOverlay(true);
+  }
+
+  function handleOverlayPointerDown(event) {
+    if (event.button !== 0 || !badgeRoot || !badgeHost) return;
+    const overlay = badgeRoot.getElementById("mica-overlay");
+    if (!overlay) return;
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1024;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 768;
+    const size = measureOverlay(overlay);
+    const current = getCurrentOverlayPlacement(size, viewportWidth, viewportHeight);
+    overlayState.drag = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: current.x,
+      originY: current.y,
+      lastX: current.x,
+      lastY: current.y,
+      dragged: false,
+      size
+    };
+    event.currentTarget?.setPointerCapture?.(event.pointerId);
+  }
+
+  function handleOverlayPointerMove(event) {
+    const drag = overlayState.drag;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const dx = event.clientX - drag.startX;
+    const dy = event.clientY - drag.startY;
+    if (!drag.dragged && Math.hypot(dx, dy) < OVERLAY_DRAG_THRESHOLD) return;
+    drag.dragged = true;
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1024;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 768;
+    const placement = clampPlacement({
+      name: "custom",
+      x: drag.originX + dx,
+      y: drag.originY + dy
+    }, drag.size, viewportWidth, viewportHeight);
+    drag.lastX = placement.x;
+    drag.lastY = placement.y;
+    overlayState.pendingDragPlacement = placement;
+    scheduleDragPlacement();
+    event.preventDefault();
+  }
+
+  function handleOverlayPointerUp(event) {
+    finishOverlayPointer(event, true);
+  }
+
+  function handleOverlayPointerCancel(event) {
+    finishOverlayPointer(event, false);
+  }
+
+  function finishOverlayPointer(event, persist) {
+    const drag = overlayState.drag;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.currentTarget?.releasePointerCapture?.(event.pointerId);
+    overlayState.drag = null;
+    if (drag.dragged) {
+      overlayState.suppressNextClick = true;
+      if (persist) saveStatusDotPosition({ x: drag.lastX, y: drag.lastY });
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
+
+  function scheduleDragPlacement() {
+    if (overlayState.dragRaf) return;
+    overlayState.dragRaf = typeof requestAnimationFrame === "function"
+      ? requestAnimationFrame(applyPendingDragPlacement)
+      : setTimeout(applyPendingDragPlacement, 16);
+  }
+
+  function applyPendingDragPlacement() {
+    overlayState.dragRaf = 0;
+    if (!badgeRoot || !overlayState.pendingDragPlacement) return;
+    const overlay = badgeRoot.getElementById("mica-overlay");
+    if (!overlay) return;
+    const size = measureOverlay(overlay);
+    const placement = overlayState.pendingDragPlacement;
+    overlayState.pendingDragPlacement = null;
+    applyOverlayPlacement("custom", placement, size, null);
+  }
+
+  function saveStatusDotPosition(position) {
+    const nextPosition = {
+      x: Math.round(position.x),
+      y: Math.round(position.y)
+    };
+    settings = { ...settings, statusDotPosition: nextPosition };
+    writeSettings({ statusDotPosition: nextPosition });
   }
 
   function maybeExpandForStatus(previousName, nextName) {
@@ -2340,10 +2522,14 @@
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1024;
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 768;
     const size = measureOverlay(overlay);
-    const candidate = getStaticOverlayPlacement(size, viewportWidth, viewportHeight);
+    const saved = getSavedOverlayPlacement();
+    const candidate = saved || getStaticOverlayPlacement(size, viewportWidth, viewportHeight);
     const placement = clampPlacement(candidate, size, viewportWidth, viewportHeight);
     applyOverlayPlacement(candidate.name, placement, size, null);
-    globalCounters.overlayStaticPlacements += 1;
+    if (saved && (saved.x !== placement.x || saved.y !== placement.y)) {
+      saveStatusDotPosition(placement);
+    }
+    if (!saved) globalCounters.overlayStaticPlacements += 1;
   }
 
   function shouldPollOverlayPlacement() {
@@ -2356,6 +2542,26 @@
       x: viewportWidth - size.width - OVERLAY_MARGIN,
       y: viewportHeight - size.height - OVERLAY_MARGIN
     };
+  }
+
+  function getSavedOverlayPlacement() {
+    const position = settings.statusDotPosition;
+    if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.y)) return null;
+    return {
+      name: "custom",
+      x: position.x,
+      y: position.y
+    };
+  }
+
+  function getCurrentOverlayPlacement(size, viewportWidth, viewportHeight) {
+    const debugRect = globalThis.__MICA_OVERLAY_DEBUG__?.rect;
+    if (debugRect && Number.isFinite(debugRect.left) && Number.isFinite(debugRect.top)) {
+      return clampPlacement({ name: "current", x: debugRect.left, y: debugRect.top }, size, viewportWidth, viewportHeight);
+    }
+    const saved = getSavedOverlayPlacement();
+    const candidate = saved || getStaticOverlayPlacement(size, viewportWidth, viewportHeight);
+    return clampPlacement(candidate, size, viewportWidth, viewportHeight);
   }
 
   function applyOverlayPlacement(name, placement, size, composerRect) {

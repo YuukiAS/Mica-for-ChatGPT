@@ -83,6 +83,14 @@ try {
     const popupAtlasResult = await runPopupAtlasStatusCase();
     console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: popupAtlasResult }, null, 2));
     process.exitCode = 0;
+  } else if (caseFilter === "known-interruptions-dom") {
+    const interruptionResult = await runKnownInterruptionsDomCase();
+    console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: interruptionResult }, null, 2));
+    process.exitCode = 0;
+  } else if (caseFilter === "safe-baseline") {
+    const safeBaselineResult = await runSafeBaselineCase();
+    console.log(JSON.stringify({ passed: true, stress, case: caseFilter, result: safeBaselineResult }, null, 2));
+    process.exitCode = 0;
   } else if (caseFilter === "connector-mention-lifecycle") {
     const connectorResult = await runConnectorMentionLifecycleCase();
     connectorResult.pointerOverlayControls = await runOverlayControlsHitTestCase();
@@ -120,6 +128,10 @@ try {
     results.push(finalSendCheckResult);
     const popupAtlasResult = await runPopupAtlasStatusCase();
     results.push(popupAtlasResult);
+    const interruptionResult = await runKnownInterruptionsDomCase();
+    results.push(interruptionResult);
+    const safeBaselineResult = await runSafeBaselineCase();
+    results.push(safeBaselineResult);
     const connectorResult = await runConnectorMentionLifecycleCase();
     results.push(connectorResult);
     const sendResidualRaceResult = await runSendResidualRaceCase();
@@ -190,6 +202,10 @@ try {
     results.push(finalSendCheckResult);
     const popupAtlasResult = await runPopupAtlasStatusCase();
     results.push(popupAtlasResult);
+    const interruptionResult = await runKnownInterruptionsDomCase();
+    results.push(interruptionResult);
+    const safeBaselineResult = await runSafeBaselineCase();
+    results.push(safeBaselineResult);
     const typingHotpathResult = await runTypingHotpathCase();
     results.push(typingHotpathResult);
     const connectorResult = await runConnectorMentionLifecycleCase();
@@ -273,6 +289,252 @@ async function runConnectorMentionLifecycleCase() {
   assert(JSON.stringify(payload).includes("connector pill removal does not refresh continuity snapshot"), "Connector fixture did not cover pill-removal snapshot regression", payload);
   assert(JSON.stringify(payload).includes("repeated remount stale clear waits for quiet window"), "Connector fixture did not cover stale-clear quiet-window regression", payload);
   return payload;
+}
+
+async function runKnownInterruptionsDomCase() {
+  console.error("Running E2E case known-interruptions-dom@900px");
+  const page = await browser.newPage({ viewport: { width: 900, height: 720 } });
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  try {
+    await page.goto(`${baseUrl}/tests/fixtures/known-interruptions-dom-test.html?t=${Date.now()}`, { waitUntil: "load" });
+    await page.waitForFunction(() => window.__MICA_TEST_RESULT__?.cases?.length > 0, null, { timeout: 10000 });
+    const payload = await page.evaluate(() => window.__MICA_TEST_RESULT__);
+    payload.width = 900;
+    payload.mode = "known-interruptions-dom";
+    payload.errors = errors;
+    if (errors.length > 0) payload.passed = false;
+    assert(payload.passed, "Known interruptions DOM fixture failed", payload);
+    for (const name of [
+      "original real fixture",
+      "acknowledgement removes dialog",
+      "normal ChatGPT dialog",
+      "second action button",
+      "single confirm button untouched",
+      "Google Drive OAuth authorization",
+      "file access authorization",
+      "login prompt",
+      "generic authorization",
+      "delete confirmation",
+      "purchase payment confirmation",
+      "tool authorization",
+      "heading similar but body mismatch",
+      "body similar but heading mismatch",
+      "hidden dialog",
+      "non-supported host",
+      "same DOM node MutationObserver-style repeat",
+      "settings off"
+    ]) {
+      assert(payload.cases.some((item) => item.name === name && item.passed), `Known interruptions fixture missing passing case: ${name}`, payload);
+    }
+    return payload;
+  } finally {
+    await page.close();
+  }
+}
+
+async function runSafeBaselineCase() {
+  console.error("Running E2E case safe-baseline@900px");
+  const page = await browser.newPage({ viewport: { width: 900, height: 720 } });
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  try {
+    await page.goto(`${baseUrl}/tests/fixtures/safe-baseline.html?reset=old&t=${Date.now()}`, { waitUntil: "load" });
+    await waitForSafeBaseline(page);
+    const migrated = await page.evaluate(() => ({
+      settings: window.__MICA_TEST_CONTROLS__.getSettings(),
+      storage: window.__MICA_SAFE_BASELINE_FIXTURE__.readStorage(),
+      marker: window.__MICA_TEST_CONTROLS__.getSafeBaselineMigration(),
+      atlas: window.__MICA_TEST_CONTROLS__.getAtlasState(),
+      stale: window.__MICA_TEST_CONTROLS__.getStaleComposerRecoveryState(),
+      connectorContinuity: window.__MICA_TEST_CONTROLS__.getConnectorContinuityState(),
+      sendResidual: window.__MICA_TEST_CONTROLS__.getSendResidualRecoveryState()
+    }));
+    assertSafeBaselineSettings(migrated.settings, "first migrated settings", migrated);
+    assert(migrated.storage.safeBaselineMigration === "0.2.4-safe-baseline-applied", "Migration marker missing", migrated);
+    assert(migrated.atlas?.active !== true, "Atlas must not auto-start", migrated);
+
+    const interruption = await page.evaluate(() => {
+      const dialog = window.__MICA_SAFE_BASELINE_FIXTURE__.addRateLimitDialog();
+      const scan = window.__MICA_TEST_CONTROLS__.processKnownInterruptions();
+      return {
+        scan,
+        clicks: Number(dialog.dataset.clicks || "0"),
+        connected: dialog.isConnected,
+        settings: window.__MICA_TEST_CONTROLS__.getSettings()
+      };
+    });
+    assertSafeBaselineSettings(interruption.settings, "interruption settings", interruption);
+    assert(interruption.scan?.dismissed === 1 && interruption.clicks === 1 && interruption.connected === false, "Known rate-limit dialog was not dismissed under safe baseline", interruption);
+
+    const failOpen = await page.evaluate(() => {
+      const unknown = window.__MICA_SAFE_BASELINE_FIXTURE__.addUnknownDialog();
+      const consequential = window.__MICA_SAFE_BASELINE_FIXTURE__.addConsequentialDialog();
+      const scan = window.__MICA_TEST_CONTROLS__.processKnownInterruptions();
+      return {
+        scan,
+        unknownClicks: Number(unknown.dataset.clicks || "0"),
+        consequentialClicks: Number(consequential.dataset.clicks || "0"),
+        unknownConnected: unknown.isConnected,
+        consequentialConnected: consequential.isConnected
+      };
+    });
+    assert(failOpen.scan?.dismissed === 0 && failOpen.unknownClicks === 0 && failOpen.consequentialClicks === 0 && failOpen.unknownConnected && failOpen.consequentialConnected, "Unknown/consequential dialogs were not left untouched", failOpen);
+
+    const clickResult = await clickStatusDot(page);
+    assert(clickResult.statusClass.includes("expanded"), "Status dot click did not expand", clickResult);
+    await page.waitForTimeout(2900);
+
+    const dragResult = await dragStatusDot(page, { dx: -140, dy: -90 });
+    assert(dragResult.after.placement === "custom", "Status dot drag did not switch to custom placement", dragResult);
+    assert(dragResult.after.statusClass.includes("compact"), "Status dot drag triggered expanded click behavior", dragResult);
+    assert(dragResult.storage?.statusDotPosition, "Status dot drag did not persist a position", dragResult);
+    assert(rectInsideViewport(dragResult.after.statusRect, dragResult.after.viewport), "Dragged status dot left viewport", dragResult);
+
+    await page.goto(`${baseUrl}/tests/fixtures/safe-baseline.html?t=${Date.now()}`, { waitUntil: "load" });
+    await waitForSafeBaseline(page);
+    const restored = await readSafeOverlay(page);
+    assert(restored.placement === "custom", "Reload did not restore custom status dot placement", restored);
+    assert(restored.storage?.statusDotPosition, "Reload lost stored status dot position", restored);
+
+    await page.evaluate(() => window.__MICA_TEST_CONTROLS__.setStatusDotPosition({ x: 9999, y: 9999 }));
+    await page.waitForTimeout(80);
+    const clamped = await readSafeOverlay(page);
+    assert(rectInsideViewport(clamped.statusRect, clamped.viewport), "Saved offscreen status dot position was not clamped", clamped);
+
+    await page.setViewportSize({ width: 420, height: 360 });
+    await page.waitForTimeout(160);
+    const resized = await readSafeOverlay(page);
+    assert(rectInsideViewport(resized.statusRect, resized.viewport), "Status dot was not clamped after resize", resized);
+
+    await page.evaluate(() => new Promise((resolve) => {
+      chrome.storage.local.set({
+        longThreadOptimization: true,
+        micaMarkdownCopy: true,
+        connectorContinuity: true
+      }, resolve);
+    }));
+    await page.waitForFunction(() => {
+      const settings = window.__MICA_TEST_CONTROLS__?.getSettings?.();
+      return settings?.longThreadOptimization === true && settings?.micaMarkdownCopy === true && settings?.connectorContinuity === true;
+    }, null, { timeout: 5000 });
+    await page.goto(`${baseUrl}/tests/fixtures/safe-baseline.html?t=${Date.now()}`, { waitUntil: "load" });
+    await waitForSafeBaseline(page);
+    const manual = await page.evaluate(() => ({
+      settings: window.__MICA_TEST_CONTROLS__.getSettings(),
+      storage: window.__MICA_SAFE_BASELINE_FIXTURE__.readStorage()
+    }));
+    assert(manual.settings.longThreadOptimization === true && manual.settings.micaMarkdownCopy === true && manual.settings.connectorContinuity === true, "Manual re-enable was not preserved after migration", manual);
+    assert(manual.storage.safeBaselineMigration === "0.2.4-safe-baseline-applied", "Migration marker changed after reload", manual);
+
+    return {
+      passed: errors.length === 0,
+      mode: "safe-baseline",
+      width: 900,
+      migrated,
+      interruption,
+      failOpen,
+      clickResult,
+      dragResult,
+      restored,
+      clamped,
+      resized,
+      manual,
+      errors
+    };
+  } finally {
+    await page.close();
+  }
+}
+
+async function waitForSafeBaseline(page) {
+  await page.waitForFunction(() => {
+    const host = document.querySelector("[data-mica-root='true']");
+    return !!window.__MICA_TEST_CONTROLS__ && !!window.__MICA_SAFE_BASELINE_FIXTURE__ && !!host?.shadowRoot?.querySelector(".mica-status") && !!window.__MICA_OVERLAY_DEBUG__;
+  }, null, { timeout: 10000 });
+}
+
+function assertSafeBaselineSettings(settings, label, details) {
+  assert(settings.enabled === true, `${label}: enabled default must be ON`, details);
+  assert(settings.showStatus === true, `${label}: showStatus default must be ON`, details);
+  assert(settings.autoDismissKnownInterruptions === true, `${label}: autoDismissKnownInterruptions default must be ON`, details);
+  assert(settings.longThreadOptimization === false, `${label}: longThreadOptimization default must be OFF`, details);
+  assert(settings.staleClearRecovery === false, `${label}: staleClearRecovery default must be OFF`, details);
+  assert(settings.sendResidualRecovery === false, `${label}: sendResidualRecovery default must be OFF`, details);
+  assert(settings.connectorContinuity === false, `${label}: connectorContinuity default must be OFF`, details);
+  assert(settings.micaMarkdownCopy === false, `${label}: micaMarkdownCopy default must be OFF`, details);
+}
+
+async function clickStatusDot(page) {
+  const rect = await statusButtonRect(page);
+  await page.mouse.click(rect.x, rect.y);
+  await page.waitForTimeout(120);
+  return readSafeOverlay(page);
+}
+
+async function dragStatusDot(page, { dx, dy }) {
+  const before = await readSafeOverlay(page);
+  const rect = await statusButtonRect(page);
+  await page.mouse.move(rect.x, rect.y);
+  await page.mouse.down();
+  await page.mouse.move(rect.x + dx, rect.y + dy, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(160);
+  const after = await readSafeOverlay(page);
+  return { before, after, storage: after.storage };
+}
+
+async function statusButtonRect(page) {
+  return page.evaluate(() => {
+    const status = document.querySelector("[data-mica-root='true']")?.shadowRoot?.querySelector(".mica-status");
+    const rect = status.getBoundingClientRect();
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2
+    };
+  });
+}
+
+async function readSafeOverlay(page) {
+  return page.evaluate(() => {
+    const host = document.querySelector("[data-mica-root='true']");
+    const shadow = host.shadowRoot;
+    const status = shadow.querySelector(".mica-status");
+    const statusRect = status.getBoundingClientRect();
+    const debug = window.__MICA_OVERLAY_DEBUG__ || {};
+    return {
+      statusClass: status.className,
+      placement: debug.placement || shadow.getElementById("mica-overlay")?.dataset?.placement || null,
+      statusRect: {
+        left: statusRect.left,
+        top: statusRect.top,
+        right: statusRect.right,
+        bottom: statusRect.bottom,
+        width: statusRect.width,
+        height: statusRect.height
+      },
+      debug,
+      viewport: {
+        width: window.innerWidth,
+        height: window.innerHeight
+      },
+      settings: window.__MICA_TEST_CONTROLS__.getSettings(),
+      storage: window.__MICA_SAFE_BASELINE_FIXTURE__.readStorage()
+    };
+  });
+}
+
+function rectInsideViewport(rect, viewport) {
+  return rect.left >= -1
+    && rect.top >= -1
+    && rect.right <= viewport.width + 1
+    && rect.bottom <= viewport.height + 1;
 }
 
 async function runSendResidualRaceCase() {

@@ -1,13 +1,25 @@
 const DEFAULT_SETTINGS = {
   enabled: true,
   showStatus: true,
-  longThreadOptimization: true,
-  staleClearRecovery: true,
-  connectorContinuity: true,
-  sendResidualRecovery: true,
-  micaMarkdownCopy: true,
+  longThreadOptimization: false,
+  staleClearRecovery: false,
+  connectorContinuity: false,
+  sendResidualRecovery: false,
+  micaMarkdownCopy: false,
   autoDismissKnownInterruptions: true,
   recentTurnKeepCount: 8
+};
+const SAFE_BASELINE_MIGRATION_KEY = "safeBaselineMigration";
+const SAFE_BASELINE_MIGRATION_VALUE = "0.2.4-safe-baseline-applied";
+const SAFE_BASELINE_SETTINGS = {
+  enabled: true,
+  showStatus: true,
+  autoDismissKnownInterruptions: true,
+  longThreadOptimization: false,
+  staleClearRecovery: false,
+  connectorContinuity: false,
+  sendResidualRecovery: false,
+  micaMarkdownCopy: false
 };
 
 const statusColors = {
@@ -231,7 +243,18 @@ async function getActiveTab() {
 
 async function getStorage(defaults) {
   return new Promise((resolve) => {
-    chrome.storage.local.get(defaults, (items) => resolve(items || defaults));
+    chrome.storage.local.get({ ...defaults, [SAFE_BASELINE_MIGRATION_KEY]: null }, async (items) => {
+      if (items?.[SAFE_BASELINE_MIGRATION_KEY] !== SAFE_BASELINE_MIGRATION_VALUE) {
+        const migrated = {
+          ...SAFE_BASELINE_SETTINGS,
+          [SAFE_BASELINE_MIGRATION_KEY]: SAFE_BASELINE_MIGRATION_VALUE
+        };
+        await setStorage(migrated);
+        resolve({ ...items, ...SAFE_BASELINE_SETTINGS });
+        return;
+      }
+      resolve(items || defaults);
+    });
   });
 }
 

@@ -14,6 +14,8 @@ const plans = {
     ["node", ["scripts/run-e2e.mjs", "--case=markdown-copy"]],
     ["node", ["scripts/run-e2e.mjs", "--case=final-send-check"]],
     ["node", ["scripts/run-e2e.mjs", "--case=popup-atlas-status"]],
+    ["node", ["scripts/run-e2e.mjs", "--case=known-interruptions-dom"]],
+    ["node", ["scripts/run-e2e.mjs", "--case=safe-baseline"]],
     ["node", ["scripts/run-e2e.mjs", "--case=typing-hotpath"]]
   ],
   integration: [
