@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-05T04:10:57.757Z",
+  "surface": "Codex in-app browser",
+  "url": "https://chatgpt.com/",
+  "accountState": "logged_out",
+  "privacy": {
+    "messageSent": false,
+    "privateConversationOpened": false,
+    "draftRead": false,
+    "attachmentsRead": false,
+    "networkCaptured": false,
+    "broadDomDump": false,
+    "atlasRun": false
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "devicePixelRatio": 2,
+    "prefersDark": true,
+    "rootColorScheme": "light dark"
+  },
+  "emptyComposer": {
+    "evidenceLevel": "EXACT",
+    "editable": {
+      "tag": "textarea",
+      "id": "mobile-composer-prompt",
+      "accessibleRole": "text entry area",
+      "accessibleName": "与 ChatGPT 聊天",
+      "valueSource": "HTMLTextAreaElement.value",
+      "contenteditable": false,
+      "width": 614,
+      "height": 24,
+      "fontSize": "17px",
+      "lineHeight": "24px",
+      "overflowY": "auto"
+    },
+    "shell": {
+      "tag": "form",
+      "width": 768,
+      "height": 52,
+      "borderRadius": "28px",
+      "backgroundColor": "oklch(0.247759 0 none)",
+      "boxShadow": "rgba(255, 255, 255, 0.2) 0px 0px 1px 0px inset"
+    },
+    "controls": [
+      {
+        "accessibleName": "添加文件等",
+        "width": 44,
+        "height": 44,
+        "enabled": true
+      },
+      {
+        "accessibleName": "开始听写",
+        "width": 44,
+        "height": 44,
+        "enabled": true
+      },
+      {
+        "accessibleName": "发送消息",
+        "enabled": false
+      }
+    ]
+  },
+  "unresolved": [
+    "assistant_action_cluster",
+    "native_copy_adjacency",
+    "composer_typed",
+    "streaming_and_stop",
+    "error_retry_dialog",
+    "mention_connector",
+    "composer_remount",
+    "conversation_turn_identity",
+    "native_virtualization",
+    "narrow_viewport",
+    "light_theme"
+  ],
+  "status": "PARTIAL_CURRENT",
+  "injectedUiImplementationGate": "CLOSED"
+}
