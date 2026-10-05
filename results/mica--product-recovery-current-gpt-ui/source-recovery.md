@@ -1,0 +1,15 @@
+# 源码恢复摘要
+
+权威恢复说明见 [`docs/recovery/MICA_SOURCE_OF_TRUTH_RECOVERY.md`](../../docs/recovery/MICA_SOURCE_OF_TRUTH_RECOVERY.md)。
+
+```text
+START_MAIN=2a33a57ca7e65c3dd72a741e861c7bf39dcab71c
+START_ORIGIN_MAIN=2a33a57ca7e65c3dd72a741e861c7bf39dcab71c
+WORKING_BRANCH=codex/mica-product-recovery-current-gpt-ui
+LEGACY_BRANCH=origin/codex/v020-convergence-pushable
+LEGACY_BRANCH_HEAD=f919e6f656b6da0d9bfdb495b41ff23feb22493c
+MERGE_BASE=aa4ce52581fff2e207d1f93600becbb3018b0efc
+MAIN_UNIQUE_COMMITS=3
+LEGACY_UNIQUE_COMMITS=57
+SOURCE_OF_TRUTH_UNIQUE=PASS
+```

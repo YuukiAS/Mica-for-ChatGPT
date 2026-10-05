@@ -175,3 +175,28 @@ Each iteration should leave the repository in a runnable state and include:
 - for runtime-changing iterations, a unique bumped version and rebuilt canonical dev build matching that version.
 
 Avoid unrelated refactors during P0.
+
+## Product recovery discipline
+
+The user is not Mica's first-line QA. Before requesting any external acceptance,
+Codex must inspect the same rendered surface and exercise the same ordinary
+interaction itself wherever the browser-test boundary permits it.
+
+- Producer review must remove every visible P0, P1, and P2 defect that can be
+  found in the same screenshot, state, or interaction before independent review.
+- GPT Work or another independent reviewer is a blind-spot and whole-product
+  check. It is not the first serious UI review and must not receive routine
+  click-through, selector debugging, fixture repair, or mechanical QA.
+- Evidence tooling serves the product. Do not keep extending Atlas, probes, or
+  validators when the missing work is a product fix.
+- After the same failure class repeats twice without new information, stop
+  rerunning it. Audit the root cause, fixture fidelity, and validator contract
+  before another attempt.
+- A real-site failure requires one evidence chain: old code fails on a
+  privacy-safe real-derived fixture, new code passes on that same fixture, then
+  one final bounded real-site confirmation.
+- Any source change invalidates prior screenshots, reviewer PASS results, and
+  release evidence for the affected surfaces. Final evidence must bind to one
+  exact candidate.
+- Normal product UI must not expose Atlas, fixture, mock, debug, raw selector,
+  internal path, build-internal, or diagnostic-protocol language.
