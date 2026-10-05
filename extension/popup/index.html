@@ -8,99 +8,60 @@
   </head>
   <body>
     <main>
-      <header>
-        <strong>Mica</strong>
-        <span id="version">v0.1</span>
+      <header class="product-header">
+        <img src="../icons/icon32.png" width="28" height="28" alt="">
+        <div class="identity">
+          <h1>Mica</h1>
+          <p id="pageStatus">Checking this page…</p>
+        </div>
+        <label class="switch" title="Turn Mica on or off">
+          <input id="enabled" type="checkbox" checked aria-label="Enable Mica">
+          <span aria-hidden="true"></span>
+        </label>
       </header>
 
-      <section class="status">
-        <span id="dot"></span>
-        <div>
-          <div id="state">Native only</div>
-          <p id="reason">Open a ChatGPT conversation.</p>
+      <section class="capabilities" aria-label="Mica capabilities">
+        <div class="capability-row">
+          <div>
+            <h2>Copy &amp; Export</h2>
+            <p id="copyStatus">Open an answer to copy it.</p>
+          </div>
+          <button id="copyMarkdown" class="secondary-action" type="button" disabled>Copy Markdown</button>
+        </div>
+
+        <div class="capability-row">
+          <div>
+            <h2>Reliability</h2>
+            <p id="reliabilityStatus">Watching for delivery issues.</p>
+          </div>
+        </div>
+
+        <div class="capability-row">
+          <div>
+            <h2>Page integration</h2>
+            <p id="integrationStatus">Native handling</p>
+          </div>
         </div>
       </section>
 
-      <label class="row">
-        <span>Enabled</span>
-        <input id="enabled" type="checkbox" checked>
-      </label>
-
-      <label class="row">
-        <span>Status dot</span>
-        <input id="showStatus" type="checkbox" checked>
-      </label>
-
-      <section class="features" aria-label="Features">
-        <div class="section-title">Features</div>
-        <label class="row row-with-detail">
-          <span>
-            <strong>Long-thread optimization</strong>
-            <small>Apply render containment to safe offscreen turns.</small>
-          </span>
-          <input id="longThreadOptimization" type="checkbox" checked>
+      <details class="advanced">
+        <summary>Advanced</summary>
+        <label class="setting-row">
+          <span><strong>Copy &amp; Export</strong><small>Enable local answer conversion.</small></span>
+          <input id="copyExport" type="checkbox" checked>
         </label>
-
-        <label class="row row-with-detail">
-          <span>
-            <strong>Stale clear recovery</strong>
-            <small>Keep explicitly cleared composer text cleared after native remounts.</small>
-          </span>
-          <input id="staleClearRecovery" type="checkbox" checked>
+        <label class="setting-row">
+          <span><strong>Reliability</strong><small>Watch sends without auto-resending.</small></span>
+          <input id="reliability" type="checkbox" checked>
         </label>
-
-        <label class="row row-with-detail">
-          <span>
-            <strong>Connector continuity</strong>
-            <small>Keep the composer area visually stable during connector remounts.</small>
-          </span>
-          <input id="connectorContinuity" type="checkbox" checked>
+        <label class="setting-row">
+          <span><strong>Page integration</strong><small>Show controls only on verified structures.</small></span>
+          <input id="pageIntegration" type="checkbox" checked>
         </label>
+      </details>
 
-        <label class="row row-with-detail">
-          <span>
-            <strong>Send residual recovery</strong>
-            <small>Clear matching stale connector-send payloads after commit.</small>
-          </span>
-          <input id="sendResidualRecovery" type="checkbox" checked>
-        </label>
-      </section>
-
-      <label class="row row-with-detail">
-        <span>
-          <strong>Auto-dismiss known interruptions</strong>
-          <small>Dismiss safe, known ChatGPT notices automatically.</small>
-        </span>
-        <input id="autoDismissKnownInterruptions" type="checkbox" checked>
-      </label>
-
-      <label class="field">
-        <span>Recent turns kept native</span>
-        <input id="recentTurnKeepCount" type="number" min="4" max="20" step="1" value="8">
-      </label>
-
-      <section class="diagnostics" aria-label="Diagnostics">
-        <div class="section-title">Diagnostics</div>
-        <div class="button-grid">
-          <button id="startDiagnostics" type="button">Start diagnostics</button>
-          <button id="stopDiagnostics" type="button">Stop diagnostics</button>
-          <button id="copyReport" type="button">Copy report</button>
-          <button id="resetDiagnostics" type="button">Reset</button>
-        </div>
-        <p id="diagnosticsStatus">Idle</p>
-      </section>
-
-      <section class="diagnostics" aria-label="Composer check">
-        <div class="section-title">Composer check</div>
-        <div class="button-grid">
-          <button id="runComposerCheck" type="button">Run composer check</button>
-          <button id="stopComposerCheck" type="button">Stop check</button>
-          <button id="copyComposerReport" type="button">Copy report</button>
-        </div>
-        <p id="composerCheckStatus">Idle</p>
-      </section>
-
-      <footer id="counts">0 mounted</footer>
+      <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+      <footer><span>Local by default</span><span id="version">v0.3.0</span></footer>
     </main>
     <script src="popup.js"></script>
   </body>

@@ -1,8 +1,8 @@
 # Extension Icon Assets
 
-Mica 的正式 extension icon 应从 `assets/branding/mica-brand-concept.png` 中央的 Mica symbol 发展，而不是直接使用整张 16:9 品牌图。
+Mica 的正式 extension icon 使用独立透明母版 `assets/branding/mica-icon-master-v1.png`，不再从 16:9 品牌概念图裁切。
 
-当前中央 symbol 的视觉语言已经合适：多层半透明薄片对应 Mica / enhancement layer，中央对话气泡对应 ChatGPT 使用场景，cyan / blue / violet 渐变与现有品牌视觉一致。
+当前 symbol 是克制的青色 faceted mica crystal：在 16px 仍保留强轮廓，不包含文字、对话气泡、ChatGPT/OpenAI 标记、发光或圆角方形背景。
 
 ## v0.x working icon
 
@@ -22,9 +22,9 @@ Mica 的正式 extension icon 应从 `assets/branding/mica-brand-concept.png` �
 - 16×16 和 32×32 必须实际检查辨识度；若细节糊成一团，应适当简化，而不是机械缩小。
 - 当前概念图裁切版只视为 v0.x working icon；Chrome Web Store 正式上架前仍应制作独立、透明背景的 master asset。
 
-当前已生成的 v0.x working icon：
+当前图标源与派生文件：
 
-- `assets/branding/mica-icon-master-v0.png`
+- `assets/branding/mica-icon-master-v1.png`
 - `extension/icons/icon16.png`
 - `extension/icons/icon32.png`
 - `extension/icons/icon48.png`
@@ -37,7 +37,7 @@ Mica 的正式 extension icon 应从 `assets/branding/mica-brand-concept.png` �
 npm run icons
 ```
 
-已实际检查 `icon16.png` 和 `icon32.png`：小尺寸下仍可辨认为带 cyan / blue / violet 层叠块的 conversation bubble，但这仍只是 v0.x working icon，不是最终 Chrome Web Store icon。
+发布候选需实际检查 `icon16.png` 和 `icon32.png` 的轮廓与透明背景；生成脚本只做高质量缩放和小尺寸锐化，不再从旧概念图提取内容。
 
 ## Manifest 与构建
 

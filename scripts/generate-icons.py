@@ -2,22 +2,16 @@ from pathlib import Path
 from PIL import Image, ImageEnhance, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "assets" / "branding" / "mica-brand-concept.png"
-MASTER = ROOT / "assets" / "branding" / "mica-icon-master-v0.png"
+SOURCE = ROOT / "assets" / "branding" / "mica-icon-master-v1.png"
 ICON_DIR = ROOT / "extension" / "icons"
 SIZES = [16, 32, 48, 128, 512]
 
 
-def create_icon_master() -> Image.Image:
+def load_icon_master() -> Image.Image:
     image = Image.open(SOURCE).convert("RGBA")
-    # Crop only the central Mica symbol from the 16:9 concept art.
-    crop = image.crop((580, 105, 1105, 630))
-    crop = ImageEnhance.Contrast(crop).enhance(1.05)
-    crop = ImageEnhance.Sharpness(crop).enhance(1.08)
-    canvas = Image.new("RGBA", (768, 768), (255, 255, 255, 0))
-    symbol = crop.resize((640, 640), Image.Resampling.LANCZOS)
-    canvas.alpha_composite(symbol, (64, 64))
-    return canvas
+    if image.width != image.height:
+        raise ValueError("Mica icon master must be square")
+    return image
 
 
 def simplify_small_icon(master: Image.Image, size: int) -> Image.Image:
@@ -31,11 +25,10 @@ def simplify_small_icon(master: Image.Image, size: int) -> Image.Image:
 
 def main() -> None:
     ICON_DIR.mkdir(parents=True, exist_ok=True)
-    master = create_icon_master()
-    master.save(MASTER)
+    master = load_icon_master()
     for size in SIZES:
         simplify_small_icon(master, size).save(ICON_DIR / f"icon{size}.png")
-    print(f"Wrote {MASTER}")
+    print(f"Read {SOURCE}")
     for size in SIZES:
         print(f"Wrote {ICON_DIR / f'icon{size}.png'}")
 

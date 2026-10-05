@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <style>
+      body { font: 15px/1.5 system-ui; margin: 40px auto; max-width: 760px; }
+      [data-mica-current-action-cluster] { align-items:center; display:flex; gap:4px; min-height:32px; }
+      [data-mica-current-action-cluster] > button { align-items:center; display:inline-flex; height:28px; justify-content:center; width:28px; }
+      #legacy-row { display:flex; justify-content:space-between; width:100%; }
+      form { margin-top:32px; }
+    </style>
+    <script>
+      const stored = {};
+      globalThis.chrome = {
+        runtime: { onMessage: { addListener(listener) { globalThis.__listener = listener; } }, lastError: null },
+        storage: { local: {
+          get(defaults, callback) { callback({ ...defaults, ...stored }); },
+          set(value, callback) { Object.assign(stored, value); callback?.(); }
+        } }
+      };
+    </script>
+  </head>
+  <body>
+    <article data-testid="conversation-turn-a1">
+      <div data-message-author-role="assistant">
+        <div data-message-content class="markdown">
+          <h2>Result</h2>
+          <p>A <strong>bold</strong> claim with <a href="https://example.com">source</a> and <span class="katex"><math><semantics><mrow></mrow><annotation encoding="application/x-tex">x^2 + y^2</annotation></semantics></math></span>.</p>
+          <blockquote><p>Keep the evidence boundary.</p></blockquote>
+          <ul><li>First</li><li>Second<ul><li>Nested</li></ul></li></ul>
+          <table><thead><tr><th>Item</th><th>Value</th></tr></thead><tbody><tr><td>A</td><td>1</td></tr></tbody></table>
+          <pre><code class="language-js">const ready = true;</code></pre>
+          <div class="katex-display"><span class="katex"><math><semantics><mrow></mrow><annotation encoding="application/x-tex">\int_0^1 x\,dx</annotation></semantics></math></span></div>
+          <button data-testid="answer-action">Retry</button>
+        </div>
+      </div>
+      <div id="legacy-row"><button aria-label="Copy">C</button><button id="legacy-copy">Mica Copy</button></div>
+      <div data-mica-current-action-cluster="exact-v1" aria-label="Answer actions">
+        <button aria-label="Read aloud">R</button><button aria-label="Copy">C</button><button aria-label="Good response">G</button>
+      </div>
+    </article>
+    <form id="composer-form"><textarea id="mobile-composer-prompt" aria-label="Message ChatGPT"></textarea><button type="submit" aria-label="Send message">Send</button></form>
+    <script src="/extension/src/copy/markdown-copy.ts"></script>
+    <script src="/extension/src/reliability/turn-delivery-guard.ts"></script>
+    <script src="/extension/src/content.ts"></script>
+  </body>
+</html>

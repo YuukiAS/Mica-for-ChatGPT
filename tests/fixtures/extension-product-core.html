@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true" data-mica-test-commit-deadline-ms="140" data-mica-test-fake-waiting-ms="180" data-mica-test-settle-ms="80">
+  <head>
+    <meta charset="utf-8">
+    <title>Mica extension fixture</title>
+    <style>
+      body { font:15px/1.5 system-ui; margin:40px auto; max-width:760px; }
+      [data-mica-current-action-cluster] { align-items:center; display:flex; gap:4px; }
+      [data-mica-current-action-cluster] > button { height:28px; width:28px; }
+    </style>
+  </head>
+  <body>
+    <article data-testid="conversation-turn-extension">
+      <div data-message-author-role="assistant">
+        <div data-message-content class="markdown">
+          <h2>Extension answer</h2>
+          <p>Clipboard <strong>evidence</strong> with <span class="katex"><math><semantics><annotation encoding="application/x-tex">E=mc^2</annotation></semantics></math></span>.</p>
+        </div>
+      </div>
+      <div data-mica-current-action-cluster="exact-v1" aria-label="Answer actions">
+        <button aria-label="Read aloud">R</button><button aria-label="Copy">C</button><button aria-label="Good response">G</button>
+      </div>
+    </article>
+    <form onsubmit="event.preventDefault()"><textarea id="mobile-composer-prompt" aria-label="Message ChatGPT"></textarea><button type="submit" aria-label="Send message">Send</button></form>
+  </body>
+</html>

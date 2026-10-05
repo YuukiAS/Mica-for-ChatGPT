@@ -1,20 +1,19 @@
 {
   "name": "mica-for-chatgpt",
-  "version": "0.1.7",
+  "version": "0.3.0",
   "private": true,
-  "description": "Local Chromium extension for ChatGPT long-thread render recovery.",
+  "description": "Local Chromium extension for reliable ChatGPT copy, recovery, and research export.",
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
     "icons": "\"C:\\Users\\humc2\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe\" scripts/generate-icons.py",
-    "test:fixture": "node scripts/fixture-smoke.mjs",
-    "test:interruptions": "node scripts/known-interruptions-fixture-smoke.mjs",
-    "test:overlay": "node scripts/overlay-fixture-smoke.mjs",
+    "test:core": "node scripts/test-core.mjs",
+    "test:product": "node scripts/test-product-core.mjs",
     "test:build": "node scripts/validate-build.mjs",
-    "test": "npm run build && npm run test:fixture && npm run test:interruptions && npm run test:overlay && npm run test:build",
-    "test:e2e": "npm run build && node scripts/run-e2e.mjs",
-    "test:e2e:stress": "npm run build && node scripts/run-e2e.mjs --stress",
-    "package:release": "npm run build && node scripts/package-release.mjs && node scripts/validate-release.mjs"
+    "test": "node scripts/build.mjs && node scripts/test-core.mjs && node scripts/test-product-core.mjs && node scripts/validate-build.mjs",
+    "test:e2e": "node scripts/build.mjs && node scripts/test-extension-e2e.mjs",
+    "test:e2e:stress": "node scripts/build.mjs && node scripts/test-extension-e2e.mjs --stress",
+    "package:release": "node scripts/build.mjs && node scripts/package-release.mjs && node scripts/validate-release.mjs"
   },
   "engines": {
     "node": ">=18"

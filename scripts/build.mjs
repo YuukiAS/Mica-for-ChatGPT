@@ -15,7 +15,7 @@ const manifest = {
   short_name: "Mica",
   version: MACHINE_VERSION,
   version_name: VERSION_NAME,
-  description: "Local diagnostics and low-risk render fallback for long ChatGPT threads.",
+  description: "Local copy, delivery recovery, and research export for ChatGPT.",
   icons: {
     16: "icons/icon16.png",
     32: "icons/icon32.png",
@@ -32,18 +32,17 @@ const manifest = {
       128: "icons/icon128.png"
     }
   },
+  background: {
+    service_worker: "service-worker.js"
+  },
   permissions: ["storage", "activeTab"],
   host_permissions: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
   content_scripts: [
     {
       matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
       js: [
-        "known-interruptions.js",
-        "connector-lifecycle-signal.js",
-        "composer-diagnostics.js",
-        "stale-composer-recovery.js",
-        "connector-continuity.js",
-        "send-residual-recovery.js",
+        "markdown-copy.js",
+        "turn-delivery-guard.js",
         "content.js"
       ],
       run_at: "document_idle"
@@ -62,21 +61,15 @@ const replacements = {
 const render = (source) => Object.entries(replacements).reduce((value, [key, replacement]) => value.replaceAll(key, replacement), source);
 
 const content = render(await readFile(path.join(srcDir, "content.ts"), "utf8"));
-const knownInterruptions = render(await readFile(path.join(srcDir, "reliability", "known-interruptions.ts"), "utf8"));
-const connectorLifecycleSignal = render(await readFile(path.join(srcDir, "reliability", "connector-lifecycle-signal.ts"), "utf8"));
-const composerDiagnostics = render(await readFile(path.join(srcDir, "reliability", "composer-diagnostics.ts"), "utf8"));
-const staleComposerRecovery = render(await readFile(path.join(srcDir, "reliability", "stale-composer-recovery.ts"), "utf8"));
-const connectorContinuity = render(await readFile(path.join(srcDir, "reliability", "connector-continuity.ts"), "utf8"));
-const sendResidualRecovery = render(await readFile(path.join(srcDir, "reliability", "send-residual-recovery.ts"), "utf8"));
+const serviceWorker = render(await readFile(path.join(srcDir, "service-worker.ts"), "utf8"));
+const markdownCopy = render(await readFile(path.join(srcDir, "copy", "markdown-copy.ts"), "utf8"));
+const turnDeliveryGuard = render(await readFile(path.join(srcDir, "reliability", "turn-delivery-guard.ts"), "utf8"));
 const popup = render(await readFile(path.join(popupDir, "popup.ts"), "utf8"));
 
 await writeFile(path.join(outDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-await writeFile(path.join(outDir, "known-interruptions.js"), knownInterruptions);
-await writeFile(path.join(outDir, "connector-lifecycle-signal.js"), connectorLifecycleSignal);
-await writeFile(path.join(outDir, "composer-diagnostics.js"), composerDiagnostics);
-await writeFile(path.join(outDir, "stale-composer-recovery.js"), staleComposerRecovery);
-await writeFile(path.join(outDir, "connector-continuity.js"), connectorContinuity);
-await writeFile(path.join(outDir, "send-residual-recovery.js"), sendResidualRecovery);
+await writeFile(path.join(outDir, "service-worker.js"), serviceWorker);
+await writeFile(path.join(outDir, "markdown-copy.js"), markdownCopy);
+await writeFile(path.join(outDir, "turn-delivery-guard.js"), turnDeliveryGuard);
 await writeFile(path.join(outDir, "content.js"), content);
 await writeFile(path.join(outDir, "popup", "popup.js"), popup);
 await cp(path.join(popupDir, "index.html"), path.join(outDir, "popup", "index.html"));
