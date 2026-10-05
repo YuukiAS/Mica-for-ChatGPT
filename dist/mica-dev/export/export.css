@@ -1,0 +1,42 @@
+:root { color-scheme:light; --ink:#171918; --muted:#626763; --border:#dfe2df; --accent:#168b91; --highlight:#fff0a8; }
+* { box-sizing:border-box; }
+body { background:#eef0ee; color:var(--ink); font:400 15px/1.58 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; margin:0; }
+.export-toolbar { align-items:center; background:#fff; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; padding:10px 18px; position:sticky; top:0; z-index:2; }
+.export-toolbar div { display:grid; }
+.export-toolbar span { color:var(--muted); font-size:12px; }
+.export-toolbar button { background:var(--accent); border:0; border-radius:8px; color:#fff; cursor:pointer; font:600 13px/18px inherit; min-height:34px; padding:8px 12px; }
+.export-toolbar button:disabled { cursor:default; opacity:.55; }
+.export-toolbar button:focus-visible { outline:2px solid #147c86; outline-offset:2px; }
+main { background:#fff; box-shadow:0 10px 30px rgb(0 0 0 / 8%); margin:28px auto; max-width:840px; min-height:1080px; padding:68px 72px 54px; }
+.document-header { border-bottom:1px solid var(--border); margin-bottom:30px; padding-bottom:20px; }
+.document-header p { color:var(--accent); font-size:12px; font-weight:650; letter-spacing:.04em; margin:0 0 7px; text-transform:uppercase; }
+.document-header h1 { font-size:28px; line-height:1.2; margin:0; }
+.document-header time, .document-footer { color:var(--muted); font-size:11px; }
+#exportContent { overflow-wrap:anywhere; }
+#exportContent h1 { font-size:26px; } #exportContent h2 { font-size:21px; } #exportContent h3 { font-size:17px; }
+#exportContent h1, #exportContent h2, #exportContent h3 { break-after:avoid; line-height:1.25; margin:1.4em 0 .55em; }
+#exportContent p { margin:.6em 0; }
+#exportContent a { color:#0d6670; text-decoration-thickness:1px; text-underline-offset:2px; }
+#exportContent blockquote { border-left:3px solid var(--accent); color:#3d4843; margin:1em 0; padding:.1em 0 .1em 1em; }
+#exportContent pre { background:#f3f5f3; border:1px solid var(--border); border-radius:8px; break-inside:avoid-page; font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; overflow-wrap:anywhere; padding:12px 14px; white-space:pre-wrap; }
+#exportContent code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; }
+#exportContent :not(pre) > code { background:#f0f2f0; border-radius:4px; padding:.08em .3em; }
+#exportContent table { border-collapse:collapse; font-size:13px; margin:1em 0; width:100%; }
+#exportContent thead { display:table-header-group; }
+#exportContent tr { break-inside:avoid; }
+#exportContent th, #exportContent td { border:1px solid var(--border); padding:7px 9px; text-align:left; vertical-align:top; }
+#exportContent th { background:#f3f5f3; font-weight:650; }
+#exportContent mark[data-export-highlight], #exportContent mark[data-mica-highlight-id] { background:var(--highlight); box-decoration-break:clone; color:inherit; padding:.04em .08em; -webkit-box-decoration-break:clone; }
+.mica-export-math-inline { display:inline-block; margin:0 .08em; max-width:100%; vertical-align:-.1em; }
+.mica-export-math-display { break-inside:avoid-page; margin:1.15em 0; max-width:100%; overflow:hidden; padding:.2em 0; text-align:center; }
+.mica-export-math-fallback { background:#fff7ed; border:1px solid #f0cfaa; border-radius:6px; display:inline-block; font:12px/1.5 ui-monospace,monospace; padding:4px 6px; }
+.document-footer { border-top:1px solid var(--border); margin-top:36px; padding-top:14px; }
+@page { margin:16mm 15mm 18mm; size:A4; }
+@media print {
+  body { background:#fff; }
+  [data-print-hidden] { display:none !important; }
+  main { box-shadow:none; margin:0; max-width:none; min-height:0; padding:0; }
+  .document-header { margin-top:0; }
+  a { color:inherit !important; }
+}
+@media (max-width:720px) { main { margin:0; min-height:100vh; padding:40px 24px; } .export-toolbar { position:static; } }

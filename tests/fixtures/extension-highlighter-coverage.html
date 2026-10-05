@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <title>Mica highlighter coverage fixture</title>
+    <style>body{font:16px/1.6 system-ui;margin:40px auto;max-width:720px}.katex{display:inline-block;padding:0 4px}</style>
+  </head>
+  <body>
+    <article data-testid="conversation-turn-highlight-coverage">
+      <div data-message-author-role="assistant">
+        <div data-message-content class="markdown">
+          <h2 id="heading-case">Research heading</h2>
+          <p id="formula-case">Evidence before <span class="katex"><math><semantics><annotation encoding="application/x-tex">a^2+b^2=c^2</annotation></semantics></math></span> remains selectable.</p>
+          <blockquote><p id="quote-case">Quoted finding with a clear boundary.</p></blockquote>
+          <ul><li id="list-case">List finding survives remount.</li></ul>
+          <p id="cross-start">First paragraph crosses into the next paragraph safely.</p>
+          <p id="cross-end">Second paragraph completes the selected evidence.</p>
+        </div>
+      </div>
+    </article>
+    <form><textarea id="mobile-composer-prompt" aria-label="Message ChatGPT"></textarea></form>
+  </body>
+</html>

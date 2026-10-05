@@ -2,3 +2,4 @@ release/*.zip
 release/*.sha256
 .pnpm-store/
 node_modules/
+tmp/

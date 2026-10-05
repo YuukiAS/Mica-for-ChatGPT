@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../vendor/katex/katex.min.css">
+    <link rel="stylesheet" href="export.css">
+    <title>Mica PDF export</title>
+  </head>
+  <body>
+    <header class="export-toolbar" data-print-hidden>
+      <div><strong>Mica export</strong><span id="exportStatus">Preparing local preview…</span></div>
+      <button id="printPdf" type="button" disabled>Print / save PDF</button>
+    </header>
+    <main>
+      <header class="document-header">
+        <p>Mica research export</p>
+        <h1 id="documentTitle">ChatGPT answer</h1>
+        <time id="createdAt"></time>
+      </header>
+      <article id="exportContent" aria-busy="true"></article>
+      <footer class="document-footer">Created locally by Mica</footer>
+    </main>
+    <script src="../vendor/katex/katex.min.js"></script>
+    <script src="export.js"></script>
+  </body>
+</html>

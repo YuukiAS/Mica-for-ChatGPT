@@ -1,146 +1,75 @@
 # Mica for ChatGPT
 
-> A lighter, cleaner, less frustrating ChatGPT.
+> 在 ChatGPT 原生界面上补齐可靠复制、发送恢复和研究整理能力。
 
 ![Mica for ChatGPT product hero](assets/branding/mica-product-hero.png)
 
-Mica 是一个面向 ChatGPT 网页端的浏览器扩展。目标不是重做 ChatGPT，而是在原生界面之上补上几个长期影响使用体验的问题：长对话性能、可靠的 Markdown/LaTeX 复制、烦人的重复确认与重试、以及少量真正有价值的界面增强。
+Mica 是一个本地运行的 Chromium 扩展。它不接管 ChatGPT，也不依赖外部后端；遇到无法确认的页面结构时保持原生行为，不猜测注入位置或恢复动作。
 
-当前最高优先级不是“做完整产品”，而是先恢复一个**今天就能长期使用的长对话优化扩展**。最近 ChatGPT 的长对话加载方式发生变化，LightSession 会停留在 `waiting for messages...`，导致旧的裁剪逻辑失效；在较弱设备上，超长 thread 又会明显拖慢页面。
+当前开发候选版为 `0.4.0`。这一版本包含：
 
-## 当前目标：v0.1 Long-thread Recovery
+- 将单条 assistant answer 复制为稳定的 Markdown，并把 inline/display LaTeX 保留为 `$…$` / `$$…$$`；
+- 为 Notion 同时写入 `text/html` 与可读的 `text/plain` fallback；
+- 生成带文本层、公式和本地高亮的 PDF 预览；
+- 将 answer 选区高亮保存在本机，并在刷新或 turn remount 后按上下文恢复；
+- 以 `send_intent -> user_committed -> assistant_generating -> settled` 为主线识别 ghost send、fake waiting、stale response 和 generation error；
+- 只在已验证的 native action cluster 中显示页面 Copy 按钮，未知结构一律不注入；
+- 提供独立的 Troubleshooting 页面，用一次有界检查采集不含正文的结构报告。
 
-第一阶段只解决一件事：让当前 ChatGPT 的长 thread 在 Chrome / Edge / macOS Chromium 浏览器上重新保持流畅，同时不破坏 ChatGPT 自己的新分段加载、工具调用、文件授权、分支、编辑消息和正在生成的回答。
+## 安装开发版
 
-实现原则：
-
-- 先复现 LightSession 当前失效的具体原因，再决定最小修复路径。
-- 不盲目沿用旧的 `/backend-api/conversation/<id>` 响应裁剪假设。
-- 优先利用 ChatGPT 现在已经存在的原生分段加载，只优化浏览器端仍然造成卡顿的 DOM、布局和渲染成本。
-- 如果当前接口仍可安全裁剪，可以保留兼容层；如果接口已经变化，则以 DOM/渲染虚拟化为主。
-- 所有优化必须 fail-open：识别失败时宁可不优化，也不能破坏对话内容或交互。
-- v0.1 先支持手动加载 unpacked extension，不等待商店发布。
-
-详细执行方案见 [`docs/PHASE_1_LONG_THREAD_RECOVERY.md`](docs/PHASE_1_LONG_THREAD_RECOVERY.md)。整体路线见 [`docs/ROADMAP.md`](docs/ROADMAP.md)。
-
-## v0.1 候选版安装
-
-当前可加载的 unpacked extension 目录是：
+固定的 unpacked 目录是：
 
 ```text
 D:\Code\Mica-for-ChatGPT\dist\mica-dev
 ```
 
-重新构建：
+首次安装：
 
-```bash
-npm run build
-```
-
-Chrome / Edge 手动安装：
-
-1. 打开 `chrome://extensions` 或 `edge://extensions`。
-2. 开启 Developer mode。
-3. 点击 Load unpacked。
+1. 打开 `edge://extensions` 或 `chrome://extensions`；
+2. 开启开发人员模式；
+3. 选择“加载解压缩的扩展”；
 4. 选择 `D:\Code\Mica-for-ChatGPT\dist\mica-dev`。
-5. 后续版本升级只需重新构建、在扩展管理页点击 Reload，并刷新 `https://chatgpt.com/` 的长 conversation。
 
-页面右下角会显示状态：
-
-- `Active`：Mica 确实对当前 mounted 的离屏 turn 应用了额外 containment。
-- `Native virtualization`：ChatGPT 看起来已经只保留一个较小 mounted conversation window。
-- `Native only`：当前页面保持原生渲染；这里观察到的数字只是实时 mounted DOM turns，不代表完整 thread 长度。
-- `Degraded`：疑似 conversation 页面，但 Mica 无法安全识别 mounted turn 结构，已停止优化并保持原生页面。
-- `Disabled`：用户在 popup 或页面状态条中关闭了 Mica。
-
-当前本地运行版本是 `0.1.7`，`BUILD_LABEL` 是 `typing-hotpath-fix.1`。页面上的常驻状态入口默认只是 viewport 右下角的小圆点，不再默认显示右上角文字 pill，也不会因初始化或状态变化自动展开。用户点击小圆点后，状态文字会从同一个底部锚点临时展开，约 2–3 秒后自动收回为小圆点；状态与 toast 都使用静态 viewport 布局，不读取 composer geometry 来避让输入框。
-
-最短诊断路径：
-
-```js
-document.documentElement.dataset.micaStatus
-document.documentElement.dataset.micaMountedTurns
-document.documentElement.dataset.micaOptimizedTurns
-```
-
-popup 可切换启用状态、状态条显示、保留原生渲染的最近 turn 数量、已知安全提示自动 dismiss，并提供本地 diagnostics：
-
-- `Start diagnostics`
-- `Stop diagnostics`
-- `Copy report`
-- `Reset`
-
-popup 还提供 `Run composer check`，用于替代手工 Console probe。启动后页面右上角会出现一个很小的 recording 卡片，用户只需手动复现一个短动作，然后用 `Copy report` 复制 privacy-safe report。
-
-Mica 只在 check session active 时记录 composer 是否存在、文本长度、DOM identity、focus、mention signal、mounted turn/user turn 数、bounded lifecycle events 和关键 Mica runtime callback 时间；不记录 prompt/answer 原文，不点击 connector，不自动发送，不 retry/reload/regenerate，不读取请求 body/header/token。
-
-diagnostics report 只统计 mounted turn 数、DOM node 数、mutation/long task/frame stall/heap/complexity、overlay placement 和已知提示 dismiss count 等指标，不复制聊天正文或附件内容，不上传 telemetry。
-
-Reliability 仅处理显式 allowlist 中的纯 acknowledgement 提示。当前 `Auto-dismiss known interruptions` 默认开启，可自动 dismiss 已知中文 “请求过于频繁 / 访问对话记录 / 明白了” 弹窗；成功处理后显示 2–3 秒非阻塞 toast。它不会 retry、reload、重新发送请求、切换 conversation，也不会处理未知确认、授权、删除、支付或工具权限弹窗。
-
-## v0.1 当前限制
-
-- 默认不修改 ChatGPT 私有 API response，也不阻止 network request。
-- 不删除 React 管理的消息节点；这一版只用 `content-visibility:auto`、containment 和 intrinsic-size 降低离屏历史 turn 的渲染成本。
-- 真实登录态 Edge 已确认当前 ChatGPT 已经原生 virtualize conversation；Mica 的 containment 现在只是低风险 fallback，`0.1.7` 主要用于真实长 thread runtime diagnostics、native-safe 状态修正、bounded composer capture diagnostics、stale composer clear recovery、send-path diagnostics，并修复 connector latch 后普通输入事件触发 heavy DOM snapshot 的性能回归。
-- 工具卡片、文件/授权类 UI、正在编辑的内容、viewport 附近内容和最近 turn 会保持原生渲染。
-- Codex 当前只能访问未登录 ChatGPT 首页，不能在本机完成真实 authenticated long thread 回归；真实验收需要在目标 Chrome / Edge / MacBook Neo 上完成。
-- 旧 LightSession 失效调查见 [`docs/investigations/2026-09-01-lightsession-current-chatgpt.md`](docs/investigations/2026-09-01-lightsession-current-chatgpt.md)。
-
-## v0.1 本地验证
+后续版本只需重新构建，并在扩展管理页点击 Reload；不需要重新选择目录。
 
 ```bash
-npm run build
-npm run test:fixture
-npm test
-npm run test:e2e
-npm run package:release
+pnpm install
+pnpm run build
 ```
 
-本地 synthetic 90-turn fixture 只能证明 Mica 自己的 containment/fail-open 实现、manifest、icons、diagnostics message surface 和 release ZIP 结构工作；它不能证明 Mica 对当前真实 ChatGPT 长 conversation 有性能收益。真实 P0 性能结论必须来自 8 GB MacBook Neo。
+## 日常使用
 
-默认测试按风险分层：普通 runtime/build/version 改动跑 `npm test`；涉及 composer lifecycle、DOM mounting、overlay、virtualization、observer/listener 或 guided browser diagnostics 时，再跑 `npm run test:e2e`。`npm run test:e2e:stress` 只用于 race condition、intermittent lifecycle bug、E2E flaky、重大 lifecycle/virtualization 变更、release candidate 或任务明确要求。
+Popup 只保留三个产品层级：
 
-`npm run test:e2e` 和 `npm run test:e2e:stress` 使用隔离 Playwright Chromium 访问仓库内 synthetic fixture，覆盖 composer lifecycle、overlay placement、send/streaming race、native-safe delayed mounted-turn status、guided composer diagnostics 和 Mica disabled baseline。它们不得访问真实登录态 ChatGPT，也不得操作用户正在使用的 Edge。
+- **Copy & Export**：复制 Markdown、复制到 Notion、打开 PDF 预览；
+- **Reliability**：正常时保持安静，只在高置信异常时给出一个安全动作；
+- **Page integration**：说明当前页面是已验证集成还是保持原生处理。
 
-## 真实设备更新：ChatGPT 已原生窗口化
+选择 assistant answer 中的正文后，Mica 会显示一个短暂的 `Highlight` 入口。高亮只保存在当前浏览器的本地存储中；找不到唯一位置时不会猜测恢复。
 
-2026-09-01 在真实登录态 Edge + 一个实际很长的 CUHK Date conversation 上验证：虽然逻辑 thread 可以持续向上滚动直到顶部，当前 DOM 中只维持约 5–9 个 mounted turns，并在滚动时小范围波动。这说明当前 ChatGPT 已经原生实现 conversation windowing / virtualization。
+Troubleshooting 位于 Advanced 中的独立入口。它只在用户主动开始检查时记录 element identity、尺寸、计数和有界 lifecycle event，不记录 prompt 或 answer 文本。
 
-因此 P0 下一步不是简单降低 Mica 的 turn threshold，而是增加本地 runtime diagnostics，在实际出现卡顿的 8 GB MacBook Neo 上确认真正瓶颈。详细观察见 [`docs/investigations/2026-09-01-native-virtualization-real-device.md`](docs/investigations/2026-09-01-native-virtualization-real-device.md)，实现任务见 [Issue #2](https://github.com/YuukiAS/Mica-for-ChatGPT/issues/2)。
+## 当前边界
 
-## Release 与安装包
+- 0.4.0 仍是本地候选版；在当前已登录 ChatGPT 的一次合并验收完成前，不把页面 Copy 注入、connector/remount 或真实发送生命周期报告为最终通过。
+- 当前 ChatGPT 已有自己的 conversation windowing。Mica 不再宣称提供额外长线程性能优化，Popup 显示 `Native handling`。
+- Notion-ready 输出的本地 HTML/text 合同已验证；Notion 网页端如何解释任意 clipboard HTML 不是其公开稳定 API，因此精确粘贴结果在完成一次真实验证前保持 `UNVERIFIED`。
+- Mica 不自动重发，不点击授权、安全、付费、工具或 connector 确认，也不读取私有 ChatGPT endpoint。
 
-当前 `dist/mica-dev/` 是固定的开发版 `Load unpacked` 路径。GitHub Release 则应提供版本化 ZIP，而不是只让用户下载仓库目录；ZIP 解压后根目录应直接出现 `manifest.json`。首个对外包在 8 GB MacBook Neo 完成 P0 验收前应标为 pre-release。
+## 验证
 
-最近一次已归档 package 输出仍是：
-
-```text
-release/mica-for-chatgpt-v0.1.4.zip
-release/mica-for-chatgpt-v0.1.4.sha256
+```bash
+pnpm run test
+pnpm run test:e2e
+pnpm run test:e2e:stress
+pnpm run package:release
 ```
 
-详细规则见 [`docs/RELEASE_PACKAGING.md`](docs/RELEASE_PACKAGING.md)。
+测试使用隔离的真实 Edge 扩展上下文和仓库内脱敏 fixture，不连接用户日常 Edge profile，也不自动操作已登录 ChatGPT。详细证据见 [`results/mica--product-recovery-current-gpt-ui/`](results/mica--product-recovery-current-gpt-ui/)。
 
-## Branding
+## 隐私与权限
 
-品牌说明见 [`docs/BRANDING.md`](docs/BRANDING.md)。扩展图标资产规范见 [`docs/ICON_ASSETS.md`](docs/ICON_ASSETS.md)。
+Mica 默认本地运行，不上传聊天正文。Manifest 仅使用 `storage`、`activeTab` 与页面 Copy 所需的 `clipboardWrite`，并将 host 权限限制为 `chatgpt.com` 与 `chat.openai.com`。诊断报告不包含 cookie、token、header、request body、附件或聊天正文。
 
-产品主视觉：[`assets/branding/mica-product-hero.png`](assets/branding/mica-product-hero.png)
-
-品牌/图标概念图：
-
-<img src="assets/branding/mica-brand-concept.png" alt="Mica brand concept" width="360">
-
-## 后续方向
-
-在长对话性能稳定后，再逐步加入：
-
-1. **Copy & Export**：复制为稳定、可预测的 Markdown，正确处理代码块、表格、列表、LaTeX、引用与附件信息。
-2. **Reliability**：识别可安全恢复的限流/失败状态，减少无意义的手动确认与重复点击，但绝不绕过真正需要用户授权的安全确认。
-3. **Interface**：只做能明显降低摩擦的 ChatGPT UI 调整，不做大规模皮肤化。
-4. **Diagnostics**：显示当前 thread 的优化状态、已虚拟化消息数量、性能降级原因，并提供一键关闭模块的能力。
-
-## 项目边界
-
-Mica 默认本地运行，不上传聊天内容，不要求外部后端。任何需要读取页面内容的功能都应尽量限制在 `chatgpt.com` 必要范围内，并保持权限最小化。
+版本、稳定开发路径与发布包规则见 [`docs/VERSIONING.md`](docs/VERSIONING.md)；当前产品边界见 [`docs/product/MICA_PRODUCT_CONTRACT.md`](docs/product/MICA_PRODUCT_CONTRACT.md)。

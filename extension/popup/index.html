@@ -26,7 +26,14 @@
             <h2>Copy &amp; Export</h2>
             <p id="copyStatus">Open an answer to copy it.</p>
           </div>
-          <button id="copyMarkdown" class="secondary-action" type="button" disabled>Copy Markdown</button>
+          <details id="exportMenu" class="action-menu">
+            <summary>Export</summary>
+            <div class="menu" role="menu">
+              <button id="copyMarkdown" type="button" role="menuitem" disabled>Copy Markdown</button>
+              <button id="copyNotion" type="button" role="menuitem" disabled>Copy for Notion</button>
+              <button id="exportPdf" type="button" role="menuitem" disabled>PDF preview</button>
+            </div>
+          </details>
         </div>
 
         <div class="capability-row">
@@ -58,10 +65,15 @@
           <span><strong>Page integration</strong><small>Show controls only on verified structures.</small></span>
           <input id="pageIntegration" type="checkbox" checked>
         </label>
+        <label class="setting-row">
+          <span><strong>Highlighter</strong><small>Save answer highlights on this device.</small></span>
+          <input id="highlighter" type="checkbox" checked>
+        </label>
+        <button id="openTroubleshooting" class="text-action" type="button">Troubleshooting</button>
       </details>
 
       <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
-      <footer><span>Local by default</span><span id="version">v0.3.0</span></footer>
+      <footer><span>Local by default</span><span id="version">v0.4.0</span></footer>
     </main>
     <script src="popup.js"></script>
   </body>

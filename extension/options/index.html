@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="options.css">
+    <title>Mica Troubleshooting</title>
+  </head>
+  <body>
+    <main>
+      <header><img src="../icons/icon48.png" width="40" height="40" alt=""><div><p class="eyebrow">Mica</p><h1>Troubleshooting</h1></div></header>
+      <section>
+        <h2>Current page check</h2>
+        <p>Capture a short, privacy-safe structural report from one open ChatGPT tab. Mica records element identities, sizes, counts, and lifecycle events—not prompt or answer text.</p>
+        <ol>
+          <li>Open the ChatGPT conversation you want to check.</li>
+          <li>Select <strong>Start check</strong>, then return to ChatGPT for one short action.</li>
+          <li>Come back here and select <strong>Stop and copy report</strong>.</li>
+        </ol>
+        <div class="actions"><button id="start" type="button">Start check</button><button id="stop" class="secondary" type="button" disabled>Stop and copy report</button></div>
+        <p id="status" class="status" role="status" aria-live="polite">Ready. No check is running.</p>
+      </section>
+      <aside><strong>Privacy boundary</strong><span>No page text, network data, cookies, tokens, request bodies, or attachments are included.</span></aside>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

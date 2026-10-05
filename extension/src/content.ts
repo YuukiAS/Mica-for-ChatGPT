@@ -2,7 +2,7 @@
   const VERSION = "__MICA_VERSION__";
   const VERSION_NAME = "__MICA_VERSION_NAME__";
   const BUILD_LABEL = "__MICA_BUILD_LABEL__";
-  const DEFAULT_SETTINGS = { enabled: true, copyExport: true, reliability: true, pageIntegration: true };
+  const DEFAULT_SETTINGS = { enabled: true, copyExport: true, reliability: true, pageIntegration: true, highlighter: true };
   const STORAGE_KEYS = Object.keys(DEFAULT_SETTINGS);
   const SUPPORTED_HOSTS = new Set(["chatgpt.com", "chat.openai.com"]);
   let settings = { ...DEFAULT_SETTINGS };
@@ -15,6 +15,7 @@
     injectStyles();
     settings = { ...DEFAULT_SETTINGS, ...(await readSettings()) };
     globalThis.MicaTurnDeliveryGuard?.configure({ enabled: settings.enabled && settings.reliability });
+    await globalThis.MicaHighlighter?.configure({ enabled: settings.enabled && settings.highlighter });
     attachLifecycleListeners();
     observeStructure();
     setupMessages();
@@ -128,13 +129,31 @@
       const result = globalThis.MicaMarkdownCopy?.serializeAnswer(answer);
       if (!result?.ok) return showTransientFeedback(button, "Copy unavailable", "error");
       try {
-        await navigator.clipboard.writeText(result.markdown);
+        await writeClipboardText(result.markdown);
         showTransientFeedback(button, "Copied as Markdown", "success");
       } catch (_error) {
         showTransientFeedback(button, "Clipboard blocked", "error");
       }
     });
     return button;
+  }
+
+  async function writeClipboardText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch (_error) {
+      const field = document.createElement("textarea");
+      field.dataset.micaUi = "clipboard-fallback";
+      field.value = text;
+      field.setAttribute("aria-hidden", "true");
+      field.style.cssText = "position:fixed;inset:-9999px;width:1px;height:1px;opacity:0";
+      document.body.append(field);
+      field.select();
+      const copied = document.execCommand("copy");
+      field.remove();
+      if (!copied) throw new Error("clipboard_write_failed");
+    }
   }
 
   function showTransientFeedback(anchor, message, kind) {
@@ -160,6 +179,7 @@
         settings = { ...settings, ...next };
         writeSettings(next).then(() => {
           globalThis.MicaTurnDeliveryGuard?.configure({ enabled: settings.enabled && settings.reliability });
+          globalThis.MicaHighlighter?.configure({ enabled: settings.enabled && settings.highlighter });
           reconcileCopyControls();
           sendResponse(buildProductStatus());
         });
@@ -167,6 +187,14 @@
       }
       if (message.type === "MICA_SERIALIZE_ACTIVE_ANSWER") {
         sendResponse(globalThis.MicaMarkdownCopy?.serializeAnswer(findLatestAssistantTurn()) || { ok: false, reason: "serializer_unavailable" });
+        return true;
+      }
+      if (message.type === "MICA_SERIALIZE_NOTION") {
+        sendResponse(globalThis.MicaResearchExport?.serializeNotion(findLatestAssistantTurn()) || { ok: false, reason: "exporter_unavailable" });
+        return true;
+      }
+      if (message.type === "MICA_PREPARE_PDF_EXPORT") {
+        sendResponse(globalThis.MicaResearchExport?.preparePdfExport(findLatestAssistantTurn()) || { ok: false, reason: "exporter_unavailable" });
         return true;
       }
       return false;
@@ -194,6 +222,7 @@
       },
       reliability: delivery ? { state: delivery.name, recoveryOffered: delivery.recoveryOffered, promptTextIncluded: false } : { state: "native", recoveryOffered: false, promptTextIncluded: false },
       pageIntegration: findVerifiedActionClusters().length > 0 ? "integrated" : "native_handling",
+      highlighter: globalThis.MicaHighlighter?.snapshot?.() || { enabled: false, count: 0, rendered: 0, contentUpload: false },
       privacy: { contentUpload: false, promptTextInDiagnostics: false, answerTextInDiagnostics: false }
     };
   }
@@ -230,6 +259,10 @@
 .mica-delivery-notice { align-items:center; background:color-mix(in srgb, Canvas 94%, #e5aa5b 6%); border:1px solid color-mix(in srgb, CanvasText 18%, transparent); border-radius:10px; color:CanvasText; display:flex; font:500 12px/17px system-ui,sans-serif; gap:12px; justify-content:space-between; margin:0 auto 8px; max-width:768px; padding:8px 10px; }
 .mica-delivery-notice button { background:transparent; border:1px solid currentColor; border-radius:7px; color:inherit; cursor:pointer; font:600 12px/16px system-ui,sans-serif; min-height:30px; padding:5px 9px; }
 .mica-delivery-notice button:focus-visible { outline:2px solid #55c2c7; outline-offset:2px; }
+.mica-highlight { background:#fff0a8; box-decoration-break:clone; color:inherit; padding:.04em .08em; -webkit-box-decoration-break:clone; }
+.mica-highlight-affordance { background:#202322; border:1px solid rgba(255,255,255,.16); border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,.18); color:#fff; cursor:pointer; font:600 12px/16px system-ui,sans-serif; min-height:32px; padding:7px 10px; position:fixed; z-index:2147483646; }
+.mica-highlight-affordance:hover { background:#2b302e; }
+.mica-highlight-affordance:focus-visible { outline:2px solid #55c2c7; outline-offset:2px; }
 @media (prefers-color-scheme:dark) { .mica-success { color:#70c88d; } .mica-error { color:#f18a8a; } }
 @media (prefers-reduced-motion:reduce) { [data-mica-ui] { scroll-behavior:auto !important; transition:none !important; } }
 `;

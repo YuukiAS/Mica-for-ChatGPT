@@ -6,4 +6,26 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    dependencies:
+      katex:
+        specifier: 0.18.9
+        version: 0.18.9
+
+packages:
+
+  commander@15.0.0:
+    resolution: {integrity: sha512-z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg==}
+    engines: {node: '>=22.12.0'}
+
+  katex@0.18.9:
+    resolution: {integrity: sha512-8ad9RyoKsb/g8/yLFE+KAlP+DhbCTRUNi/V9XGsxn0R+trJJltNwzcDNo0q/DEkOy5fQUQTAQyCXCYSE+OakTQ==}
+    hasBin: true
+
+snapshots:
+
+  commander@15.0.0: {}
+
+  katex@0.18.9:
+    dependencies:
+      commander: 15.0.0

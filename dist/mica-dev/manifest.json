@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Mica for ChatGPT",
   "short_name": "Mica",
-  "version": "0.3.0",
-  "version_name": "0.3.0",
+  "version": "0.4.0",
+  "version_name": "0.4.0",
   "description": "Local copy, delivery recovery, and research export for ChatGPT.",
   "icons": {
     "16": "icons/icon16.png",
@@ -24,9 +24,14 @@
   "background": {
     "service_worker": "service-worker.js"
   },
+  "options_ui": {
+    "page": "options/index.html",
+    "open_in_tab": true
+  },
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "clipboardWrite"
   ],
   "host_permissions": [
     "https://chatgpt.com/*",
@@ -39,7 +44,10 @@
         "https://chat.openai.com/*"
       ],
       "js": [
+        "current-ui-check.js",
         "markdown-copy.js",
+        "research-export.js",
+        "highlighter.js",
         "turn-delivery-guard.js",
         "content.js"
       ],

@@ -1,14 +1,19 @@
-const DEFAULT_SETTINGS = { enabled: true, copyExport: true, reliability: true, pageIntegration: true };
+const DEFAULT_SETTINGS = { enabled: true, copyExport: true, reliability: true, pageIntegration: true, highlighter: true };
 const elements = {
   enabled: document.getElementById("enabled"),
   copyExport: document.getElementById("copyExport"),
   reliability: document.getElementById("reliability"),
   pageIntegration: document.getElementById("pageIntegration"),
+  highlighter: document.getElementById("highlighter"),
   pageStatus: document.getElementById("pageStatus"),
   copyStatus: document.getElementById("copyStatus"),
   reliabilityStatus: document.getElementById("reliabilityStatus"),
   integrationStatus: document.getElementById("integrationStatus"),
   copyMarkdown: document.getElementById("copyMarkdown"),
+  copyNotion: document.getElementById("copyNotion"),
+  exportPdf: document.getElementById("exportPdf"),
+  exportMenu: document.getElementById("exportMenu"),
+  openTroubleshooting: document.getElementById("openTroubleshooting"),
   feedback: document.getElementById("feedback"),
   version: document.getElementById("version")
 };
@@ -26,17 +31,21 @@ async function initialize() {
   render(currentStatus);
 }
 
-for (const key of ["enabled", "copyExport", "reliability", "pageIntegration"]) {
+for (const key of ["enabled", "copyExport", "reliability", "pageIntegration", "highlighter"]) {
   elements[key].addEventListener("change", saveSettings);
 }
 elements.copyMarkdown.addEventListener("click", copyMarkdown);
+elements.copyNotion.addEventListener("click", copyNotion);
+elements.exportPdf.addEventListener("click", openPdfPreview);
+elements.openTroubleshooting.addEventListener("click", () => chrome.runtime.openOptionsPage());
 
 async function saveSettings() {
   const next = {
     enabled: elements.enabled.checked,
     copyExport: elements.copyExport.checked,
     reliability: elements.reliability.checked,
-    pageIntegration: elements.pageIntegration.checked
+    pageIntegration: elements.pageIntegration.checked,
+    highlighter: elements.highlighter.checked
   };
   await setStorage(next);
   currentStatus = await sendToActiveTab({ type: "MICA_SET_SETTINGS", settings: next });
@@ -52,16 +61,44 @@ async function copyMarkdown() {
   }
   try {
     await navigator.clipboard.writeText(result.markdown);
+    elements.exportMenu.open = false;
     setFeedback("Copied as Markdown.", "success");
   } catch (_error) {
     setFeedback("Clipboard access was blocked. Try again.", "error");
   }
 }
 
+async function copyNotion() {
+  setFeedback("Preparing Notion-ready content…", "pending");
+  const result = await sendToActiveTab({ type: "MICA_SERIALIZE_NOTION" });
+  if (!result?.ok || !result.plainText || !result.html) return setFeedback("Notion-ready copy is unavailable on this answer.", "error");
+  try {
+    await navigator.clipboard.write([new ClipboardItem({
+      "text/plain": new Blob([result.plainText], { type: "text/plain" }),
+      "text/html": new Blob([result.html], { type: "text/html" })
+    })]);
+    elements.exportMenu.open = false;
+    setFeedback("Copied for Notion with HTML and text fallback.", "success");
+  } catch (_error) {
+    setFeedback("Clipboard access was blocked. Try again.", "error");
+  }
+}
+
+async function openPdfPreview() {
+  setFeedback("Preparing local PDF preview…", "pending");
+  const result = await sendToActiveTab({ type: "MICA_PREPARE_PDF_EXPORT" });
+  if (!result?.ok || !result.html) return setFeedback("PDF export is unavailable on this answer.", "error");
+  await new Promise((resolve) => chrome.storage.session.set({ "mica.pendingExport.v1": result }, resolve));
+  chrome.tabs.create({ url: chrome.runtime.getURL("export/index.html") });
+  setFeedback("PDF preview opened.", "success");
+}
+
 function render(status) {
   const active = elements.enabled.checked;
   elements.pageStatus.textContent = !status?.supported ? "Unavailable on this page" : active ? "Ready on this page" : "Paused";
   elements.copyMarkdown.disabled = !active || !elements.copyExport.checked || !status?.copy?.available;
+  elements.copyNotion.disabled = elements.copyMarkdown.disabled;
+  elements.exportPdf.disabled = elements.copyMarkdown.disabled;
   elements.copyStatus.textContent = !active || !elements.copyExport.checked
     ? "Paused"
     : status?.copy?.available ? "Ready for the latest answer" : "Open an answer to copy it.";
@@ -84,7 +121,7 @@ function reliabilityLabel(state, recoveryOffered) {
 }
 
 function applySettings(settings) {
-  for (const key of ["enabled", "copyExport", "reliability", "pageIntegration"]) {
+  for (const key of ["enabled", "copyExport", "reliability", "pageIntegration", "highlighter"]) {
     elements[key].checked = settings[key] !== false;
   }
 }

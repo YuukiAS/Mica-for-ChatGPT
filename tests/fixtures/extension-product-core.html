@@ -14,7 +14,14 @@
       <div data-message-author-role="assistant">
         <div data-message-content class="markdown">
           <h2>Extension answer</h2>
-          <p>Clipboard <strong>evidence</strong> with <span class="katex"><math><semantics><annotation encoding="application/x-tex">E=mc^2</annotation></semantics></math></span>.</p>
+          <p id="highlight-target">Highlighted research <strong>evidence</strong> with context and <span class="katex"><math><semantics><annotation encoding="application/x-tex">E=mc^2</annotation></semantics></math></span>.</p>
+          <p id="duplicate-quote">A separate passage repeats evidence with context but has intentionally different surrounding text.</p>
+          <blockquote><p>Preserve the evidence boundary.</p></blockquote>
+          <ul><li>First finding</li><li>Second finding<ul><li>Nested evidence</li></ul></li></ul>
+          <table><thead><tr><th>Measure</th><th>Result</th></tr></thead><tbody><tr><td>Accuracy</td><td>97%</td></tr><tr><td>Latency</td><td>42 ms</td></tr></tbody></table>
+          <pre><code class="language-python">def result():
+    return "searchable"</code></pre>
+          <div class="katex-display"><span class="katex"><math><semantics><annotation encoding="application/x-tex">\int_0^1 x^2\,dx = \frac{1}{3}</annotation></semantics></math></span></div>
         </div>
       </div>
       <div data-mica-current-action-cluster="exact-v1" aria-label="Answer actions">
@@ -22,5 +29,13 @@
       </div>
     </article>
     <form onsubmit="event.preventDefault()"><textarea id="mobile-composer-prompt" aria-label="Message ChatGPT"></textarea><button type="submit" aria-label="Send message">Send</button></form>
+    <script>
+      const answerBody = document.querySelector("[data-message-content]");
+      for (let index = 1; index <= 34; index += 1) {
+        const paragraph = document.createElement("p");
+        paragraph.textContent = `Long-form research paragraph ${index}. This paragraph verifies pagination, searchable text, selection, and stable local export without including any private conversation data.`;
+        answerBody.append(paragraph);
+      }
+    </script>
   </body>
 </html>
