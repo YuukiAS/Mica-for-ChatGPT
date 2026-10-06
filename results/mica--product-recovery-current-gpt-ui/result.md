@@ -4,9 +4,10 @@
 STATUS=partial_complete
 READY_FOR_USER_ACCEPTANCE=YES
 READY_FOR_RELEASE=NO
-USER_BLOCK_COUNT=0
+USER_BLOCK_COUNT=1
 REAL_CHATGPT_SEND_COUNT=0
 BROAD_ATLAS_RUN_COUNT=0
+HUMAN_ONLY_GATE=AWAITING_SINGLE_CONSOLIDATED_REPORT
 ```
 
 0.4.1 本地候选已实现低内存窗口化，并修复 0.4.0 独立审查的全部 P1/P2。低内存状态已并回冻结合同规定的第三个产品能力项；最终自动化、stress、PDF、生产者视觉与 package 门均已重新通过。同一 reviewer 已对精确 runtime commit `0f2d40e16b2dcd0af8f7d567981dce7bf7b656cc` 给出 `PASS`，P0/P1/P2 均为 0。候选现在进入本 Goal 唯一一次合并 HUMAN_ONLY 验收，发布仍关闭。
