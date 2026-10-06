@@ -10,8 +10,8 @@
 | `low-memory-impact-audit.md` | PASS | 0.4.1 local candidate |
 | `issue-closure-matrix.md` | PASS as pre-live matrix | 0.4.1 |
 | `test-matrix.md` | PASS for local gates | 0.4.1 |
-| `independent-review.md` | `49e7bc9` FAIL；修复候选待复审 | 待新冻结 commit |
+| `independent-review.md` | `dc5c2f8` FAIL；metadata 修复候选待复审 | 待新冻结 commit |
 | `visual-evidence/` | PASS | 0.4.1 local candidate |
 | `pdf-evidence/` | PASS | 0.4.1 |
-| `release-evidence/0.4.1-local-package.md` | PASS | 0.4.1 / `6e98d3d…` |
+| `release-evidence/0.4.1-local-package.md` | PASS | 0.4.1 / `453181fd…` |
 | `result.md` | `partial_complete` | 0.4.1 pre-review candidate |

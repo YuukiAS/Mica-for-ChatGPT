@@ -62,7 +62,7 @@ for (const token of ["data-mica-highlight-id", "resolveAnchorPosition", "storage
 assert(!/fetch\(|XMLHttpRequest|setInterval\(/.test(highlighter), "highlighter must stay local and event-coalesced");
 
 const lowMemoryPage = await readFile(path.join(distDir, "low-memory-page.js"), "utf8");
-for (const token of ["windowConversation", "validateMapping", "role_unrecognized", "sensitive_structure", "finished_successfully", "rootIds.length !== 1", "backend-api", "current_node", "contentUpload: false", "bytesBefore", "CONFIG_CACHE_MAX_AGE_MS", "freshConfigReceived"]) {
+for (const token of ["windowConversation", "validateMapping", "role_unrecognized", "sensitive_structure", "connected_app", "inspected > 2000", "finished_successfully", "rootIds.length !== 1", "backend-api", "current_node", "contentUpload: false", "bytesBefore", "CONFIG_CACHE_MAX_AGE_MS", "freshConfigReceived"]) {
   assert(lowMemoryPage.includes(token), `low-memory-page.js missing ${token}`);
 }
 assert(!/XMLHttpRequest|sendBeacon|WebSocket/.test(lowMemoryPage), "low-memory page interceptor must not add network transports");

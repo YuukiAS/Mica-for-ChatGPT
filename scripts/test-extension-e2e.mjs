@@ -541,6 +541,15 @@ async function runLowMemoryCoverage(context, worker, baseUrl) {
       const fileContentMapping = structuredClone(mapping);
       fileContentMapping.n55.message.content = { content_type: "multimodal_text", parts: [{ asset_pointer: "file-service://fixture" }] };
       const fileContent = window.MicaLowMemoryPage.windowConversation({ mapping: fileContentMapping, current_node: "n99" }, 40);
+      const toolMetadataMapping = structuredClone(mapping);
+      toolMetadataMapping.n55.message.metadata = { tool_calls: [{ id: "call-1" }] };
+      const toolMetadata = window.MicaLowMemoryPage.windowConversation({ mapping: toolMetadataMapping, current_node: "n99" }, 40);
+      const pluginMetadataMapping = structuredClone(mapping);
+      pluginMetadataMapping.n55.message.metadata = { context: { invoked_plugin: { id: "plugin-1" } } };
+      const pluginMetadata = window.MicaLowMemoryPage.windowConversation({ mapping: pluginMetadataMapping, current_node: "n99" }, 40);
+      const connectedAppsMapping = structuredClone(mapping);
+      connectedAppsMapping.n55.message.metadata = { connected_apps: ["github"] };
+      const connectedApps = window.MicaLowMemoryPage.windowConversation({ mapping: connectedAppsMapping, current_node: "n99" }, 40);
       const streamingMapping = structuredClone(mapping);
       streamingMapping.n99.message.status = "in_progress";
       streamingMapping.n99.message.end_turn = false;
@@ -561,9 +570,9 @@ async function runLowMemoryCoverage(context, worker, baseUrl) {
         };
       }
       const consecutiveRoles = window.MicaLowMemoryPage.windowConversation({ mapping: consecutiveMapping, current_node: "c99" }, 40);
-      return { invalid, missingChildren, unknownRole, toolRole, fileContent, streaming, disconnected, recentBranch, consecutiveRoles: { changed: consecutiveRoles.changed, visibleTotal: consecutiveRoles.visibleTotal, visibleKept: consecutiveRoles.visibleKept, keptNodes: consecutiveRoles.keptNodes } };
+      return { invalid, missingChildren, unknownRole, toolRole, fileContent, toolMetadata, pluginMetadata, connectedApps, streaming, disconnected, recentBranch, consecutiveRoles: { changed: consecutiveRoles.changed, visibleTotal: consecutiveRoles.visibleTotal, visibleKept: consecutiveRoles.visibleKept, keptNodes: consecutiveRoles.keptNodes } };
     });
-    assert(failOpenContracts.invalid.reason === "shape_unrecognized" && failOpenContracts.missingChildren.reason === "shape_unrecognized" && failOpenContracts.unknownRole.reason === "role_unrecognized" && failOpenContracts.toolRole.reason === "sensitive_structure" && failOpenContracts.fileContent.reason === "sensitive_structure" && failOpenContracts.streaming.reason === "sensitive_structure" && failOpenContracts.disconnected.reason === "graph_invalid" && failOpenContracts.recentBranch.reason === "recent_branch_detected", `unknown/sensitive/recent-branch contracts did not fail open: ${JSON.stringify(failOpenContracts)}`);
+    assert(failOpenContracts.invalid.reason === "shape_unrecognized" && failOpenContracts.missingChildren.reason === "shape_unrecognized" && failOpenContracts.unknownRole.reason === "role_unrecognized" && failOpenContracts.toolRole.reason === "sensitive_structure" && failOpenContracts.fileContent.reason === "sensitive_structure" && failOpenContracts.toolMetadata.reason === "sensitive_structure" && failOpenContracts.pluginMetadata.reason === "sensitive_structure" && failOpenContracts.connectedApps.reason === "sensitive_structure" && failOpenContracts.streaming.reason === "sensitive_structure" && failOpenContracts.disconnected.reason === "graph_invalid" && failOpenContracts.recentBranch.reason === "recent_branch_detected", `unknown/sensitive/recent-branch contracts did not fail open: ${JSON.stringify(failOpenContracts)}`);
     assert(failOpenContracts.consecutiveRoles.changed && failOpenContracts.consecutiveRoles.visibleTotal === 100 && failOpenContracts.consecutiveRoles.visibleKept === 40 && failOpenContracts.consecutiveRoles.keptNodes === 41, `recent-N policy did not count each visible node: ${JSON.stringify(failOpenContracts.consecutiveRoles)}`);
 
     const interaction = await page.evaluate(async () => {

@@ -21,7 +21,7 @@ Native virtualization can reduce mounted DOM while the client still owns the com
 | Mapping nodes delivered to the fixture app | 241 | 41 | -83.0% |
 | Conversation response bytes | 3,033,461 | 505,821 | -83.3% |
 | DOM nodes | 15,637 | 2,645 | -83.1% |
-| JS heap after forced GC | 4,785,156 | 2,729,120 | -43.0% |
+| JS heap after forced GC | 4,785,220 | 2,734,024 | -42.9% |
 
 This is additional client-state and heap reduction, not a mounted-turn counter presented as an optimization. The exact current authenticated ChatGPT binding remains part of the one final HUMAN_ONLY report; release remains closed until that report confirms the live path is active or yields evidence for a safe repair.
 
@@ -31,13 +31,13 @@ This is additional client-state and heap reduction, not a mounted-turn counter p
 - medium thread: 90 turns become 40;
 - long thread: 240 turns become 40;
 - direct-DOM fallback: 160 turns become 40;
-- recent active branch and unknown mapping shape: fail-open;
+- recent active branch, unknown mapping shape, tool/file/streaming roles and sensitive metadata such as `tool_calls`, nested `invoked_plugin` and `connected_apps`: fail-open;
 - stale or missing extension configuration: wait for a fresh bridge event; an expired cache fails open;
 - full-history action: reload restores all 240 turns;
 - disable + reload: restores all 160 DOM-fallback turns;
-- 120 IME/input cycles: 0.5 ms in the final candidate run, with no synchronous broad query/clone/geometry/style work;
+- 120 IME/input cycles: 0.6 ms in the final standard candidate run, with no synchronous broad query/clone/geometry/style work;
 - connector open/close, one fixture send, 27-character streaming mutation and scroll-frame check pass;
-- stress: 10 reload cycles and 3 anomaly cycles pass.
+- stress: 10 reload cycles (maximum 87 ms) and 3 anomaly cycles pass.
 
 ## Current gate
 

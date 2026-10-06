@@ -3,7 +3,7 @@
   const BYPASS_KEY = "mica.lowMemory.bypass.v1";
   const STATUS_EVENT = "mica-low-memory-page-status";
   const VISIBLE_ROLES = new Set(["user", "assistant"]);
-  const SENSITIVE_METADATA_KEY = /(?:^|_)(?:attachment|file|connector|oauth|authorization|tool)(?:s|_id|_name)?$/i;
+  const SENSITIVE_METADATA_KEY = /(?:^|_)(?:attachment|file|connector|oauth|authorization|tool|plugin|connected_app)(?:s|_|$)/i;
   const MAX_PATH_NODES = 20000;
   const MIN_VISIBLE_TURNS = 80;
   const CONFIG_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
@@ -219,7 +219,21 @@
   }
 
   function hasSensitiveMetadata(metadata) {
-    return Object.entries(metadata).some(([key, value]) => SENSITIVE_METADATA_KEY.test(key) && value != null && value !== false && value !== "" && (!Array.isArray(value) || value.length > 0));
+    const pending = [metadata];
+    const seen = new Set();
+    let inspected = 0;
+    while (pending.length) {
+      const value = pending.pop();
+      if ((!isPlainRecord(value) && !Array.isArray(value)) || seen.has(value)) continue;
+      seen.add(value);
+      inspected += 1;
+      if (inspected > 2000) return true;
+      for (const [key, child] of Object.entries(value)) {
+        if (SENSITIVE_METADATA_KEY.test(key) && child != null && child !== false && child !== "" && (!Array.isArray(child) || child.length > 0)) return true;
+        if (isPlainRecord(child) || Array.isArray(child)) pending.push(child);
+      }
+    }
+    return false;
   }
 
   function describeRequest(input, init) {

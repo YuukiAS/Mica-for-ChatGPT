@@ -13,14 +13,14 @@
 
 | 层 | 命令 / 证据 | 结果 | 最终耗时 |
 |---|---|---|---|
-| Low-memory focused | `pnpm run test:low-memory` | PASS；短/中/长、data window、DOM fallback、restore、disable、unknown/recent-branch fail-open、typing/IME、connector、send、streaming、scroll | 4.7 s（含 build） |
+| Low-memory focused | `pnpm run test:low-memory` | PASS；短/中/长、data window、DOM fallback、restore、disable、unknown/recent-branch/sensitive-metadata fail-open、typing/IME、connector、send、streaming、scroll | 5.2 s（含 build） |
 | Highlighter focused | `pnpm run test:highlighter` | PASS；SPA route isolation、Escape、Delete、公式不破坏、disable/reenable | 6.6 s（含 build） |
-| Build + unit + product + validator | `pnpm test` | PASS；13 个状态机/隐私/config fail-open case；serializer；remote-resource stripping；input hot path heavy counters 全 0；manifest/build 通过 | 3.0 s |
-| Actual MV3 extension E2E | `pnpm run test:e2e` | PASS；low-memory schema/sensitive fail-open、三项 popup + unsupported 状态合同、Copy、双 MIME、migration、diagnostic、highlighter、PDF、lifecycle、四异常、18 组 popup matrix | 22.2 s |
-| Stress | `pnpm run test:e2e:stress` | PASS；10 次 reload/remount，最大 71 ms；3 轮 ghost/generation-error；同一全套 E2E 仍通过 | 23.2 s |
-| PDF structure | bundled Python `scripts/verify-research-pdf.py` | PASS；3 页、790 words、精确 inline/display TeX source、7 font resources、0 image XObject、2 highlight rect、0 edge violation | 0.5 s |
+| Build + unit + product + validator | `pnpm test` | PASS；13 个状态机/隐私/config fail-open case；serializer；remote-resource stripping；input hot path heavy counters 全 0；manifest/build 通过 | 3.5 s |
+| Actual MV3 extension E2E | `pnpm run test:e2e` | PASS；low-memory schema/tool/plugin/connected-app metadata fail-open、三项 popup + unsupported 状态合同、Copy、双 MIME、migration、diagnostic、highlighter、PDF、lifecycle、四异常、18 组 popup matrix | 24.3 s |
+| Stress | `pnpm run test:e2e:stress` | PASS；10 次 reload/remount，最大 87 ms；3 轮 ghost/generation-error；同一全套 E2E 仍通过 | 27.9 s |
+| PDF structure | bundled Python `scripts/verify-research-pdf.py` | PASS；3 页、790 words、精确 inline/display TeX source、7 font resources、0 image XObject、2 highlight rect、0 edge violation | 0.7 s |
 | Producer visual review | popup light/dark、Troubleshooting、low-memory window、PDF preview | PASS；`PRODUCER_P1=0`、`PRODUCER_P2=0` | 逐图原尺寸目视检查 |
-| Release package | `pnpm run package:release` | PASS；root manifest、必需文件、无 source wrapper/node_modules/log；SHA 一致 | 0.9 s |
+| Release package | `pnpm run package:release` | PASS；root manifest、必需文件、无 source wrapper/node_modules/log；SHA 一致 | 1.1 s |
 
 ## 低内存量化证据
 
@@ -32,12 +32,12 @@
 | mapping nodes | 241 | 41 | -83.0% |
 | response bytes | 3,033,461 | 505,821 | -83.3% |
 | DOM nodes | 15,637 | 2,645 | -83.1% |
-| JS heap after forced GC | 4,785,156 | 2,729,120 | -43.0% |
-| 120 IME/input cycles | — | 0.5 ms total | <80 ms budget |
-| two-frame scroll exercise | — | 49.9 ms | <250 ms budget |
+| JS heap after forced GC | 4,785,220 | 2,734,024 | -42.9% |
+| 120 IME/input cycles | — | 0.6 ms total | <80 ms budget |
+| two-frame scroll exercise | — | 61.1 ms | <250 ms budget |
 | composer mutations during interaction | — | 4 | bounded |
 
-恢复与兼容：20 turns 不裁剪；90→40；160-turn DOM fallback→40；`Load full history` 恢复 240；disable+reload 恢复 160；recent branch 与未知 graph fail-open；connector open/close、fixture send 与 27-character streaming mutation 均通过。
+恢复与兼容：20 turns 不裁剪；90→40；160-turn DOM fallback→40；`Load full history` 恢复 240；disable+reload 恢复 160；recent branch、未知 graph、`tool_calls`、嵌套 `invoked_plugin` 与 `connected_apps` metadata 均 fail-open；connector open/close、fixture send 与 27-character streaming mutation 均通过。
 
 ## 关键断言
 
@@ -69,9 +69,9 @@
 
 ## 迭代运行说明
 
-本修复迭代的标准完整 E2E 共 10 次：第一次在新增 SPA/keyboard coverage 中 FAIL，定位并修复异步 affordance ownership 与 Escape keyup 重建；第二次 PASS 后，冻结审阅把最近 N 策略从“角色切换”收紧为“每个可见 node”；第三次 PASS 后又补上 fresh-config/expired-cache fail-open，因此前两次 PASS 均失效；第四次在该 runtime 上 PASS。将 popup 收回原 Goal 的三项合同后，第五次 PASS；证据截图改为默认闭合菜单后，第六次首次命中扩展安装迁移与 baseline 设置竞态，静态审计后增加 schema settle guard；第七次 PASS。独立 review 再发现 config error、schema drift fail-open 与 unsupported popup 缺口；修复后的第八次仅因新增 fixture URL 变量写错而在 harness 中 FAIL，第九次 PASS。冻结前自审又把 payload streaming 与整图连通性纳入 fail-open，第十次在最终源码与证据 harness 上 PASS。
+本修复迭代的标准完整 E2E 共 11 次：第一次在新增 SPA/keyboard coverage 中 FAIL，定位并修复异步 affordance ownership 与 Escape keyup 重建；第二次 PASS 后，冻结审阅把最近 N 策略从“角色切换”收紧为“每个可见 node”；第三次 PASS 后又补上 fresh-config/expired-cache fail-open，因此前两次 PASS 均失效；第四次在该 runtime 上 PASS。将 popup 收回原 Goal 的三项合同后，第五次 PASS；证据截图改为默认闭合菜单后，第六次首次命中扩展安装迁移与 baseline 设置竞态，静态审计后增加 schema settle guard；第七次 PASS。独立 review 再发现 config error、schema drift fail-open 与 unsupported popup 缺口；修复后的第八次仅因新增 fixture URL 变量写错而在 harness 中 FAIL，第九次 PASS。冻结前自审又把 payload streaming 与整图连通性纳入 fail-open，第十次 PASS。第二轮独立 review 发现 tool/plugin/connected-app metadata 漏检；加入有界递归检测及回归后，第十一次在最终源码与证据 harness 上 PASS。
 
-Low-memory focused 在初始指标阈值校准前有 1 次 harness FAIL；静态检查指标来源后，后续 8 次直接 focused run 均 PASS。最终 direct run 覆盖 missing children、unknown role、tool role、multimodal/file、payload streaming 与断连 graph fail-open。完整 E2E 与 stress 也各自重新覆盖了同一 low-memory case。Highlighter focused 的中间 FAIL 分别暴露测试选区漂移、跨 route 异步竞态和 Escape keyup 重建；每类在重复两次前完成静态根因检查。最终 focused、完整 E2E、stress 均 PASS。
+Low-memory focused 在初始指标阈值校准前有 1 次 harness FAIL；静态检查指标来源后，后续 9 次直接 focused run 均 PASS。最终 direct run 覆盖 missing children、unknown role、tool role、multimodal/file、payload streaming、断连 graph，以及 `tool_calls`、嵌套 `invoked_plugin` 与 `connected_apps` metadata fail-open。完整 E2E 与 stress 也各自重新覆盖了同一 low-memory case。Highlighter focused 的中间 FAIL 分别暴露测试选区漂移、跨 route 异步竞态和 Escape keyup 重建；每类在重复两次前完成静态根因检查。最终 focused、完整 E2E、stress 均 PASS。
 
 最终 runtime 后只调整截图默认态、测试启动隔离与文档；完整 E2E 和 stress 均已在这些变化后重跑。没有跨 candidate 拼接 PASS，0.4.0 的旧截图、PDF、package 和 reviewer FAIL 不能作为 0.4.1 PASS。
 
@@ -79,7 +79,7 @@ Low-memory focused 在初始指标阈值校准前有 1 次 harness FAIL；静态
 FOCUSED_TESTS=PASS
 AFFECTED_E2E=PASS
 FULL_SUITE=PASS
-FULL_E2E_RUNS_THIS_REPAIR=10
+FULL_E2E_RUNS_THIS_REPAIR=11
 FINAL_FULL_E2E_RUNS=1
 STRESS=PASS
 PERFORMANCE_REGRESSION=PASS
