@@ -2,14 +2,14 @@
 
 ```text
 STATUS=partial_complete
-READY_FOR_USER_ACCEPTANCE=NO
+READY_FOR_USER_ACCEPTANCE=YES
 READY_FOR_RELEASE=NO
 USER_BLOCK_COUNT=0
 REAL_CHATGPT_SEND_COUNT=0
 BROAD_ATLAS_RUN_COUNT=0
 ```
 
-0.4.1 本地候选已实现低内存窗口化，并修复 0.4.0 独立审查的全部 P1/P2。低内存状态已并回冻结合同规定的第三个产品能力项；最终自动化、stress、PDF、生产者视觉与 package 门均已重新通过。新冻结 commit 与同一 reviewer 复审尚在本轮后续步骤，因此当前还不向用户发起 HUMAN_ONLY 验收。
+0.4.1 本地候选已实现低内存窗口化，并修复 0.4.0 独立审查的全部 P1/P2。低内存状态已并回冻结合同规定的第三个产品能力项；最终自动化、stress、PDF、生产者视觉与 package 门均已重新通过。同一 reviewer 已对精确 runtime commit `0f2d40e16b2dcd0af8f7d567981dce7bf7b656cc` 给出 `PASS`，P0/P1/P2 均为 0。候选现在进入本 Goal 唯一一次合并 HUMAN_ONLY 验收，发布仍关闭。
 
 ```text
 LOW_MEMORY_TRUNCATION=PASS
@@ -30,7 +30,7 @@ PACKAGE_SHA256=453181fde35f25defbaef770264d3e4cb59200c3d25decde4bc50e11d6df2f92
 NO_NORMAL_UI_DEV_CONTROLS=PASS
 NO_USER_AS_FIRST_LINE_QA=PASS
 ALL_VISIBLE_ACTIONS_PRODUCER_VERIFIED=PASS
-ALL_EVIDENCE_BOUND_TO_FINAL_CANDIDATE=PENDING_FREEZE_COMMIT_REVIEW_AND_LIVE_EVIDENCE
+ALL_EVIDENCE_BOUND_TO_FINAL_CANDIDATE=PENDING_LIVE_EVIDENCE_ONLY
 MAIN_IS_SINGLE_SOURCE_OF_TRUTH=NO_BRANCH_NOT_MERGED
 ```
 
