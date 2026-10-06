@@ -14,7 +14,7 @@ Mica 以“本地、可靠、fail-open”为长期边界。路线不再围绕旧
 - 低内存长对话窗口化：只把最近 40 turns 交给页面运行时，保留一键完整历史恢复；
 - 未知 graph、近期分支、streaming、tool/file/auth 结构 fail-open，不把 ChatGPT 原生 windowing 冒充为 Mica 收益。
 
-本地 fixture 与扩展 E2E 已证明 240→40 turns、mapping bytes -83.3%、DOM nodes -83.1%、强制 GC 后 JS heap -43.3%，并覆盖恢复、发送、streaming、connector 与 IME。当前已登录 ChatGPT 的实际数据路径、action cluster 和发送生命周期仍需一次合并证据后才能关闭真实站点 gate。
+本地 fixture 与扩展 E2E 已证明 240→40 turns、mapping bytes -83.3%、DOM nodes -83.1%、强制 GC 后 JS heap -43.0%，并覆盖恢复、发送、streaming、connector 与 IME。当前已登录 ChatGPT 的实际数据路径、action cluster 和发送生命周期仍需一次合并证据后才能关闭真实站点 gate。
 
 ## 0.4.0 — Research Export
 

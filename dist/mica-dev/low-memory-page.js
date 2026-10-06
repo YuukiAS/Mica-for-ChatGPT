@@ -2,7 +2,8 @@
   const CONFIG_KEY = "mica.lowMemory.config.v1";
   const BYPASS_KEY = "mica.lowMemory.bypass.v1";
   const STATUS_EVENT = "mica-low-memory-page-status";
-  const HIDDEN_ROLES = new Set(["system", "tool", "thinking"]);
+  const VISIBLE_ROLES = new Set(["user", "assistant"]);
+  const SENSITIVE_METADATA_KEY = /(?:^|_)(?:attachment|file|connector|oauth|authorization|tool)(?:s|_id|_name)?$/i;
   const MAX_PATH_NODES = 20000;
   const MIN_VISIBLE_TURNS = 80;
   const CONFIG_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
@@ -76,6 +77,8 @@
     const mapping = data?.mapping;
     const currentNode = data?.current_node;
     if (!isPlainRecord(mapping) || typeof currentNode !== "string" || !isPlainRecord(mapping[currentNode])) return { changed: false, reason: "shape_unrecognized" };
+    const mappingValidation = validateMapping(mapping);
+    if (!mappingValidation.ok) return { changed: false, reason: mappingValidation.reason };
     const reversePath = [];
     const visited = new Set();
     let cursor = currentNode;
@@ -163,11 +166,60 @@
 
   function visibleRole(node) {
     const role = node?.message?.author?.role;
-    return typeof role === "string" && role && !HIDDEN_ROLES.has(role) ? role : null;
+    return VISIBLE_ROLES.has(role) ? role : null;
   }
 
   function isVisibleNode(node) {
     return !!visibleRole(node);
+  }
+
+  function validateMapping(mapping) {
+    const rootIds = [];
+    for (const [id, node] of Object.entries(mapping)) {
+      if (!isPlainRecord(node) || node.id !== id) return { ok: false, reason: "shape_unrecognized" };
+      if (node.parent !== null && typeof node.parent !== "string") return { ok: false, reason: "shape_unrecognized" };
+      if (node.parent === null) rootIds.push(id);
+      else if (!isPlainRecord(mapping[node.parent]) || !mapping[node.parent].children?.includes(id)) return { ok: false, reason: "graph_invalid" };
+      if (!Array.isArray(node.children) || node.children.some((child) => typeof child !== "string" || !isPlainRecord(mapping[child]))) {
+        return { ok: false, reason: "shape_unrecognized" };
+      }
+      for (const child of node.children) {
+        if (mapping[child].parent !== id) return { ok: false, reason: "graph_invalid" };
+      }
+      if (node.message == null) continue;
+      if (!isPlainRecord(node.message) || !isPlainRecord(node.message.author) || !isPlainRecord(node.message.content)) {
+        return { ok: false, reason: "shape_unrecognized" };
+      }
+      const role = node.message.author.role;
+      if (!VISIBLE_ROLES.has(role)) {
+        return { ok: false, reason: role === "tool" ? "sensitive_structure" : "role_unrecognized" };
+      }
+      if ((typeof node.message.status === "string" && node.message.status !== "finished_successfully") || node.message.end_turn === false) {
+        return { ok: false, reason: "sensitive_structure" };
+      }
+      const { content, metadata } = node.message;
+      if (content.content_type !== "text" || !Array.isArray(content.parts) || content.parts.some((part) => typeof part !== "string")) {
+        return { ok: false, reason: "sensitive_structure" };
+      }
+      if (metadata != null && (!isPlainRecord(metadata) || hasSensitiveMetadata(metadata))) {
+        return { ok: false, reason: "sensitive_structure" };
+      }
+    }
+    if (rootIds.length !== 1) return { ok: false, reason: "graph_invalid" };
+    const visited = new Set();
+    const pending = [rootIds[0]];
+    while (pending.length) {
+      const id = pending.pop();
+      if (visited.has(id)) return { ok: false, reason: "graph_invalid" };
+      visited.add(id);
+      pending.push(...mapping[id].children);
+    }
+    if (visited.size !== Object.keys(mapping).length) return { ok: false, reason: "graph_invalid" };
+    return { ok: true };
+  }
+
+  function hasSensitiveMetadata(metadata) {
+    return Object.entries(metadata).some(([key, value]) => SENSITIVE_METADATA_KEY.test(key) && value != null && value !== false && value !== "" && (!Array.isArray(value) || value.length > 0));
   }
 
   function describeRequest(input, init) {

@@ -62,10 +62,14 @@ for (const token of ["data-mica-highlight-id", "resolveAnchorPosition", "storage
 assert(!/fetch\(|XMLHttpRequest|setInterval\(/.test(highlighter), "highlighter must stay local and event-coalesced");
 
 const lowMemoryPage = await readFile(path.join(distDir, "low-memory-page.js"), "utf8");
-for (const token of ["windowConversation", "backend-api", "current_node", "contentUpload: false", "bytesBefore", "CONFIG_CACHE_MAX_AGE_MS", "freshConfigReceived"]) {
+for (const token of ["windowConversation", "validateMapping", "role_unrecognized", "sensitive_structure", "finished_successfully", "rootIds.length !== 1", "backend-api", "current_node", "contentUpload: false", "bytesBefore", "CONFIG_CACHE_MAX_AGE_MS", "freshConfigReceived"]) {
   assert(lowMemoryPage.includes(token), `low-memory-page.js missing ${token}`);
 }
 assert(!/XMLHttpRequest|sendBeacon|WebSocket/.test(lowMemoryPage), "low-memory page interceptor must not add network transports");
+const lowMemoryConfig = await readFile(path.join(distDir, "low-memory-config.js"), "utf8");
+for (const token of ["enabled: !!settings", "if (!storage) return resolve(null)", "lastError ? null : items"]) {
+  assert(lowMemoryConfig.includes(token), `low-memory config bridge missing fail-open contract ${token}`);
+}
 const lowMemoryWindowing = await readFile(path.join(distDir, "low-memory-windowing.js"), "utf8");
 for (const token of ["Load full history", "DOM_THRESHOLD", "safeToReload", "contentUpload: false"]) {
   assert(lowMemoryWindowing.includes(token), `low-memory-windowing.js missing ${token}`);

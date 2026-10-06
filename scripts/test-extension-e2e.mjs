@@ -52,6 +52,7 @@ await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const fixtureUrl = `http://127.0.0.1:${server.address().port}/tests/fixtures/extension-product-core.html`;
 const highlighterCoverageUrl = `http://127.0.0.1:${server.address().port}/tests/fixtures/extension-highlighter-coverage.html`;
 const lowMemoryFixtureUrl = `http://127.0.0.1:${server.address().port}/tests/fixtures/low-memory-thread.html`;
+const unsupportedFixtureUrl = `http://127.0.0.1:${server.address().port}/tests/fixtures/unsupported-page.html`;
 let context;
 try {
   context = await chromium.launchPersistentContext(userDataDir, {
@@ -239,6 +240,18 @@ try {
   if (await popup.locator("#exportMenu").getAttribute("open") !== null) {
     await popup.locator("#exportMenu > summary").click();
   }
+
+  const unsupportedPage = await context.newPage();
+  const unsupportedPopup = await context.newPage();
+  await unsupportedPage.goto(unsupportedFixtureUrl, { waitUntil: "load" });
+  await unsupportedPage.bringToFront();
+  await unsupportedPopup.goto(`chrome-extension://${extensionId}/popup/index.html`, { waitUntil: "load" });
+  await unsupportedPopup.waitForFunction(() => document.getElementById("pageStatus")?.textContent === "Unavailable on this page");
+  const unsupportedStates = await unsupportedPopup.locator("#copyStatus, #reliabilityStatus, #lowMemoryStatus, #integrationStatus").allTextContents();
+  assert(unsupportedStates.length === 4 && unsupportedStates.every((state) => state === "Unavailable on this page"), `unsupported popup states diverged: ${JSON.stringify(unsupportedStates)}`);
+  await unsupportedPopup.close();
+  await unsupportedPage.close();
+  await fixture.bringToFront();
 
   const matrix = [];
   const popupCdp = await context.newCDPSession(popup);
@@ -513,11 +526,30 @@ async function runLowMemoryCoverage(context, worker, baseUrl) {
           id: `n${index}`,
           parent: index === 0 ? "root" : `n${index - 1}`,
           children: index === 99 ? [] : [`n${index + 1}`],
-          message: { author: { role: index % 2 ? "assistant" : "user" }, content: { parts: [String(index)] } }
+          message: { author: { role: index % 2 ? "assistant" : "user" }, content: { content_type: "text", parts: [String(index)] }, metadata: {} }
         };
       }
+      const missingChildrenMapping = structuredClone(mapping);
+      delete missingChildrenMapping.n55.children;
+      const missingChildren = window.MicaLowMemoryPage.windowConversation({ mapping: missingChildrenMapping, current_node: "n99" }, 40);
+      const unknownRoleMapping = structuredClone(mapping);
+      unknownRoleMapping.n55.message.author.role = "future_agent";
+      const unknownRole = window.MicaLowMemoryPage.windowConversation({ mapping: unknownRoleMapping, current_node: "n99" }, 40);
+      const toolRoleMapping = structuredClone(mapping);
+      toolRoleMapping.n55.message.author.role = "tool";
+      const toolRole = window.MicaLowMemoryPage.windowConversation({ mapping: toolRoleMapping, current_node: "n99" }, 40);
+      const fileContentMapping = structuredClone(mapping);
+      fileContentMapping.n55.message.content = { content_type: "multimodal_text", parts: [{ asset_pointer: "file-service://fixture" }] };
+      const fileContent = window.MicaLowMemoryPage.windowConversation({ mapping: fileContentMapping, current_node: "n99" }, 40);
+      const streamingMapping = structuredClone(mapping);
+      streamingMapping.n99.message.status = "in_progress";
+      streamingMapping.n99.message.end_turn = false;
+      const streaming = window.MicaLowMemoryPage.windowConversation({ mapping: streamingMapping, current_node: "n99" }, 40);
+      const disconnectedMapping = structuredClone(mapping);
+      disconnectedMapping.orphan = { id: "orphan", parent: null, children: [], message: null };
+      const disconnected = window.MicaLowMemoryPage.windowConversation({ mapping: disconnectedMapping, current_node: "n99" }, 40);
       mapping.n70.children.push("alternate-recent-branch");
-      mapping["alternate-recent-branch"] = { id: "alternate-recent-branch", parent: "n70", children: [], message: { author: { role: "assistant" }, content: { parts: ["alternate"] } } };
+      mapping["alternate-recent-branch"] = { id: "alternate-recent-branch", parent: "n70", children: [], message: { author: { role: "assistant" }, content: { content_type: "text", parts: ["alternate"] }, metadata: {} } };
       const recentBranch = window.MicaLowMemoryPage.windowConversation({ mapping, current_node: "n99" }, 40);
       const consecutiveMapping = { root: { id: "root", parent: null, children: ["c0"], message: null } };
       for (let index = 0; index < 100; index += 1) {
@@ -525,13 +557,13 @@ async function runLowMemoryCoverage(context, worker, baseUrl) {
           id: `c${index}`,
           parent: index === 0 ? "root" : `c${index - 1}`,
           children: index === 99 ? [] : [`c${index + 1}`],
-          message: { author: { role: "assistant" }, content: { parts: [String(index)] } }
+          message: { author: { role: "assistant" }, content: { content_type: "text", parts: [String(index)] }, metadata: {} }
         };
       }
       const consecutiveRoles = window.MicaLowMemoryPage.windowConversation({ mapping: consecutiveMapping, current_node: "c99" }, 40);
-      return { invalid, recentBranch, consecutiveRoles: { changed: consecutiveRoles.changed, visibleTotal: consecutiveRoles.visibleTotal, visibleKept: consecutiveRoles.visibleKept, keptNodes: consecutiveRoles.keptNodes } };
+      return { invalid, missingChildren, unknownRole, toolRole, fileContent, streaming, disconnected, recentBranch, consecutiveRoles: { changed: consecutiveRoles.changed, visibleTotal: consecutiveRoles.visibleTotal, visibleKept: consecutiveRoles.visibleKept, keptNodes: consecutiveRoles.keptNodes } };
     });
-    assert(failOpenContracts.invalid.reason === "shape_unrecognized" && failOpenContracts.recentBranch.reason === "recent_branch_detected", `unknown/recent-branch contracts did not fail open: ${JSON.stringify(failOpenContracts)}`);
+    assert(failOpenContracts.invalid.reason === "shape_unrecognized" && failOpenContracts.missingChildren.reason === "shape_unrecognized" && failOpenContracts.unknownRole.reason === "role_unrecognized" && failOpenContracts.toolRole.reason === "sensitive_structure" && failOpenContracts.fileContent.reason === "sensitive_structure" && failOpenContracts.streaming.reason === "sensitive_structure" && failOpenContracts.disconnected.reason === "graph_invalid" && failOpenContracts.recentBranch.reason === "recent_branch_detected", `unknown/sensitive/recent-branch contracts did not fail open: ${JSON.stringify(failOpenContracts)}`);
     assert(failOpenContracts.consecutiveRoles.changed && failOpenContracts.consecutiveRoles.visibleTotal === 100 && failOpenContracts.consecutiveRoles.visibleKept === 40 && failOpenContracts.consecutiveRoles.keptNodes === 41, `recent-N policy did not count each visible node: ${JSON.stringify(failOpenContracts.consecutiveRoles)}`);
 
     const interaction = await page.evaluate(async () => {

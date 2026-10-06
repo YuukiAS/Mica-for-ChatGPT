@@ -4,7 +4,7 @@
 
 | Issue | 仓库内范围 | 实现定位 | 自动化 / artifact 证据 | 当前状态 | 远端动作 |
 |---|---|---|---|---|---|
-| #1 | Long-thread recovery | `low-memory-page.ts`、`low-memory-windowing.ts`、长线程调查结论 | 240→40 turns；mapping bytes -83.3%；DOM nodes -83.1%；JS heap -43.3%；完整历史恢复 | 本地 `LOW_MEMORY_TRUNCATION=PASS`；当前已登录路径待一次 HUMAN_ONLY | 暂不关闭 |
+| #1 | Long-thread recovery | `low-memory-page.ts`、`low-memory-windowing.ts`、长线程调查结论 | 240→40 turns；mapping bytes -83.3%；DOM nodes -83.1%；JS heap -43.0%；完整历史恢复 | 本地 `LOW_MEMORY_TRUNCATION=PASS`；当前已登录路径待一次 HUMAN_ONLY | 暂不关闭 |
 | #2 | Long-thread runtime diagnostics / real bottleneck | `current-ui-check.ts` 的 privacy-safe low-memory summary | mode/state/turn counts/bytes/reason，无正文；MV3 E2E | 本地 `PASS`；真实报告需确认 `data_window` 或给出 fail-open reason | 暂不关闭 |
 | #3 | Stable Markdown / LaTeX Copy | `extension/src/copy/markdown-copy.ts` | serializer unit + actual clipboard + PDF/Notion reuse | 本地 `PASS`；真实 action cluster 待一次合并证据 | 暂不关闭 |
 | #4 | Turn delivery guard | `extension/src/reliability/turn-delivery-guard.ts` | 四状态异常、单一恢复动作、正文不入 diagnostics | 本地 `PASS`；真实 send lifecycle 待一次 HUMAN_ONLY | 暂不关闭 |

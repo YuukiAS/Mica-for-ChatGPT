@@ -11,8 +11,8 @@
   async function syncFromExtensionStorage() {
     const settings = await readSettings();
     const config = {
-      enabled: settings.enabled !== false && settings.lowMemory !== false,
-      keepCount: clamp(Number(settings.lowMemoryKeepCount) || DEFAULTS.keepCount, 20, 80),
+      enabled: !!settings && settings.enabled !== false && settings.lowMemory !== false,
+      keepCount: clamp(Number(settings?.lowMemoryKeepCount) || DEFAULTS.keepCount, 20, 80),
       updatedAt: Date.now()
     };
     publish(config);
@@ -22,9 +22,9 @@
   function readSettings() {
     return new Promise((resolve) => {
       const storage = globalThis.chrome?.storage?.local;
-      if (!storage) return resolve(DEFAULTS);
+      if (!storage) return resolve(null);
       storage.get({ enabled: true, lowMemory: true, lowMemoryKeepCount: DEFAULTS.keepCount }, (items) => {
-        resolve(globalThis.chrome?.runtime?.lastError ? DEFAULTS : items);
+        resolve(globalThis.chrome?.runtime?.lastError ? null : items);
       });
     });
   }

@@ -98,22 +98,32 @@ async function openPdfPreview() {
 
 function render(status) {
   const active = elements.enabled.checked;
-  elements.pageStatus.textContent = !status?.supported ? "Unavailable on this page" : active ? "Ready on this page" : "Paused";
+  const supported = status?.supported === true;
+  const unavailable = "Unavailable on this page";
+  elements.pageStatus.textContent = !supported ? unavailable : active ? "Ready on this page" : "Paused";
   elements.copyMarkdown.disabled = !active || !elements.copyExport.checked || !status?.copy?.available;
   elements.copyNotion.disabled = elements.copyMarkdown.disabled;
   elements.exportPdf.disabled = elements.copyMarkdown.disabled;
-  elements.copyStatus.textContent = !active || !elements.copyExport.checked
+  elements.copyStatus.textContent = !supported
+    ? unavailable
+    : !active || !elements.copyExport.checked
     ? "Paused"
     : status?.copy?.available ? "Ready for the latest answer" : "Open an answer to copy it.";
   const delivery = status?.reliability?.state;
-  elements.reliabilityStatus.textContent = !active || !elements.reliability.checked
+  elements.reliabilityStatus.textContent = !supported
+    ? unavailable
+    : !active || !elements.reliability.checked
     ? "Paused"
     : reliabilityLabel(delivery, status?.reliability?.recoveryOffered);
-  elements.integrationStatus.textContent = !active || !elements.pageIntegration.checked
+  elements.integrationStatus.textContent = !supported
+    ? unavailable
+    : !active || !elements.pageIntegration.checked
     ? "Paused"
     : status?.pageIntegration === "integrated" ? "Integrated with this page" : "Native handling";
   const lowMemory = status?.lowMemory;
-  elements.lowMemoryStatus.textContent = !active || !elements.lowMemory.checked
+  elements.lowMemoryStatus.textContent = !supported
+    ? unavailable
+    : !active || !elements.lowMemory.checked
     ? "Paused"
     : lowMemory?.active
       ? `${lowMemory.removedTurns} older turns paused · ${lowMemory.keptTurns} recent kept`

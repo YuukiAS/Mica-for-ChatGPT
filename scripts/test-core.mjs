@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
 const source = await readFile(new URL("../extension/src/reliability/turn-delivery-guard.ts", import.meta.url), "utf8");
+const lowMemoryConfigSource = await readFile(new URL("../extension/src/low-memory/low-memory-config.ts", import.meta.url), "utf8");
 const sandbox = { globalThis: {}, setTimeout, clearTimeout };
 sandbox.globalThis = sandbox;
 vm.runInNewContext(source, sandbox, { filename: "turn-delivery-guard.ts" });
@@ -24,7 +25,31 @@ assert(guard.fingerprint(" alpha\n beta ") === guard.fingerprint("alpha beta"), 
 assert(!source.includes('addEventListener("input"') && !source.includes('addEventListener("beforeinput"'), "ordinary typing listeners are forbidden");
 assert(!source.includes("setInterval("), "polling is forbidden");
 
-console.log(JSON.stringify({ passed: true, cases: 10, states: Object.values(guard.STATES) }, null, 2));
+const missingStorageConfig = await loadLowMemoryConfig({});
+assert(missingStorageConfig.enabled === false, "missing extension storage must fail open with low-memory disabled");
+const failedStorageConfig = await loadLowMemoryConfig({
+  chrome: {
+    runtime: { lastError: { message: "storage unavailable" } },
+    storage: { local: { get(_defaults, callback) { callback({ enabled: true, lowMemory: true, lowMemoryKeepCount: 40 }); } } }
+  }
+});
+assert(failedStorageConfig.enabled === false, "storage runtime error must fail open with low-memory disabled");
+const healthyStorageConfig = await loadLowMemoryConfig({
+  chrome: {
+    runtime: { lastError: null },
+    storage: { local: { get(defaults, callback) { callback(defaults); } } }
+  }
+});
+assert(healthyStorageConfig.enabled === true && healthyStorageConfig.keepCount === 40, "healthy fresh install defaults must enable the 40-turn window");
+
+console.log(JSON.stringify({ passed: true, cases: 13, states: Object.values(guard.STATES), lowMemoryConfig: { missingStorage: "disabled", storageError: "disabled", healthyDefaults: "enabled" } }, null, 2));
+
+async function loadLowMemoryConfig(overrides) {
+  const configSandbox = { globalThis: {}, ...overrides };
+  configSandbox.globalThis = configSandbox;
+  vm.runInNewContext(lowMemoryConfigSource, configSandbox, { filename: "low-memory-config.ts" });
+  return configSandbox.MicaLowMemoryConfig.syncFromExtensionStorage();
+}
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
