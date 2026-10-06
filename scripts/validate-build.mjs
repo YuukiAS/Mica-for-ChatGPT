@@ -78,9 +78,10 @@ for (const token of ["MICA_CURRENT_UI_CHECK_START", "MICA_CURRENT_UI_CHECK_STOP"
 assert(!/fetch\(|XMLHttpRequest|setInterval\(/.test(currentUiCheck), "current UI check must stay local and bounded");
 
 const popupHtml = await readFile(path.join(distDir, "popup", "index.html"), "utf8");
-for (const token of ["Copy &amp; Export", "Reliability", "Page integration", "Advanced", "Local by default"]) {
+for (const token of ["Copy &amp; Export", "Reliability", "Performance &amp; page integration", "Advanced", "Local by default"]) {
   assert(popupHtml.includes(token), `popup missing ${token}`);
 }
+assert((popupHtml.match(/class="capability-row(?:\s|")/g) || []).length === 3, "popup must expose exactly three top-level capability rows");
 for (const forbidden of ["Atlas", "Diagnostics", "fixture", "selector", "mounted", "optimized", "Start diagnostics", "Reset"]) {
   assert(!popupHtml.includes(forbidden), `normal popup contains developer wording ${forbidden}`);
 }

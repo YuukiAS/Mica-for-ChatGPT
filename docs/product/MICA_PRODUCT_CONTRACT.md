@@ -13,7 +13,7 @@ Mica 是一个本地运行的 Chromium 扩展。它在不接管 ChatGPT、不上
 Popup 是日常控制面，不是调试控制台。结构固定为：
 
 1. 顶部显示 Mica 身份、总开关和当前页是否受支持。
-2. 主体最多显示 4 组能力：`Copy & Export`、`Low-memory mode`、`Reliability`、`Page integration`。
+2. 主体最多显示 3 组能力：`Copy & Export`、`Reliability`、`Performance & page integration`。
 3. 每组只显示用户能理解的当前状态和至多 1 个必要动作。
 4. 高级设置默认收起；开发诊断进入独立 developer/options surface。
 
@@ -53,15 +53,13 @@ Popup 不显示 Atlas、fixture、mock、raw selector、mounted DOM 计数、bui
 
 恢复动作遵守最小风险原则：高置信未提交时可恢复草稿；可能已提交、包含 tool/attachment/connector/授权或外部写入时只提示，不自动重发。第一版不把自动重发作为默认路径。
 
-### Page integration
-
-该区域说明 Mica 是否安全识别当前页面。未知 action cluster 保持 `Native handling`，不猜测插入 Copy 控件。
-
-### Low-memory mode
+### Performance & page integration
 
 超长 conversation 默认只保留最近 40 turns 活跃。优先路径在 ChatGPT 页面消费 conversation mapping 前创建本地裁剪副本，因此同时降低历史 app-state、DOM 与渲染负担；服务器原始 conversation 不被修改。`Load full history` 会为当前路径设置一次会话 bypass 并刷新，关闭 Mica 后刷新也恢复完整历史。
 
 仅处理同源 GET、精确 conversation 路径、可验证的无环 active path。近期 active branch、未知 graph、streaming、dialog、tool/file/auth/connector 等敏感结构 fail-open。DOM fallback 只处理 120+ 个同父级、单一 user/assistant role 的普通 turns；它不保存正文，恢复依赖重新加载服务器历史。
+
+同一能力行也说明 Mica 是否安全识别当前页面。未知 action cluster 保持 `Native handling`，不猜测插入 Copy 控件。低内存状态与页面识别状态共用一个产品层级，但仍保持各自独立的开关和 fail-open 边界。
 
 ### Highlighter
 
@@ -75,9 +73,8 @@ Popup 不显示 Atlas、fixture、mock、raw selector、mounted DOM 计数、bui
 |---|---|---|---|---|
 | Popup header | 总开关 | 支持页 / 非支持页 | 启用或停用 Mica | 只影响 Mica，不改变 ChatGPT 账号设置 |
 | Copy & Export | 能力行 | 可用 / 不可用 / 失败 | 选择输出方式 | clipboard 或本地 PDF 更新 |
-| Low-memory mode | 能力行 | 待命 / 已窗口化 / 完整历史 / fail-open | 减少长对话内存或恢复历史 | 最近 40 turns 活跃；恢复时刷新完整历史 |
 | Reliability | 异常提示 | 有可恢复异常 | 恢复草稿或按安全建议处理 | 不自动跨过授权，不盲目双发 |
-| Page integration | 页面状态 | 已识别 / 原生处理 / 不支持 | 理解当前工作范围 | 未识别时保持原生行为 |
+| Performance & page integration | 能力行 | 待命 / 已窗口化 / 完整历史 / fail-open；已识别 / 原生处理 / 不支持 | 减少长对话内存、恢复历史并理解当前工作范围 | 最近 40 turns 活跃；恢复时刷新完整历史；未识别时保持原生行为 |
 | Highlighter | 选择入口 | 选区可锚定 | 添加或移除高亮 | 只在本机保存 |
 
 最终短文案由 `product-ui-copy` 在实际 viewport 中验证，不能用措辞掩盖产品状态或隐私边界。

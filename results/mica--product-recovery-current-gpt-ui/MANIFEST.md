@@ -13,5 +13,5 @@
 | `independent-review.md` | old candidate FAIL; 0.4.1 pending | 待冻结 commit |
 | `visual-evidence/` | PASS | 0.4.1 local candidate |
 | `pdf-evidence/` | PASS | 0.4.1 |
-| `release-evidence/0.4.1-local-package.md` | PASS | 0.4.1 / `7b99a36…` |
-| `result.md` | `local_candidate_complete` | 0.4.1 pre-review candidate |
+| `release-evidence/0.4.1-local-package.md` | PASS | 0.4.1 / `afc90cf…` |
+| `result.md` | `partial_complete` | 0.4.1 pre-review candidate |

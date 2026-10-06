@@ -20,8 +20,8 @@ Native virtualization can reduce mounted DOM while the client still owns the com
 | Visible/mounted turns | 240 | 40 | -83.3% |
 | Mapping nodes delivered to the fixture app | 241 | 41 | -83.0% |
 | Conversation response bytes | 3,033,461 | 505,821 | -83.3% |
-| DOM nodes | 15,637 | 2,646 | -83.1% |
-| JS heap after forced GC | 4,784,376 | 2,712,924 | -43.3% |
+| DOM nodes | 15,637 | 2,645 | -83.1% |
+| JS heap after forced GC | 4,784,376 | 2,712,220 | -43.3% |
 
 This is additional client-state and heap reduction, not a mounted-turn counter presented as an optimization. The exact current authenticated ChatGPT binding remains part of the one final HUMAN_ONLY report; release remains closed until that report confirms the live path is active or yields evidence for a safe repair.
 
@@ -35,7 +35,7 @@ This is additional client-state and heap reduction, not a mounted-turn counter p
 - stale or missing extension configuration: wait for a fresh bridge event; an expired cache fails open;
 - full-history action: reload restores all 240 turns;
 - disable + reload: restores all 160 DOM-fallback turns;
-- 120 IME/input cycles: 1.2 ms in the final candidate run, with no synchronous broad query/clone/geometry/style work;
+- 120 IME/input cycles: 0.5 ms in the final candidate run, with no synchronous broad query/clone/geometry/style work;
 - connector open/close, one fixture send, 27-character streaming mutation and scroll-frame check pass;
 - stress: 10 reload cycles and 3 anomaly cycles pass.
 

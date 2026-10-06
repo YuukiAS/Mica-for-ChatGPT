@@ -121,9 +121,9 @@ function render(status) {
         ? "Full history restored for this conversation"
         : lowMemory?.state === "restore_required"
           ? "Reload when ready to restore full history"
-        : lowMemory?.state === "degraded"
-          ? "Waiting for a safely recognized long thread"
-          : "Ready for long conversations";
+          : lowMemory?.state === "degraded"
+            ? "Waiting for a safely recognized long thread"
+            : "Ready for long conversations";
   document.documentElement.dataset.enabled = active ? "true" : "false";
 }
 

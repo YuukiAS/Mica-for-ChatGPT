@@ -38,17 +38,6 @@
 
         <div class="capability-row">
           <div>
-            <h2>Low-memory mode</h2>
-            <p id="lowMemoryStatus">Ready for long conversations.</p>
-          </div>
-          <label class="switch" title="Keep recent turns active in long conversations">
-            <input id="lowMemory" type="checkbox" checked aria-label="Enable low-memory mode">
-            <span aria-hidden="true"></span>
-          </label>
-        </div>
-
-        <div class="capability-row">
-          <div>
             <h2>Reliability</h2>
             <p id="reliabilityStatus">Watching for delivery issues.</p>
           </div>
@@ -56,9 +45,14 @@
 
         <div class="capability-row">
           <div>
-            <h2>Page integration</h2>
-            <p id="integrationStatus">Native handling</p>
+            <h2>Performance &amp; page integration</h2>
+            <p id="lowMemoryStatus">Ready for long conversations.</p>
+            <p id="integrationStatus" class="secondary-status">Native handling</p>
           </div>
+          <label class="switch" title="Keep recent turns active in long conversations">
+            <input id="lowMemory" type="checkbox" checked aria-label="Enable low-memory mode">
+            <span aria-hidden="true"></span>
+          </label>
         </div>
       </section>
 

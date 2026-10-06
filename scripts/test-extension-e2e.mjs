@@ -63,6 +63,16 @@ try {
   let worker = context.serviceWorkers()[0];
   if (!worker) worker = await context.waitForEvent("serviceworker", { timeout: 15000 });
   const extensionId = new URL(worker.url()).host;
+  await worker.evaluate(() => new Promise((resolve, reject) => {
+    const deadline = Date.now() + 5000;
+    const check = () => chrome.storage.local.get({ schemaVersion: 0 }, (state) => {
+      if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+      if (state.schemaVersion >= 3) return resolve(state);
+      if (Date.now() >= deadline) return reject(new Error("extension install migration did not settle"));
+      setTimeout(check, 25);
+    });
+    check();
+  }));
   const migration = await worker.evaluate(() => ({
     existing: globalThis.MicaServiceWorker.migrateState({ schemaVersion: 1, enabled: false, copyExport: false, reliability: true, pageIntegration: false }),
     fresh: globalThis.MicaServiceWorker.migrateState({ schemaVersion: 0 })
@@ -182,6 +192,8 @@ try {
   await popup.waitForFunction(() => document.getElementById("copyMarkdown")?.disabled === false);
   const popupLabels = await popup.locator("h1, h2, summary, footer").allTextContents();
   assert(!popupLabels.join(" ").match(/Atlas|Diagnostics|fixture|selector|mounted|optimized/i), "developer wording leaked into popup");
+  assert(await popup.locator(".capabilities > .capability-row").count() === 3, "popup must keep exactly three top-level capability rows");
+  assert(await popup.locator("#lowMemoryStatus").count() === 1 && await popup.locator("#integrationStatus").count() === 1, "performance row must combine low-memory and page integration state");
   await popup.locator("#exportMenu > summary").click();
   await popup.locator("#copyMarkdown").click();
   await popup.waitForFunction(() => document.getElementById("feedback")?.textContent === "Copied as Markdown.");
@@ -224,6 +236,9 @@ try {
   await exportPage.screenshot({ path: path.join(pdfEvidenceDir, "0.4.1-export-preview.png"), fullPage: true });
   await exportPage.pdf({ path: pdfPath, format: "A4", printBackground: true, preferCSSPageSize: true });
   await exportPage.close();
+  if (await popup.locator("#exportMenu").getAttribute("open") !== null) {
+    await popup.locator("#exportMenu > summary").click();
+  }
 
   const matrix = [];
   const popupCdp = await context.newCDPSession(popup);

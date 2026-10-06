@@ -41,12 +41,11 @@ pnpm run build
 
 ## 日常使用
 
-Popup 只保留四个产品层级：
+Popup 只保留三个产品层级：
 
 - **Copy & Export**：复制 Markdown、复制到 Notion、打开 PDF 预览；
-- **Low-memory mode**：超长 conversation 只保留最近 40 turns 活跃，并提供完整历史恢复入口；
 - **Reliability**：正常时保持安静，只在高置信异常时给出一个安全动作；
-- **Page integration**：说明当前页面是已验证集成还是保持原生处理。
+- **Performance & page integration**：超长 conversation 只保留最近 40 turns 活跃，并说明当前页面是已验证集成还是保持原生处理；需要时可恢复完整历史。
 
 选择 assistant answer 中的正文后，Mica 会显示一个短暂的 `Highlight` 入口。高亮只保存在当前浏览器的本地存储中；找不到唯一位置时不会猜测恢复。
 
