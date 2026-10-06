@@ -1,10 +1,12 @@
-const DEFAULT_SETTINGS = { enabled: true, copyExport: true, reliability: true, pageIntegration: true, highlighter: true };
+const DEFAULT_SETTINGS = { enabled: true, copyExport: true, reliability: true, pageIntegration: true, highlighter: true, lowMemory: true };
 const elements = {
   enabled: document.getElementById("enabled"),
   copyExport: document.getElementById("copyExport"),
   reliability: document.getElementById("reliability"),
   pageIntegration: document.getElementById("pageIntegration"),
   highlighter: document.getElementById("highlighter"),
+  lowMemory: document.getElementById("lowMemory"),
+  lowMemoryStatus: document.getElementById("lowMemoryStatus"),
   pageStatus: document.getElementById("pageStatus"),
   copyStatus: document.getElementById("copyStatus"),
   reliabilityStatus: document.getElementById("reliabilityStatus"),
@@ -31,7 +33,7 @@ async function initialize() {
   render(currentStatus);
 }
 
-for (const key of ["enabled", "copyExport", "reliability", "pageIntegration", "highlighter"]) {
+for (const key of ["enabled", "copyExport", "reliability", "pageIntegration", "highlighter", "lowMemory"]) {
   elements[key].addEventListener("change", saveSettings);
 }
 elements.copyMarkdown.addEventListener("click", copyMarkdown);
@@ -45,7 +47,8 @@ async function saveSettings() {
     copyExport: elements.copyExport.checked,
     reliability: elements.reliability.checked,
     pageIntegration: elements.pageIntegration.checked,
-    highlighter: elements.highlighter.checked
+    highlighter: elements.highlighter.checked,
+    lowMemory: elements.lowMemory.checked
   };
   await setStorage(next);
   currentStatus = await sendToActiveTab({ type: "MICA_SET_SETTINGS", settings: next });
@@ -109,6 +112,18 @@ function render(status) {
   elements.integrationStatus.textContent = !active || !elements.pageIntegration.checked
     ? "Paused"
     : status?.pageIntegration === "integrated" ? "Integrated with this page" : "Native handling";
+  const lowMemory = status?.lowMemory;
+  elements.lowMemoryStatus.textContent = !active || !elements.lowMemory.checked
+    ? "Paused"
+    : lowMemory?.active
+      ? `${lowMemory.removedTurns} older turns paused · ${lowMemory.keptTurns} recent kept`
+      : lowMemory?.state === "full_history"
+        ? "Full history restored for this conversation"
+        : lowMemory?.state === "restore_required"
+          ? "Reload when ready to restore full history"
+        : lowMemory?.state === "degraded"
+          ? "Waiting for a safely recognized long thread"
+          : "Ready for long conversations";
   document.documentElement.dataset.enabled = active ? "true" : "false";
 }
 
@@ -121,7 +136,7 @@ function reliabilityLabel(state, recoveryOffered) {
 }
 
 function applySettings(settings) {
-  for (const key of ["enabled", "copyExport", "reliability", "pageIntegration", "highlighter"]) {
+  for (const key of ["enabled", "copyExport", "reliability", "pageIntegration", "highlighter", "lowMemory"]) {
     elements[key].checked = settings[key] !== false;
   }
 }

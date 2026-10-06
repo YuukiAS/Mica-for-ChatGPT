@@ -15,7 +15,10 @@ assert(manifest.action?.default_popup === "popup/index.html", "action.default_po
 assert(manifest.background?.service_worker === "service-worker.js", "background service worker missing");
 assert(sameSet(manifest.permissions, ["storage", "activeTab", "clipboardWrite"]), "permissions must stay minimal and match visible local features");
 assert(manifest.host_permissions?.every((host) => /^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(host)), "unexpected host permission");
-assert(JSON.stringify(manifest.content_scripts?.[0]?.js) === JSON.stringify(["current-ui-check.js", "markdown-copy.js", "research-export.js", "highlighter.js", "turn-delivery-guard.js", "content.js"]), "content script order drifted");
+assert(JSON.stringify(manifest.content_scripts?.[0]?.js) === JSON.stringify(["low-memory-page.js"]), "MAIN-world low-memory interceptor missing");
+assert(manifest.content_scripts?.[0]?.world === "MAIN" && manifest.content_scripts?.[0]?.run_at === "document_start", "low-memory interceptor must run in MAIN world at document_start");
+assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["low-memory-config.js"]) && manifest.content_scripts?.[1]?.run_at === "document_start", "low-memory config bridge missing");
+assert(JSON.stringify(manifest.content_scripts?.[2]?.js) === JSON.stringify(["current-ui-check.js", "markdown-copy.js", "research-export.js", "highlighter.js", "low-memory-windowing.js", "turn-delivery-guard.js", "content.js"]), "content script order drifted");
 assert(manifest.options_ui?.page === "options/index.html" && manifest.options_ui?.open_in_tab === true, "bounded troubleshooting surface missing");
 
 for (const size of ICON_SIZES) {
@@ -24,12 +27,12 @@ for (const size of ICON_SIZES) {
 }
 
 const content = await readFile(path.join(distDir, "content.js"), "utf8");
-for (const token of ["MICA_GET_PRODUCT_STATUS", "MICA_SERIALIZE_ACTIVE_ANSWER", "native_handling", "data-mica-current-action-cluster", "promptTextInDiagnostics: false", "clipboard-fallback", "document.execCommand(\"copy\")"]) {
+for (const token of ["MICA_GET_PRODUCT_STATUS", "MICA_SERIALIZE_ACTIVE_ANSWER", "native_handling", "copy-turn-action-button", "role\") === \"group", "promptTextInDiagnostics: false", "clipboard-fallback", "document.execCommand(\"copy\")"]) {
   assert(content.includes(token), `content.js missing ${token}`);
 }
 
 const serviceWorker = await readFile(path.join(distDir, "service-worker.js"), "utf8");
-for (const token of ["migrateState", "typeof state[key] === \"boolean\"", "schemaVersion: 2"]) {
+for (const token of ["migrateState", "typeof state[key] === \"boolean\"", "schemaVersion: 3", "lowMemory: true"]) {
   assert(serviceWorker.includes(token), `service-worker.js missing migration contract ${token}`);
 }
 for (const forbidden of ["MICA_DIAGNOSTICS_START", "Start Atlas", "showStatus", "longThreadOptimization", "location.reload", "fetch(", "XMLHttpRequest"]) {
@@ -58,8 +61,18 @@ for (const token of ["data-mica-highlight-id", "resolveAnchorPosition", "storage
 }
 assert(!/fetch\(|XMLHttpRequest|setInterval\(/.test(highlighter), "highlighter must stay local and event-coalesced");
 
+const lowMemoryPage = await readFile(path.join(distDir, "low-memory-page.js"), "utf8");
+for (const token of ["windowConversation", "backend-api", "current_node", "contentUpload: false", "bytesBefore", "CONFIG_CACHE_MAX_AGE_MS", "freshConfigReceived"]) {
+  assert(lowMemoryPage.includes(token), `low-memory-page.js missing ${token}`);
+}
+assert(!/XMLHttpRequest|sendBeacon|WebSocket/.test(lowMemoryPage), "low-memory page interceptor must not add network transports");
+const lowMemoryWindowing = await readFile(path.join(distDir, "low-memory-windowing.js"), "utf8");
+for (const token of ["Load full history", "DOM_THRESHOLD", "safeToReload", "contentUpload: false"]) {
+  assert(lowMemoryWindowing.includes(token), `low-memory-windowing.js missing ${token}`);
+}
+
 const currentUiCheck = await readFile(path.join(distDir, "current-ui-check.js"), "utf8");
-for (const token of ["MICA_CURRENT_UI_CHECK_START", "MICA_CURRENT_UI_CHECK_STOP", "promptText: false", "answerText: false", "contentUpload: false", "MAX_EVENTS = 80"]) {
+for (const token of ["MICA_CURRENT_UI_CHECK_START", "MICA_CURRENT_UI_CHECK_STOP", "promptText: false", "answerText: false", "contentUpload: false", "MAX_EVENTS = 80", "lowMemoryMaxRemovedTurns", "bytesBefore: boundedNumber"]) {
   assert(currentUiCheck.includes(token), `current-ui-check.js missing ${token}`);
 }
 assert(!/fetch\(|XMLHttpRequest|setInterval\(/.test(currentUiCheck), "current UI check must stay local and bounded");

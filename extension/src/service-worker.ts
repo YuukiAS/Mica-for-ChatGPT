@@ -3,11 +3,12 @@ const DEFAULT_SETTINGS = {
   copyExport: true,
   reliability: true,
   pageIntegration: true,
-  highlighter: true
+  highlighter: true,
+  lowMemory: true
 };
 
 function migrateState(state = {}) {
-  const next = { schemaVersion: 2 };
+  const next = { schemaVersion: 3 };
   for (const [key, fallback] of Object.entries(DEFAULT_SETTINGS)) {
     next[key] = typeof state[key] === "boolean" ? state[key] : fallback;
   }
@@ -16,7 +17,7 @@ function migrateState(state = {}) {
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.get({ schemaVersion: 0, ...DEFAULT_SETTINGS }, (state) => {
-    if ((state.schemaVersion || 0) >= 2) return;
+    if ((state.schemaVersion || 0) >= 3) return;
     chrome.storage.local.set(migrateState(state));
   });
 });

@@ -2,14 +2,15 @@
 
 ## 当前结论
 
-2026-10-05 已通过 Codex 隔离的 in-app browser 对 `https://chatgpt.com/` 做一次只读、无发送、无登录观察。当前证据可以精确描述登录前空 composer 和页面基础视觉语法，但不能证明已登录 assistant action cluster、typed/streaming/error/stop、connector/remount 或原生虚拟化。未解决表面不得用 2026 年 9 月 Atlas 结论补成 `EXACT`。
+2026-10-05 已通过 Codex 隔离的 in-app browser 对 `https://chatgpt.com/` 首页和一个公开 shared conversation 做只读、无发送、无登录观察。当前证据可精确描述登录前 empty composer，以及公开页当前渲染的 assistant turn / native Copy action cluster；typed/streaming/error/stop、connector/remount 和原生虚拟化仍需已登录最终证据。未解决表面不得用 2026 年 9 月 Atlas 结论补成 `EXACT`。
 
 ```text
 CURRENT_CHATGPT_UI_CONTRACT=PARTIAL_CURRENT
+LOW_MEMORY_LOCAL_CONTRACT=PASS
 LOGGED_OUT_EMPTY_COMPOSER=EXACT
-ASSISTANT_ACTION_CLUSTER=UNRESOLVED
+PUBLIC_SHARED_ASSISTANT_ACTION_CLUSTER=EXACT
 AUTHENTICATED_LIFECYCLE=UNRESOLVED
-INJECTED_UI_IMPLEMENTATION_GATE=CLOSED
+INJECTED_UI_IMPLEMENTATION_GATE=OPEN_COPY_ONLY_EXACT_TESTID
 REAL_CHATGPT_SEND_COUNT=0
 BROAD_ATLAS_RUN_COUNT=0
 ```
@@ -26,6 +27,28 @@ BROAD_ATLAS_RUN_COUNT=0
 - 未执行：登录、发送、打开私有会话、读取草稿/附件、网络抓包、DOM dump、Atlas。
 
 页面暴露的会话状态工具可能返回草稿、附件或私有对话内容，安全审查拒绝调用。本 Goal 不绕过该边界。
+
+第二条当前证据来自公开 shared conversation `https://chatgpt.com/share/687159b0-a170-8012-b592-a7f242519e6a`。只读取 DOM/AX/geometry，不点击 Copy、不写 composer、不登录、不发送；公开回答正文不进入 Mica contract，只记录结构身份。
+
+## 当前 assistant Copy action cluster
+
+公开 shared conversation 的当前渲染合同：
+
+- assistant role 节点：`div[data-message-author-role='assistant']`；
+- turn：`section[data-testid='conversation-turn-2']`；
+- native Copy：`button[data-testid='copy-turn-action-button']`；
+- AX name：`复制回复`；
+- action cluster：Copy 的直接父级 `div[role='group']`；
+- native Copy hit target：`32 × 32`；
+- 当前公开 shared surface 只显示 1 个 reply action，不能据此假设已登录 surface 的全部兄弟按钮。
+
+Mica live injection 只在以下三重条件同时成立时开放：
+
+1. `button[data-testid='copy-turn-action-button']`；
+2. 直接父级是 `[role='group']`；
+3. 最近 turn 内确有 `[data-message-author-role='assistant']`。
+
+Mica 不使用宽泛 aria-label fallback 开 live gate；fixture marker 仅限仓库内测试。按钮插入 native Copy 后方，并读取一次 native geometry 将 hit target 限定匹配在 24–44px。任一条件漂移即 fail-open。
 
 ## 空 composer 精确合同
 
@@ -71,10 +94,11 @@ Popup 属于扩展自己的 surface，不需要伪装成 ChatGPT；它应保持�
 | Error / retry / dialog | 当前页面只见非目标 AX alerts/dialogs | UNRESOLVED | 不自动点击；未知结构 fail-open |
 | Mention / connector | 登录前不可用 | UNRESOLVED | 旧 fixture 仅作历史回归 |
 | Composer remount | 当前未触发 | UNRESOLVED | 旧 9 月证据为 LIMITED，不是当前权威 |
-| Assistant answer action cluster | 当前无 assistant turn | UNRESOLVED | Copy 注入隐藏，直到当前合同精确 |
-| Native Copy 邻接 | 当前无 assistant turn | UNRESOLVED | 不使用宽泛 fallback 容器 |
-| Conversation turn identity | 当前无 turn | UNRESOLVED | 使用真实派生 fixture 后再冻结 |
-| Native virtualization | 当前无长 thread | UNRESOLVED | 不宣称 Mica 性能收益 |
+| Assistant answer action cluster | 当前公开 shared conversation DOM/AX/geometry | EXACT_PUBLIC_SHARED | 只开放 exact Copy testid + direct role=group |
+| Native Copy 邻接 | 当前公开 shared conversation，32×32 Copy | EXACT_PUBLIC_SHARED | Mica 紧邻 Copy 后方并匹配 hit target |
+| Conversation turn identity | `section[data-testid='conversation-turn-2']` | EXACT_PUBLIC_SHARED | 已登录动态 identity 仍由最终报告确认 |
+| Native virtualization | 当前无长 thread | UNRESOLVED | 作为 baseline，不能替代 Mica 低内存窗口化 |
+| Mica low-memory data window | 当前派生 mapping fixture + actual MV3 | LOCAL_EXACT / LIVE_PENDING | 最近 40 turns；未知 graph/近期分支 fail-open；最终报告确认 live binding |
 | Narrow viewport | 尚未在当前服务采集 | UNRESOLVED | 先由本地 fixture 验证，最终合并采集 |
 | Light theme | 尚未在当前服务采集 | UNRESOLVED | 先由本地 fixture 验证，最终合并采集 |
 
@@ -93,9 +117,10 @@ Popup 属于扩展自己的 surface，不需要伪装成 ChatGPT；它应保持�
 
 在本地 probe、自测、serializer、reliability、popup、highlighter、PDF、Notion-ready 和全部可离线 QA 完成后，如仍无已授权隔离登录路径，将一次性请求：
 
-1. 当前 assistant action cluster 与 native Copy 邻接的脱敏只读报告；
-2. 一次 connector 选择/remount 的 bounded lifecycle 报告；
-3. 冻结候选的最终真实确认；
-4. 只有本地与官方合同无法证明时，追加一次 Notion paste 结果。
+1. 冻结候选在已登录长 conversation 上的 `data_window` / fail-open reason、40-turn 策略与 full-history restore；
+2. 已登录 answer action cluster 的最终真实确认；
+3. 一次 connector picker open/cancel 与 remount 的 bounded lifecycle 报告；
+4. 一次固定、无 tool/file/connector 的 harmless send lifecycle；
+5. 一次 Notion paste 结构结果。
 
 该请求必须由已在本地 fixture 自测通过的单一 Mica 动作完成，不要求用户开 DevTools 或粘贴 JavaScript。

@@ -6,11 +6,12 @@
 |---|---|---|
 | `skills-alignment.md` | PASS | 环境门槛，先于源码候选 |
 | `source-recovery.md` | PASS | branch base `2a33a57` |
-| `current-chatgpt-ui-contract.json` | PARTIAL_CURRENT | 0.4.0；等待唯一 HUMAN_ONLY 合并证据 |
-| `issue-closure-matrix.md` | PASS as pre-live matrix | 0.4.0 |
-| `test-matrix.md` | PASS for local gates | 0.4.0 |
-| `independent-review.md` | pending | 未冻结 |
-| `visual-evidence/` | PASS | 0.3.0 / 0.4.0 local candidates |
-| `pdf-evidence/` | PASS | 0.4.0 |
-| `release-evidence/` | PASS for local package | 0.4.0 |
-| `result.md` | `partial_complete` | 0.4.0 pre-live candidate |
+| `current-chatgpt-ui-contract.json` | PARTIAL_CURRENT | 0.4.1；等待唯一 HUMAN_ONLY 合并证据 |
+| `low-memory-impact-audit.md` | PASS | 0.4.1 local candidate |
+| `issue-closure-matrix.md` | PASS as pre-live matrix | 0.4.1 |
+| `test-matrix.md` | PASS for local gates | 0.4.1 |
+| `independent-review.md` | old candidate FAIL; 0.4.1 pending | 待冻结 commit |
+| `visual-evidence/` | PASS | 0.4.1 local candidate |
+| `pdf-evidence/` | PASS | 0.4.1 |
+| `release-evidence/0.4.1-local-package.md` | PASS | 0.4.1 / `7b99a36…` |
+| `result.md` | `local_candidate_complete` | 0.4.1 pre-review candidate |

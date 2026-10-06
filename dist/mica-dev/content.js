@@ -1,8 +1,8 @@
 (() => {
-  const VERSION = "0.4.0";
-  const VERSION_NAME = "0.4.0";
-  const BUILD_LABEL = "research-export.1";
-  const DEFAULT_SETTINGS = { enabled: true, copyExport: true, reliability: true, pageIntegration: true, highlighter: true };
+  const VERSION = "0.4.1";
+  const VERSION_NAME = "0.4.1";
+  const BUILD_LABEL = "low-memory-windowing.1";
+  const DEFAULT_SETTINGS = { enabled: true, copyExport: true, reliability: true, pageIntegration: true, highlighter: true, lowMemory: true };
   const STORAGE_KEYS = Object.keys(DEFAULT_SETTINGS);
   const SUPPORTED_HOSTS = new Set(["chatgpt.com", "chat.openai.com"]);
   let settings = { ...DEFAULT_SETTINGS };
@@ -16,6 +16,7 @@
     settings = { ...DEFAULT_SETTINGS, ...(await readSettings()) };
     globalThis.MicaTurnDeliveryGuard?.configure({ enabled: settings.enabled && settings.reliability });
     await globalThis.MicaHighlighter?.configure({ enabled: settings.enabled && settings.highlighter });
+    await globalThis.MicaLowMemoryWindowing?.configure({ enabled: settings.enabled && settings.lowMemory, keepCount: 40 });
     attachLifecycleListeners();
     observeStructure();
     setupMessages();
@@ -96,14 +97,18 @@
   }
 
   function findVerifiedActionClusters() {
-    // Live injection remains closed until the current UI contract is exact.
-    return Array.from(document.querySelectorAll("[data-mica-current-action-cluster='exact-v1']"))
-      .filter((cluster) => isVerifiedCurrentActionCluster(cluster));
+    const fixtureClusters = Array.from(document.querySelectorAll("[data-mica-current-action-cluster='exact-v1']"));
+    const currentLiveClusters = Array.from(document.querySelectorAll("button[data-testid='copy-turn-action-button']"), (button) => button.parentElement);
+    return Array.from(new Set([...fixtureClusters, ...currentLiveClusters])).filter((cluster) => isVerifiedCurrentActionCluster(cluster));
   }
 
   function isVerifiedCurrentActionCluster(cluster) {
-    if (!(cluster instanceof Element) || cluster.getAttribute("data-mica-current-action-cluster") !== "exact-v1") return false;
-    const answer = cluster.closest("[data-message-author-role='assistant'], [data-testid^='conversation-turn-']");
+    if (!(cluster instanceof Element)) return false;
+    const fixtureContract = cluster.getAttribute("data-mica-current-action-cluster") === "exact-v1";
+    const liveContract = cluster.getAttribute("role") === "group" && !!cluster.querySelector(":scope > button[data-testid='copy-turn-action-button']");
+    if (!fixtureContract && !liveContract) return false;
+    const turn = cluster.closest("[data-testid^='conversation-turn-'], article, section");
+    const answer = turn?.querySelector("[data-message-author-role='assistant']") || (turn?.matches("[data-message-author-role='assistant']") ? turn : null);
     const nativeCopy = findNativeCopyButton(cluster);
     return !!answer && !!nativeCopy && nativeCopy.parentElement === cluster;
   }
@@ -111,6 +116,7 @@
   function findNativeCopyButton(cluster) {
     return Array.from(cluster.children).find((child) => {
       if (!(child instanceof HTMLElement)) return false;
+      if (child.matches("button[data-testid='copy-turn-action-button']")) return true;
       const label = `${child.getAttribute("aria-label") || ""} ${child.getAttribute("data-testid") || ""}`;
       return /(^|\b)(copy|复制)(\b|$)/i.test(label);
     }) || null;
@@ -123,6 +129,12 @@
     button.className = "mica-native-action";
     button.setAttribute("aria-label", "Copy as Markdown");
     button.title = "Copy as Markdown";
+    const nativeCopy = findNativeCopyButton(cluster);
+    const nativeRect = nativeCopy?.getBoundingClientRect();
+    if (nativeRect && nativeRect.width >= 24 && nativeRect.width <= 44 && nativeRect.height >= 24 && nativeRect.height <= 44) {
+      button.style.width = `${Math.round(nativeRect.width)}px`;
+      button.style.height = `${Math.round(nativeRect.height)}px`;
+    }
     button.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 5.5V4.25A1.75 1.75 0 0 1 8.25 2.5h7.5a1.75 1.75 0 0 1 1.75 1.75v7.5a1.75 1.75 0 0 1-1.75 1.75H14.5M4.25 6.5h7.5a1.75 1.75 0 0 1 1.75 1.75v7.5a1.75 1.75 0 0 1-1.75 1.75h-7.5a1.75 1.75 0 0 1-1.75-1.75v-7.5A1.75 1.75 0 0 1 4.25 6.5Z"/></svg>';
     button.addEventListener("click", async () => {
       const answer = cluster.closest("[data-message-author-role='assistant'], [data-testid^='conversation-turn-']");
@@ -177,9 +189,11 @@
       if (message.type === "MICA_SET_SETTINGS") {
         const next = sanitizeSettings(message.settings || {});
         settings = { ...settings, ...next };
-        writeSettings(next).then(() => {
+        writeSettings(next).then(async () => {
+          await globalThis.MicaLowMemoryConfig?.syncFromExtensionStorage?.();
           globalThis.MicaTurnDeliveryGuard?.configure({ enabled: settings.enabled && settings.reliability });
-          globalThis.MicaHighlighter?.configure({ enabled: settings.enabled && settings.highlighter });
+          await globalThis.MicaHighlighter?.configure({ enabled: settings.enabled && settings.highlighter });
+          await globalThis.MicaLowMemoryWindowing?.configure({ enabled: settings.enabled && settings.lowMemory, keepCount: 40, userInitiated: true });
           reconcileCopyControls();
           sendResponse(buildProductStatus());
         });
@@ -223,6 +237,7 @@
       reliability: delivery ? { state: delivery.name, recoveryOffered: delivery.recoveryOffered, promptTextIncluded: false } : { state: "native", recoveryOffered: false, promptTextIncluded: false },
       pageIntegration: findVerifiedActionClusters().length > 0 ? "integrated" : "native_handling",
       highlighter: globalThis.MicaHighlighter?.snapshot?.() || { enabled: false, count: 0, rendered: 0, contentUpload: false },
+      lowMemory: globalThis.MicaLowMemoryWindowing?.snapshot?.() || { enabled: settings.enabled && settings.lowMemory, state: "unavailable", active: false, keptTurns: 0, removedTurns: 0, contentUpload: false },
       privacy: { contentUpload: false, promptTextInDiagnostics: false, answerTextInDiagnostics: false }
     };
   }
@@ -238,6 +253,7 @@
       setSettings(next) {
         settings = { ...settings, ...sanitizeSettings(next) };
         globalThis.MicaTurnDeliveryGuard?.configure({ enabled: settings.enabled && settings.reliability });
+        globalThis.MicaLowMemoryWindowing?.configure({ enabled: settings.enabled && settings.lowMemory, keepCount: 40 });
         reconcileCopyControls();
       },
       getStatus: buildProductStatus,
@@ -263,6 +279,9 @@
 .mica-highlight-affordance { background:#202322; border:1px solid rgba(255,255,255,.16); border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,.18); color:#fff; cursor:pointer; font:600 12px/16px system-ui,sans-serif; min-height:32px; padding:7px 10px; position:fixed; z-index:2147483646; }
 .mica-highlight-affordance:hover { background:#2b302e; }
 .mica-highlight-affordance:focus-visible { outline:2px solid #55c2c7; outline-offset:2px; }
+.mica-history-window { align-items:center; background:color-mix(in srgb, Canvas 96%, #168b91 4%); border:1px solid color-mix(in srgb, CanvasText 16%, transparent); border-radius:10px; color:CanvasText; display:flex; font:500 12px/17px system-ui,sans-serif; gap:12px; justify-content:space-between; margin:12px auto 18px; max-width:768px; padding:9px 11px; }
+.mica-history-window button { background:transparent; border:1px solid currentColor; border-radius:7px; color:inherit; cursor:pointer; flex:0 0 auto; font:600 12px/16px system-ui,sans-serif; min-height:30px; padding:5px 9px; }
+.mica-history-window button:focus-visible { outline:2px solid #55c2c7; outline-offset:2px; }
 @media (prefers-color-scheme:dark) { .mica-success { color:#70c88d; } .mica-error { color:#f18a8a; } }
 @media (prefers-reduced-motion:reduce) { [data-mica-ui] { scroll-behavior:auto !important; transition:none !important; } }
 `;

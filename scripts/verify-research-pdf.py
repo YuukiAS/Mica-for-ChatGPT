@@ -29,6 +29,8 @@ def main() -> None:
 
     text = "\n".join(extracted)
     normalized = re.sub(r"\s+", " ", text)
+    inline_math_source = "TeX source: E=mc^2"
+    display_math_source = r"TeX source: \int_0^1 x^2\,dx = \frac{1}{3}"
     edge_violations = []
     highlight_rects = []
     word_count = 0
@@ -52,8 +54,9 @@ def main() -> None:
         "searchable_long_text": "Long-form research paragraph 34" in text,
         "searchable_code": "return" in text and "searchable" in text,
         "searchable_table": "Accuracy" in text and "Latency" in text,
-        "math_copy_signal_inline": "E=mc" in normalized,
-        "math_copy_signal_display": any(token in normalized for token in ["1 3", "1/3", "∫", "dx"]),
+        "math_copy_source_inline_exact": inline_math_source in normalized,
+        "math_copy_source_display_exact": display_math_source in normalized,
+        "math_copy_source_ordered": normalized.find("Highlighted research") < normalized.find(inline_math_source) < normalized.find("Preserve the evidence boundary"),
         "highlighted_text_present": "evidence with context" in normalized,
         "highlight_background_present": len(highlight_rects) >= 1,
         "font_resources_present": len(font_names) >= 1,
@@ -72,6 +75,7 @@ def main() -> None:
         "highlightRects": highlight_rects,
         "edgeViolations": edge_violations,
         "checks": checks,
+        "copyableMathSources": {"inline": inline_math_source, "display": display_math_source},
         "passed": all(checks.values()),
     }
     output.parent.mkdir(parents=True, exist_ok=True)

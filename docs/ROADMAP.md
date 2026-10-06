@@ -11,9 +11,10 @@ Mica 以“本地、可靠、fail-open”为长期边界。路线不再围绕旧
 - composer/send 生命周期状态机；
 - ghost send、fake waiting、stale response、generation error 的安全恢复提示；
 - 紧凑的产品化 popup；
-- 长线程能力回归 `Native handling`，不把 ChatGPT 原生 windowing 冒充为 Mica 收益。
+- 低内存长对话窗口化：只把最近 40 turns 交给页面运行时，保留一键完整历史恢复；
+- 未知 graph、近期分支、streaming、tool/file/auth 结构 fail-open，不把 ChatGPT 原生 windowing 冒充为 Mica 收益。
 
-本地 fixture 与扩展 E2E 已通过。当前已登录 ChatGPT 的 action cluster 和发送生命周期仍需一次合并证据后才能关闭真实站点 gate。
+本地 fixture 与扩展 E2E 已证明 240→40 turns、mapping bytes -83.3%、DOM nodes -83.1%、强制 GC 后 JS heap -43.3%，并覆盖恢复、发送、streaming、connector 与 IME。当前已登录 ChatGPT 的实际数据路径、action cluster 和发送生命周期仍需一次合并证据后才能关闭真实站点 gate。
 
 ## 0.4.0 — Research Export
 
@@ -26,7 +27,7 @@ Mica 以“本地、可靠、fail-open”为长期边界。路线不再围绕旧
 - 本地 KaTeX 渲染的 PDF 预览；
 - 标题、段落、列表、引用、表格、代码、链接、公式和高亮的可搜索 PDF。
 
-0.4.0 的本地功能与 artifact 已完成；精确 Notion 网页粘贴语义和已登录 ChatGPT 最终行为保留为一次集中验收项。
+0.4.1 修复 0.4.0 独立审查发现的 PDF 数学复制、SPA 高亮隔离、远程资源清理、stale-response 误报和键盘可达性问题，并纳入 0.3.0 的低内存硬门。精确 Notion 网页粘贴语义和已登录 ChatGPT 最终行为保留为一次集中验收项。
 
 ## 后续候选方向
 
@@ -36,7 +37,7 @@ Mica 以“本地、可靠、fail-open”为长期边界。路线不再围绕旧
 2. 更精细的引用与附件表示；
 3. Chrome / Edge / macOS Chromium 的公开发布 hardening；
 4. 页面结构漂移的兼容合同与迁移提示；
-5. 只有在可重复测量出额外收益时，才重新讨论性能模块。
+5. 在真实低内存设备上继续校准阈值与最近 turns 数量，但不得撤销当前低内存硬门。
 
 ## 不做
 

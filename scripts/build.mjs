@@ -44,11 +44,23 @@ const manifest = {
   content_scripts: [
     {
       matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+      js: ["low-memory-page.js"],
+      run_at: "document_start",
+      world: "MAIN"
+    },
+    {
+      matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+      js: ["low-memory-config.js"],
+      run_at: "document_start"
+    },
+    {
+      matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
       js: [
         "current-ui-check.js",
         "markdown-copy.js",
         "research-export.js",
         "highlighter.js",
+        "low-memory-windowing.js",
         "turn-delivery-guard.js",
         "content.js"
       ],
@@ -76,6 +88,9 @@ const serviceWorker = render(await readFile(path.join(srcDir, "service-worker.ts
 const markdownCopy = render(await readFile(path.join(srcDir, "copy", "markdown-copy.ts"), "utf8"));
 const researchExport = render(await readFile(path.join(srcDir, "export", "research-export.ts"), "utf8"));
 const highlighter = render(await readFile(path.join(srcDir, "highlight", "highlighter.ts"), "utf8"));
+const lowMemoryConfig = render(await readFile(path.join(srcDir, "low-memory", "low-memory-config.ts"), "utf8"));
+const lowMemoryPage = render(await readFile(path.join(srcDir, "low-memory", "low-memory-page.ts"), "utf8"));
+const lowMemoryWindowing = render(await readFile(path.join(srcDir, "low-memory", "low-memory-windowing.ts"), "utf8"));
 const turnDeliveryGuard = render(await readFile(path.join(srcDir, "reliability", "turn-delivery-guard.ts"), "utf8"));
 const popup = render(await readFile(path.join(popupDir, "popup.ts"), "utf8"));
 
@@ -84,6 +99,9 @@ await writeFile(path.join(outDir, "service-worker.js"), serviceWorker);
 await writeFile(path.join(outDir, "markdown-copy.js"), markdownCopy);
 await writeFile(path.join(outDir, "research-export.js"), researchExport);
 await writeFile(path.join(outDir, "highlighter.js"), highlighter);
+await writeFile(path.join(outDir, "low-memory-config.js"), lowMemoryConfig);
+await writeFile(path.join(outDir, "low-memory-page.js"), lowMemoryPage);
+await writeFile(path.join(outDir, "low-memory-windowing.js"), lowMemoryWindowing);
 await writeFile(path.join(outDir, "turn-delivery-guard.js"), turnDeliveryGuard);
 await writeFile(path.join(outDir, "content.js"), content);
 await writeFile(path.join(outDir, "current-ui-check.js"), currentUiCheck);

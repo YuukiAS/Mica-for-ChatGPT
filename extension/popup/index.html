@@ -38,6 +38,17 @@
 
         <div class="capability-row">
           <div>
+            <h2>Low-memory mode</h2>
+            <p id="lowMemoryStatus">Ready for long conversations.</p>
+          </div>
+          <label class="switch" title="Keep recent turns active in long conversations">
+            <input id="lowMemory" type="checkbox" checked aria-label="Enable low-memory mode">
+            <span aria-hidden="true"></span>
+          </label>
+        </div>
+
+        <div class="capability-row">
+          <div>
             <h2>Reliability</h2>
             <p id="reliabilityStatus">Watching for delivery issues.</p>
           </div>
@@ -73,7 +84,7 @@
       </details>
 
       <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
-      <footer><span>Local by default</span><span id="version">v0.4.0</span></footer>
+      <footer><span>Local by default</span><span id="version">v0.4.1</span></footer>
     </main>
     <script src="popup.js"></script>
   </body>

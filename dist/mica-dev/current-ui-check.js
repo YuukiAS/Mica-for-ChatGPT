@@ -112,7 +112,8 @@
       streamingSignals: document.querySelectorAll("[data-is-streaming='true'], [aria-label*='Stop'], [data-testid*='stop']").length,
       alerts: document.querySelectorAll("[role='alert']").length,
       dialogs: document.querySelectorAll("[role='dialog'], dialog[open]").length,
-      connectorSignals: countConnectorSignals()
+      connectorSignals: countConnectorSignals(),
+      lowMemory: describeLowMemory()
     };
     const previous = session.snapshots.at(-1);
     if (!previous || JSON.stringify(withoutTimestamp(previous)) !== JSON.stringify(withoutTimestamp(snapshot))) {
@@ -175,7 +176,32 @@
       composerRemounted: composers.size > 1,
       actionClusterObserved: report.snapshots.some((snapshot) => snapshot.nativeCopyCandidates.length > 0),
       connectorSignalObserved: report.snapshots.some((snapshot) => snapshot.connectorSignals > 0),
-      streamingObserved: report.snapshots.some((snapshot) => snapshot.streamingSignals > 0)
+      streamingObserved: report.snapshots.some((snapshot) => snapshot.streamingSignals > 0),
+      lowMemoryObserved: report.snapshots.some((snapshot) => snapshot.lowMemory?.state && snapshot.lowMemory.state !== "unavailable"),
+      lowMemoryActive: report.snapshots.some((snapshot) => snapshot.lowMemory?.active === true),
+      lowMemoryMaxRemovedTurns: Math.max(0, ...report.snapshots.map((snapshot) => Number(snapshot.lowMemory?.removedTurns) || 0))
+    };
+  }
+
+  function describeLowMemory() {
+    let value = globalThis.MicaLowMemoryWindowing?.snapshot?.() || null;
+    if (!value) {
+      try { value = JSON.parse(document.documentElement.dataset.micaLowMemoryStatus || "null"); } catch (_error) { value = null; }
+    }
+    if (!value || typeof value !== "object") return { state: "unavailable", active: false };
+    return {
+      state: structuralLabel(value.state) || "unknown",
+      mode: structuralLabel(value.mode) || "none",
+      active: value.active === true,
+      totalTurns: boundedNumber(value.totalTurns),
+      keptTurns: boundedNumber(value.keptTurns),
+      removedTurns: boundedNumber(value.removedTurns),
+      bytesBefore: boundedNumber(value.bytesBefore),
+      bytesAfter: boundedNumber(value.bytesAfter),
+      keepCount: boundedNumber(value.keepCount),
+      reloadRequired: value.reloadRequired === true,
+      reason: structuralLabel(value.reason),
+      contentUpload: false
     };
   }
 
@@ -202,6 +228,11 @@
 
   function roundedRect(rect) {
     return { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) };
+  }
+
+  function boundedNumber(value) {
+    const number = Number(value);
+    return Number.isFinite(number) && number >= 0 ? Math.round(number) : 0;
   }
 
   function withoutTimestamp(value) {

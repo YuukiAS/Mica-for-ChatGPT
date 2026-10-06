@@ -2,7 +2,7 @@
 
 ## 结论
 
-Mica 0.4.0 已证明自己能把单条 assistant answer 写成结构化 `text/html` 与确定性的 `text/plain` fallback，并保留标题、列表、引用、表格、代码、链接和 LaTeX 源码。当前证据不能证明 Notion 网页端会把任意 clipboard HTML 稳定转换成完全相同的 block 树，因此精确 Notion paste 保持 `UNVERIFIED`，不包装成通过。
+Mica 0.4.1 已证明自己能把单条 assistant answer 写成结构化 `text/html` 与确定性的 `text/plain` fallback，并保留标题、列表、引用、表格、代码、链接和 LaTeX 源码；同时移除可能触发远程加载的元素与属性。当前证据不能证明 Notion 网页端会把任意 clipboard HTML 稳定转换成完全相同的 block 树，因此精确 Notion paste 保持 `UNVERIFIED`，不包装成通过。
 
 ```text
 MICA_NOTION_SERIALIZER=PASS

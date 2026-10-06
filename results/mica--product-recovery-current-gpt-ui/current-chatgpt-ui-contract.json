@@ -3,6 +3,7 @@
   "capturedAt": "2026-10-05T04:10:57.757Z",
   "surface": "Codex in-app browser",
   "url": "https://chatgpt.com/",
+  "candidate": "0.4.1",
   "accountState": "logged_out",
   "privacy": {
     "messageSent": false,
@@ -62,19 +63,56 @@
       }
     ]
   },
+  "publicSharedAssistantActionCluster": {
+    "capturedAt": "2026-10-05T13:40:41+08:00",
+    "evidenceLevel": "EXACT_PUBLIC_SHARED",
+    "url": "https://chatgpt.com/share/687159b0-a170-8012-b592-a7f242519e6a",
+    "assistant": {
+      "selector": "div[data-message-author-role='assistant']"
+    },
+    "turn": {
+      "tag": "section",
+      "testId": "conversation-turn-2"
+    },
+    "nativeCopy": {
+      "tag": "button",
+      "testId": "copy-turn-action-button",
+      "accessibleName": "复制回复",
+      "width": 32,
+      "height": 32
+    },
+    "cluster": {
+      "tag": "div",
+      "role": "group",
+      "nativeCopyIsDirectChild": true
+    },
+    "privacy": {
+      "messageSent": false,
+      "loginPerformed": false,
+      "controlClicked": false,
+      "conversationTextStored": false
+    }
+  },
+  "lowMemoryWindowing": {
+    "evidenceLevel": "LOCAL_CURRENT_DERIVED_PENDING_AUTHENTICATED_BINDING",
+    "keepTurns": 40,
+    "primaryMode": "data_window",
+    "fallbackMode": "safe_dom_window",
+    "serverConversationMutated": false,
+    "fullHistoryRecovery": "path_scoped_session_bypass_and_reload",
+    "currentAuthenticatedPath": "UNRESOLVED_HUMAN_ONLY"
+  },
   "unresolved": [
-    "assistant_action_cluster",
-    "native_copy_adjacency",
     "composer_typed",
     "streaming_and_stop",
     "error_retry_dialog",
     "mention_connector",
     "composer_remount",
-    "conversation_turn_identity",
+    "authenticated_conversation_turn_identity",
     "native_virtualization",
     "narrow_viewport",
     "light_theme"
   ],
   "status": "PARTIAL_CURRENT",
-  "injectedUiImplementationGate": "CLOSED"
+  "injectedUiImplementationGate": "OPEN_COPY_ONLY_EXACT_TESTID; LOW_MEMORY_FAIL_OPEN_PENDING_LIVE_BINDING"
 }

@@ -35,6 +35,7 @@
       baselineUserIds: [],
       baselineAssistantIds: [],
       baselineAssistantFingerprint: null,
+      baselineAssistantDomIdentity: null,
       committedUserId: null,
       assistantId: null,
       assistantFingerprint: null,
@@ -71,6 +72,7 @@
       baselineUserIds: collectTurnIds("user"),
       baselineAssistantIds: collectTurnIds("assistant"),
       baselineAssistantFingerprint: fingerprint(getTurnText(collectTurns("assistant").at(-1))),
+      baselineAssistantDomIdentity: getAssistantDomIdentity(collectTurns("assistant").at(-1)),
       reason: source
     };
     deadlineTimer = setTimeout(checkCommitDeadline, COMMIT_DEADLINE_MS);
@@ -109,14 +111,6 @@
       }
       if (assistant || generating) {
         const assistantFingerprint = assistant ? fingerprint(getTurnText(assistant)) : null;
-        if (assistantFingerprint && assistantFingerprint === state.baselineAssistantFingerprint) {
-          state.name = STATES.STALE_RESPONSE;
-          state.reason = "exact_duplicate_of_previous_assistant_turn";
-          state.recoveryOffered = true;
-          showNotice("This response may be stale.", "Dismiss", () => dismissNotice());
-          notify();
-          return;
-        }
         state.name = STATES.ASSISTANT_GENERATING;
         state.lastProgressAt = Date.now();
         if (assistant) {
@@ -173,6 +167,19 @@
     if (!nextFingerprint || nextFingerprint !== state.assistantFingerprint) {
       state.assistantFingerprint = nextFingerprint;
       settleTimer = setTimeout(checkSettled, SETTLE_MS);
+      return;
+    }
+    const nextDomIdentity = getAssistantDomIdentity(assistant);
+    if (
+      nextDomIdentity
+      && nextDomIdentity === state.baselineAssistantDomIdentity
+      && nextFingerprint === state.baselineAssistantFingerprint
+    ) {
+      state.name = STATES.STALE_RESPONSE;
+      state.reason = "stable_duplicate_dom_identity_and_text";
+      state.recoveryOffered = true;
+      showNotice("This response may be stale.", "Dismiss", () => dismissNotice());
+      notify();
       return;
     }
     state.name = STATES.SETTLED;
@@ -279,6 +286,15 @@
   function getTurnText(turn) {
     if (!turn) return "";
     return String(turn.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
+  function getAssistantDomIdentity(turn) {
+    if (!(turn instanceof Element)) return null;
+    const message = turn.matches("[data-message-id], [data-message-identity]")
+      ? turn
+      : turn.querySelector("[data-message-id], [data-message-identity]");
+    if (!message) return null;
+    return message.getAttribute("data-message-id") || message.getAttribute("data-message-identity") || null;
   }
 
   function hasGenerationSignal() {

@@ -1,6 +1,6 @@
 {
   "name": "mica-for-chatgpt",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "Local Chromium extension for reliable ChatGPT copy, recovery, and research export.",
   "type": "module",
@@ -10,6 +10,8 @@
     "test:core": "node scripts/test-core.mjs",
     "test:product": "node scripts/test-product-core.mjs",
     "test:build": "node scripts/validate-build.mjs",
+    "test:low-memory": "node scripts/build.mjs && node scripts/test-extension-e2e.mjs --low-memory-only",
+    "test:highlighter": "node scripts/build.mjs && node scripts/test-extension-e2e.mjs --highlighter-only",
     "test": "node scripts/build.mjs && node scripts/test-core.mjs && node scripts/test-product-core.mjs && node scripts/validate-build.mjs",
     "test:e2e": "node scripts/build.mjs && node scripts/test-extension-e2e.mjs",
     "test:e2e:stress": "node scripts/build.mjs && node scripts/test-extension-e2e.mjs --stress",

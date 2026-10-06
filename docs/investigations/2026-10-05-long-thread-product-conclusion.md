@@ -1,23 +1,52 @@
-# Long-thread product conclusion — 2026-10-05
+# Long-thread low-memory conclusion — updated 2026-10-06
 
 ## Conclusion
 
-Mica 0.3.0 does not claim a long-thread performance feature. The recovered runtime removes the old document-wide turn scanner, `content-visibility` writer, resize observer, 1.5-second polling loop, mounted/optimized counters and persistent status overlay. The normal popup says `Native handling` unless the current action-cluster contract is exact.
+The earlier native-safe no-op conclusion is superseded. Low-memory truncation is a hard Mica 0.3.0 capability gate and is present in the current 0.4.1 candidate.
 
-## Evidence
+Mica now uses two bounded, reversible paths:
 
-- Current logged-out ChatGPT observation has no long conversation and therefore cannot prove current native virtualization.
-- Historical September evidence indicates native windowing was already present, but it is `LIMITED` and is not reused as current proof.
-- The new runtime has no turn enumeration or style mutation path. `test-product-core.mjs` verifies ordinary input causes zero document `querySelectorAll`, clone, geometry and computed-style calls.
-- Extension E2E verifies page integration remains functional without a performance module.
+1. A `document_start`, MAIN-world interceptor recognizes only same-origin GET responses for the exact conversation/shared-conversation path. It validates an acyclic active mapping path, preserves the latest 40 visible turns and their hidden support nodes, and gives the page a cloned response. It never mutates or writes the server conversation.
+2. If the data path is unavailable, a DOM fallback activates only for 120 or more direct, ordinary user/assistant turn siblings. Any dialog, streaming state, editable, tool, attachment, connector, auth, mixed parent or unknown structure fails open.
 
-## Decision
+`Load full history` sets a path-scoped session bypass and reloads. Disabling Mica and reloading also restores the full server-backed history. No conversation content is persisted by the windowing module.
 
-No measurable incremental benefit has been established on the current service. The honest 0.3.0 behavior is a native-safe no-op: no optimization control, no Active claim, no fabricated count. Issue #1 must be updated as replaced by current native handling, not closed as a Mica optimization PASS.
+## Why this adds value beyond native virtualization
+
+Native virtualization can reduce mounted DOM while the client still owns the complete historical conversation graph and response payload. Mica's primary path reduces the data before the page application consumes it. In the frozen 240-turn, mapping-derived pressure fixture:
+
+| Metric | Native baseline | Mica active | Change |
+|---|---:|---:|---:|
+| Visible/mounted turns | 240 | 40 | -83.3% |
+| Mapping nodes delivered to the fixture app | 241 | 41 | -83.0% |
+| Conversation response bytes | 3,033,461 | 505,821 | -83.3% |
+| DOM nodes | 15,637 | 2,646 | -83.1% |
+| JS heap after forced GC | 4,784,376 | 2,712,924 | -43.3% |
+
+This is additional client-state and heap reduction, not a mounted-turn counter presented as an optimization. The exact current authenticated ChatGPT binding remains part of the one final HUMAN_ONLY report; release remains closed until that report confirms the live path is active or yields evidence for a safe repair.
+
+## Compatibility and recovery evidence
+
+- short thread: 20 turns remain unchanged;
+- medium thread: 90 turns become 40;
+- long thread: 240 turns become 40;
+- direct-DOM fallback: 160 turns become 40;
+- recent active branch and unknown mapping shape: fail-open;
+- stale or missing extension configuration: wait for a fresh bridge event; an expired cache fails open;
+- full-history action: reload restores all 240 turns;
+- disable + reload: restores all 160 DOM-fallback turns;
+- 120 IME/input cycles: 1.2 ms in the final candidate run, with no synchronous broad query/clone/geometry/style work;
+- connector open/close, one fixture send, 27-character streaming mutation and scroll-frame check pass;
+- stress: 10 reload cycles and 3 anomaly cycles pass.
+
+## Current gate
 
 ```text
-MICA_PERFORMANCE_MODULE=INACTIVE
-USER_VISIBLE_PERFORMANCE_CLAIM=REMOVED
-LONG_THREAD_CLAIM_TRUTHFUL=PASS
-CURRENT_NATIVE_VIRTUALIZATION_EVIDENCE=UNRESOLVED
+LOW_MEMORY_TRUNCATION=PASS
+RECENT_TURNS_KEPT=40
+SERVER_CONVERSATION_MUTATED=NO
+FULL_HISTORY_RECOVERY=PASS
+UNKNOWN_STRUCTURE_FAIL_OPEN=PASS
+INPUT_HOT_PATH_BUDGET=PASS
+CURRENT_AUTHENTICATED_CHATGPT=PENDING_HUMAN_ONLY
 ```

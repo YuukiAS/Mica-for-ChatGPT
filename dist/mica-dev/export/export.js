@@ -36,6 +36,11 @@ function renderMath(root) {
     const displayMode = node.dataset.mathDisplay === "true";
     try {
       katex.render(source, node, { displayMode, output: "htmlAndMathml", throwOnError: true, strict: "warn", trust: false });
+      const copySource = document.createElement(displayMode ? "div" : "span");
+      copySource.className = displayMode ? "mica-export-math-source mica-export-math-source-display" : "mica-export-math-source mica-export-math-source-inline";
+      copySource.textContent = `TeX source: ${source}`;
+      copySource.setAttribute("aria-label", `Copyable TeX source: ${source}`);
+      node.append(copySource);
     } catch (_error) {
       fallbacks += 1;
       node.classList.add("mica-export-math-fallback");

@@ -135,11 +135,13 @@
   function sanitizeHtml(root) {
     const clone = root.cloneNode(true);
     if (!(clone instanceof Element)) return "";
-    clone.querySelectorAll("script, style, iframe, object, embed, form, input, textarea, button, [data-mica-ui]").forEach((node) => node.remove());
+    clone.querySelectorAll("script, style, iframe, object, embed, form, input, textarea, button, link, meta, base, source, track, [data-mica-ui]").forEach((node) => node.remove());
+    const resourceAttributes = new Set(["src", "srcset", "poster", "data", "background", "ping", "action", "formaction", "xlink:href"]);
     clone.querySelectorAll("*").forEach((element) => {
       for (const attribute of Array.from(element.attributes)) {
-        if (/^on/i.test(attribute.name) || ["style", "srcdoc"].includes(attribute.name)) element.removeAttribute(attribute.name);
-        if (["href", "src"].includes(attribute.name) && /^javascript:/i.test(attribute.value.trim())) element.removeAttribute(attribute.name);
+        const name = attribute.name.toLowerCase();
+        if (/^on/i.test(name) || ["style", "srcdoc"].includes(name) || resourceAttributes.has(name)) element.removeAttribute(attribute.name);
+        if (name === "href" && (element.tagName.toLowerCase() !== "a" || /^javascript:/i.test(attribute.value.trim()))) element.removeAttribute(attribute.name);
       }
     });
     return clone.innerHTML;

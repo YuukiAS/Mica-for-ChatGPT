@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <title>Mica low-memory thread fixture</title>
+    <style>
+      body { font:14px/1.5 system-ui; margin:0 auto; max-width:820px; padding:24px; }
+      article { border-bottom:1px solid #ddd; padding:12px 0; }
+      pre { white-space:pre-wrap; }
+      form { background:#fff; bottom:0; display:flex; gap:8px; padding:12px 0; position:sticky; }
+      textarea { flex:1; min-height:44px; }
+    </style>
+  </head>
+  <body>
+    <main id="conversation"></main>
+    <form id="composer-form">
+      <button id="connector" type="button" aria-label="Add connector">Connector</button>
+      <textarea id="mobile-composer-prompt" aria-label="Message ChatGPT"></textarea>
+      <button type="submit">Send</button>
+    </form>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const directDomCount = Number(params.get("dom")) || 0;
+      const requestedTurns = Number(params.get("turns")) || 240;
+      const conversation = document.getElementById("conversation");
+      const metrics = { composerMutations: 0, inputEvents: 0, sends: 0, streamedCharacters: 0 };
+      new MutationObserver((records) => { metrics.composerMutations += records.length; })
+        .observe(document.getElementById("composer-form"), { subtree:true, childList:true, characterData:true, attributes:true });
+      document.getElementById("mobile-composer-prompt").addEventListener("input", () => { metrics.inputEvents += 1; });
+      document.getElementById("connector").addEventListener("click", () => {
+        const existing = document.getElementById("connector-chip");
+        if (existing) existing.remove();
+        else {
+          const chip = document.createElement("span");
+          chip.id = "connector-chip";
+          chip.textContent = "Fixture connector";
+          document.getElementById("composer-form").prepend(chip);
+        }
+      });
+      document.getElementById("composer-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const composer = document.getElementById("mobile-composer-prompt");
+        const text = composer.value;
+        if (!text) return;
+        appendTurn(`sent-${metrics.sends}`, "user", text);
+        composer.value = "";
+        const assistant = appendTurn(`reply-${metrics.sends}`, "assistant", "");
+        assistant.parentElement.dataset.isStreaming = "true";
+        for (const chunk of ["Streaming ", "answer ", "completed."]) {
+          assistant.append(document.createTextNode(chunk));
+          metrics.streamedCharacters += chunk.length;
+          await new Promise((resolve) => setTimeout(resolve, 15));
+        }
+        delete assistant.parentElement.dataset.isStreaming;
+        metrics.sends += 1;
+      });
+
+      initialize();
+
+      async function initialize() {
+        if (directDomCount) {
+          for (let index = 0; index < directDomCount; index += 1) appendTurn(`dom-${index}`, index % 2 ? "assistant" : "user", richText(index));
+          ready({ source:"dom", receivedTurns:directDomCount });
+          return;
+        }
+        const response = await fetch(`/backend-api/conversation/fixture-${requestedTurns}`);
+        const payload = await response.json();
+        window.__conversationPayload = payload;
+        const path = [];
+        let cursor = payload.current_node;
+        while (cursor) {
+          const node = payload.mapping[cursor];
+          if (!node) break;
+          path.push(node);
+          cursor = node.parent;
+        }
+        path.reverse();
+        for (const node of path) {
+          const role = node.message?.author?.role;
+          if (role === "user" || role === "assistant") appendTurn(node.id, role, node.message.content.parts[0]);
+        }
+        ready({ source:"mapping", receivedTurns:path.filter((node) => node.message).length, mappingNodes:Object.keys(payload.mapping).length });
+      }
+
+      function appendTurn(id, role, text) {
+        const turn = document.createElement("article");
+        turn.dataset.testid = `conversation-turn-${id}`;
+        const message = document.createElement("div");
+        message.dataset.messageAuthorRole = role;
+        message.dataset.messageId = `message-${id}`;
+        const heading = document.createElement("h3");
+        heading.textContent = `${role} ${id}`;
+        const paragraphs = String(text).match(/.{1,420}/gs) || [""];
+        message.append(heading);
+        for (const part of paragraphs) {
+          const paragraph = document.createElement("p");
+          paragraph.textContent = part;
+          message.append(paragraph);
+        }
+        if (role === "assistant") {
+          const code = document.createElement("pre");
+          code.textContent = `fixture(${JSON.stringify(id)})`;
+          message.append(code);
+        }
+        turn.append(message);
+        conversation.append(turn);
+        return message;
+      }
+
+      function richText(index) {
+        return `Turn ${index}. ` + "Memory pressure fixture text with deterministic structure. ".repeat(210);
+      }
+
+      function ready(detail) {
+        document.documentElement.dataset.lowMemoryFixtureReady = JSON.stringify(detail);
+        window.__LOW_MEMORY_FIXTURE__ = { metrics, detail };
+      }
+    </script>
+  </body>
+</html>

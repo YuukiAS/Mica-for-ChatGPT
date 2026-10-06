@@ -10,18 +10,20 @@ const require = createRequire(import.meta.url);
 const bundled = path.join(process.env.USERPROFILE || "C:\\Users\\humc2", ".cache", "codex-runtimes", "codex-primary-runtime", "dependencies", "node", "node_modules", "playwright");
 const { chromium } = require(bundled);
 const stress = process.argv.includes("--stress");
+const lowMemoryOnly = process.argv.includes("--low-memory-only");
+const highlighterOnly = process.argv.includes("--highlighter-only");
 const tempRoot = await mkdtemp(path.join(os.tmpdir(), "mica-e2e-"));
 const userDataDir = path.join(tempRoot, "profile");
 const extensionDir = path.join(tempRoot, "extension");
 const evidenceDir = path.join(root, "results", "mica--product-recovery-current-gpt-ui", "visual-evidence");
 const pdfEvidenceDir = path.join(root, "results", "mica--product-recovery-current-gpt-ui", "pdf-evidence");
 const pdfOutputDir = path.join(root, "output", "pdf");
-const pdfPath = path.join(pdfOutputDir, "mica-research-export-0.4.0.pdf");
+const pdfPath = path.join(pdfOutputDir, "mica-research-export-0.4.1.pdf");
 await cp(path.join(root, "dist", "mica-dev"), extensionDir, { recursive: true });
 const manifestPath = path.join(extensionDir, "manifest.json");
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 manifest.host_permissions.push("http://127.0.0.1/*");
-manifest.content_scripts[0].matches.push("http://127.0.0.1/*");
+for (const contentScript of manifest.content_scripts) contentScript.matches.push("http://127.0.0.1/*");
 await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 await mkdir(evidenceDir, { recursive: true });
 await mkdir(pdfEvidenceDir, { recursive: true });
@@ -29,7 +31,15 @@ await mkdir(pdfOutputDir, { recursive: true });
 
 const server = createServer(async (request, response) => {
   try {
-    const target = path.resolve(root, decodeURIComponent(new URL(request.url, "http://127.0.0.1").pathname).replace(/^\/+/, ""));
+    const requestUrl = new URL(request.url, "http://127.0.0.1");
+    const conversationMatch = requestUrl.pathname.match(/^\/backend-api\/conversation\/fixture-(\d+)$/);
+    if (conversationMatch) {
+      const body = JSON.stringify(buildConversationPayload(Number(conversationMatch[1])));
+      response.writeHead(200, { "content-type": "application/json; charset=utf-8", "content-length": Buffer.byteLength(body) });
+      response.end(body);
+      return;
+    }
+    const target = path.resolve(root, decodeURIComponent(requestUrl.pathname).replace(/^\/+/, ""));
     if (!target.startsWith(root)) throw new Error("forbidden");
     const body = await readFile(target);
     response.writeHead(200, { "content-type": target.endsWith(".html") ? "text/html; charset=utf-8" : "application/octet-stream" });
@@ -41,6 +51,7 @@ const server = createServer(async (request, response) => {
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const fixtureUrl = `http://127.0.0.1:${server.address().port}/tests/fixtures/extension-product-core.html`;
 const highlighterCoverageUrl = `http://127.0.0.1:${server.address().port}/tests/fixtures/extension-highlighter-coverage.html`;
+const lowMemoryFixtureUrl = `http://127.0.0.1:${server.address().port}/tests/fixtures/low-memory-thread.html`;
 let context;
 try {
   context = await chromium.launchPersistentContext(userDataDir, {
@@ -56,8 +67,26 @@ try {
     existing: globalThis.MicaServiceWorker.migrateState({ schemaVersion: 1, enabled: false, copyExport: false, reliability: true, pageIntegration: false }),
     fresh: globalThis.MicaServiceWorker.migrateState({ schemaVersion: 0 })
   }));
-  assert(migration.existing.enabled === false && migration.existing.copyExport === false && migration.existing.pageIntegration === false && migration.existing.highlighter === true, "update migration overwrote existing settings or missed new defaults");
-  assert(Object.entries(migration.fresh).every(([key, value]) => key === "schemaVersion" ? value === 2 : value === true), "fresh install defaults drifted");
+  assert(migration.existing.enabled === false && migration.existing.copyExport === false && migration.existing.pageIntegration === false && migration.existing.highlighter === true && migration.existing.lowMemory === true, "update migration overwrote existing settings or missed new defaults");
+  assert(Object.entries(migration.fresh).every(([key, value]) => key === "schemaVersion" ? value === 3 : value === true), "fresh install defaults drifted");
+  if (highlighterOnly) {
+    const highlighterCoverage = await runHighlighterCoverage(context, worker, highlighterCoverageUrl);
+    console.log(JSON.stringify({ passed: true, highlighterCoverage }, null, 2));
+    await context.close();
+    context = null;
+    await new Promise((resolve) => server.close(resolve));
+    await rm(tempRoot, { recursive: true, force: true });
+    process.exit(0);
+  }
+  const lowMemoryCoverage = await runLowMemoryCoverage(context, worker, lowMemoryFixtureUrl);
+  if (lowMemoryOnly) {
+    console.log(JSON.stringify({ passed: true, lowMemoryCoverage }, null, 2));
+    await context.close();
+    context = null;
+    await new Promise((resolve) => server.close(resolve));
+    await rm(tempRoot, { recursive: true, force: true });
+    process.exit(0);
+  }
   const fixture = context.pages()[0] || await context.newPage();
   await fixture.goto(fixtureUrl, { waitUntil: "load" });
   await fixture.waitForSelector("[data-mica-ui='copy-markdown']", { timeout: 10000 });
@@ -145,7 +174,7 @@ try {
   assert(bulkHighlightPerformance.restoreMs < 2500, `bulk highlight restore exceeded budget: ${JSON.stringify(bulkHighlightPerformance)}`);
   const highlighterCoverage = await runHighlighterCoverage(context, worker, highlighterCoverageUrl);
   assert(highlighterCoverage.logical === 5 && highlighterCoverage.segments >= 6, `highlighter semantic coverage failed: ${JSON.stringify(highlighterCoverage)}`);
-  assert(highlighterCoverage.restoredLogical === 5 && highlighterCoverage.mathIntact && highlighterCoverage.marksInsideMath === 0 && highlighterCoverage.disabledRendered === 0 && highlighterCoverage.reenabledRendered >= 6, `highlighter remount/math/toggle isolation failed: ${JSON.stringify(highlighterCoverage)}`);
+  assert(highlighterCoverage.restoredLogical === 5 && highlighterCoverage.mathIntact && highlighterCoverage.marksInsideMath === 0 && highlighterCoverage.disabledRendered === 0 && highlighterCoverage.reenabledRendered >= 6 && highlighterCoverage.spaIsolation && highlighterCoverage.escapeDismissed && highlighterCoverage.keyboardRemoved, `highlighter remount/math/SPA/keyboard/toggle isolation failed: ${JSON.stringify(highlighterCoverage)}`);
 
   const popup = await context.newPage();
   await fixture.bringToFront();
@@ -192,7 +221,7 @@ try {
   }));
   assert(exportState.fallbacks === 0 && exportState.math >= 2, "PDF preview did not render math with KaTeX");
   assert(exportState.highlights >= 2 && exportState.textLength > 4000, "PDF preview lost highlights or long-form content");
-  await exportPage.screenshot({ path: path.join(pdfEvidenceDir, "0.4.0-export-preview.png"), fullPage: true });
+  await exportPage.screenshot({ path: path.join(pdfEvidenceDir, "0.4.1-export-preview.png"), fullPage: true });
   await exportPage.pdf({ path: pdfPath, format: "A4", printBackground: true, preferCSSPageSize: true });
   await exportPage.close();
 
@@ -222,7 +251,7 @@ try {
         const bodyBox = await popup.locator("body").boundingBox();
         const mainBox = await popup.locator("main").boundingBox();
         await popup.screenshot({
-          path: path.join(evidenceDir, `0.4.0-popup-${colorScheme}-360.png`),
+          path: path.join(evidenceDir, `0.4.1-popup-${colorScheme}-360.png`),
           clip: { x: 0, y: 0, width: Math.ceil(bodyBox.width), height: Math.ceil(mainBox.height) }
         });
       }
@@ -266,11 +295,12 @@ try {
   const currentUiReportText = await optionsPage.evaluate(() => navigator.clipboard.readText());
   const currentUiReport = JSON.parse(currentUiReportText);
   assert(!currentUiReportText.includes(privateSentinel), "current UI report leaked composer text");
-  assert(currentUiReport.candidate.version === "0.4.0", "current UI report lost candidate identity");
+  assert(currentUiReport.candidate.version === "0.4.1", "current UI report lost candidate identity");
   assert(currentUiReport.report.summary.composerRemounted, "current UI report missed composer remount");
   assert(currentUiReport.report.summary.actionClusterObserved && currentUiReport.report.summary.connectorSignalObserved, "current UI report missed structural signals");
+  assert(currentUiReport.report.summary.lowMemoryObserved && typeof currentUiReport.report.summary.lowMemoryMaxRemovedTurns === "number", "current UI report missed privacy-safe low-memory evidence");
   assert(currentUiReport.report.privacy.promptText === false && currentUiReport.report.privacy.answerText === false && currentUiReport.report.privacy.contentUpload === false, "current UI report privacy boundary drifted");
-  await optionsPage.screenshot({ path: path.join(evidenceDir, "0.4.0-troubleshooting.png"), fullPage: true });
+  await optionsPage.screenshot({ path: path.join(evidenceDir, "0.4.1-troubleshooting.png"), fullPage: true });
   await optionsPage.close();
   await fixture.reload({ waitUntil: "load" });
   await fixture.waitForSelector("[data-mica-ui='copy-markdown']", { timeout: 5000 });
@@ -294,7 +324,7 @@ try {
   await fixture.waitForSelector("[data-mica-ui='copy-markdown']", { timeout: 5000 });
 
   const placement = await fixture.evaluate(() => {
-    const nativeCopy = document.querySelector("[data-mica-current-action-cluster] > [aria-label='Copy']");
+    const nativeCopy = document.querySelector("[role='group'] > [data-testid='copy-turn-action-button']");
     const micaCopy = document.querySelector("[data-mica-ui='copy-markdown']");
     const nativeRect = nativeCopy.getBoundingClientRect();
     const micaRect = micaCopy.getBoundingClientRect();
@@ -375,12 +405,14 @@ try {
     generationError: await runAnomalyScenario(context, fixtureUrl, "generation_error"),
     staleResponse: await runAnomalyScenario(context, fixtureUrl, "stale_response")
   };
+  const staleFalsePositiveShield = await runStaleFalsePositiveShield(context, fixtureUrl);
   assert(anomalies.ghost.state === "ghost_send_suspected" && anomalies.ghost.draftRestored, "ghost-send recovery failed");
   assert(anomalies.fakeWaiting.state === "fake_waiting_suspected", "fake-waiting detection failed");
   assert(anomalies.generationError.state === "generation_error_recovery_available", "generation-error detection failed");
   assert(anomalies.staleResponse.state === "stale_response_suspected", "stale-response detection failed");
+  assert(staleFalsePositiveShield.sameTextNewIdentity === "settled" && staleFalsePositiveShield.earlySimilarThenChanged === "settled", `legitimate duplicate/streaming response was misclassified: ${JSON.stringify(staleFalsePositiveShield)}`);
   const stressEvidence = stress ? await runStressCycles(context, fixture, fixtureUrl) : { run: false, reason: "not_requested" };
-  console.log(JSON.stringify({ passed: true, extensionId, migration, clipboardLength: clipboard.length, notionClipboard: { types: notionClipboard.types, plainLength: notionClipboard.plain.length, htmlLength: notionClipboard.html.length, notionLike }, pdf: { path: pdfPath, ...exportState }, highlightCreated, highlightPersistence, streamingSafety, anchorRelocation, deterministicDegradation, bulkHighlightPerformance, highlighterCoverage, currentUiReport: currentUiReport.report.summary, placement, lifecycle, anomalies, stressEvidence, popupMatrix: matrix }, null, 2));
+  console.log(JSON.stringify({ passed: true, extensionId, migration, lowMemoryCoverage, clipboardLength: clipboard.length, notionClipboard: { types: notionClipboard.types, plainLength: notionClipboard.plain.length, htmlLength: notionClipboard.html.length, notionLike }, pdf: { path: pdfPath, ...exportState }, highlightCreated, highlightPersistence, streamingSafety, anchorRelocation, deterministicDegradation, bulkHighlightPerformance, highlighterCoverage, currentUiReport: currentUiReport.report.summary, placement, lifecycle, anomalies, staleFalsePositiveShield, stressEvidence, popupMatrix: matrix }, null, 2));
 } finally {
   await context?.close();
   await new Promise((resolve) => server.close(resolve));
@@ -389,6 +421,175 @@ try {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function buildConversationPayload(turnCount) {
+  const mapping = {
+    root: { id: "root", parent: null, children: turnCount ? ["node-0"] : [], message: null }
+  };
+  for (let index = 0; index < turnCount; index += 1) {
+    const id = `node-${index}`;
+    mapping[id] = {
+      id,
+      parent: index === 0 ? "root" : `node-${index - 1}`,
+      children: index + 1 < turnCount ? [`node-${index + 1}`] : [],
+      message: {
+        id: `message-${index}`,
+        author: { role: index % 2 === 0 ? "user" : "assistant" },
+        content: { content_type: "text", parts: [`Turn ${index}. ${"Memory pressure fixture text with deterministic structure. ".repeat(210)}`] },
+        metadata: {},
+        status: "finished_successfully",
+        end_turn: true
+      }
+    };
+  }
+  return { id: `fixture-${turnCount}`, title: "Low-memory fixture", mapping, current_node: turnCount ? `node-${turnCount - 1}` : "root", root: "root" };
+}
+
+async function runLowMemoryCoverage(context, worker, baseUrl) {
+  const page = await context.newPage();
+  const setLowMemory = async (value) => {
+    await worker.evaluate((lowMemory) => new Promise((resolve) => chrome.storage.local.set({ enabled: true, lowMemory }, resolve)), value);
+    await page.waitForTimeout(180);
+  };
+  const measure = async () => {
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("HeapProfiler.collectGarbage");
+    await cdp.send("Performance.enable");
+    const [dom, performanceMetrics, heap] = await Promise.all([cdp.send("Memory.getDOMCounters"), cdp.send("Performance.getMetrics"), cdp.send("Runtime.getHeapUsage")]);
+    await cdp.detach();
+    const metrics = Object.fromEntries(performanceMetrics.metrics.map((entry) => [entry.name, entry.value]));
+    return { ...dom, jsHeapUsedSize: Math.round(heap.usedSize || metrics.JSHeapUsedSize || 0), jsHeapTotalSize: Math.round(heap.totalSize || metrics.JSHeapTotalSize || 0) };
+  };
+  const waitReady = () => page.waitForFunction(() => !!document.documentElement.dataset.lowMemoryFixtureReady, null, { timeout: 15000 });
+  try {
+    await setLowMemory(false);
+    await page.goto(`${baseUrl}?turns=240`, { waitUntil: "load" });
+    await waitReady();
+    const baseline = {
+      memory: await measure(),
+      fixture: await page.evaluate(() => JSON.parse(document.documentElement.dataset.lowMemoryFixtureReady)),
+      turns: await page.locator("[data-testid^='conversation-turn-']").count()
+    };
+    await setLowMemory(true);
+    await page.reload({ waitUntil: "load" });
+    await waitReady();
+    await page.waitForFunction(() => JSON.parse(document.documentElement.getAttribute("data-mica-low-memory-page-status") || "null")?.active === true, null, { timeout: 10000 });
+    await page.waitForSelector("[data-mica-ui='history-window']", { timeout: 10000 });
+    const active = {
+      memory: await measure(),
+      fixture: await page.evaluate(() => JSON.parse(document.documentElement.dataset.lowMemoryFixtureReady)),
+      status: await page.evaluate(() => JSON.parse(document.documentElement.getAttribute("data-mica-low-memory-page-status"))),
+      turns: await page.locator("[data-testid^='conversation-turn-']").count()
+    };
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: path.join(evidenceDir, "0.4.1-low-memory-window.png") });
+    assert(baseline.turns === 240 && active.turns === 40, `response window did not keep exactly 40 recent turns: ${JSON.stringify({ baseline: baseline.turns, active: active.turns })}`);
+    assert(active.status.removedTurns === 200 && active.status.keptTurns === 40, `response window status drifted: ${JSON.stringify(active.status)}`);
+    assert(active.memory.nodes < baseline.memory.nodes * 0.45, `DOM node memory did not materially fall: ${JSON.stringify({ baseline: baseline.memory, active: active.memory })}`);
+    assert(active.memory.jsHeapUsedSize < baseline.memory.jsHeapUsedSize * 0.72, `JS heap did not materially fall: ${JSON.stringify({ baseline: baseline.memory, active: active.memory })}`);
+    assert(active.status.bytesAfter < active.status.bytesBefore * 0.35, `mapping bytes did not materially fall: ${JSON.stringify(active.status)}`);
+    const failOpenContracts = await page.evaluate(() => {
+      const invalid = window.MicaLowMemoryPage.windowConversation({ messages: [] }, 40);
+      const root = { id: "root", parent: null, children: ["n0"], message: null };
+      const mapping = { root };
+      for (let index = 0; index < 100; index += 1) {
+        mapping[`n${index}`] = {
+          id: `n${index}`,
+          parent: index === 0 ? "root" : `n${index - 1}`,
+          children: index === 99 ? [] : [`n${index + 1}`],
+          message: { author: { role: index % 2 ? "assistant" : "user" }, content: { parts: [String(index)] } }
+        };
+      }
+      mapping.n70.children.push("alternate-recent-branch");
+      mapping["alternate-recent-branch"] = { id: "alternate-recent-branch", parent: "n70", children: [], message: { author: { role: "assistant" }, content: { parts: ["alternate"] } } };
+      const recentBranch = window.MicaLowMemoryPage.windowConversation({ mapping, current_node: "n99" }, 40);
+      const consecutiveMapping = { root: { id: "root", parent: null, children: ["c0"], message: null } };
+      for (let index = 0; index < 100; index += 1) {
+        consecutiveMapping[`c${index}`] = {
+          id: `c${index}`,
+          parent: index === 0 ? "root" : `c${index - 1}`,
+          children: index === 99 ? [] : [`c${index + 1}`],
+          message: { author: { role: "assistant" }, content: { parts: [String(index)] } }
+        };
+      }
+      const consecutiveRoles = window.MicaLowMemoryPage.windowConversation({ mapping: consecutiveMapping, current_node: "c99" }, 40);
+      return { invalid, recentBranch, consecutiveRoles: { changed: consecutiveRoles.changed, visibleTotal: consecutiveRoles.visibleTotal, visibleKept: consecutiveRoles.visibleKept, keptNodes: consecutiveRoles.keptNodes } };
+    });
+    assert(failOpenContracts.invalid.reason === "shape_unrecognized" && failOpenContracts.recentBranch.reason === "recent_branch_detected", `unknown/recent-branch contracts did not fail open: ${JSON.stringify(failOpenContracts)}`);
+    assert(failOpenContracts.consecutiveRoles.changed && failOpenContracts.consecutiveRoles.visibleTotal === 100 && failOpenContracts.consecutiveRoles.visibleKept === 40 && failOpenContracts.consecutiveRoles.keptNodes === 41, `recent-N policy did not count each visible node: ${JSON.stringify(failOpenContracts.consecutiveRoles)}`);
+
+    const interaction = await page.evaluate(async () => {
+      const composer = document.getElementById("mobile-composer-prompt");
+      const started = performance.now();
+      for (let index = 0; index < 120; index += 1) {
+        composer.value = `typing-${index}`;
+        composer.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true, data: "中" }));
+        composer.dispatchEvent(new InputEvent("input", { bubbles: true, data: "中", inputType: "insertCompositionText" }));
+        composer.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true, data: "中文" }));
+      }
+      const typingMs = performance.now() - started;
+      const connector = document.getElementById("connector");
+      connector.click();
+      const connectorMounted = !!document.getElementById("connector-chip");
+      connector.click();
+      const connectorRemoved = !document.getElementById("connector-chip");
+      composer.value = "low-memory send fixture";
+      document.getElementById("composer-form").requestSubmit();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const scrollStarted = performance.now();
+      scrollTo(0, 0);
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      scrollTo(0, document.documentElement.scrollHeight);
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      return {
+        typingMs,
+        connectorMounted,
+        connectorRemoved,
+        sendCompleted: window.__LOW_MEMORY_FIXTURE__.metrics.sends === 1,
+        streamedCharacters: window.__LOW_MEMORY_FIXTURE__.metrics.streamedCharacters,
+        scrollFramesMs: performance.now() - scrollStarted,
+        composerMutations: window.__LOW_MEMORY_FIXTURE__.metrics.composerMutations,
+        inputEvents: window.__LOW_MEMORY_FIXTURE__.metrics.inputEvents
+      };
+    });
+    assert(interaction.typingMs < 80 && interaction.inputEvents === 120, `typing hot path regressed: ${JSON.stringify(interaction)}`);
+    assert(interaction.connectorMounted && interaction.connectorRemoved && interaction.sendCompleted && interaction.streamedCharacters > 0, `composer/connector/streaming regressed: ${JSON.stringify(interaction)}`);
+    assert(interaction.scrollFramesMs < 250, `windowed scroll frame budget regressed: ${JSON.stringify(interaction)}`);
+
+    await Promise.all([page.waitForNavigation({ waitUntil: "load" }), page.locator("[data-mica-ui='history-window'] button").click()]);
+    await waitReady();
+    const restored = {
+      turns: await page.locator("[data-testid^='conversation-turn-']").count(),
+      state: await page.evaluate(() => JSON.parse(document.documentElement.dataset.micaLowMemoryStatus || "null")?.state || null)
+    };
+    assert(restored.turns === 240 && restored.state === "full_history", `full-history reload did not restore all turns: ${JSON.stringify(restored)}`);
+
+    await page.evaluate(() => sessionStorage.removeItem("mica.lowMemory.bypass.v1"));
+    await page.goto(`${baseUrl}?turns=20`, { waitUntil: "load" });
+    await waitReady();
+    const short = { turns: await page.locator("[data-testid^='conversation-turn-']").count(), pageStatus: await page.evaluate(() => JSON.parse(document.documentElement.getAttribute("data-mica-low-memory-page-status"))) };
+    assert(short.turns === 20 && short.pageStatus.active === false, `short thread should remain native: ${JSON.stringify(short)}`);
+    await page.goto(`${baseUrl}?turns=90`, { waitUntil: "load" });
+    await waitReady();
+    const medium = { turns: await page.locator("[data-testid^='conversation-turn-']").count(), pageStatus: await page.evaluate(() => JSON.parse(document.documentElement.getAttribute("data-mica-low-memory-page-status"))) };
+    assert(medium.turns === 40 && medium.pageStatus.active === true, `medium thread was not safely windowed: ${JSON.stringify(medium)}`);
+
+    await page.goto(`${baseUrl}?dom=160`, { waitUntil: "load" });
+    await waitReady();
+    await page.waitForFunction(() => JSON.parse(document.documentElement.dataset.micaLowMemoryStatus || "null")?.mode === "dom_window", null, { timeout: 10000 });
+    const domFallback = { turns: await page.locator("[data-testid^='conversation-turn-']").count(), status: await page.evaluate(() => JSON.parse(document.documentElement.dataset.micaLowMemoryStatus)) };
+    assert(domFallback.turns === 40 && domFallback.status.removedTurns === 120, `DOM fallback windowing failed: ${JSON.stringify(domFallback)}`);
+    await setLowMemory(false);
+    await page.reload({ waitUntil: "load" });
+    await waitReady();
+    const disabled = { turns: await page.locator("[data-testid^='conversation-turn-']").count(), status: await page.evaluate(() => JSON.parse(document.documentElement.dataset.micaLowMemoryStatus || "null")) };
+    assert(disabled.turns === 160 && disabled.status?.active === false, `disable/reload did not restore full DOM history: ${JSON.stringify(disabled)}`);
+    await setLowMemory(true);
+    return { baseline, active, failOpenContracts, interaction, restored, short, medium, domFallback, disabled };
+  } finally {
+    await page.close();
+  }
 }
 
 async function seedBulkHighlights(worker, page, fixtureUrl) {
@@ -442,6 +643,7 @@ async function runHighlighterCoverage(context, worker, url) {
   const page = await context.newPage();
   try {
     await page.goto(url, { waitUntil: "load" });
+    await page.waitForTimeout(350);
     const cases = [
       { start: "#heading-case", startOffset: 0, end: "#heading-case", endOffset: 8 },
       { start: "#list-case", startOffset: 0, end: "#list-case", endOffset: 12 },
@@ -451,6 +653,7 @@ async function runHighlighterCoverage(context, worker, url) {
     ];
     for (const selectionCase of cases) {
       await page.evaluate(({ start, startOffset, end, endOffset }) => {
+        delete document.documentElement.dataset.micaHighlightSelection;
         const startNode = document.querySelector(start).firstChild;
         const endNode = document.querySelector(end).firstChild;
         const range = document.createRange();
@@ -461,8 +664,11 @@ async function runHighlighterCoverage(context, worker, url) {
         selection.addRange(range);
         document.querySelector(start).dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
       }, selectionCase);
-      await page.waitForSelector("[data-mica-ui='highlight-affordance']");
-      await page.locator("[data-mica-ui='highlight-affordance']").click();
+      await page.waitForFunction(() => document.documentElement.dataset.micaHighlightSelection === "ready", null, { timeout: 5000 }).catch(async () => {
+        throw new Error(`selection coverage failed: ${await page.evaluate(() => document.documentElement.dataset.micaHighlightSelection || "missing")}`);
+      });
+      await page.waitForFunction(() => !!document.querySelector("[data-mica-ui='highlight-affordance']"), null, { timeout: 5000 });
+      await page.locator("[data-mica-ui='highlight-affordance']").click({ force: true, timeout: 5000 });
     }
     const created = await page.evaluate(() => ({
       segments: document.querySelectorAll("mark[data-mica-highlight-id]").length,
@@ -478,6 +684,59 @@ async function runHighlighterCoverage(context, worker, url) {
       marksInsideMath: document.querySelectorAll(".katex mark[data-mica-highlight-id]").length,
       mathIntact: !!document.querySelector(".katex math annotation[encoding='application/x-tex']")
     }), created);
+    const routeA = await page.evaluate(() => ({
+      path: location.pathname,
+      key: `mica.highlights.v1:${encodeURIComponent(`${location.origin}${location.pathname}`)}`
+    }));
+    await page.evaluate(() => {
+      history.pushState({}, "", `${location.pathname.replace(/\.html$/, "-b.html")}`);
+      const signal = document.createElement("span");
+      signal.hidden = true;
+      signal.dataset.routeSignal = "b";
+      document.body.append(signal);
+    });
+    await page.waitForFunction(() => document.querySelectorAll("mark[data-mica-highlight-id]").length === 0, null, { timeout: 5000 });
+    await page.evaluate(() => {
+      delete document.documentElement.dataset.micaHighlightSelection;
+      const node = document.querySelector("#formula-case").lastChild;
+      const range = document.createRange();
+      range.setStart(node, 0);
+      range.setEnd(node, Math.min(8, node.nodeValue.length));
+      const selection = getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.querySelector("#formula-case").dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+    });
+    await page.waitForFunction(() => document.documentElement.dataset.micaHighlightSelection === "ready", null, { timeout: 5000 }).catch(async () => {
+      throw new Error(`SPA B selection failed: ${await page.evaluate(() => document.documentElement.dataset.micaHighlightSelection || "missing")}`);
+    });
+    await page.waitForSelector("[data-mica-ui='highlight-affordance']");
+    await page.locator("[data-mica-ui='highlight-affordance']").click();
+    const routeB = await page.evaluate(() => ({
+      path: location.pathname,
+      key: `mica.highlights.v1:${encodeURIComponent(`${location.origin}${location.pathname}`)}`
+    }));
+    const routeRecords = await worker.evaluate(({ a, b }) => new Promise((resolve) => chrome.storage.local.get({ [a]: [], [b]: [] }, (items) => resolve({ a: items[a], b: items[b] }))), { a: routeA.key, b: routeB.key });
+    await page.evaluate(() => history.back());
+    await page.waitForFunction((expected) => location.pathname === expected, routeA.path, { timeout: 5000 });
+    await page.waitForFunction(() => new Set(Array.from(document.querySelectorAll("mark[data-mica-highlight-id]"), (mark) => mark.dataset.micaHighlightId)).size === 5, null, { timeout: 5000 });
+    const spaIsolation = routeA.path !== routeB.path && routeRecords.a.length === 5 && routeRecords.b.length === 1;
+    await page.evaluate(() => {
+      delete document.documentElement.dataset.micaHighlightSelection;
+      const node = document.querySelector("#formula-case").lastChild;
+      const range = document.createRange();
+      range.setStart(node, 0);
+      range.setEnd(node, Math.min(6, node.nodeValue.length));
+      const selection = getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.querySelector("#formula-case").dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+    });
+    await page.waitForFunction(() => document.documentElement.dataset.micaHighlightSelection === "ready", null, { timeout: 5000 });
+    await page.waitForSelector("[data-mica-ui='highlight-affordance']");
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => !document.querySelector("[data-mica-ui='highlight-affordance']"));
+    const escapeDismissed = true;
     await worker.evaluate(() => new Promise((resolve) => chrome.storage.local.set({ highlighter: false }, resolve)));
     await page.reload({ waitUntil: "load" });
     await page.waitForTimeout(300);
@@ -485,7 +744,12 @@ async function runHighlighterCoverage(context, worker, url) {
     await worker.evaluate(() => new Promise((resolve) => chrome.storage.local.set({ highlighter: true }, resolve)));
     await page.reload({ waitUntil: "load" });
     await page.waitForFunction(() => document.querySelectorAll("mark[data-mica-highlight-id]").length >= 6, null, { timeout: 5000 });
-    return { ...restored, disabledRendered, reenabledRendered: await page.locator("mark[data-mica-highlight-id]").count() };
+    const reenabledRendered = await page.locator("mark[data-mica-highlight-id]").count();
+    await page.locator("mark[data-mica-highlight-id]").first().focus();
+    await page.keyboard.press("Delete");
+    await page.waitForFunction(() => new Set(Array.from(document.querySelectorAll("mark[data-mica-highlight-id]"), (mark) => mark.dataset.micaHighlightId)).size === 4, null, { timeout: 5000 });
+    const keyboardRemoved = true;
+    return { ...restored, disabledRendered, reenabledRendered, spaIsolation, escapeDismissed, keyboardRemoved };
   } finally {
     await page.close();
   }
@@ -543,6 +807,47 @@ async function runAnomalyScenario(context, fixtureUrl, kind) {
   } finally {
     await page.close();
   }
+}
+
+async function runStaleFalsePositiveShield(context, fixtureUrl) {
+  const run = async (mode) => {
+    const page = await context.newPage();
+    try {
+      await page.goto(fixtureUrl, { waitUntil: "load" });
+      await page.waitForFunction(() => !!document.documentElement.dataset.micaDeliveryState);
+      await page.evaluate(async (scenario) => {
+        const prompt = `fixture prompt ${scenario}`;
+        const form = document.querySelector("form");
+        const composer = document.getElementById("mobile-composer-prompt");
+        composer.value = prompt;
+        form.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));
+        composer.value = "";
+        const user = document.createElement("article");
+        user.dataset.testid = `conversation-turn-user-${scenario}`;
+        user.innerHTML = '<div data-message-author-role="user"></div>';
+        user.firstElementChild.textContent = prompt;
+        document.body.insertBefore(user, form);
+        const baseline = document.querySelector("[data-testid='conversation-turn-extension']");
+        const duplicate = baseline.cloneNode(true);
+        duplicate.dataset.testid = `conversation-turn-assistant-${scenario}`;
+        const message = duplicate.querySelector("[data-message-author-role='assistant']");
+        if (scenario === "same_text_new_identity") message.dataset.messageId = `new-${scenario}`;
+        document.body.insertBefore(duplicate, form);
+        if (scenario === "early_similar_then_changed") {
+          await new Promise((resolve) => setTimeout(resolve, 25));
+          message.querySelector("[data-message-content]").append(document.createTextNode(" Final response diverged after the early matching stream."));
+        }
+      }, mode);
+      await waitForDeliveryState(page, "settled");
+      return "settled";
+    } finally {
+      await page.close();
+    }
+  };
+  return {
+    sameTextNewIdentity: await run("same_text_new_identity"),
+    earlySimilarThenChanged: await run("early_similar_then_changed")
+  };
 }
 
 async function waitForDeliveryState(page, name) {

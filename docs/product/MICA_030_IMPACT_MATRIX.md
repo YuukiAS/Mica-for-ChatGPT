@@ -9,7 +9,7 @@
 | Ghost send / fake waiting | `turn-delivery-guard.ts` | deterministic clock、identity/fingerprint | lifecycle E2E | 单一安全恢复动作、去重锁 |
 | Popup product UI | `popup/*` | storage/message contract | 320/360/400、light/dark、100/125/150%、AX、screenshot | 真实 extension popup、无开发控件 |
 | Page integration | `content.ts`, `copy/*` | current-derived action cluster | placement geometry/keyboard | exact contract 未开门前 fail-open |
-| Long-thread truth | `content.ts` | synthetic long thread | OFF / inactive / active metrics | 无额外收益则 `Native handling` |
+| Low-memory long thread | `low-memory-page.ts`, `low-memory-windowing.ts`, `content.ts` | short/medium/240-turn mapping、160-turn DOM、unknown/recent branch | bytes/DOM/heap、restore、typing/IME、send/stream/connector | 最近 40 turns；完整历史可恢复；未知结构 fail-open |
 | Version/build/package | release/build scripts | build validation | install/package smoke | manifest/popup/report/ZIP/SHA 一致 |
 
 ## 预计移除或关闭
@@ -17,7 +17,7 @@
 - 正常 popup 的 diagnostics、composer check、raw mounted/optimized counters。
 - 常驻 status dot 与 draggable overlay。
 - 自动 dismiss 授权/安全 UI 的普通产品能力。
-- 未证明确有额外收益的 long-thread optimization 开关和 Active 宣称。
+- 仅有 `content-visibility` 或 mounted counter、没有数据/heap 实质下降的旧 long-thread 路径。
 
 ## 测试顺序
 

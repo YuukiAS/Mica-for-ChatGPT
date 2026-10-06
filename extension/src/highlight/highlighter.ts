@@ -7,6 +7,8 @@
   let affordance = null;
   let restoreTimer = 0;
   let observer = null;
+  let activeStorageKey = null;
+  let contextGeneration = 0;
 
   async function configure(options = {}) {
     enabled = options.enabled !== false;
@@ -15,9 +17,8 @@
       removeRenderedHighlights();
       return snapshot();
     }
-    records = await loadRecords();
-    restoreHighlights();
     ensureListeners();
+    await switchPageContext(true);
     return snapshot();
   }
 
@@ -26,17 +27,24 @@
     document.addEventListener("mouseup", handleSelectionGesture, true);
     document.addEventListener("keyup", handleSelectionGesture, true);
     document.addEventListener("pointerdown", handlePointerDown, true);
+    document.addEventListener("focusin", handleFocusIn, true);
+    document.addEventListener("keydown", handleKeyDown, true);
+    globalThis.addEventListener?.("popstate", scheduleContextRestore);
+    globalThis.addEventListener?.("hashchange", scheduleContextRestore);
     observer = new MutationObserver((mutations) => {
-      if (!enabled || mutations.every((mutation) => mutation.target instanceof Element && mutation.target.closest?.("[data-mica-ui], mark[data-mica-highlight-id]"))) return;
-      clearTimeout(restoreTimer);
-      restoreTimer = setTimeout(() => requestIdle(() => restoreHighlights()), 220);
+      if (!enabled || mutations.every(isIgnoredMutation)) return;
+      scheduleContextRestore();
     });
     observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true });
   }
 
   function handleSelectionGesture(event) {
     if (!enabled || isComposerTarget(event.target) || event.target?.closest?.("[data-mica-ui]")) return;
-    queueMicrotask(() => showSelectionAffordance());
+    if (event.type === "keyup" && ["Escape", "Delete", "Backspace"].includes(event.key)) return;
+    queueMicrotask(async () => {
+      await switchPageContext();
+      showSelectionAffordance();
+    });
   }
 
   function handlePointerDown(event) {
@@ -49,18 +57,35 @@
     if (!event.target?.closest?.("[data-mica-ui='highlight-affordance']")) dismissAffordance();
   }
 
+  function handleFocusIn(event) {
+    const mark = event.target instanceof Element ? event.target.closest("mark[data-mica-highlight-id]") : null;
+    if (mark) showRemoveAffordance(mark);
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === "Escape" && affordance) {
+      event.preventDefault();
+      dismissAffordance();
+      return;
+    }
+    const mark = event.target instanceof Element ? event.target.closest("mark[data-mica-highlight-id]") : null;
+    if (!mark || !["Delete", "Backspace"].includes(event.key)) return;
+    event.preventDefault();
+    void removeHighlightById(mark.getAttribute("data-mica-highlight-id"));
+  }
+
   function showSelectionAffordance() {
     dismissAffordance();
     const selection = getSelection();
-    if (!selection || selection.rangeCount !== 1 || selection.isCollapsed) return;
+    if (!selection || selection.rangeCount !== 1 || selection.isCollapsed) return recordFixtureSelection("selection_unavailable");
     const range = selection.getRangeAt(0);
     const answer = commonAnswer(range);
-    if (!answer || range.toString().trim().length < 1) return;
+    if (!answer || range.toString().trim().length < 1) return recordFixtureSelection("answer_or_text_unavailable");
     const anchor = createAnchor(answer, range);
-    if (!anchor) return;
+    if (!anchor) return recordFixtureSelection("anchor_unavailable");
     const rect = range.getBoundingClientRect();
-    if (!rect.width && !rect.height) return;
-    affordance = createAffordance("Highlight", async () => {
+    if (!rect.width && !rect.height) return recordFixtureSelection("geometry_unavailable");
+    const button = createAffordance("Highlight", async () => {
       records.push(anchor);
       await saveRecords(records);
       let rendered = false;
@@ -71,25 +96,28 @@
         error = String(renderError?.name || renderError || "render_error");
       }
       recordFixtureOutcome({ rendered, error });
-      selection.removeAllRanges();
-      dismissAffordance();
+      if (affordance === button) selection.removeAllRanges();
+      dismissAffordance(button);
       dispatchUpdate();
     });
-    positionAffordance(affordance, rect);
+    affordance = button;
+    positionAffordance(button, rect);
+    recordFixtureSelection("ready");
   }
 
   function showRemoveAffordance(mark) {
     dismissAffordance();
     const id = mark.getAttribute("data-mica-highlight-id");
     const rect = mark.getBoundingClientRect();
-    affordance = createAffordance("Remove highlight", async () => {
+    const button = createAffordance("Remove highlight", async () => {
       records = records.filter((record) => record.id !== id);
       await saveRecords(records);
       unwrapHighlight(id);
-      dismissAffordance();
+      dismissAffordance(button);
       dispatchUpdate();
     });
-    positionAffordance(affordance, rect);
+    affordance = button;
+    positionAffordance(button, rect);
   }
 
   function createAffordance(label, action) {
@@ -134,6 +162,10 @@
 
   function restoreHighlights() {
     if (!enabled) return;
+    if (activeStorageKey !== storageKey()) {
+      scheduleContextRestore();
+      return;
+    }
     for (const record of records) {
       if (document.querySelector(`mark[data-mica-highlight-id='${cssEscape(record.id)}']`)) continue;
       renderAnchor(record);
@@ -186,6 +218,8 @@
       const mark = document.createElement("mark");
       mark.dataset.micaHighlightId = id;
       mark.className = "mica-highlight";
+      mark.tabIndex = 0;
+      mark.setAttribute("aria-label", "Highlighted text. Press Delete to remove highlight.");
       range.surroundContents(mark);
     }
   }
@@ -264,11 +298,11 @@
     return `${STORAGE_PREFIX}${encodeURIComponent(`${location.origin}${location.pathname}`)}`;
   }
 
-  function loadRecords() {
+  function loadRecords(key = activeStorageKey || storageKey()) {
     return new Promise((resolve) => {
       const storage = globalThis.chrome?.storage?.local;
       if (!storage) return resolve([]);
-      storage.get({ [storageKey()]: [] }, (items) => resolve(Array.isArray(items[storageKey()]) ? items[storageKey()] : []));
+      storage.get({ [key]: [] }, (items) => resolve(Array.isArray(items[key]) ? items[key] : []));
     });
   }
 
@@ -276,13 +310,52 @@
     return new Promise((resolve) => {
       const storage = globalThis.chrome?.storage?.local;
       if (!storage) return resolve();
-      storage.set({ [storageKey()]: next }, resolve);
+      const key = activeStorageKey;
+      if (!key || key !== storageKey()) return resolve();
+      storage.set({ [key]: next }, resolve);
     });
   }
 
-  function dismissAffordance() {
-    affordance?.remove();
-    affordance = null;
+  function scheduleContextRestore() {
+    clearTimeout(restoreTimer);
+    restoreTimer = setTimeout(() => requestIdle(() => void switchPageContext()), 220);
+  }
+
+  async function switchPageContext(force = false) {
+    const nextKey = storageKey();
+    if (!force && activeStorageKey === nextKey) {
+      restoreHighlights();
+      return;
+    }
+    const generation = ++contextGeneration;
+    dismissAffordance();
+    removeRenderedHighlights();
+    records = [];
+    activeStorageKey = nextKey;
+    const nextRecords = await loadRecords(nextKey);
+    if (generation !== contextGeneration || activeStorageKey !== nextKey || storageKey() !== nextKey) return;
+    records = nextRecords;
+    restoreHighlights();
+    dispatchUpdate();
+  }
+
+  function isIgnoredMutation(mutation) {
+    const target = mutation.target instanceof Element ? mutation.target : mutation.target.parentElement;
+    return !!target?.closest?.("[data-mica-ui], mark[data-mica-highlight-id], form, textarea, input, [contenteditable='true']");
+  }
+
+  async function removeHighlightById(id) {
+    if (!id) return;
+    records = records.filter((record) => record.id !== id);
+    await saveRecords(records);
+    unwrapHighlight(id);
+    dismissAffordance();
+    dispatchUpdate();
+  }
+
+  function dismissAffordance(target = affordance) {
+    target?.remove();
+    if (affordance === target) affordance = null;
   }
 
   function requestIdle(callback) {
@@ -303,6 +376,11 @@
     document.documentElement.dataset.micaHighlightOutcome = JSON.stringify(outcome);
   }
 
+  function recordFixtureSelection(outcome) {
+    if (document.documentElement.dataset.micaFixture !== "true") return;
+    document.documentElement.dataset.micaHighlightSelection = outcome;
+  }
+
   function fingerprint(value) {
     let hash = 2166136261;
     for (const char of String(value).replace(/\s+/g, " ").trim()) {
@@ -316,5 +394,5 @@
     return globalThis.CSS?.escape ? CSS.escape(value) : String(value).replace(/['\\]/g, "\\$&");
   }
 
-  globalThis.MicaHighlighter = { configure, snapshot, restoreHighlights, resolveAnchorPosition, createAnchor, removeHighlight: async (id) => { records = records.filter((record) => record.id !== id); await saveRecords(records); unwrapHighlight(id); } };
+  globalThis.MicaHighlighter = { configure, snapshot, restoreHighlights, resolveAnchorPosition, createAnchor, removeHighlight: removeHighlightById };
 })();

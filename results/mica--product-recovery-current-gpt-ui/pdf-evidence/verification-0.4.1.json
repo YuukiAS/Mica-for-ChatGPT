@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "source": "D:\\Code\\Mica-for-ChatGPT\\output\\pdf\\mica-research-export-0.4.1.pdf",
+  "pages": 3,
+  "wordCount": 790,
+  "textLength": 6261,
+  "fontResources": [
+    "/F10",
+    "/F11",
+    "/F5",
+    "/F6",
+    "/F7",
+    "/F8",
+    "/F9"
+  ],
+  "imageXObjects": 0,
+  "highlightRects": [
+    {
+      "page": 1,
+      "x0": 158.25,
+      "top": 174.75,
+      "width": 51.75,
+      "height": 15.75,
+      "color": [
+        1.0,
+        0.941,
+        0.659
+      ]
+    },
+    {
+      "page": 1,
+      "x0": 210.0,
+      "top": 174.75,
+      "width": 71.25,
+      "height": 15.75,
+      "color": [
+        1.0,
+        0.941,
+        0.659
+      ]
+    }
+  ],
+  "edgeViolations": [],
+  "checks": {
+    "page_count_at_least_2": true,
+    "searchable_title": true,
+    "searchable_long_text": true,
+    "searchable_code": true,
+    "searchable_table": true,
+    "math_copy_source_inline_exact": true,
+    "math_copy_source_display_exact": true,
+    "math_copy_source_ordered": true,
+    "highlighted_text_present": true,
+    "highlight_background_present": true,
+    "font_resources_present": true,
+    "math_not_rasterized": true,
+    "page_boundaries_clean": true,
+    "word_count_substantial": true
+  },
+  "copyableMathSources": {
+    "inline": "TeX source: E=mc^2",
+    "display": "TeX source: \\int_0^1 x^2\\,dx = \\frac{1}{3}"
+  },
+  "passed": true
+}
