@@ -1,0 +1,494 @@
+{
+  "schemaVersion": 1,
+  "bundleKind": "candidate",
+  "acceptanceProfile": "foundation",
+  "candidate": {
+    "commit": "c44c4d1774d8f3f592e4d047b42e6e499dc256ec",
+    "version": "0.2.3",
+    "buildLabel": "product-foundation.4",
+    "distArtifactId": "dist-tree",
+    "distHash": "64a62c29c16f9ebfdbc076da62b5e3ec816f5a4c82083f93c487337ab522d7c2"
+  },
+  "validator": {
+    "version": "1.0.0",
+    "treeHash": "c8ca939a7c4d4a4ec92e0bc6389e61447766d788ca2b59c4b8ffc23de3cd7d92"
+  },
+  "chatgptContractArtifactId": "chatgpt-contract",
+  "chatgptContractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+  "fixtureSetHash": "64ad57139334d8390fa234d89b1c3bc9fec46a6027fe5f486b40720556e4f163",
+  "evidenceSchemaVersion": 1,
+  "evidenceRootHash": "f03b6575b075a822acc7628fd49f99a84da86800aa5fe99e1f42896342f45dce",
+  "reportContext": {
+    "candidateCommit": "c44c4d1774d8f3f592e4d047b42e6e499dc256ec",
+    "distHash": "64a62c29c16f9ebfdbc076da62b5e3ec816f5a4c82083f93c487337ab522d7c2"
+  },
+  "requiredGates": [
+    "candidate-identity",
+    "popup-render",
+    "adapter-contract",
+    "answer-document-core",
+    "copy-placement",
+    "core-flow-regression",
+    "send-lifecycle-safety",
+    "privacy",
+    "packaging-version"
+  ],
+  "artifacts": [
+    {
+      "id": "dist-tree",
+      "path": "artifacts/dist-tree.json",
+      "kind": "application/json",
+      "sha256": "64a62c29c16f9ebfdbc076da62b5e3ec816f5a4c82083f93c487337ab522d7c2"
+    },
+    {
+      "id": "built-manifest",
+      "path": "artifacts/built-manifest.json",
+      "kind": "application/json",
+      "sha256": "8ec36db70241f9880272ddbec885fae3ebf38d7aa8dc8f0824f6811a43ad9773"
+    },
+    {
+      "id": "version-report",
+      "path": "artifacts/version-report.json",
+      "kind": "application/json",
+      "sha256": "7846f3d3fc2eed6a7cf6ae3f0657fb19867c65de4b045b7539b1cdf81cc2191a"
+    },
+    {
+      "id": "chatgpt-contract",
+      "path": "artifacts/chatgpt-contract.json",
+      "kind": "application/json",
+      "sha256": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538"
+    },
+    {
+      "id": "current-chatgpt-bootstrap",
+      "path": "artifacts/current-chatgpt-bootstrap.json",
+      "kind": "application/json",
+      "sha256": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe"
+    },
+    {
+      "id": "foundation-core",
+      "path": "artifacts/foundation-core.json",
+      "kind": "application/json",
+      "sha256": "d477fa012a1b6247db9154ef536c72d7ca6f65a481e32b9fb43959ccc946595e"
+    },
+    {
+      "id": "foundation-flows",
+      "path": "artifacts/foundation-flows.json",
+      "kind": "application/json",
+      "sha256": "23d2b09ba07b9393bf7af0af84271f4ad2519d4d2a718bd4d4fbf2959231dfe5"
+    },
+    {
+      "id": "popup-render",
+      "path": "artifacts/popup-render.json",
+      "kind": "application/json",
+      "sha256": "0b19e7150172bf1f410f710499e3ba58aa2812728d3e20ca21d82f5cd8acafb9"
+    },
+    {
+      "id": "popup-light",
+      "path": "artifacts/popup-light.png",
+      "kind": "image/png",
+      "sha256": "f79d04d34657453b2705334195dd0321b61ca1266a21dbce0ec577b9adffa45b"
+    },
+    {
+      "id": "popup-dark",
+      "path": "artifacts/popup-dark.png",
+      "kind": "image/png",
+      "sha256": "f7a968d887af93c796db456965d583e347e71a0155ffeca6a7233970d3e32ee9"
+    },
+    {
+      "id": "popup-320-150",
+      "path": "artifacts/popup-320-150.png",
+      "kind": "image/png",
+      "sha256": "989e397e35a5c72bd0d54aee36d461a9c79bd2dff5a8689da810da6508de4d4a"
+    },
+    {
+      "id": "popup-400-125",
+      "path": "artifacts/popup-400-125.png",
+      "kind": "image/png",
+      "sha256": "c3438250a828bd2bb761e418edd54ac0b562482c41ceb0ec9974e8b8feb7e7b2"
+    },
+    {
+      "id": "troubleshooting",
+      "path": "artifacts/troubleshooting.png",
+      "kind": "image/png",
+      "sha256": "f41eb0edfa024d9eadeb6424d6d13ed8febadee502e2678d4424cdd24539fb79"
+    },
+    {
+      "id": "developer-qa",
+      "path": "artifacts/developer-qa.png",
+      "kind": "image/png",
+      "sha256": "a2ec1d585ecad70e4410537e620a95c8efd47b1805c5f477c0b1fd9f1962fa75"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "candidate-identity-foundation-evidence",
+      "gateId": "candidate-identity",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "built-extension"
+      },
+      "artifactIds": [
+        "dist-tree",
+        "built-manifest"
+      ],
+      "measurement": {
+        "commit": "c44c4d1774d8f3f592e4d047b42e6e499dc256ec",
+        "distHash": "64a62c29c16f9ebfdbc076da62b5e3ec816f5a4c82083f93c487337ab522d7c2"
+      }
+    },
+    {
+      "id": "popup-render-foundation-evidence",
+      "gateId": "popup-render",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "actual-extension-popup"
+      },
+      "artifactIds": [
+        "popup-render",
+        "popup-light",
+        "popup-dark",
+        "popup-320-150",
+        "popup-400-125",
+        "troubleshooting",
+        "developer-qa"
+      ],
+      "measurement": {
+        "states": [
+          "loading",
+          "exact",
+          "compatible",
+          "unknown",
+          "unsupported",
+          "disabled",
+          "contentUnavailable"
+        ],
+        "widthsPx": [
+          320,
+          340,
+          368,
+          400
+        ],
+        "scalesPercent": [
+          100,
+          125,
+          150
+        ],
+        "keyboard": {
+          "accessibleNames": true,
+          "interactiveCount": 3,
+          "sampledFocus": [
+            "enabled",
+            "troubleshooting-link",
+            "SUMMARY"
+          ],
+          "focusTraversal": true
+        },
+        "secondaryFocus": {
+          "troubleshootingToIndex": true,
+          "qaToTroubleshooting": true
+        },
+        "themeArtifacts": {
+          "light": "popup-light",
+          "dark": "popup-dark"
+        }
+      }
+    },
+    {
+      "id": "adapter-contract-foundation-evidence",
+      "gateId": "adapter-contract",
+      "evidenceClass": "REAL_DERIVED_CURRENT_CHATGPT",
+      "subject": {
+        "surface": "current-chatgpt"
+      },
+      "artifactIds": [
+        "chatgpt-contract",
+        "current-chatgpt-bootstrap",
+        "foundation-core"
+      ],
+      "measurement": {
+        "capabilities": [
+          {
+            "capabilityId": "turns.list",
+            "sourceCapabilityId": "conversation-turn-discovery",
+            "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+            "requiredSourceObservationIds": [
+              "ordered-turn-containers",
+              "role-owned-turns"
+            ],
+            "variantId": "conversation-turn-section-role-v1",
+            "status": "EXACT",
+            "requiredInvariants": [
+              "ordered turn container",
+              "exactly one role owner",
+              "user or assistant role"
+            ],
+            "observedInvariants": [
+              "ordered-turn-containers",
+              "role-owned-turns"
+            ],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": false
+          },
+          {
+            "capabilityId": "answer.read",
+            "sourceCapabilityId": "answer-document-static-block-extraction",
+            "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+            "requiredSourceObservationIds": [
+              "assistant-semantic-blocks"
+            ],
+            "variantId": "assistant-role-semantic-content-v1",
+            "status": "EXACT",
+            "requiredInvariants": [
+              "assistant role ownership",
+              "semantic p/pre/code descendants"
+            ],
+            "observedInvariants": [
+              "assistant-semantic-blocks"
+            ],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": false
+          },
+          {
+            "capabilityId": "answer.actionCluster",
+            "sourceCapabilityId": "answer-document-static-block-extraction",
+            "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+            "requiredSourceObservationIds": [],
+            "variantId": "unproven-v1",
+            "status": "UNKNOWN",
+            "requiredInvariants": [
+              "native copy button",
+              "same assistant turn",
+              "sibling cluster parent"
+            ],
+            "observedInvariants": [],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": true
+          },
+          {
+            "capabilityId": "composer.editor",
+            "sourceCapabilityId": "composer-discovery",
+            "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED_PLUS_LOGGED_OUT",
+            "requiredSourceObservationIds": [
+              "contenteditable-composer",
+              "mobile-textarea-composer"
+            ],
+            "variantId": "prompt-editor-current-variants-v1",
+            "status": "COMPATIBLE",
+            "requiredInvariants": [
+              "variant-specific prompt editor identity",
+              "contenteditable textbox or mobile textarea property"
+            ],
+            "observedInvariants": [
+              "contenteditable-composer",
+              "mobile-textarea-composer"
+            ],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": false
+          },
+          {
+            "capabilityId": "conversation.scrollRoot",
+            "sourceCapabilityId": "native-virtualization-baseline",
+            "sourceEvidenceClass": "NONE",
+            "requiredSourceObservationIds": [],
+            "variantId": "unproven-v1",
+            "status": "UNKNOWN",
+            "requiredInvariants": [
+              "single conversation scroll owner",
+              "stable restoration anchor"
+            ],
+            "observedInvariants": [],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": true
+          },
+          {
+            "capabilityId": "answer.math",
+            "sourceCapabilityId": "math-block-structure",
+            "sourceEvidenceClass": "NONE",
+            "requiredSourceObservationIds": [],
+            "variantId": "unproven-v1",
+            "status": "UNKNOWN",
+            "requiredInvariants": [
+              "raw TeX source",
+              "rendered text",
+              "inline/display distinction"
+            ],
+            "observedInvariants": [],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": true
+          },
+          {
+            "capabilityId": "lifecycle.streamingEditBranchTools",
+            "sourceCapabilityId": "streaming-edit-branch-tools-files-connectors-auth",
+            "sourceEvidenceClass": "NONE",
+            "requiredSourceObservationIds": [],
+            "variantId": "unproven-v1",
+            "status": "UNKNOWN",
+            "requiredInvariants": [
+              "streaming ownership",
+              "edit branch identity",
+              "tool/file/auth boundaries"
+            ],
+            "observedInvariants": [],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "answer-document-core-foundation-evidence",
+      "gateId": "answer-document-core",
+      "evidenceClass": "REAL_DERIVED_CURRENT_CHATGPT",
+      "subject": {
+        "surface": "answer-document"
+      },
+      "artifactIds": [
+        "foundation-core",
+        "chatgpt-contract",
+        "current-chatgpt-bootstrap"
+      ],
+      "measurement": {
+        "documentFields": [
+          "documentId",
+          "conversationId",
+          "turnId",
+          "sourceVersion",
+          "generationState",
+          "orderedBlocks"
+        ],
+        "blockKinds": [
+          "heading",
+          "paragraph",
+          "display_math",
+          "list",
+          "quote",
+          "table",
+          "code",
+          "opaque_interactive",
+          "unknown_block",
+          "text",
+          "inline_math",
+          "link",
+          "citation",
+          "image"
+        ],
+        "streamingIsProvisional": true,
+        "settledIsDurable": true,
+        "unknownLifecycleRejected": true,
+        "opaqueInteractive": true,
+        "singleAdapterProducer": true
+      }
+    },
+    {
+      "id": "copy-placement-foundation-evidence",
+      "gateId": "copy-placement",
+      "evidenceClass": "CURRENT_CHATGPT_READ_ONLY",
+      "subject": {
+        "surface": "assistant-action-cluster"
+      },
+      "artifactIds": [
+        "chatgpt-contract",
+        "current-chatgpt-bootstrap"
+      ],
+      "measurement": {
+        "actionInjected": false,
+        "capabilityStatus": "UNKNOWN",
+        "placementProven": false,
+        "exactAssistantTurn": false,
+        "clusterProven": false,
+        "siblingRelationship": false,
+        "visibleBaseline": false,
+        "failOpen": true
+      }
+    },
+    {
+      "id": "core-flow-regression-foundation-evidence",
+      "gateId": "core-flow-regression",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "local-real-browser"
+      },
+      "artifactIds": [
+        "foundation-flows",
+        "dist-tree"
+      ],
+      "measurement": {
+        "composer": true,
+        "send": true,
+        "streaming": true,
+        "editBranch": true,
+        "connector": true,
+        "toolFileAuth": true
+      }
+    },
+    {
+      "id": "send-lifecycle-safety-foundation-evidence",
+      "gateId": "send-lifecycle-safety",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "local-real-browser"
+      },
+      "artifactIds": [
+        "foundation-flows",
+        "dist-tree"
+      ],
+      "measurement": {
+        "progressObserved": true,
+        "autoResend": false,
+        "consequentialFlowActive": true,
+        "userTurnCommitted": true,
+        "duplicateSend": false
+      }
+    },
+    {
+      "id": "privacy-foundation-evidence",
+      "gateId": "privacy",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "diagnostic-bundle"
+      },
+      "artifactIds": [
+        "foundation-core",
+        "foundation-flows"
+      ],
+      "measurement": {
+        "conversationTextIncluded": false,
+        "attachmentContentIncluded": false,
+        "requestBodyIncluded": false,
+        "authTokenIncluded": false,
+        "rawDomIncluded": false,
+        "flowPrivacyMatches": true
+      }
+    },
+    {
+      "id": "packaging-version-foundation-evidence",
+      "gateId": "packaging-version",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "built-extension"
+      },
+      "artifactIds": [
+        "built-manifest",
+        "version-report"
+      ],
+      "measurement": {
+        "builtManifestArtifactId": "built-manifest",
+        "versionReportArtifactId": "version-report"
+      }
+    }
+  ]
+}

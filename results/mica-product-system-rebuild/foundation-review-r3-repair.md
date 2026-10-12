@@ -1,5 +1,8 @@
 # Foundation independent-review round 3 repair candidate
 
+> Historical candidate: superseded by the round 4 repair after independent
+> review found the placement proof set could still be coherently under-specified.
+
 Date: 2026-10-12
 
 Runtime candidate commit: `697a7cbf000483eda7f20046f9d605d09633e917`
