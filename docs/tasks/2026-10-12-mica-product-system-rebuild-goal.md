@@ -261,11 +261,13 @@ current surface evidence
 
 ---
 
-## 6. Rebuild the visible Mica product shell
+## 6. Freeze the visible Mica product design
 
 完整调用 Frontend Design。
 
-这是 **design-first** 阶段。
+这是 **design-first specification stage**，不是要求现在就先写 popup runtime。
+
+本节先基于 current ChatGPT surface evidence 冻结 UI 目标；实际 product-shell implementation 按 §23 canonical execution order，在 acceptance skeleton、Low Memory feasibility gate、ChatGPTAdapter/AnswerDocument core 建立之后进行。
 
 ### 6.1 Normal popup
 
@@ -331,7 +333,7 @@ Troubleshooting 只提供：
 - popup 不得用 viewport/last-answer/focus history 猜目标 answer；
 - 无法精确识别目标 answer 时，per-answer action 必须明确 unavailable。
 
-Producer 必须先完成真实 render self-review，P1/P2 未清零不得进入独立 review。
+实现阶段的 Producer 必须完成真实 render self-review，P1/P2 未清零不得进入独立 review。
 
 ---
 
