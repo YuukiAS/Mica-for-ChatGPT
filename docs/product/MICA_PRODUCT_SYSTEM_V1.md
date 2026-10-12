@@ -696,24 +696,36 @@ A PDF that merely looks correct is insufficient.
 
 ## 8. Reliability contract
 
-Reliability uses a shared delivery state machine, but the state machine is internal.
+Reliability uses a shared internal state machine, but the user sees only evidence-backed recovery actions.
 
-Product behavior:
+### 8.1 Evidence → action table
+
+| Observed state | Minimum evidence | Automatic action | Prohibited action |
+|---|---|---|---|
+| normal long generation | committed user turn plus continuing structural progress, active tool/status transition, or assistant mutation | none | timeout-based duplicate send |
+| no structural progress for about 60 seconds | committed/unknown send state plus no assistant/tool/status progress during the window | preserve recovery snapshot; begin one bounded recovery cycle; if safe, one reload/refresh may be used to re-establish page truth | immediate duplicate user message |
+| reload shows original user turn was never committed | matching send snapshot, no consequential tool/file/connector/auth state, no later user edit | resend the original turn at most once with per-turn dedupe | more than one resend |
+| reload shows user turn is committed but generation is stalled/disconnected | exact committed turn identity; no consequential state | recover the existing turn/generation through the safest supported same-turn path; if no proven same-turn recovery exists, show one explicit recovery action | create a second user turn automatically |
+| delayed commit arrives after suspicion | matching committed turn appears | cancel pending resend/recovery | send another copy |
+| stale draft remains after confirmed commit | exact commit + composer still matches pre-send snapshot + no later user edit | clear/reconcile stale draft once | clear uncertain or newly edited text |
+| stale/wrong-turn response suspected | new user turn confirmed plus assistant identity/fingerprint evidence | mark/offer bounded confirmation or same-turn regenerate when safe | semantic-guess auto-regenerate |
+| tool/file/connector/auth/consequential flow active | exact consequential-state evidence | observe or notify only | automatic resend/regenerate |
+| unknown structure/state | insufficient evidence | fail open | guessed recovery |
+
+“60 seconds” means **no structural progress**, not merely “no newly visible prose”. The threshold initiates recovery; it does not prove that the prompt was uncommitted.
+
+### 8.2 Recovery invariants
 
 - confirm a new user turn before treating send as committed;
 - preserve drafts when commit is uncertain;
 - never duplicate a consequential send;
-- detect high-confidence stalled/fake-waiting states;
-- recover known safe failures with one bounded action;
-- consequential tool/file/connector/auth flows prohibit automatic resend/regenerate;
+- protect any user input entered after the original send snapshot;
+- automatic reload/retry/resend has an explicit per-turn maximum and dedupe key;
+- a recovery cycle has a kill switch;
+- diagnostics/reliability logic must not add broad DOM scans, serialization, hashing, layout reads or timer churn to the ordinary typing/IME synchronous path;
 - unknown conditions fail-open.
 
-Any automatic recovery must be:
-
-- bounded;
-- deduplicated;
-- kill-switchable;
-- visible after it occurs.
+The visible UI gives one clear next action and does not expose the internal state machine.
 
 ---
 
@@ -786,16 +798,43 @@ No fixture-specific `rejects()` shortcut.
 
 ### 9.5 Fresh actual-surface/rendered Reviewer
 
-Inspects what the user actually consumes:
+Inspects what the user actually consumes and records the evidence class actually reached.
+
+Evidence classes include:
+
+```text
+SYNTHETIC_FIXTURE
+LOCAL_REAL_BROWSER
+CURRENT_CHATGPT_READ_ONLY
+CURRENT_CHATGPT_BOUNDED_ACTION
+TARGET_LOW_MEMORY_DEVICE
+ACTUAL_PDF_VIEWER
+REAL_NOTION_TARGET
+```
+
+Each acceptance requirement declares its minimum evidence class.
+
+The Reviewer inspects, as applicable:
 
 - real extension popup;
 - actual injected UI against current ChatGPT contract;
-- actual PDF;
-- light/dark;
-- relevant width/scale;
-- recovery states.
+- light/dark and relevant width/scale;
+- actual low-memory behavior;
+- actual PDF in a viewer;
+- recovery states;
+- real Notion paste only when Notion is in release scope.
 
-It reviews visuals and interaction semantics, not Producer prose.
+If a mandatory requirement cannot be reached at its minimum evidence class, the result is:
+
+```text
+NOT_INDEPENDENTLY_VERIFIED
+```
+
+not PASS and not automatically a product defect.
+
+The user may perform a one-time login/OS/physical action when genuinely HUMAN_ONLY, but the subsequent routine verification remains the agent/reviewer responsibility whenever the platform supports it.
+
+The Reviewer judges visuals and interaction semantics, not Producer prose or screenshots that are not bound to the exact candidate.
 
 ### 9.6 GPT Work
 
@@ -843,22 +882,42 @@ npm run acceptance:focused -- <feature>
 npm run acceptance:candidate
 ```
 
-The exact command names may vary, but there must be one canonical production path.
+The exact command names may vary, but there is only one production validator path.
 
-The harness covers:
+### 10.1 Freeze model
 
-- candidate identity;
-- current ChatGPT adapter compatibility;
-- popup/render states;
-- low-memory;
-- Copy/Notion serialization;
-- highlighter anchors/remount;
-- PDF visual/text/math/highlight behavior;
-- reliability state transitions;
-- privacy;
-- packaging/version consistency.
+Before feature migration, freeze:
 
-Known-bad regressions should include at least:
+- acceptance schema;
+- candidate identity schema;
+- evidence schema;
+- production validator entrypoint;
+- minimum evidence class for each hard gate;
+- the known-good/known-bad control corpus.
+
+Validator implementation may be repaired during development if the harness itself is proven wrong, but before an authoritative release candidate is frozen record:
+
+```text
+VALIDATOR_VERSION
+VALIDATOR_TREE_HASH
+FIXTURE_SET_HASH
+EVIDENCE_SCHEMA_VERSION
+```
+
+After candidate freeze, changing the candidate, validator, threshold, contract, relevant fixture/control or evidence schema invalidates the affected prior PASS.
+
+### 10.2 Production-path controls
+
+Required:
+
+```text
+KNOWN_BAD_CONTROL = REJECTED
+KNOWN_GOOD_CONTROL = ACCEPTED
+```
+
+Known-good and known-bad controls must enter the same production validation functions as the real candidate. The validator must not branch on fixture names, expected labels or a dedicated `rejects()` switch.
+
+Controls include at least:
 
 - historical Mica Copy action misplacement;
 - connector/composer residual/remount failure;
@@ -867,6 +926,42 @@ Known-bad regressions should include at least:
 - lost highlight after remount;
 - non-selectable inline-math PDF;
 - stale ChatGPT contract accepted as current.
+
+### 10.3 Validator self-integrity controls
+
+The harness must also reject invalid evidence and false closure:
+
+- missing evidence payload;
+- tampered artifact hash;
+- wrong candidate/dist hash;
+- stale prior-candidate report;
+- duplicate screenshot/crop used for distinct required surfaces;
+- wrong page/turn/surface target;
+- hard-coded PASS field with no underlying measurement;
+- evidence root that does not match the manifest;
+- a low-memory report with no measured additional effect;
+- PDF text extraction that passes while real pointer-selection evidence is absent;
+- ChatGPT contract evidence from an older incompatible surface presented as current.
+
+Every PASS is derived from executed evidence, never from a Producer-authored boolean.
+
+The harness must prove that a valid control can pass; an always-rejecting validator is itself a failure.
+
+### 10.4 Coverage
+
+The harness covers:
+
+- candidate identity;
+- current ChatGPT adapter compatibility;
+- popup/render states;
+- low-memory;
+- Copy serialization;
+- highlighter anchors/remount when in scope;
+- PDF visual/text/math/highlight behavior when in scope;
+- Notion real-target behavior when in scope;
+- reliability state transitions;
+- privacy;
+- packaging/version consistency.
 
 ---
 
