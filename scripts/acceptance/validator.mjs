@@ -316,9 +316,27 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
   }
 
   if (kind === "copy-placement") {
-    if (m.actionInjected && !(m.exactAssistantTurn && m.clusterProven && m.siblingRelationship && m.visibleBaseline)) {
-      fail("historical Copy/Mica action misplacement was not rejected");
-    }
+    const contract = await readBoundJson("chatgpt-contract");
+    const bootstrap = await readBoundJson("current-chatgpt-bootstrap");
+    const declared = contract?.capabilities?.find((item) => item.capabilityId === "answer.actionCluster");
+    const sourceCapability = bootstrap?.capabilities?.find((item) => item.id === declared?.sourceCapabilityId);
+    const observationIds = declared?.requiredSourceObservationIds || [];
+    const placementProven = declared?.status === "EXACT" && observationIds.length > 0 && observationIds.every((id) => {
+      const observation = sourceCapability?.observations?.find((item) => item.id === id);
+      return observation && bootstrapObservationPasses(bootstrap, observation);
+    });
+    const expected = {
+      actionInjected: false,
+      capabilityStatus: declared?.status || "UNKNOWN",
+      placementProven,
+      exactAssistantTurn: placementProven,
+      clusterProven: placementProven,
+      siblingRelationship: placementProven,
+      visibleBaseline: placementProven,
+      failOpen: !placementProven
+    };
+    if (!sameJson(m, expected)) fail("copy placement measurement is not mechanically derived from the bound contract/bootstrap evidence");
+    if (m.actionInjected && !placementProven) fail("historical Copy/Mica action misplacement was not rejected");
     return;
   }
 
@@ -568,7 +586,7 @@ function readPath(value, dottedPath) {
 function bootstrapStatusSupportsContract(bootstrapStatus, contractStatus) {
   if (contractStatus === "EXACT") return bootstrapStatus === "EXACT" || bootstrapStatus === "EXACT_FOR_OBSERVED_BLOCKS";
   if (contractStatus === "COMPATIBLE") return bootstrapStatus === "COMPATIBLE" || bootstrapStatus === "EXACT";
-  if (contractStatus === "UNKNOWN") return bootstrapStatus === "UNOBSERVED" || bootstrapStatus === "UNKNOWN_FAIL_OPEN";
+  if (contractStatus === "UNKNOWN") return ["EXACT", "EXACT_FOR_OBSERVED_BLOCKS", "COMPATIBLE", "UNOBSERVED", "UNKNOWN_FAIL_OPEN"].includes(bootstrapStatus);
   return false;
 }
 

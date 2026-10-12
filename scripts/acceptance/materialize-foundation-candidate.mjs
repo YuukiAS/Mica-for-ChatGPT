@@ -84,6 +84,13 @@ const foundationFlows = JSON.parse(await readFile(path.join(bundleDir, "artifact
 const contractHash = artifactHash("chatgpt-contract");
 const bootstrapHash = artifactHash("current-chatgpt-bootstrap");
 const distHash = artifactHash("dist-tree");
+const actionClusterContract = contract.capabilities?.find((item) => item.capabilityId === "answer.actionCluster");
+const actionClusterSource = bootstrap.capabilities?.find((item) => item.id === actionClusterContract?.sourceCapabilityId);
+const actionClusterObservationIds = actionClusterContract?.requiredSourceObservationIds || [];
+const placementProven = actionClusterContract?.status === "EXACT" && actionClusterObservationIds.length > 0 && actionClusterObservationIds.every((id) => {
+  const observation = actionClusterSource?.observations?.find((item) => item.id === id);
+  return observation && bootstrapObservationPasses(bootstrap, observation);
+});
 const requiredGates = [
   "candidate-identity",
   "popup-render",
@@ -141,10 +148,13 @@ const evidence = [
   }),
   record("copy-placement", "CURRENT_CHATGPT_READ_ONLY", { surface: "assistant-action-cluster" }, ["chatgpt-contract", "current-chatgpt-bootstrap"], {
     actionInjected: false,
-    exactAssistantTurn: true,
-    clusterProven: true,
-    siblingRelationship: true,
-    visibleBaseline: true
+    capabilityStatus: actionClusterContract?.status || "UNKNOWN",
+    placementProven,
+    exactAssistantTurn: placementProven,
+    clusterProven: placementProven,
+    siblingRelationship: placementProven,
+    visibleBaseline: placementProven,
+    failOpen: !placementProven
   }),
   record("core-flow-regression", "LOCAL_REAL_BROWSER", { surface: "local-real-browser" }, ["foundation-flows", "dist-tree"], {
     ...foundationFlows.coreFlows

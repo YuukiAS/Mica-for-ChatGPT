@@ -29,11 +29,12 @@
       "capabilityId": "answer.actionCluster",
       "sourceCapabilityId": "answer-document-static-block-extraction",
       "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
-      "requiredSourceObservationIds": ["native-copy-action"],
-      "variantId": "native-copy-button-parent-v1",
-      "status": "EXACT",
+      "requiredSourceObservationIds": [],
+      "variantId": "unproven-v1",
+      "status": "UNKNOWN",
       "requiredInvariants": ["native copy button", "same assistant turn", "sibling cluster parent"],
-      "selectors": ["[data-testid='copy-turn-action-button']"]
+      "selectors": ["[data-testid='copy-turn-action-button']"],
+      "failOpen": true
     },
     {
       "capabilityId": "composer.editor",

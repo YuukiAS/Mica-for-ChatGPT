@@ -1,6 +1,6 @@
 (() => {
   const CONTRACT_ID = "chatgpt-current-2026-10-12-v1";
-  const CONTRACT_HASH = "2ca0f3276af681b5d721101e4b15145547f8a457b77159dc76f5f2d592ba068b";
+  const CONTRACT_HASH = "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538";
   const CONTRACT_VERSION = 1;
   const CURRENT_TURN_SELECTOR = "section[data-testid^='conversation-turn-']";
   const FIXTURE_TURN_SELECTOR = "[data-testid^='conversation-turn-']";
@@ -85,6 +85,7 @@
 
   function findAssistantActionCluster(turn) {
     if (!turn || turn.role !== "assistant" || !(turn.element instanceof HTMLElement)) return null;
+    if (!isFixture(turn.element.ownerDocument)) return null;
     const action = turn.element.querySelector(COPY_ACTION_SELECTOR);
     if (!(action instanceof HTMLElement) || !turn.element.contains(action)) return null;
     const cluster = action.parentElement;
@@ -126,11 +127,11 @@
         "assistant role ownership",
         "semantic content root"
       ], assistantTurns.length > 0 ? null : "No contract-valid assistant answer was observed."),
-      capability("answer.actionCluster", "native-copy-button-parent-v1", actionClusters.length > 0 ? "EXACT" : "UNKNOWN", [
+      capability("answer.actionCluster", actionClusters.length > 0 ? "native-copy-button-parent-v1" : "unproven-v1", actionClusters.length > 0 ? "EXACT" : "UNKNOWN", actionClusters.length > 0 ? [
         "native copy button",
         "same assistant turn",
         "sibling cluster parent"
-      ], actionClusters.length > 0 ? null : "No safe native action cluster was observed."),
+      ] : [], actionClusters.length > 0 ? null : "Current-site action-cluster placement is not proven; Mica will not inject."),
       capability("composer.editor", composer?.variantId || "prompt-editor-current-variants-v1", composer ? (isFixture(doc) ? "EXACT" : "COMPATIBLE") : "UNKNOWN", composer ? [
         "prompt editor identity",
         "authoritative editor property"

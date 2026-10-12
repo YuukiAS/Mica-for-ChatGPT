@@ -83,7 +83,17 @@ export async function runControlCorpus(repoRoot) {
       refreshRoot(manifest);
     }],
     ["evidence-root-mismatch", async ({ manifest }) => { manifest.evidenceRootHash = "0".repeat(64); }],
-    ["historical-copy-misplacement", async ({ manifest }) => { evidence(manifest, "copy-placement").measurement.clusterProven = false; refreshRoot(manifest); }],
+    ["historical-copy-misplacement", async ({ manifest }) => { evidence(manifest, "copy-placement").measurement.actionInjected = true; refreshRoot(manifest); }],
+    ["fabricated-copy-placement-proof", async ({ manifest }) => {
+      const measurement = evidence(manifest, "copy-placement").measurement;
+      measurement.placementProven = true;
+      measurement.exactAssistantTurn = true;
+      measurement.clusterProven = true;
+      measurement.siblingRelationship = true;
+      measurement.visibleBaseline = true;
+      measurement.failOpen = false;
+      refreshRoot(manifest);
+    }],
     ["connector-residual-remount-regression", async ({ manifest }) => { evidence(manifest, "core-flow-regression").measurement.connector = false; refreshRoot(manifest); }],
     ["fake-waiting-send-lifecycle", async ({ manifest }) => { const m = evidence(manifest, "send-lifecycle-safety").measurement; m.progressObserved = true; m.autoResend = true; refreshRoot(manifest); }],
     ["low-memory-no-op", async ({ manifest }) => {
@@ -162,11 +172,17 @@ async function createGoodBundle(repoRoot) {
     ["popup-light", "artifacts/popup-light.png", "image/png", "known-good-popup-light"],
     ["popup-dark", "artifacts/popup-dark.png", "image/png", "known-good-popup-dark"],
     ["chatgpt-contract", "artifacts/chatgpt-contract.json", "application/json", JSON.stringify({
-      capabilities: [{ capabilityId: "turns.list", sourceCapabilityId: "conversation-turn-discovery", sourceEvidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", requiredSourceObservationIds: ["ordered-turn-containers"], variantId: "public-shared-v1", status: "EXACT", requiredInvariants: ["ordered turns", "role ownership"] }]
+      capabilities: [
+        { capabilityId: "turns.list", sourceCapabilityId: "conversation-turn-discovery", sourceEvidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", requiredSourceObservationIds: ["ordered-turn-containers"], variantId: "public-shared-v1", status: "EXACT", requiredInvariants: ["ordered turns", "role ownership"] },
+        { capabilityId: "answer.actionCluster", sourceCapabilityId: "answer-document-static-block-extraction", sourceEvidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", requiredSourceObservationIds: [], variantId: "unproven-v1", status: "UNKNOWN", requiredInvariants: ["native copy button", "same assistant turn", "sibling cluster parent"], failOpen: true }
+      ]
     })],
     ["current-chatgpt-bootstrap", "artifacts/current-chatgpt-bootstrap.json", "application/json", JSON.stringify({
       surfaces: [{ id: "public-shared-conversation", evidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", observed: { turnContainer: { mountedCount: 7 } } }],
-      capabilities: [{ id: "conversation-turn-discovery", status: "EXACT", evidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", observations: [{ id: "ordered-turn-containers", assertions: [{ surfaceId: "public-shared-conversation", path: "observed.turnContainer.mountedCount", equals: 7 }] }] }],
+      capabilities: [
+        { id: "conversation-turn-discovery", status: "EXACT", evidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", observations: [{ id: "ordered-turn-containers", assertions: [{ surfaceId: "public-shared-conversation", path: "observed.turnContainer.mountedCount", equals: 7 }] }] },
+        { id: "answer-document-static-block-extraction", status: "EXACT_FOR_OBSERVED_BLOCKS", evidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", observations: [] }
+      ],
       gate: { bootstrapEvidence: "PASS", oldSurfaceAtlasUsedAsCurrentEvidence: false }
     })],
     ["pdf", "artifacts/output.pdf", "application/pdf", "%PDF-control-selectable-math"],
@@ -233,19 +249,35 @@ async function createGoodBundle(repoRoot) {
       themeArtifacts: { light: "popup-light", dark: "popup-dark" }
     }),
     record("adapter-contract", { surface: "current-chatgpt" }, ["chatgpt-contract", "current-chatgpt-bootstrap", "foundation-core"], {
-      capabilities: [{
-        capabilityId: "turns.list",
-        sourceCapabilityId: "conversation-turn-discovery",
-        sourceEvidenceClass: "REAL_CHATGPT_PUBLIC_SHARED",
-        requiredSourceObservationIds: ["ordered-turn-containers"],
-        variantId: "public-shared-v1",
-        status: "EXACT",
-        requiredInvariants: ["ordered turns", "role ownership"],
-        observedInvariants: ["ordered-turn-containers"],
-        contractHash,
-        sourceArtifactHash: bootstrapHash,
-        invalidatedBy: []
-      }]
+      capabilities: [
+        {
+          capabilityId: "turns.list",
+          sourceCapabilityId: "conversation-turn-discovery",
+          sourceEvidenceClass: "REAL_CHATGPT_PUBLIC_SHARED",
+          requiredSourceObservationIds: ["ordered-turn-containers"],
+          variantId: "public-shared-v1",
+          status: "EXACT",
+          requiredInvariants: ["ordered turns", "role ownership"],
+          observedInvariants: ["ordered-turn-containers"],
+          contractHash,
+          sourceArtifactHash: bootstrapHash,
+          invalidatedBy: []
+        },
+        {
+          capabilityId: "answer.actionCluster",
+          sourceCapabilityId: "answer-document-static-block-extraction",
+          sourceEvidenceClass: "REAL_CHATGPT_PUBLIC_SHARED",
+          requiredSourceObservationIds: [],
+          variantId: "unproven-v1",
+          status: "UNKNOWN",
+          requiredInvariants: ["native copy button", "same assistant turn", "sibling cluster parent"],
+          observedInvariants: [],
+          contractHash,
+          sourceArtifactHash: bootstrapHash,
+          invalidatedBy: [],
+          failOpen: true
+        }
+      ]
     }),
     record("answer-document-core", { surface: "answer-document" }, ["foundation-core", "chatgpt-contract"], {
       documentFields: ["documentId", "conversationId", "turnId", "sourceVersion", "generationState", "orderedBlocks"],
@@ -267,12 +299,15 @@ async function createGoodBundle(repoRoot) {
         { id: "mixed-math-code-table", expectedArtifactId: "copy-mixed-expected", actualArtifactId: "copy-mixed-actual" }
       ]
     }),
-    record("copy-placement", { surface: "assistant-action-cluster" }, ["chatgpt-contract"], {
-      actionInjected: true,
-      exactAssistantTurn: true,
-      clusterProven: true,
-      siblingRelationship: true,
-      visibleBaseline: true
+    record("copy-placement", { surface: "assistant-action-cluster" }, ["chatgpt-contract", "current-chatgpt-bootstrap"], {
+      actionInjected: false,
+      capabilityStatus: "UNKNOWN",
+      placementProven: false,
+      exactAssistantTurn: false,
+      clusterProven: false,
+      siblingRelationship: false,
+      visibleBaseline: false,
+      failOpen: true
     }),
     record("core-flow-regression", { surface: "local-real-browser" }, ["foundation-flows", "dist"], {
       composer: true,

@@ -1,8 +1,8 @@
 (() => {
-  const VERSION = "0.2.2";
-  const VERSION_NAME = "0.2.2";
-  const BUILD_LABEL = "product-foundation.3";
-  const CONTRACT_HASH = "2ca0f3276af681b5d721101e4b15145547f8a457b77159dc76f5f2d592ba068b";
+  const VERSION = "0.2.3";
+  const VERSION_NAME = "0.2.3";
+  const BUILD_LABEL = "product-foundation.4";
+  const CONTRACT_HASH = "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538";
   const DEFAULT_SETTINGS = Object.freeze({ enabled: true });
   const STORAGE_KEYS = Object.keys(DEFAULT_SETTINGS);
   const adapter = globalThis.MicaChatGPTAdapter;
