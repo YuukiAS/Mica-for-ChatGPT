@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "frozenAt": "2026-10-12",
+  "authority": "docs/product/MICA_PRODUCT_SYSTEM_V1.md",
+  "implementationSpec": "docs/product/MICA_FOUNDATION_UI_FREEZE.md",
+  "route": "S3_PRODUCT_REDESIGN",
+  "visualDirection": {
+    "name": "mineral Swiss / quiet utility",
+    "differentiator": "layered Mica stratum mark and three-layer status rail",
+    "forbidden": ["decorative gradients", "glass panels", "large feature cards", "fake telemetry", "persistent page status dot"]
+  },
+  "primitiveTokens": {
+    "color": {
+      "paper50": "#F7F6F2",
+      "paper100": "#EFEDE7",
+      "graphite900": "#171918",
+      "graphite700": "#424744",
+      "graphite500": "#686D69",
+      "mineral700": "#0F6B66",
+      "mineral300": "#78C8BE",
+      "amber700": "#8A5500",
+      "green700": "#237A57",
+      "red700": "#B42318",
+      "blue600": "#0B74DE",
+      "white": "#FFFFFF",
+      "black": "#000000"
+    },
+    "spacePx": [0, 4, 6, 8, 12, 16, 20, 24, 32],
+    "radiusPx": {"control": 8, "row": 10, "panel": 12, "pill": 999},
+    "typePx": {"caption": 11, "status": 12, "body": 13, "title": 16},
+    "motionMs": {"fast": 120, "normal": 180}
+  },
+  "semanticTokens": {
+    "light": {
+      "background": "#F7F6F2",
+      "surface": "#FFFFFF",
+      "foreground": "#171918",
+      "mutedForeground": "#5B605C",
+      "border": "#D8DAD6",
+      "primary": "#0F6B66",
+      "primaryForeground": "#FFFFFF",
+      "focus": "#0B74DE",
+      "success": "#237A57",
+      "warning": "#8A5500",
+      "danger": "#B42318"
+    },
+    "dark": {
+      "background": "#151816",
+      "surface": "#1E2220",
+      "foreground": "#F4F3EE",
+      "mutedForeground": "#B7BDB8",
+      "border": "#3A403C",
+      "primary": "#78C8BE",
+      "primaryForeground": "#10201D",
+      "focus": "#74B9FF",
+      "success": "#78C99C",
+      "warning": "#F2B85B",
+      "danger": "#FF9B91"
+    }
+  },
+  "componentTokens": {
+    "popup": {"targetWidthPx": 368, "minWidthPx": 320, "maxWidthPx": 400, "paddingPx": 16},
+    "row": {"minHeightPx": 52, "compactMinHeightPx": 44, "gapPx": 12},
+    "control": {"minHitTargetPx": 40, "focusWidthPx": 2, "focusOffsetPx": 2},
+    "answerEntry": {"sizePx": 32, "label": "Mica actions"}
+  },
+  "surfaces": {
+    "normalPopup": ["header", "compatibility", "lowMemory", "reuseAnswersWhenShipped", "pageHealth", "troubleshooting", "version", "advanced"],
+    "troubleshooting": ["compatibilitySummary", "lowMemoryState", "recentRecovery", "selfCheck", "diagnosticExport", "fullHistoryWhenApplicable", "privacyNote", "developerQaWhenDev"],
+    "developerQa": ["buildIdentity", "adapterVariant", "capabilityStatuses", "contractIdentity", "compatibilityRefresh", "focusedChecks", "sanitizedExport"]
+  },
+  "requiredStates": ["loading", "exact", "compatible", "unknown", "unsupported", "disabled", "contentUnavailable", "restoring", "restoreError"],
+  "acceptance": {
+    "widthsPx": [320, 340, 368, 400],
+    "scalesPercent": [100, 125, 150],
+    "themes": ["light", "dark"],
+    "keyboard": true,
+    "reducedMotion": true,
+    "actualBuiltExtensionRequired": true,
+    "staticMockSufficient": false
+  },
+  "contrastChecks": [
+    {"foreground": "#171918", "background": "#F7F6F2", "ratio": 16.34},
+    {"foreground": "#5B605C", "background": "#F7F6F2", "ratio": 5.93},
+    {"foreground": "#FFFFFF", "background": "#0F6B66", "ratio": 6.33},
+    {"foreground": "#F4F3EE", "background": "#151816", "ratio": 16.1},
+    {"foreground": "#B7BDB8", "background": "#151816", "ratio": 9.36},
+    {"foreground": "#10201D", "background": "#78C8BE", "ratio": 8.67}
+  ],
+  "gate": {
+    "uiDesignFreeze": "PASS",
+    "productUiCopyFreeze": "PASS",
+    "implementationStarted": false
+  }
+}
