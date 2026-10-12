@@ -1,5 +1,9 @@
 # Foundation Gate
 
+> Historical candidate only. Independent review returned `REVISE`; this
+> automated result is superseded by the repaired `0.2.1` candidate documented
+> in `foundation-review-r1-repair.md`.
+
 Date: 2026-10-12
 
 Candidate runtime commit: `63b62c96f2f35a3a4dedac007e8c4ff352f8c0e5`

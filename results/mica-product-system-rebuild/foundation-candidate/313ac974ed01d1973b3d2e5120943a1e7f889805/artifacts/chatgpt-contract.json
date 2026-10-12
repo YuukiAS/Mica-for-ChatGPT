@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "contractId": "chatgpt-current-2026-10-12-v1",
+  "observedAt": "2026-10-12",
+  "sourceEvidence": "docs/investigations/2026-10-12-current-chatgpt-surface-bootstrap.md",
+  "surface": "public-shared-conversation",
+  "capabilities": [
+    {
+      "capabilityId": "turns.list",
+      "sourceCapabilityId": "conversation-turn-discovery",
+      "variantId": "conversation-turn-section-role-v1",
+      "status": "EXACT",
+      "requiredInvariants": ["ordered turn container", "exactly one role owner", "user or assistant role"],
+      "selectors": ["section[data-testid^='conversation-turn-']", "[data-message-author-role]"]
+    },
+    {
+      "capabilityId": "answer.read",
+      "sourceCapabilityId": "answer-document-static-block-extraction",
+      "variantId": "assistant-role-semantic-content-v1",
+      "status": "EXACT",
+      "requiredInvariants": ["assistant role ownership", "semantic p/pre/code descendants"],
+      "selectors": ["[data-message-author-role='assistant']"]
+    },
+    {
+      "capabilityId": "answer.actionCluster",
+      "sourceCapabilityId": "answer-document-static-block-extraction",
+      "variantId": "native-copy-button-parent-v1",
+      "status": "EXACT",
+      "requiredInvariants": ["native copy button", "same assistant turn", "sibling cluster parent"],
+      "selectors": ["[data-testid='copy-turn-action-button']"]
+    },
+    {
+      "capabilityId": "composer.editor",
+      "sourceCapabilityId": "composer-discovery",
+      "variantId": "prompt-editor-current-variants-v1",
+      "variantIds": ["prompt-textarea-contenteditable-v1", "mobile-composer-textarea-v1"],
+      "status": "COMPATIBLE",
+      "requiredInvariants": ["variant-specific prompt editor identity", "contenteditable textbox or mobile textarea property"],
+      "selectors": ["#prompt-textarea[role='textbox'][contenteditable='true']", "textarea#mobile-composer-prompt"]
+    },
+    {
+      "capabilityId": "conversation.scrollRoot",
+      "sourceCapabilityId": "native-virtualization-baseline",
+      "variantId": "unproven-v1",
+      "status": "UNKNOWN",
+      "requiredInvariants": ["single conversation scroll owner", "stable restoration anchor"],
+      "failOpen": true
+    },
+    {
+      "capabilityId": "answer.math",
+      "sourceCapabilityId": "math-block-structure",
+      "variantId": "unproven-v1",
+      "status": "UNKNOWN",
+      "requiredInvariants": ["raw TeX source", "rendered text", "inline/display distinction"],
+      "failOpen": true
+    },
+    {
+      "capabilityId": "lifecycle.streamingEditBranchTools",
+      "sourceCapabilityId": "streaming-edit-branch-tools-files-connectors-auth",
+      "variantId": "unproven-v1",
+      "status": "UNKNOWN",
+      "requiredInvariants": ["streaming ownership", "edit branch identity", "tool/file/auth boundaries"],
+      "failOpen": true
+    }
+  ],
+  "invalidationRules": [
+    "missing role ownership",
+    "multiple role owners in one turn",
+    "copy action outside the assistant turn",
+    "composer identity or property mismatch",
+    "newer current-surface evidence contradicts an invariant"
+  ]
+}

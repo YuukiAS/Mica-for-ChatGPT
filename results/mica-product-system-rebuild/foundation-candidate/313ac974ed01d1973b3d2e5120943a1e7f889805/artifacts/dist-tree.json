@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "path": "answer-document.js",
+      "sha256": "848363644a6e580b8935f2dc13ee8689d20c8ce9bdef083b59ab519b7b848e1c"
+    },
+    {
+      "path": "chatgpt-adapter.js",
+      "sha256": "59de3158898d754efc05167c919df9078778ce96a749777d9487df3aa7b73a5a"
+    },
+    {
+      "path": "content.js",
+      "sha256": "ca4d56f29b96284f9048d869f121e101523e13f8be73a07a81f79e5a30769747"
+    },
+    {
+      "path": "icons/icon128.png",
+      "sha256": "a3170791f4b1b371d3bac9916c66e6baad0d1d6b444b9c7c021f173cf1d64a83"
+    },
+    {
+      "path": "icons/icon16.png",
+      "sha256": "69ca20dd42eefd513adc8ae25a1f1d6bcaf764fecb5ac8d37a6e43f848aeff2d"
+    },
+    {
+      "path": "icons/icon32.png",
+      "sha256": "aac5ea0ac47d6bd08e95b58d75a75817db4f3c8f9926683b7c42b2cfdfd6087e"
+    },
+    {
+      "path": "icons/icon48.png",
+      "sha256": "4190beb19d6e36199f44b893993a880a3e2e0e74894946a4f7b66dccb973bcae"
+    },
+    {
+      "path": "icons/icon512.png",
+      "sha256": "9e8f9ff9e10f20157a8dde785dade1287a58a354f848232241255485a2f777b2"
+    },
+    {
+      "path": "manifest.json",
+      "sha256": "980520c76931fe8ca15abc96ed8c8f54772969cfc6f2729364e42709e2671f48"
+    },
+    {
+      "path": "popup/index.html",
+      "sha256": "81df63bcc107b54ce7a5a69516460f789d311633524db47649ef984aa9452274"
+    },
+    {
+      "path": "popup/popup.css",
+      "sha256": "01c540298911926817f659316d0c91d069d8f3ff36484f959f938673524231db"
+    },
+    {
+      "path": "popup/popup.js",
+      "sha256": "e9999233c0fe7280faecd460da02e29ba998f78db639b422d8223d6ab36065bd"
+    },
+    {
+      "path": "popup/qa.html",
+      "sha256": "2217f26069064a2d3a255e1a28fcc0404334e312d368f1a8aead5fe19622de65"
+    },
+    {
+      "path": "popup/qa.js",
+      "sha256": "1b1881fc9902a21302066a2b80189751992fc08ea4e9de7c6ca6ab42c58c1f13"
+    },
+    {
+      "path": "popup/troubleshooting.html",
+      "sha256": "d7b13ed21438202e22b55702b755919d4d6c15efb448fa1128d8d9e69b908011"
+    },
+    {
+      "path": "popup/troubleshooting.js",
+      "sha256": "aa4f393d1ed31da342fa84c7ad6c005d616432c0cd1df82946227cab64219d5f"
+    }
+  ]
+}
