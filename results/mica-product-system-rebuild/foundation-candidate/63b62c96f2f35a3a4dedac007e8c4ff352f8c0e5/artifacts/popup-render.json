@@ -1,0 +1,87 @@
+{
+  "passed": true,
+  "states": [
+    "loading",
+    "exact",
+    "compatible",
+    "unknown",
+    "unsupported",
+    "disabled",
+    "contentUnavailable"
+  ],
+  "widthsPx": [
+    320,
+    340,
+    368,
+    400
+  ],
+  "scalesPercent": [
+    100,
+    125,
+    150
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "keyboard": {
+    "accessibleNames": true,
+    "interactiveCount": 3,
+    "sampledFocus": [
+      "enabled",
+      "troubleshooting-link",
+      "SUMMARY"
+    ],
+    "focusTraversal": true
+  },
+  "screenshots": [
+    {
+      "state": "exact",
+      "width": 368,
+      "scale": 1,
+      "colorScheme": "light",
+      "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/exact-light-368-100.png",
+      "screenshotSha256": "0f6aea71de3600219ce8d030745f2df1eb0d2c463aa2ad2f8523af766b08c4f5"
+    },
+    {
+      "state": "unknown",
+      "width": 368,
+      "scale": 1,
+      "colorScheme": "dark",
+      "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/unknown-dark-368-100.png",
+      "screenshotSha256": "05fe95f4aa7ffd2342565e283454a43f0179346b6acbf5449c69e9a46e229328"
+    },
+    {
+      "state": "compatible",
+      "width": 320,
+      "scale": 1.5,
+      "colorScheme": "light",
+      "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/compatible-light-320-150.png",
+      "screenshotSha256": "dbcbd37fb6ee352f350f49adf33bdbb52e2826455b48169bdae541a0f4501a9e"
+    },
+    {
+      "state": "contentUnavailable",
+      "width": 400,
+      "scale": 1.25,
+      "colorScheme": "dark",
+      "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/contentUnavailable-dark-400-125.png",
+      "screenshotSha256": "3ff3301616cde23687ed7635ab35aa15301f3db2c725ec248be71a1deed43fb7"
+    }
+  ],
+  "secondaryViews": {
+    "troubleshooting": {
+      "labelsPresent": true,
+      "headingFocused": true,
+      "horizontalOverflow": 0,
+      "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/troubleshooting-light-368-100.png",
+      "screenshotSha256": "f41eb0edfa024d9eadeb6424d6d13ed8febadee502e2678d4424cdd24539fb79"
+    },
+    "developerQa": {
+      "labelsPresent": true,
+      "headingFocused": true,
+      "horizontalOverflow": 0,
+      "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/qa-light-368-100.png",
+      "screenshotSha256": "7819c10b1410b88987c19b20c4ad0a5bf06df2351b09b862ce898ea17ab7c04b"
+    }
+  }
+}

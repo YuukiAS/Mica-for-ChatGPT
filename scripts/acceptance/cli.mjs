@@ -33,7 +33,7 @@ if (command === "preflight") {
   const bundleDir = path.resolve(repoRoot, bundleArg);
   const gates = command === "focused" ? valuesAfter(args, "--gate") : null;
   if (command === "focused" && gates.length === 0) throw new Error("focused requires at least one --gate <gate-id>");
-  const validation = await validateBundle(repoRoot, bundleDir, gates.length > 0 ? gates : null, { expectedBundleKind: "candidate" });
+  const validation = await validateBundle(repoRoot, bundleDir, gates?.length ? gates : null, { expectedBundleKind: "candidate" });
   console.log(JSON.stringify({ command, bundleDir, ...validation }, null, 2));
   if (!validation.ok) process.exitCode = 1;
 } else {

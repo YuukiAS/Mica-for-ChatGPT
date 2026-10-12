@@ -1,0 +1,38 @@
+{
+  "passed": true,
+  "contractHash": "cc6f89fc65d4c36da2f859618ec7dc61efa3ceafd336a21a997ef93d5572bd7f",
+  "status": "EXACT",
+  "blockKinds": [
+    "heading",
+    "paragraph",
+    "display_math",
+    "list",
+    "quote",
+    "table",
+    "code",
+    "opaque_interactive",
+    "unknown_block"
+  ],
+  "inlineKinds": [
+    "text",
+    "inline_math",
+    "link",
+    "citation",
+    "image"
+  ],
+  "invalidStructureStatus": "UNKNOWN",
+  "privacy": {
+    "conversationTextIncluded": false,
+    "attachmentContentIncluded": false,
+    "requestBodyIncluded": false,
+    "authTokenIncluded": false,
+    "rawDomIncluded": false
+  },
+  "typingHotPath": {
+    "synchronousDocumentQueries": 0
+  },
+  "disabledRuntime": {
+    "enabled": false,
+    "observerActive": false
+  }
+}

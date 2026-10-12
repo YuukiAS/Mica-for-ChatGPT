@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "path": "answer-document.js",
+      "sha256": "bba32f3bf8fe22cccc3f9037d13d027ef5d6bd42e6bc0507bbf33a54436f14fa"
+    },
+    {
+      "path": "chatgpt-adapter.js",
+      "sha256": "b7b95623f04a4a669c01c3e971b1c87c862954a04a1272180a4aaceb6e1b4d05"
+    },
+    {
+      "path": "content.js",
+      "sha256": "dd61785a08f251a2df24ecc4c453fae98950c79fd63ecd526ad669602cf357a3"
+    },
+    {
+      "path": "icons/icon128.png",
+      "sha256": "a3170791f4b1b371d3bac9916c66e6baad0d1d6b444b9c7c021f173cf1d64a83"
+    },
+    {
+      "path": "icons/icon16.png",
+      "sha256": "69ca20dd42eefd513adc8ae25a1f1d6bcaf764fecb5ac8d37a6e43f848aeff2d"
+    },
+    {
+      "path": "icons/icon32.png",
+      "sha256": "aac5ea0ac47d6bd08e95b58d75a75817db4f3c8f9926683b7c42b2cfdfd6087e"
+    },
+    {
+      "path": "icons/icon48.png",
+      "sha256": "4190beb19d6e36199f44b893993a880a3e2e0e74894946a4f7b66dccb973bcae"
+    },
+    {
+      "path": "icons/icon512.png",
+      "sha256": "9e8f9ff9e10f20157a8dde785dade1287a58a354f848232241255485a2f777b2"
+    },
+    {
+      "path": "manifest.json",
+      "sha256": "99914d26048f25552bb3e599fe636f39af133fbfe175db09b85aaae3f428dd00"
+    },
+    {
+      "path": "popup/index.html",
+      "sha256": "cdb8ce10374dfec7a01916df76b661c71e70ff72d044a3446034bcb5cf78a980"
+    },
+    {
+      "path": "popup/popup.css",
+      "sha256": "01c540298911926817f659316d0c91d069d8f3ff36484f959f938673524231db"
+    },
+    {
+      "path": "popup/popup.js",
+      "sha256": "dbc98325cd36bdbbb8bafca1663a3b057ad978960cd3c3ae548c49ab065b8b7d"
+    },
+    {
+      "path": "popup/qa.html",
+      "sha256": "97ce50adaa899f279d1b1d26aedee1c7f7bf947f6a8a0e20a5a9a33cd15b5f93"
+    },
+    {
+      "path": "popup/qa.js",
+      "sha256": "cedaa4514c3eda71eb7f8fd7a2c33a5b9136914b6a70edcf3cc83568e37beda8"
+    },
+    {
+      "path": "popup/troubleshooting.html",
+      "sha256": "23c429057a719edc96b2e2198e52cd88caff6ec78598b35e02f64156199bb940"
+    },
+    {
+      "path": "popup/troubleshooting.js",
+      "sha256": "6c283daaaeb7e5c845e4f88f7ea9ffd44263a69d8e0b4f0a654e490a7198c9a9"
+    }
+  ]
+}
