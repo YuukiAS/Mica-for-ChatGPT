@@ -32,9 +32,20 @@
         <div class="capability-row">
           <div>
             <h2>Low memory</h2>
-            <p>Will pause older messages locally without deleting history.</p>
+            <p id="low-memory-detail">Keeps 40 recent turns active. Full history stays on ChatGPT.</p>
           </div>
-          <span class="capability-value muted">Unavailable in this build</span>
+          <div class="capability-control">
+            <label class="switch-control compact-switch">
+              <span class="sr-only">Enable Low Memory</span>
+              <input id="low-memory" type="checkbox" checked>
+              <span class="switch-track" aria-hidden="true"></span>
+            </label>
+            <span id="low-memory-state" class="capability-value">Ready</span>
+          </div>
+        </div>
+        <div id="history-action-row" class="capability-row compact" hidden>
+          <div><h2>History window</h2></div>
+          <button id="load-full-history" class="inline-action" type="button">Load full history</button>
         </div>
         <div class="capability-row compact">
           <div><h2>Page health</h2></div>

@@ -42,6 +42,20 @@ const manifest = {
     {
       matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
       js: [
+        "low-memory-core.js",
+        "low-memory-page.js"
+      ],
+      run_at: "document_start",
+      world: "MAIN"
+    },
+    {
+      matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+      js: ["low-memory-config.js"],
+      run_at: "document_start"
+    },
+    {
+      matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+      js: [
         "chatgpt-adapter.js",
         "answer-document.js",
         "content.js"
@@ -66,6 +80,9 @@ const render = (source) => Object.entries(replacements).reduce((value, [key, rep
 const content = render(await readFile(path.join(srcDir, "content.ts"), "utf8"));
 const chatgptAdapter = render(await readFile(path.join(srcDir, "core", "chatgpt-adapter.ts"), "utf8"));
 const answerDocument = render(await readFile(path.join(srcDir, "core", "answer-document.ts"), "utf8"));
+const lowMemoryCore = render(await readFile(path.join(srcDir, "low-memory", "low-memory-core.ts"), "utf8"));
+const lowMemoryPage = render(await readFile(path.join(srcDir, "low-memory", "low-memory-page.ts"), "utf8"));
+const lowMemoryConfig = render(await readFile(path.join(srcDir, "low-memory", "low-memory-config.ts"), "utf8"));
 const popup = render(await readFile(path.join(popupDir, "popup.ts"), "utf8"));
 const troubleshooting = render(await readFile(path.join(popupDir, "troubleshooting.ts"), "utf8"));
 const qa = render(await readFile(path.join(popupDir, "qa.ts"), "utf8"));
@@ -73,6 +90,9 @@ const qa = render(await readFile(path.join(popupDir, "qa.ts"), "utf8"));
 await writeFile(path.join(outDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 await writeFile(path.join(outDir, "chatgpt-adapter.js"), chatgptAdapter);
 await writeFile(path.join(outDir, "answer-document.js"), answerDocument);
+await writeFile(path.join(outDir, "low-memory-core.js"), lowMemoryCore);
+await writeFile(path.join(outDir, "low-memory-page.js"), lowMemoryPage);
+await writeFile(path.join(outDir, "low-memory-config.js"), lowMemoryConfig);
 await writeFile(path.join(outDir, "content.js"), content);
 await writeFile(path.join(outDir, "popup", "popup.js"), popup);
 await writeFile(path.join(outDir, "popup", "troubleshooting.js"), troubleshooting);

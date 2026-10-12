@@ -3,7 +3,7 @@
   const VERSION_NAME = "__MICA_VERSION_NAME__";
   const BUILD_LABEL = "__MICA_BUILD_LABEL__";
   const CONTRACT_HASH = "__MICA_CHATGPT_CONTRACT_HASH__";
-  const DEFAULT_SETTINGS = Object.freeze({ enabled: true });
+  const DEFAULT_SETTINGS = Object.freeze({ enabled: true, lowMemory: true, lowMemoryKeepCount: 40, lowMemoryThreshold: 80 });
   const STORAGE_KEYS = Object.keys(DEFAULT_SETTINGS);
   const adapter = globalThis.MicaChatGPTAdapter;
   const answerDocument = globalThis.MicaAnswerDocument;
@@ -11,6 +11,9 @@
   let observer = null;
   let scheduled = false;
   let lastStatus = loadingStatus();
+  let lowMemoryStatus = readLowMemoryPageStatus() || defaultLowMemoryStatus();
+  let historyControl = null;
+  let scrollFrame = 0;
 
   if (!adapter || !answerDocument || !isSupportedPage()) return;
 
@@ -18,8 +21,10 @@
 
   async function initialize() {
     settings = { ...DEFAULT_SETTINGS, ...(await readSettings()) };
+    globalThis.MicaLowMemoryConfig?.configure?.(settings);
     setupMessages();
     setupNavigationSignals();
+    setupLowMemorySignals();
     if (settings.enabled) setupObserver();
     refreshStatus();
     exposeFixtureHook();
@@ -46,7 +51,12 @@
   }
 
   function sanitizeSettings(value) {
-    return { enabled: typeof value.enabled === "boolean" ? value.enabled : DEFAULT_SETTINGS.enabled };
+    return {
+      enabled: typeof value.enabled === "boolean" ? value.enabled : DEFAULT_SETTINGS.enabled,
+      lowMemory: typeof value.lowMemory === "boolean" ? value.lowMemory : DEFAULT_SETTINGS.lowMemory,
+      lowMemoryKeepCount: clampNumber(value.lowMemoryKeepCount, 8, 120, DEFAULT_SETTINGS.lowMemoryKeepCount),
+      lowMemoryThreshold: clampNumber(value.lowMemoryThreshold, 10, 500, DEFAULT_SETTINGS.lowMemoryThreshold)
+    };
   }
 
   function setupObserver() {
@@ -63,6 +73,16 @@
   function setupNavigationSignals() {
     addEventListener("popstate", scheduleRefresh, { passive: true });
     addEventListener("hashchange", scheduleRefresh, { passive: true });
+  }
+
+  function setupLowMemorySignals() {
+    addEventListener("mica-low-memory-page-status", (event) => {
+      try { lowMemoryStatus = sanitizeLowMemoryStatus(JSON.parse(String(event.detail || ""))); }
+      catch (_error) { lowMemoryStatus = defaultLowMemoryStatus("status_unavailable"); }
+      reconcileHistoryControl();
+    });
+    addEventListener("scroll", scheduleHistoryControlVisibility, { passive: true, capture: true });
+    reconcileHistoryControl();
   }
 
   function scheduleRefresh() {
@@ -100,6 +120,7 @@
         supportedBlockKinds: [...answerDocument.blockKinds],
         singleProducer: "MicaChatGPTAdapter"
       },
+      lowMemory: { ...lowMemoryStatus, enabled: settings.enabled && settings.lowMemory },
       updatedAt: new Date().toISOString()
     };
   }
@@ -188,16 +209,128 @@
         sendResponse({ answerDocument: getAnswerDocument(message.turnId) });
         return false;
       }
+      if (message?.type === "MICA_LOAD_FULL_HISTORY") {
+        sendResponse(requestFullHistory("popup"));
+        return false;
+      }
       return false;
     });
   }
 
   async function applySettings(value) {
-    const next = sanitizeSettings(value || {});
-    settings = { ...settings, ...next };
+    const wasLowMemoryActive = lowMemoryStatus.active === true;
+    const wasLowMemoryEnabled = settings.enabled && settings.lowMemory;
+    const next = sanitizeSettings({ ...settings, ...(value || {}) });
+    settings = next;
     await writeSettings(settings);
+    globalThis.MicaLowMemoryConfig?.configure?.(settings);
+    const isLowMemoryEnabled = settings.enabled && settings.lowMemory;
+    if (isLowMemoryEnabled && !wasLowMemoryEnabled && globalThis.MicaLowMemoryConfig?.isFullHistoryBypassed?.()) {
+      globalThis.MicaLowMemoryConfig.clearFullHistoryBypass();
+      if (safeToReload()) location.reload();
+    } else if (!isLowMemoryEnabled && wasLowMemoryActive) {
+      lowMemoryStatus = { ...lowMemoryStatus, state: "restore_required", active: false, reason: "disabled_after_windowing" };
+      if (safeToReload() && globalThis.MicaLowMemoryConfig?.requestFullHistory?.()) location.reload();
+    }
     if (settings.enabled) setupObserver();
     else teardownObserver();
+    reconcileHistoryControl();
+  }
+
+  function readLowMemoryPageStatus() {
+    try { return sanitizeLowMemoryStatus(JSON.parse(document.documentElement.getAttribute("data-mica-low-memory-page-status") || "null")); }
+    catch (_error) { return null; }
+  }
+
+  function sanitizeLowMemoryStatus(value) {
+    if (!value || typeof value !== "object") return defaultLowMemoryStatus("status_unavailable");
+    return {
+      state: String(value.state || "standby"),
+      reason: String(value.reason || "unknown"),
+      source: String(value.source || "none"),
+      active: value.active === true && value.actualTruncation === true,
+      keptTurns: clampNumber(value.keptTurns, 0, 100000, 0),
+      totalTurns: clampNumber(value.totalTurns, 0, 100000, 0),
+      removedTurns: clampNumber(value.removedTurns, 0, 100000, 0),
+      keptNodes: clampNumber(value.keptNodes, 0, 100000, 0),
+      totalNodes: clampNumber(value.totalNodes, 0, 100000, 0),
+      bytesBefore: clampNumber(value.bytesBefore, 0, Number.MAX_SAFE_INTEGER, 0),
+      bytesAfter: clampNumber(value.bytesAfter, 0, Number.MAX_SAFE_INTEGER, 0),
+      bytesRemoved: clampNumber(value.bytesRemoved, 0, Number.MAX_SAFE_INTEGER, 0),
+      recentTurnLimit: clampNumber(value.recentTurnLimit, 8, 120, settings.lowMemoryKeepCount || 40),
+      actualTruncation: value.actualTruncation === true,
+      truncatedRepresentation: value.truncatedRepresentation === "client-history-window" ? value.truncatedRepresentation : "client-history-window",
+      serverMutation: false,
+      reactManagedInteractiveNodesDetached: false,
+      contentUpload: false,
+      updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : new Date().toISOString()
+    };
+  }
+
+  function defaultLowMemoryStatus(reason = "not_windowed") {
+    return {
+      state: "standby", reason, source: "none", active: false, keptTurns: 0, totalTurns: 0,
+      removedTurns: 0, keptNodes: 0, totalNodes: 0, bytesBefore: 0, bytesAfter: 0,
+      bytesRemoved: 0, recentTurnLimit: 40, actualTruncation: false,
+      truncatedRepresentation: "client-history-window", serverMutation: false,
+      reactManagedInteractiveNodesDetached: false, contentUpload: false, updatedAt: new Date().toISOString()
+    };
+  }
+
+  function reconcileHistoryControl() {
+    if (!settings.enabled || !settings.lowMemory || !lowMemoryStatus.active) {
+      historyControl?.remove();
+      historyControl = null;
+      return;
+    }
+    if (!historyControl) historyControl = createHistoryControl();
+    const summary = historyControl.shadowRoot.querySelector("[data-summary]");
+    summary.textContent = `${lowMemoryStatus.keptTurns} recent turns active`;
+    if (!historyControl.isConnected) document.documentElement.append(historyControl);
+    scheduleHistoryControlVisibility();
+  }
+
+  function createHistoryControl() {
+    const host = document.createElement("div");
+    host.dataset.micaUi = "low-memory-history";
+    const shadow = host.attachShadow({ mode: "open" });
+    shadow.innerHTML = `<style>
+      :host{display:none;position:fixed;left:50%;top:68px;transform:translateX(-50%);z-index:2147483645;font:500 12px/1.4 system-ui,sans-serif;color:#17201e}
+      :host([data-near-top]){display:block}
+      aside{display:flex;align-items:center;gap:10px;padding:7px 8px 7px 11px;border:1px solid rgba(23,32,30,.18);border-radius:999px;background:rgba(255,255,255,.96);box-shadow:0 6px 20px rgba(0,0,0,.12);backdrop-filter:blur(10px)}
+      button{min-height:30px;padding:4px 9px;border:1px solid #176b62;border-radius:999px;background:#176b62;color:#fff;font:600 12px/1.3 system-ui,sans-serif;cursor:pointer}
+      button:focus-visible{outline:2px solid #0b766b;outline-offset:2px}
+      @media(prefers-color-scheme:dark){:host{color:#eef4f1}aside{border-color:rgba(238,244,241,.2);background:rgba(23,29,27,.96)}button{border-color:#67c7bb;background:#67c7bb;color:#092d28}}
+      @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+    </style><aside role="status"><span data-summary></span><button type="button">Load full history</button></aside>`;
+    shadow.querySelector("button").addEventListener("click", () => requestFullHistory("history_control"));
+    return host;
+  }
+
+  function scheduleHistoryControlVisibility() {
+    if (!historyControl || scrollFrame) return;
+    scrollFrame = requestAnimationFrame(() => {
+      scrollFrame = 0;
+      const root = adapter.findScrollRoot?.(document)?.element;
+      const nearTop = root instanceof Element ? root.scrollTop < 96 : scrollY < 96;
+      historyControl.toggleAttribute("data-near-top", nearTop);
+    });
+  }
+
+  function requestFullHistory(reason) {
+    if (!lowMemoryStatus.active) return { ok: false, reason: "not_windowed" };
+    if (!safeToReload()) return { ok: false, reason: "active_draft_or_stream" };
+    if (!globalThis.MicaLowMemoryConfig?.requestFullHistory?.()) return { ok: false, reason: "storage_unavailable" };
+    lowMemoryStatus = { ...lowMemoryStatus, state: "restoring", active: false, reason };
+    setTimeout(() => location.reload(), 0);
+    return { ok: true, reason: "reloading_full_history" };
+  }
+
+  function safeToReload() {
+    const composer = adapter.findComposer(document)?.element;
+    const value = composer instanceof HTMLTextAreaElement ? composer.value : composer?.textContent || "";
+    const sensitive = document.querySelector("[role='dialog'], [data-is-streaming='true'], [data-testid*='stop' i], [aria-label*='Stop generating' i], [aria-label*='停止生成']");
+    return !String(value).trim() && !sensitive;
   }
 
   function getAnswerDocument(turnId) {
@@ -232,7 +365,8 @@
         enabled: settings.enabled,
         adapterProducer: "MicaChatGPTAdapter",
         answerDocumentModelVersion: answerDocument.modelVersion,
-        observerActive: !!observer
+        observerActive: !!observer,
+        lowMemory: { ...lowMemoryStatus, enabled: settings.enabled && settings.lowMemory }
       },
       privacy: {
         conversationTextIncluded: false,
@@ -251,6 +385,8 @@
       buildSanitizedQaReport,
       getAnswerDocument,
       applySettings,
+      requestFullHistory,
+      getLowMemoryStatus: () => ({ ...lowMemoryStatus }),
       adapter,
       answerDocument
     });
@@ -263,5 +399,10 @@
       hash = Math.imul(hash, 16777619);
     }
     return (hash >>> 0).toString(16).padStart(8, "0");
+  }
+
+  function clampNumber(value, min, max, fallback) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? Math.min(max, Math.max(min, Math.round(numeric))) : fallback;
   }
 })();

@@ -20,13 +20,16 @@ const PLACEMENT_PROOF_OBSERVATION_IDS = [
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const commit = valueAfter(process.argv.slice(2), "--commit");
+const profile = valueAfter(process.argv.slice(2), "--profile") || "foundation";
 if (!/^[0-9a-f]{40}$/.test(commit || "")) throw new Error("--commit must be a full lowercase SHA-1");
+if (!["foundation", "milestone-a"].includes(profile)) throw new Error("--profile must be foundation or milestone-a");
 
-const bundleDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "foundation-candidate", commit);
+const bundleDir = path.join(repoRoot, "results", "mica-product-system-rebuild", profile === "foundation" ? "foundation-candidate" : "low-memory-candidate", commit);
 await mkdir(path.join(bundleDir, "artifacts"), { recursive: true });
 const distDir = path.join(repoRoot, "dist", DEV_DIST_DIR_NAME);
 const evidenceDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "foundation-evidence");
 const popupDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "foundation-popup");
+const lowMemoryDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "low-memory-evidence");
 
 const distTree = [];
 for (const file of await walkFiles(distDir)) {
@@ -59,6 +62,15 @@ const copies = [
   [path.join(popupDir, "troubleshooting-light-368-100.png"), "troubleshooting.png"],
   [path.join(popupDir, "qa-light-368-100.png"), "developer-qa.png"]
 ];
+if (profile === "milestone-a") {
+  copies.push(
+    [path.join(lowMemoryDir, "low-memory-pressure.json"), "low-memory-pressure.json"],
+    [path.join(lowMemoryDir, "low-memory-fixture.json"), "low-memory-fixture.json"],
+    [path.join(lowMemoryDir, "low-memory-page-interception.json"), "low-memory-page.json"],
+    [path.join(lowMemoryDir, "low-memory-stress.json"), "low-memory-stress.json"],
+    [path.join(popupDir, "exact-low-memory-active-light-368-100.png"), "popup-low-memory-active.png"]
+  );
+}
 for (const [source, destination] of copies) await cp(source, path.join(bundleDir, "artifacts", destination));
 
 const artifactDefinitions = [
@@ -77,6 +89,15 @@ const artifactDefinitions = [
   ["troubleshooting", "troubleshooting.png", "image/png"],
   ["developer-qa", "developer-qa.png", "image/png"]
 ];
+if (profile === "milestone-a") {
+  artifactDefinitions.push(
+    ["low-memory-pressure", "low-memory-pressure.json", "application/json"],
+    ["low-memory-fixture", "low-memory-fixture.json", "application/json"],
+    ["low-memory-page", "low-memory-page.json", "application/json"],
+    ["low-memory-stress", "low-memory-stress.json", "application/json"],
+    ["popup-low-memory-active", "popup-low-memory-active.png", "image/png"]
+  );
+}
 const artifacts = [];
 for (const [id, filename, kind] of artifactDefinitions) {
   const relative = `artifacts/${filename}`;
@@ -88,6 +109,9 @@ const bootstrap = JSON.parse(await readFile(path.join(bundleDir, "artifacts", "c
 const popupEvidence = JSON.parse(await readFile(path.join(bundleDir, "artifacts", "popup-render.json"), "utf8"));
 const foundationCore = JSON.parse(await readFile(path.join(bundleDir, "artifacts", "foundation-core.json"), "utf8"));
 const foundationFlows = JSON.parse(await readFile(path.join(bundleDir, "artifacts", "foundation-flows.json"), "utf8"));
+const lowMemoryPressure = profile === "milestone-a" ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-pressure.json"), "utf8")) : null;
+const lowMemoryFixture = profile === "milestone-a" ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-fixture.json"), "utf8")) : null;
+const lowMemoryPage = profile === "milestone-a" ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-page.json"), "utf8")) : null;
 const contractHash = artifactHash("chatgpt-contract");
 const bootstrapHash = artifactHash("current-chatgpt-bootstrap");
 const distHash = artifactHash("dist-tree");
@@ -109,6 +133,7 @@ const requiredGates = [
   "privacy",
   "packaging-version"
 ];
+if (profile === "milestone-a") requiredGates.splice(requiredGates.indexOf("privacy"), 0, "low-memory-benefit");
 
 const evidence = [
   record("candidate-identity", "LOCAL_REAL_BROWSER", { surface: "built-extension" }, ["dist-tree", "built-manifest"], { commit, distHash }),
@@ -186,11 +211,46 @@ const evidence = [
     versionReportArtifactId: "version-report"
   })
 ];
+if (profile === "milestone-a") {
+  evidence.splice(evidence.findIndex((item) => item.gateId === "privacy"), 0,
+    record("low-memory-benefit", "TARGET_LOW_MEMORY_DEVICE", { surface: "target-low-memory-device" }, ["dist-tree", "low-memory-pressure", "low-memory-fixture", "low-memory-page", "low-memory-stress", "foundation-flows", "popup-low-memory-active"], {
+      A: lowMemoryPressure.A,
+      B: lowMemoryPressure.B,
+      C: lowMemoryPressure.C,
+      recentTurnLimit: lowMemoryPressure.recentTurnLimit,
+      threadProfiles: lowMemoryFixture.profiles,
+      pressureFixture: lowMemoryPressure.pressureFixture,
+      targetDevice: lowMemoryPressure.targetDevice,
+      actualTruncation: lowMemoryPressure.actualTruncation,
+      truncatedRepresentation: lowMemoryPressure.truncatedRepresentation,
+      reactManagedInteractiveNodesDetached: lowMemoryPressure.reactManagedInteractiveNodesDetached,
+      serverMutation: lowMemoryPressure.serverMutation,
+      history: {
+        scrollUpRestoresOlder: lowMemoryPage.historyControl?.connectedAtTop === true && lowMemoryPage.historyControl?.visibleAtTop === true && lowMemoryPage.historyControl?.buttonPresent === true,
+        loadFullHistoryPass: lowMemoryPage.historyControl?.bypassSet === true && lowMemoryPage.bypass?.mappingNodes === lowMemoryPage.stream?.status?.totalNodes,
+        reloadRestoresFullHistory: lowMemoryPage.reload?.bypassPersisted === true,
+        disableRestoresFullHistory: lowMemoryPage.disabled?.mappingNodes === lowMemoryPage.stream?.status?.totalNodes,
+        closeOrUninstallRestoresFullHistory: lowMemoryPressure.A?.mappingNodes === lowMemoryPressure.B?.mappingNodes && lowMemoryPressure.A?.mappingNodes > lowMemoryPressure.C?.mappingNodes,
+        serverHistoryUnchanged: lowMemoryPage.stream?.status?.serverMutation === false
+      },
+      coreFlows: {
+        composer: foundationFlows.coreFlows?.composer === true,
+        send: foundationFlows.coreFlows?.send === true,
+        streaming: foundationFlows.coreFlows?.streaming === true,
+        editBranch: foundationFlows.coreFlows?.editBranch === true,
+        connector: foundationFlows.coreFlows?.connector === true,
+        toolFileAuth: foundationFlows.coreFlows?.toolFileAuth === true,
+        typingImeHotPath: foundationFlows.coreFlows?.typingImeHotPath === true && lowMemoryFixture.coreFlows?.typingImeHotPath === true
+      },
+      unknownStructureBehavior: lowMemoryFixture.failOpen?.malformedChanged === false && lowMemoryFixture.failOpen?.malformedUnchanged === true && lowMemoryFixture.failOpen?.unknownChanged === false && lowMemoryFixture.failOpen?.unknownUnchanged === true ? "FAIL_OPEN" : "FAILED"
+    })
+  );
+}
 
 const manifest = {
   schemaVersion: 1,
   bundleKind: "candidate",
-  acceptanceProfile: "foundation",
+  acceptanceProfile: profile,
   candidate: { commit, version: VERSION_NAME, buildLabel: BUILD_LABEL, distArtifactId: "dist-tree", distHash },
   validator: { version: VALIDATOR_VERSION, treeHash: await computeValidatorTreeHash(repoRoot) },
   chatgptContractArtifactId: "chatgpt-contract",

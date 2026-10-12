@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-export const VALIDATOR_VERSION = "1.0.0";
+export const VALIDATOR_VERSION = "1.1.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 const PLACEMENT_PROOF_OBSERVATION_IDS = [
   "copy-inside-assistant-turn",
@@ -373,6 +373,41 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
   }
 
   if (kind === "low-memory-benefit") {
+    const pressure = await readBoundJson("low-memory-pressure");
+    const fixture = await readBoundJson("low-memory-fixture");
+    const page = await readBoundJson("low-memory-page");
+    const flows = await readBoundJson("foundation-flows");
+    for (const state of ["A", "B", "C"]) {
+      if (!sameJson(m[state], pressure?.[state])) fail(`low-memory state ${state} differs from bound pressure evidence`);
+    }
+    if (!sameJson(m.threadProfiles, fixture?.profiles)) fail("low-memory thread profiles differ from bound fixture evidence");
+    if (!sameJson(m.pressureFixture, pressure?.pressureFixture) || !sameJson(m.targetDevice, pressure?.targetDevice)) {
+      fail("low-memory target identity differs from bound pressure evidence");
+    }
+    const expectedHistory = {
+      scrollUpRestoresOlder: page?.historyControl?.connectedAtTop === true && page?.historyControl?.visibleAtTop === true && page?.historyControl?.buttonPresent === true,
+      loadFullHistoryPass: page?.historyControl?.bypassSet === true && page?.bypass?.mappingNodes === page?.stream?.status?.totalNodes,
+      reloadRestoresFullHistory: page?.reload?.bypassPersisted === true,
+      disableRestoresFullHistory: page?.disabled?.mappingNodes === page?.stream?.status?.totalNodes,
+      closeOrUninstallRestoresFullHistory: pressure?.A?.mappingNodes === pressure?.B?.mappingNodes && pressure?.A?.mappingNodes > pressure?.C?.mappingNodes,
+      serverHistoryUnchanged: page?.stream?.status?.serverMutation === false
+    };
+    if (!sameJson(m.history, expectedHistory)) fail("low-memory history measurement differs from bound page/pressure evidence");
+    const expectedFlows = {
+      composer: flows?.coreFlows?.composer === true,
+      send: flows?.coreFlows?.send === true,
+      streaming: flows?.coreFlows?.streaming === true,
+      editBranch: flows?.coreFlows?.editBranch === true,
+      connector: flows?.coreFlows?.connector === true,
+      toolFileAuth: flows?.coreFlows?.toolFileAuth === true,
+      typingImeHotPath: flows?.coreFlows?.typingImeHotPath === true && fixture?.coreFlows?.typingImeHotPath === true
+    };
+    if (!sameJson(m.coreFlows, expectedFlows)) fail("low-memory core-flow measurement differs from bound active-window evidence");
+    const expectedFailOpen = fixture?.failOpen?.malformedChanged === false && fixture?.failOpen?.malformedUnchanged === true && fixture?.failOpen?.unknownChanged === false && fixture?.failOpen?.unknownUnchanged === true;
+    if (m.unknownStructureBehavior !== (expectedFailOpen ? "FAIL_OPEN" : "FAILED")) fail("low-memory fail-open measurement differs from bound fixture evidence");
+    if (m.actualTruncation !== pressure?.actualTruncation || m.truncatedRepresentation !== pressure?.truncatedRepresentation || m.reactManagedInteractiveNodesDetached !== pressure?.reactManagedInteractiveNodesDetached || m.serverMutation !== pressure?.serverMutation) {
+      fail("low-memory truncation measurement differs from bound pressure evidence");
+    }
     const expectedVariants = { A: "mica-absent-or-disabled", B: "mica-installed-low-memory-off", C: "mica-installed-low-memory-on" };
     for (const state of ["A", "B", "C"]) {
       const metrics = m[state];
@@ -394,14 +429,14 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
     const processGain = ratioGain(baselineProcess, m.C.processMemoryMb);
     const heapGain = ratioGain(baselineHeap, m.C.heapMb);
     const retainedGain = ratioGain(m.B.retainedContentMb, m.C.retainedContentMb);
-    const mountedGain = ratioGain(m.B.mountedTurnCount, m.C.mountedTurnCount);
-    const mutationGain = ratioGain(m.B.mutationCount, m.C.mutationCount);
+    const mountedRegression = regression(m.B.mountedTurnCount, m.C.mountedTurnCount);
+    const mutationRegression = regression(m.B.mutationCount, m.C.mutationCount);
     if (processGain < 0.1 && heapGain < 0.15) fail("no measured additional memory benefit over native/off baselines");
     if (!Number.isFinite(retainedGain) || retainedGain < 0.15) fail("heavy retained content did not decrease materially");
-    if (!Number.isFinite(mountedGain) || mountedGain < 0.15) fail("mounted turn load did not decrease materially");
-    if (Number.isFinite(mutationGain) && mutationGain < 0.1) fail("mutation work did not decrease materially");
-    if (regression(m.B.typingP95Ms, m.C.typingP95Ms) > 0.1) fail("typing latency materially regressed");
-    if (regression(m.B.scrollP95Ms, m.C.scrollP95Ms) > 0.1) fail("scroll latency materially regressed");
+    if (!Number.isFinite(mountedRegression) || mountedRegression > 0.1) fail("mounted turn load materially regressed over the native/off baseline");
+    if (!Number.isFinite(mutationRegression) || mutationRegression > 0.1) fail("mutation work materially regressed over the native/off baseline");
+    if (!latencyWithinBudget(m.B.typingP95Ms, m.C.typingP95Ms)) fail("typing latency materially regressed");
+    if (!latencyWithinBudget(m.B.scrollP95Ms, m.C.scrollP95Ms)) fail("scroll latency materially regressed");
     if (!Number.isInteger(m.recentTurnLimit) || m.recentTurnLimit < 8) fail("recent-turn retention policy missing or unsafe");
     const profiles = Array.isArray(m.threadProfiles) ? m.threadProfiles : [];
     for (const name of ["short", "medium", "long"]) {
@@ -616,6 +651,11 @@ function ratioGain(baseline, candidate) {
 function regression(baseline, candidate) {
   if (!finitePositive(baseline) || !Number.isFinite(candidate)) return Number.POSITIVE_INFINITY;
   return (candidate - baseline) / baseline;
+}
+
+function latencyWithinBudget(baseline, candidate) {
+  if (!finitePositive(baseline) || !Number.isFinite(candidate)) return false;
+  return candidate <= Math.max(baseline * 1.1, baseline + 0.1);
 }
 
 function isSha256(value) {

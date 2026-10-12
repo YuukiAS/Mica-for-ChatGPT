@@ -252,9 +252,38 @@ async function createGoodBundle(repoRoot) {
     })],
     ["foundation-flows", "artifacts/foundation-flows.json", "application/json", JSON.stringify({
       passed: true,
-      coreFlows: { composer: true, send: true, streaming: true, editBranch: true, connector: true, toolFileAuth: true },
+      coreFlows: { composer: true, send: true, streaming: true, editBranch: true, connector: true, toolFileAuth: true, typingImeHotPath: true },
       sendLifecycle: { progressObserved: true, autoResendObserved: false, consequentialFlowActive: true, userTurnCommitted: true, duplicateSendObserved: false },
       report: { privacy: { conversationTextIncluded: false, attachmentContentIncluded: false, requestBodyIncluded: false, authTokenIncluded: false, rawDomIncluded: false } }
+    })],
+    ["low-memory-pressure", "artifacts/low-memory-pressure.json", "application/json", JSON.stringify({
+      A: { variant: "mica-absent-or-disabled", processMemoryMb: 1000, processMemoryRangeMb: [970, 1035], heapMb: 500, heapRangeMb: [485, 520], retainedContentMb: 420, mountedTurnCount: 12, mutationCount: 62, typingP95Ms: 20, typingRangeMs: [18, 22], scrollP95Ms: 24, scrollRangeMs: [22, 27], mappingNodes: 241, samples: 5 },
+      B: { variant: "mica-installed-low-memory-off", processMemoryMb: 980, processMemoryRangeMb: [955, 1010], heapMb: 490, heapRangeMb: [475, 510], retainedContentMb: 410, mountedTurnCount: 12, mutationCount: 62, typingP95Ms: 20, typingRangeMs: [18, 22], scrollP95Ms: 24, scrollRangeMs: [22, 27], mappingNodes: 241, samples: 5 },
+      C: { variant: "mica-installed-low-memory-on", processMemoryMb: 760, processMemoryRangeMb: [735, 790], heapMb: 350, heapRangeMb: [335, 370], retainedContentMb: 250, mountedTurnCount: 12, mutationCount: 62, typingP95Ms: 21, typingRangeMs: [19, 23], scrollP95Ms: 25, scrollRangeMs: [23, 28], mappingNodes: 41, samples: 5 },
+      pressureFixture: { memoryLimitMb: 2048, payloadMb: 420, turns: 240 },
+      targetDevice: { class: "2-gb-low-memory-target", browserBuild: "control-browser-1", memoryGb: 2 },
+      actualTruncation: true,
+      truncatedRepresentation: "client-history-window",
+      reactManagedInteractiveNodesDetached: false,
+      serverMutation: false
+    })],
+    ["low-memory-fixture", "artifacts/low-memory-fixture.json", "application/json", JSON.stringify({
+      passed: true,
+      profiles: [
+        { name: "short", totalTurns: 12, retainedRecentTurns: 12, mountedBefore: 12, mountedAfter: 12, modeApplied: false },
+        { name: "medium", totalTurns: 36, retainedRecentTurns: 36, mountedBefore: 36, mountedAfter: 36, modeApplied: false },
+        { name: "long", totalTurns: 240, retainedRecentTurns: 40, mountedBefore: 236, mountedAfter: 40, modeApplied: true }
+      ],
+      failOpen: { malformedChanged: false, malformedUnchanged: true, unknownChanged: false, unknownUnchanged: true },
+      coreFlows: { typingImeHotPath: true }
+    })],
+    ["low-memory-page", "artifacts/low-memory-page.json", "application/json", JSON.stringify({
+      passed: true,
+      stream: { status: { totalNodes: 241, serverMutation: false, reactManagedInteractiveNodesDetached: false } },
+      bypass: { mappingNodes: 241 },
+      disabled: { mappingNodes: 241 },
+      historyControl: { connectedAtTop: true, visibleAtTop: true, buttonPresent: true, bypassSet: true },
+      reload: { bypassPersisted: true }
     })]
   ];
   for (const [, relative, , content] of artifactSources) {
@@ -356,10 +385,10 @@ async function createGoodBundle(repoRoot) {
       userTurnCommitted: true,
       duplicateSend: false
     }),
-    record("low-memory-benefit", { surface: "target-low-memory-device" }, ["dist"], {
-      A: { variant: "mica-absent-or-disabled", processMemoryMb: 1000, processMemoryRangeMb: [970, 1035], heapMb: 500, heapRangeMb: [485, 520], retainedContentMb: 420, mountedTurnCount: 240, mutationCount: 1200, typingP95Ms: 20, typingRangeMs: [18, 22], scrollP95Ms: 24, scrollRangeMs: [22, 27], samples: 5 },
-      B: { variant: "mica-installed-low-memory-off", processMemoryMb: 980, processMemoryRangeMb: [955, 1010], heapMb: 490, heapRangeMb: [475, 510], retainedContentMb: 410, mountedTurnCount: 236, mutationCount: 1180, typingP95Ms: 20, typingRangeMs: [18, 22], scrollP95Ms: 24, scrollRangeMs: [22, 27], samples: 5 },
-      C: { variant: "mica-installed-low-memory-on", processMemoryMb: 760, processMemoryRangeMb: [735, 790], heapMb: 350, heapRangeMb: [335, 370], retainedContentMb: 250, mountedTurnCount: 40, mutationCount: 680, typingP95Ms: 21, typingRangeMs: [19, 23], scrollP95Ms: 25, scrollRangeMs: [23, 28], samples: 5 },
+    record("low-memory-benefit", { surface: "target-low-memory-device" }, ["dist", "low-memory-pressure", "low-memory-fixture", "low-memory-page", "foundation-flows"], {
+      A: { variant: "mica-absent-or-disabled", processMemoryMb: 1000, processMemoryRangeMb: [970, 1035], heapMb: 500, heapRangeMb: [485, 520], retainedContentMb: 420, mountedTurnCount: 12, mutationCount: 62, typingP95Ms: 20, typingRangeMs: [18, 22], scrollP95Ms: 24, scrollRangeMs: [22, 27], mappingNodes: 241, samples: 5 },
+      B: { variant: "mica-installed-low-memory-off", processMemoryMb: 980, processMemoryRangeMb: [955, 1010], heapMb: 490, heapRangeMb: [475, 510], retainedContentMb: 410, mountedTurnCount: 12, mutationCount: 62, typingP95Ms: 20, typingRangeMs: [18, 22], scrollP95Ms: 24, scrollRangeMs: [22, 27], mappingNodes: 241, samples: 5 },
+      C: { variant: "mica-installed-low-memory-on", processMemoryMb: 760, processMemoryRangeMb: [735, 790], heapMb: 350, heapRangeMb: [335, 370], retainedContentMb: 250, mountedTurnCount: 12, mutationCount: 62, typingP95Ms: 21, typingRangeMs: [19, 23], scrollP95Ms: 25, scrollRangeMs: [23, 28], mappingNodes: 41, samples: 5 },
       recentTurnLimit: 40,
       threadProfiles: [
         { name: "short", totalTurns: 12, retainedRecentTurns: 12, mountedBefore: 12, mountedAfter: 12, modeApplied: false },

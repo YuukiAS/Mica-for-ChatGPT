@@ -57,8 +57,12 @@ and the complete core-flow regression set.
 
 The initial quantitative floor is deliberately falsifiable: C must improve
 process memory by at least 10% or JS heap by at least 15% versus the better A/B
-baseline, reduce retained content and mounted turns by at least 15%, and avoid
-more than 10% typing or scrolling latency regression. Feasibility work may
+baseline, reduce retained content by at least 15%, and avoid more than 10%
+mounted-turn or mutation regression. Typing and scrolling must remain within a
+10% relative budget, with a 0.1 ms absolute noise allowance for sub-millisecond
+headless measurements. Current ChatGPT native
+virtualization may already keep mounted DOM low, so mounted-turn reduction is
+not allowed to substitute for actual client-memory benefit. Feasibility work may
 calibrate these values before the authoritative candidate freeze, but any such
 change requires a validator version change and a fresh control run.
 

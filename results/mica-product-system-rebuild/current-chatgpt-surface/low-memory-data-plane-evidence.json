@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-12",
+  "surface": {
+    "kind": "public-shared-conversation",
+    "browser": "Codex In-app Browser",
+    "profile": "isolated-unauthenticated",
+    "browserBuild": "unavailable-through-supported-read-only-surface"
+  },
+  "privacy": {
+    "messageTextIncluded": false,
+    "requestBodiesIncluded": false,
+    "headersIncluded": false,
+    "tokensIncluded": false,
+    "accountDataIncluded": false
+  },
+  "hydration": {
+    "transport": "window.__reactRouterContext.streamController.enqueue",
+    "inlineEnqueueScriptCount": 2,
+    "mainChunkScriptLength": 32188,
+    "decodedMainChunkLength": 29291,
+    "flatGraphEntries": 593,
+    "continuationProtocol": "P-index",
+    "structuralPath": [
+      "loaderData",
+      "routes/share.$shareId.($action)",
+      "serverResponse",
+      "data",
+      "mapping",
+      "current_node"
+    ]
+  },
+  "conversationGraph": {
+    "mappingNodes": 20,
+    "currentPathNodes": 20,
+    "roles": {
+      "assistant": 9,
+      "user": 6,
+      "tool": 2,
+      "system": 2,
+      "structuralRoot": 1
+    },
+    "modelEditableContextNodes": 2
+  },
+  "renderedBaseline": {
+    "mountedTurns": 7,
+    "mountedRoleCounts": {
+      "assistant": 3,
+      "user": 4
+    }
+  },
+  "conclusion": {
+    "initialHydrationPathConfirmed": true,
+    "ordinaryJsonFallbackStillRequired": true,
+    "nativeMountedDomAlreadyBelowGraphSize": true,
+    "domCountAloneIsInsufficient": true,
+    "targetLongThreadBenefitProvenByThisArtifact": false
+  }
+}

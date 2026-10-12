@@ -26,9 +26,10 @@
   ],
   "keyboard": {
     "accessibleNames": true,
-    "interactiveCount": 3,
+    "interactiveCount": 4,
     "sampledFocus": [
       "enabled",
+      "low-memory",
       "troubleshooting-link",
       "SUMMARY"
     ],
@@ -37,35 +38,58 @@
   "screenshots": [
     {
       "state": "exact",
+      "lowMemoryMode": "standby",
       "width": 368,
       "scale": 1,
       "colorScheme": "light",
+      "lowMemoryState": "Ready",
+      "historyActionVisible": false,
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/exact-light-368-100.png",
-      "screenshotSha256": "f79d04d34657453b2705334195dd0321b61ca1266a21dbce0ec577b9adffa45b"
+      "screenshotSha256": "f6807a9192612de97b3880ae8629b53c5696b6061d5ea176c40f237483dc0398"
+    },
+    {
+      "state": "exact",
+      "lowMemoryMode": "active",
+      "width": 368,
+      "scale": 1,
+      "colorScheme": "light",
+      "lowMemoryState": "40 kept",
+      "historyActionVisible": true,
+      "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/exact-low-memory-active-light-368-100.png",
+      "screenshotSha256": "e932a9070e026d00a2a15516b618d688146add8c7b49d4a5d1ae50104e133f33"
     },
     {
       "state": "unknown",
+      "lowMemoryMode": "standby",
       "width": 368,
       "scale": 1,
       "colorScheme": "dark",
+      "lowMemoryState": "Ready",
+      "historyActionVisible": false,
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/unknown-dark-368-100.png",
-      "screenshotSha256": "f7a968d887af93c796db456965d583e347e71a0155ffeca6a7233970d3e32ee9"
+      "screenshotSha256": "db240942edc18f0eac71d5f51fed1ca6fbf89870a42865cae390c35edafb2dc5"
     },
     {
       "state": "compatible",
+      "lowMemoryMode": "standby",
       "width": 320,
       "scale": 1.5,
       "colorScheme": "light",
+      "lowMemoryState": "Ready",
+      "historyActionVisible": false,
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/compatible-light-320-150.png",
-      "screenshotSha256": "989e397e35a5c72bd0d54aee36d461a9c79bd2dff5a8689da810da6508de4d4a"
+      "screenshotSha256": "08d4eb62b8d39068b46a25dccef5f9ae91f2ab67387a43d58923532c19b18d43"
     },
     {
       "state": "contentUnavailable",
+      "lowMemoryMode": "standby",
       "width": 400,
       "scale": 1.25,
       "colorScheme": "dark",
+      "lowMemoryState": "Ready",
+      "historyActionVisible": false,
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/contentUnavailable-dark-400-125.png",
-      "screenshotSha256": "c3438250a828bd2bb761e418edd54ac0b562482c41ceb0ec9974e8b8feb7e7b2"
+      "screenshotSha256": "1744b55fb4f501b90b470afadd8d916ab3037a93994960831a4dcf3d73d0f238"
     }
   ],
   "secondaryViews": {
@@ -74,14 +98,14 @@
       "headingFocused": true,
       "horizontalOverflow": 0,
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/troubleshooting-light-368-100.png",
-      "screenshotSha256": "f41eb0edfa024d9eadeb6424d6d13ed8febadee502e2678d4424cdd24539fb79"
+      "screenshotSha256": "f7eafe89ce8751aefe853daa0daabe96f709df55f451e9ec1597a9dc1b34b728"
     },
     "developerQa": {
       "labelsPresent": true,
       "headingFocused": true,
       "horizontalOverflow": 0,
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/qa-light-368-100.png",
-      "screenshotSha256": "a2ec1d585ecad70e4410537e620a95c8efd47b1805c5f477c0b1fd9f1962fa75"
+      "screenshotSha256": "014b69c7081d22d15a138d9c2b658d19c65841b3481a6147f686c1efe26250c9"
     }
   },
   "focusReturn": {

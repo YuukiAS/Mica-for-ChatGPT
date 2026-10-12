@@ -23,6 +23,45 @@ try {
     };
   });
   await page.goto(pathToFileURL(fixturePath).href, { waitUntil: "load" });
+  await page.evaluate(() => localStorage.setItem("mica.lowMemory.config.v2", JSON.stringify({ enabled: true, keepCount: 40, threshold: 80, updatedAt: Date.now() })));
+  for (const script of ["low-memory-core.js", "low-memory-page.js"]) {
+    await page.addScriptTag({ path: path.join(distDir, script) });
+  }
+  await page.evaluate(() => {
+    const mapping = { root: { id: "root", children: [] } };
+    let parent = "root";
+    for (let index = 1; index <= 120; index += 1) {
+      const id = `flow-turn-${index}`;
+      mapping[parent].children.push(id);
+      mapping[id] = { id, parent, children: [], message: { author: { role: index % 2 ? "user" : "assistant" }, content: { content_type: "text", parts: ["flow"] }, metadata: {} } };
+      parent = id;
+    }
+    const flat = [];
+    const strings = new Map();
+    const seen = new Map();
+    encode({ loaderData: { route: { serverResponse: { data: { mapping, current_node: parent, root: "root" } } } } }, 0);
+    globalThis.__reactRouterContext = {};
+    globalThis.__reactRouterContext.streamController = { enqueue: () => {} };
+    globalThis.__reactRouterContext.streamController.enqueue(JSON.stringify(flat));
+
+    function encode(value, forcedIndex = null) {
+      if (typeof value === "string") return encodeString(value);
+      if (value && typeof value === "object" && seen.has(value)) return seen.get(value);
+      const index = forcedIndex == null ? flat.length : forcedIndex;
+      if (forcedIndex == null) flat.push(null); else while (flat.length <= forcedIndex) flat.push(null);
+      if (value && typeof value === "object") seen.set(value, index);
+      if (Array.isArray(value)) flat[index] = value.map((item) => encode(item));
+      else if (value && typeof value === "object") {
+        const object = {}; flat[index] = object;
+        for (const [key, item] of Object.entries(value)) object[`_${encodeString(key)}`] = encode(item);
+      } else flat[index] = value;
+      return index;
+    }
+    function encodeString(value) {
+      if (strings.has(value)) return strings.get(value);
+      const index = flat.length; flat.push(value); strings.set(value, index); return index;
+    }
+  });
   for (const script of ["chatgpt-adapter.js", "answer-document.js", "content.js"]) {
     await page.addScriptTag({ path: path.join(distDir, script) });
   }
@@ -80,6 +119,7 @@ try {
       initialVersion,
       editedVersion,
       status: adapter.inspect(document).status,
+      lowMemory: runtime.getLowMemoryStatus(),
       report
     };
   });
@@ -94,6 +134,7 @@ try {
   assert(result.streamingDurable === false && result.settledDurable === true, "streaming/settled lifecycle drifted");
   assert(result.initialVersion !== result.editedVersion, "edit did not reconcile AnswerDocument source version");
   assert(result.status === "EXACT", "core-flow fixture no longer matches the adapter contract");
+  assert(result.lowMemory.active === true && result.lowMemory.actualTruncation === true, "core-flow fixture did not run with active Low Memory windowing");
   assert(result.report.privacy.conversationTextIncluded === false && result.report.privacy.rawDomIncluded === false, "core-flow QA report privacy drifted");
 
   const output = {
@@ -105,7 +146,8 @@ try {
       streaming: result.streamingDurable === false && result.settledDurable === true,
       editBranch: result.initialVersion !== result.editedVersion && result.finalTurnCount === 5,
       connector: result.counters.connectorSelections === 1 && result.connectorChooserVisible,
-      toolFileAuth: result.counters.fileClicks === 1 && result.counters.toolClicks === 1 && result.counters.authClicks === 1
+      toolFileAuth: result.counters.fileClicks === 1 && result.counters.toolClicks === 1 && result.counters.authClicks === 1,
+      typingImeHotPath: result.inputEvents.length === 6 && result.inputEvents.every((event) => !event.defaultPrevented)
     },
     sendLifecycle: {
       progressObserved: result.streamingDurable === false,

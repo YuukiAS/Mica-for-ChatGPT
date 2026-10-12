@@ -6,11 +6,13 @@ Mica 当前按 2026-10-12 已冻结的产品系统推进。阶段顺序是硬约
 
 Foundation 不作为功能版本发布。它负责建立后续功能共用的基础：当前 ChatGPT capability contract、唯一的 `ChatGPTAdapter`、版本化 `AnswerDocument`、实际扩展 popup、独立 Troubleshooting / Developer QA，以及能拒绝伪证据的验收器。
 
-只有 `FOUNDATION_GATE=PASS` 后，才能开始实质性的 Low Memory 实现。
+Foundation 已由同一独立 reviewer 复审通过：`FOUNDATION_GATE=PASS`。该结论只开放 Low Memory 阶段，不等于 `0.3.0` 发布通过。
 
 ## Milestone A — Low Memory
 
 目标是在低内存机器上为超长 ChatGPT conversation 提供真正可测的客户端历史窗口化，同时保持服务器完整历史不变。
+
+当前候选已经实现 React Router turbo-stream 与 conversation JSON 两条受控数据路径，保留最近 40 个可见 turns、必要依赖和近期分支，并提供完整历史恢复。隔离压力 workload 已显示额外 JS heap、retained content 和进程树 private-memory 收益；Milestone A 仍需完成候选冻结与同一独立 reviewer 复审，之后才可写入 `LOW_MEMORY_TRUNCATION=PASS`。
 
 必须覆盖：
 

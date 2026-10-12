@@ -1,0 +1,378 @@
+{
+  "passed": true,
+  "generatedAt": "2026-10-12T10:13:34.155Z",
+  "targetDevice": {
+    "class": "256-mb-v8-old-space-pressure-target",
+    "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+    "memoryGb": 0.25,
+    "boundary": "local Chromium renderer constrained with a 256 MB V8 old-space limit; OS process memory is measured across the fresh browser process tree"
+  },
+  "pressureFixture": {
+    "memoryLimitMb": 256,
+    "payloadMb": 100,
+    "turns": 800
+  },
+  "recentTurnLimit": 40,
+  "nativeVirtualizationBaseline": {
+    "currentPublicMountedTurns": 7,
+    "fixtureMountedTurns": 12,
+    "source": "2026-10-12 current read-only public ChatGPT bootstrap"
+  },
+  "A": {
+    "variant": "mica-absent-or-disabled",
+    "processMemoryMb": 288.266,
+    "processMemoryRangeMb": [
+      287.426,
+      289.773
+    ],
+    "heapMb": 101.231,
+    "heapRangeMb": [
+      101.231,
+      101.232
+    ],
+    "retainedContentMb": 100,
+    "mountedTurnCount": 12,
+    "mutationCount": 62,
+    "typingP95Ms": 0.01,
+    "typingRangeMs": [
+      0.01,
+      0.01
+    ],
+    "scrollP95Ms": 0.01,
+    "scrollRangeMs": [
+      0.01,
+      0.1
+    ],
+    "mappingNodes": 801,
+    "samples": 3
+  },
+  "B": {
+    "variant": "mica-installed-low-memory-off",
+    "processMemoryMb": 281.711,
+    "processMemoryRangeMb": [
+      280.91,
+      283.438
+    ],
+    "heapMb": 101.776,
+    "heapRangeMb": [
+      101.776,
+      101.776
+    ],
+    "retainedContentMb": 100,
+    "mountedTurnCount": 12,
+    "mutationCount": 62,
+    "typingP95Ms": 0.01,
+    "typingRangeMs": [
+      0.01,
+      0.01
+    ],
+    "scrollP95Ms": 0.1,
+    "scrollRangeMs": [
+      0.1,
+      0.1
+    ],
+    "mappingNodes": 801,
+    "samples": 3
+  },
+  "C": {
+    "variant": "mica-installed-low-memory-on",
+    "processMemoryMb": 248.793,
+    "processMemoryRangeMb": [
+      248.613,
+      251.582
+    ],
+    "heapMb": 6.442,
+    "heapRangeMb": [
+      6.442,
+      6.442
+    ],
+    "retainedContentMb": 5,
+    "mountedTurnCount": 12,
+    "mutationCount": 62,
+    "typingP95Ms": 0.01,
+    "typingRangeMs": [
+      0.01,
+      0.01
+    ],
+    "scrollP95Ms": 0.1,
+    "scrollRangeMs": [
+      0.01,
+      0.1
+    ],
+    "mappingNodes": 41,
+    "samples": 3
+  },
+  "rawSamples": {
+    "A": [
+      {
+        "sample": 1,
+        "state": "off",
+        "variant": "mica-absent-or-disabled",
+        "processMemoryMb": 287.426,
+        "heapMb": 101.23151016235352,
+        "mappingNodes": 801,
+        "retainedContentMb": 100,
+        "mountedTurnCount": 12,
+        "mutationCount": 62,
+        "typingP95Ms": 0.01,
+        "scrollP95Ms": 0.01,
+        "status": null,
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36"
+      },
+      {
+        "sample": 2,
+        "state": "off",
+        "variant": "mica-absent-or-disabled",
+        "processMemoryMb": 289.773,
+        "heapMb": 101.23147964477539,
+        "mappingNodes": 801,
+        "retainedContentMb": 100,
+        "mountedTurnCount": 12,
+        "mutationCount": 62,
+        "typingP95Ms": 0.01,
+        "scrollP95Ms": 0.09999990463256836,
+        "status": null,
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36"
+      },
+      {
+        "sample": 3,
+        "state": "off",
+        "variant": "mica-absent-or-disabled",
+        "processMemoryMb": 288.266,
+        "heapMb": 101.23147964477539,
+        "mappingNodes": 801,
+        "retainedContentMb": 100,
+        "mountedTurnCount": 12,
+        "mutationCount": 62,
+        "typingP95Ms": 0.01,
+        "scrollP95Ms": 0.01,
+        "status": null,
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36"
+      }
+    ],
+    "B": [
+      {
+        "sample": 1,
+        "state": "off",
+        "variant": "mica-installed-low-memory-off",
+        "processMemoryMb": 280.91,
+        "heapMb": 101.77564239501953,
+        "mappingNodes": 801,
+        "retainedContentMb": 100,
+        "mountedTurnCount": 12,
+        "mutationCount": 62,
+        "typingP95Ms": 0.01,
+        "scrollP95Ms": 0.10000002384185791,
+        "status": {
+          "schemaVersion": 2,
+          "state": "standby",
+          "reason": "initializing",
+          "source": "none",
+          "active": false,
+          "keptTurns": 0,
+          "totalTurns": 0,
+          "removedTurns": 0,
+          "keptNodes": 0,
+          "totalNodes": 0,
+          "bytesBefore": 0,
+          "bytesAfter": 0,
+          "bytesRemoved": 0,
+          "recentTurnLimit": 40,
+          "actualTruncation": false,
+          "truncatedRepresentation": "client-history-window",
+          "serverMutation": false,
+          "reactManagedInteractiveNodesDetached": false,
+          "contentUpload": false,
+          "updatedAt": "2026-10-12T10:13:12.908Z"
+        },
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36"
+      },
+      {
+        "sample": 2,
+        "state": "off",
+        "variant": "mica-installed-low-memory-off",
+        "processMemoryMb": 281.711,
+        "heapMb": 101.77564239501953,
+        "mappingNodes": 801,
+        "retainedContentMb": 100,
+        "mountedTurnCount": 12,
+        "mutationCount": 62,
+        "typingP95Ms": 0.01,
+        "scrollP95Ms": 0.10000002384185791,
+        "status": {
+          "schemaVersion": 2,
+          "state": "standby",
+          "reason": "initializing",
+          "source": "none",
+          "active": false,
+          "keptTurns": 0,
+          "totalTurns": 0,
+          "removedTurns": 0,
+          "keptNodes": 0,
+          "totalNodes": 0,
+          "bytesBefore": 0,
+          "bytesAfter": 0,
+          "bytesRemoved": 0,
+          "recentTurnLimit": 40,
+          "actualTruncation": false,
+          "truncatedRepresentation": "client-history-window",
+          "serverMutation": false,
+          "reactManagedInteractiveNodesDetached": false,
+          "contentUpload": false,
+          "updatedAt": "2026-10-12T10:13:16.480Z"
+        },
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36"
+      },
+      {
+        "sample": 3,
+        "state": "off",
+        "variant": "mica-installed-low-memory-off",
+        "processMemoryMb": 283.438,
+        "heapMb": 101.77564239501953,
+        "mappingNodes": 801,
+        "retainedContentMb": 100,
+        "mountedTurnCount": 12,
+        "mutationCount": 62,
+        "typingP95Ms": 0.01,
+        "scrollP95Ms": 0.10000002384185791,
+        "status": {
+          "schemaVersion": 2,
+          "state": "standby",
+          "reason": "initializing",
+          "source": "none",
+          "active": false,
+          "keptTurns": 0,
+          "totalTurns": 0,
+          "removedTurns": 0,
+          "keptNodes": 0,
+          "totalNodes": 0,
+          "bytesBefore": 0,
+          "bytesAfter": 0,
+          "bytesRemoved": 0,
+          "recentTurnLimit": 40,
+          "actualTruncation": false,
+          "truncatedRepresentation": "client-history-window",
+          "serverMutation": false,
+          "reactManagedInteractiveNodesDetached": false,
+          "contentUpload": false,
+          "updatedAt": "2026-10-12T10:13:20.012Z"
+        },
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36"
+      }
+    ],
+    "C": [
+      {
+        "sample": 1,
+        "state": "on",
+        "variant": "mica-installed-low-memory-on",
+        "processMemoryMb": 248.793,
+        "heapMb": 6.441844940185547,
+        "mappingNodes": 41,
+        "retainedContentMb": 5,
+        "mountedTurnCount": 12,
+        "mutationCount": 62,
+        "typingP95Ms": 0.01,
+        "scrollP95Ms": 0.09999990463256836,
+        "status": {
+          "schemaVersion": 2,
+          "state": "active",
+          "reason": "windowed",
+          "source": "react-router-stream",
+          "active": true,
+          "keptTurns": 40,
+          "totalTurns": 800,
+          "removedTurns": 760,
+          "keptNodes": 41,
+          "totalNodes": 801,
+          "bytesBefore": 52598044,
+          "bytesAfter": 2629540,
+          "bytesRemoved": 49968504,
+          "recentTurnLimit": 40,
+          "actualTruncation": true,
+          "truncatedRepresentation": "client-history-window",
+          "serverMutation": false,
+          "reactManagedInteractiveNodesDetached": false,
+          "contentUpload": false,
+          "updatedAt": "2026-10-12T10:13:23.846Z"
+        },
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36"
+      },
+      {
+        "sample": 2,
+        "state": "on",
+        "variant": "mica-installed-low-memory-on",
+        "processMemoryMb": 248.613,
+        "heapMb": 6.441844940185547,
+        "mappingNodes": 41,
+        "retainedContentMb": 5,
+        "mountedTurnCount": 12,
+        "mutationCount": 62,
+        "typingP95Ms": 0.01,
+        "scrollP95Ms": 0.09999990463256836,
+        "status": {
+          "schemaVersion": 2,
+          "state": "active",
+          "reason": "windowed",
+          "source": "react-router-stream",
+          "active": true,
+          "keptTurns": 40,
+          "totalTurns": 800,
+          "removedTurns": 760,
+          "keptNodes": 41,
+          "totalNodes": 801,
+          "bytesBefore": 52598044,
+          "bytesAfter": 2629540,
+          "bytesRemoved": 49968504,
+          "recentTurnLimit": 40,
+          "actualTruncation": true,
+          "truncatedRepresentation": "client-history-window",
+          "serverMutation": false,
+          "reactManagedInteractiveNodesDetached": false,
+          "contentUpload": false,
+          "updatedAt": "2026-10-12T10:13:27.568Z"
+        },
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36"
+      },
+      {
+        "sample": 3,
+        "state": "on",
+        "variant": "mica-installed-low-memory-on",
+        "processMemoryMb": 251.582,
+        "heapMb": 6.441844940185547,
+        "mappingNodes": 41,
+        "retainedContentMb": 5,
+        "mountedTurnCount": 12,
+        "mutationCount": 62,
+        "typingP95Ms": 0.01,
+        "scrollP95Ms": 0.01,
+        "status": {
+          "schemaVersion": 2,
+          "state": "active",
+          "reason": "windowed",
+          "source": "react-router-stream",
+          "active": true,
+          "keptTurns": 40,
+          "totalTurns": 800,
+          "removedTurns": 760,
+          "keptNodes": 41,
+          "totalNodes": 801,
+          "bytesBefore": 52598044,
+          "bytesAfter": 2629540,
+          "bytesRemoved": 49968504,
+          "recentTurnLimit": 40,
+          "actualTruncation": true,
+          "truncatedRepresentation": "client-history-window",
+          "serverMutation": false,
+          "reactManagedInteractiveNodesDetached": false,
+          "contentUpload": false,
+          "updatedAt": "2026-10-12T10:13:31.303Z"
+        },
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36"
+      }
+    ]
+  },
+  "actualTruncation": true,
+  "truncatedRepresentation": "client-history-window",
+  "reactManagedInteractiveNodesDetached": false,
+  "serverMutation": false
+}

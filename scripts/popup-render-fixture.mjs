@@ -29,6 +29,7 @@ const requiredStates = {
 const matrix = [];
 const screenshotPlans = [
   { state: "exact", width: 368, scale: 1, colorScheme: "light" },
+  { state: "exact", lowMemoryMode: "active", width: 368, scale: 1, colorScheme: "light" },
   { state: "unknown", width: 368, scale: 1, colorScheme: "dark" },
   { state: "compatible", width: 320, scale: 1.5, colorScheme: "light" },
   { state: "contentUnavailable", width: 400, scale: 1.25, colorScheme: "dark" }
@@ -54,7 +55,14 @@ try {
 
   const screenshots = [];
   for (const plan of screenshotPlans) screenshots.push(await renderPopup({ ...plan, screenshot: true }));
-  assert(screenshots[0].screenshotSha256 !== screenshots[1].screenshotSha256, "light/dark screenshots are duplicate artifacts");
+  assert(screenshots[0].screenshotSha256 !== screenshots[2].screenshotSha256, "light/dark screenshots are duplicate artifacts");
+  assert(screenshots[0].screenshotSha256 !== screenshots[1].screenshotSha256, "standby and active Low Memory screenshots are duplicate artifacts");
+  const activeLowMemory = screenshots.find((item) => item.lowMemoryMode === "active");
+  assert(activeLowMemory?.historyActionVisible, "active Low Memory state did not expose full-history recovery");
+  assert(activeLowMemory?.lowMemoryState === "40 kept", "active Low Memory state did not report the retained turn window");
+  const standbyExact = matrix.find((item) => item.state === "exact");
+  assert(!standbyExact?.keyboard.sampledFocus.includes("load-full-history"), "hidden full-history recovery remained keyboard-focusable");
+  assert(activeLowMemory?.keyboard.sampledFocus.includes("load-full-history"), "active full-history recovery was not keyboard-focusable");
 
   const support = await inspectSecondaryView(troubleshootingPath, ["Troubleshooting", "Run self-check", "Export diagnostic bundle"]);
   const qa = await inspectSecondaryView(qaPath, ["Developer QA", "Refresh compatibility", "Run focused checks", "Export sanitized evidence"]);
@@ -67,7 +75,7 @@ try {
     scalesPercent: [100, 125, 150],
     themes: ["light", "dark"],
     keyboard: matrix.find((item) => item.state === "exact")?.keyboard,
-    screenshots: screenshots.map(({ state, width, scale, colorScheme, screenshotPath, screenshotSha256 }) => ({ state, width, scale, colorScheme, screenshotPath, screenshotSha256 })),
+    screenshots: screenshots.map(({ state, lowMemoryMode, width, scale, colorScheme, lowMemoryState, historyActionVisible, screenshotPath, screenshotSha256 }) => ({ state, lowMemoryMode, width, scale, colorScheme, lowMemoryState, historyActionVisible, screenshotPath, screenshotSha256 })),
     secondaryViews: { troubleshooting: support, developerQa: qa },
     focusReturn
   };
@@ -79,33 +87,37 @@ try {
   await browser.close();
 }
 
-async function renderPopup({ state, width, scale, colorScheme, screenshot }) {
+async function renderPopup({ state, lowMemoryMode = "standby", width, scale, colorScheme, screenshot }) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: scale, colorScheme });
   await installChromeStub(context);
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
-  await page.goto(`${pathToFileURL(popupPath).href}?state=${encodeURIComponent(state)}`, { waitUntil: "load" });
+  await page.goto(`${pathToFileURL(popupPath).href}?state=${encodeURIComponent(state)}&lowMemory=${encodeURIComponent(lowMemoryMode)}`, { waitUntil: "load" });
   await page.waitForFunction((expected) => document.getElementById("compatibility-title")?.textContent === expected, requiredStates[state]);
-  const result = await page.evaluate(({ state, width, scale, colorScheme }) => {
+  const result = await page.evaluate(({ state, lowMemoryMode, width, scale, colorScheme }) => {
     const interactive = Array.from(document.querySelectorAll("input, a[href], summary, button:not([disabled])")).filter((element) => {
       const closedDetails = element.closest("details:not([open])");
-      return !element.hidden && element.getClientRects().length > 0 && (!closedDetails || element.tagName === "SUMMARY");
+      const hiddenAncestor = element.closest("[hidden]");
+      return !hiddenAncestor && element.getClientRects().length > 0 && (!closedDetails || element.tagName === "SUMMARY");
     });
     const accessibleNames = interactive.every((element) => (element.getAttribute("aria-label") || element.textContent || element.closest("label")?.textContent || "").trim().length > 0);
     const footer = document.querySelector(".product-footer").getBoundingClientRect();
     return {
       state,
+      lowMemoryMode,
       width,
       scale,
       colorScheme,
       title: document.getElementById("compatibility-title").textContent,
       detail: document.getElementById("compatibility-detail").textContent,
+      lowMemoryState: document.getElementById("low-memory-state").textContent,
+      historyActionVisible: !document.getElementById("history-action-row").hidden,
       horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
       importantActionsVisible: footer.bottom <= window.innerHeight,
       keyboard: { accessibleNames, interactiveCount: interactive.length }
     };
-  }, { state, width, scale, colorScheme });
+  }, { state, lowMemoryMode, width, scale, colorScheme });
   await page.evaluate(() => document.activeElement?.blur());
   const focusOrder = [];
   for (let index = 0; index < result.keyboard.interactiveCount; index += 1) {
@@ -119,7 +131,7 @@ async function renderPopup({ state, width, scale, colorScheme, screenshot }) {
   assert(errors.length === 0, `popup ${state} produced page errors: ${errors.join(" | ")}`);
 
   if (screenshot) {
-    const filename = `${state}-${colorScheme}-${width}-${Math.round(scale * 100)}.png`;
+    const filename = `${state}${lowMemoryMode === "active" ? "-low-memory-active" : ""}-${colorScheme}-${width}-${Math.round(scale * 100)}.png`;
     const screenshotPath = path.join(evidenceDir, filename);
     await page.locator("main").screenshot({ path: screenshotPath });
     result.screenshotPath = path.relative(root, screenshotPath).replaceAll("\\", "/");
@@ -180,6 +192,7 @@ async function installChromeStub(context) {
   await context.addInitScript(({ version, buildLabel, contractHash }) => {
     const params = new URLSearchParams(location.search);
     const requestedState = params.get("state") || "exact";
+    const lowMemoryMode = params.get("lowMemory") || "standby";
     const runtimeState = requestedState === "contentUnavailable" ? "content_unavailable" : requestedState;
     const report = {
       candidate: { version, versionName: version, buildLabel, contractHash },
@@ -200,12 +213,12 @@ async function installChromeStub(context) {
     };
     globalThis.chrome = {
       runtime: { getManifest: () => ({ version, version_name: version }), lastError: null },
-      storage: { local: { get: (_defaults, callback) => callback({ enabled: requestedState !== "disabled" }), set: (_value, callback) => callback?.() } },
+      storage: { local: { get: (_defaults, callback) => callback({ enabled: requestedState !== "disabled", lowMemory: true, lowMemoryKeepCount: 40 }), set: (_value, callback) => callback?.() } },
       tabs: {
         query: (_query, callback) => callback([{ id: 1 }]),
         sendMessage: (_id, message, callback) => {
           if (message.type === "MICA_QA_EXPORT") callback({ report });
-          else callback({ settings: { enabled: requestedState !== "disabled" }, status: { state: runtimeState } });
+          else callback({ settings: { enabled: requestedState !== "disabled", lowMemory: true, lowMemoryKeepCount: 40 }, status: { state: runtimeState, lowMemory: lowMemoryMode === "active" ? { state: "active", active: true, actualTruncation: true, keptTurns: 40, removedTurns: 120 } : { state: "standby", active: false, actualTruncation: false } } });
         }
       }
     };

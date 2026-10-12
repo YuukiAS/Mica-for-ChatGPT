@@ -1,0 +1,75 @@
+{
+  "passed": true,
+  "stream": {
+    "deliveredChunks": 1,
+    "inputEntries": 1309,
+    "outputEntries": 349,
+    "mappingNodes": 41,
+    "currentPreserved": true,
+    "status": {
+      "schemaVersion": 2,
+      "state": "active",
+      "reason": "windowed",
+      "source": "react-router-stream",
+      "active": true,
+      "keptTurns": 40,
+      "totalTurns": 160,
+      "removedTurns": 120,
+      "keptNodes": 41,
+      "totalNodes": 161,
+      "bytesBefore": 25279,
+      "bytesAfter": 7927,
+      "bytesRemoved": 17352,
+      "recentTurnLimit": 40,
+      "actualTruncation": true,
+      "truncatedRepresentation": "client-history-window",
+      "serverMutation": false,
+      "reactManagedInteractiveNodesDetached": false,
+      "contentUpload": false,
+      "updatedAt": "2026-10-12T10:14:04.000Z"
+    }
+  },
+  "json": {
+    "mappingNodes": 41,
+    "currentPreserved": true,
+    "status": {
+      "schemaVersion": 2,
+      "state": "active",
+      "reason": "windowed",
+      "source": "conversation-json",
+      "active": true,
+      "keptTurns": 40,
+      "totalTurns": 160,
+      "removedTurns": 120,
+      "keptNodes": 41,
+      "totalNodes": 161,
+      "bytesBefore": 355078,
+      "bytesAfter": 88930,
+      "bytesRemoved": 266148,
+      "recentTurnLimit": 40,
+      "actualTruncation": true,
+      "truncatedRepresentation": "client-history-window",
+      "serverMutation": false,
+      "reactManagedInteractiveNodesDetached": false,
+      "contentUpload": false,
+      "updatedAt": "2026-10-12T10:14:04.014Z"
+    }
+  },
+  "bypass": {
+    "mappingNodes": 161
+  },
+  "disabled": {
+    "mappingNodes": 161
+  },
+  "domTurnsAfterStream": 120,
+  "documentQueriesDuringTyping": 0,
+  "historyControl": {
+    "connectedAtTop": true,
+    "visibleAtTop": true,
+    "buttonPresent": true,
+    "bypassSet": true
+  },
+  "reload": {
+    "bypassPersisted": true
+  }
+}

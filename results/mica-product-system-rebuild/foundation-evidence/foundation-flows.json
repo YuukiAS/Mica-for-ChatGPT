@@ -42,6 +42,27 @@
   "initialVersion": "settled-cf81bb7b",
   "editedVersion": "settled-9e08f904",
   "status": "EXACT",
+  "lowMemory": {
+    "state": "active",
+    "reason": "windowed",
+    "source": "react-router-stream",
+    "active": true,
+    "keptTurns": 40,
+    "totalTurns": 120,
+    "removedTurns": 80,
+    "keptNodes": 41,
+    "totalNodes": 121,
+    "bytesBefore": 17735,
+    "bytesAfter": 6064,
+    "bytesRemoved": 11671,
+    "recentTurnLimit": 40,
+    "actualTruncation": true,
+    "truncatedRepresentation": "client-history-window",
+    "serverMutation": false,
+    "reactManagedInteractiveNodesDetached": false,
+    "contentUpload": false,
+    "updatedAt": "2026-10-12T10:13:57.772Z"
+  },
   "report": {
     "schema": "mica-developer-qa.v1",
     "privacy": {
@@ -58,7 +79,8 @@
     "streaming": true,
     "editBranch": true,
     "connector": true,
-    "toolFileAuth": true
+    "toolFileAuth": true,
+    "typingImeHotPath": true
   },
   "sendLifecycle": {
     "progressObserved": true,

@@ -18,7 +18,10 @@ assert(manifest.action?.default_title === "Mica", "action.default_title missing"
 assert(manifest.permissions?.includes("storage"), "storage permission missing");
 assert(manifest.permissions?.includes("activeTab"), "activeTab permission missing");
 assert(!manifest.host_permissions?.some((host) => !/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(host)), "unexpected host permission");
-assert(JSON.stringify(manifest.content_scripts?.[0]?.js) === JSON.stringify(["chatgpt-adapter.js", "answer-document.js", "content.js"]), "foundation content-script order drifted");
+assert(JSON.stringify(manifest.content_scripts?.[0]?.js) === JSON.stringify(["low-memory-core.js", "low-memory-page.js"]), "Low Memory MAIN-world script order drifted");
+assert(manifest.content_scripts?.[0]?.run_at === "document_start" && manifest.content_scripts?.[0]?.world === "MAIN", "Low Memory data interceptor must run in MAIN world at document_start");
+assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["low-memory-config.js"]) && manifest.content_scripts?.[1]?.run_at === "document_start", "Low Memory config bridge order drifted");
+assert(JSON.stringify(manifest.content_scripts?.[2]?.js) === JSON.stringify(["chatgpt-adapter.js", "answer-document.js", "content.js"]), "foundation content-script order drifted");
 
 for (const size of [16, 32, 48, 128]) {
   assert(manifest.icons?.[size] === `icons/icon${size}.png`, `manifest icon${size} missing`);
@@ -34,12 +37,15 @@ const contractHash = createHash("sha256").update(contractSource).digest("hex");
 const adapter = await readFile(path.join(distDir, "chatgpt-adapter.js"), "utf8");
 const answerDocument = await readFile(path.join(distDir, "answer-document.js"), "utf8");
 const content = await readFile(path.join(distDir, "content.js"), "utf8");
+const lowMemoryCore = await readFile(path.join(distDir, "low-memory-core.js"), "utf8");
+const lowMemoryPage = await readFile(path.join(distDir, "low-memory-page.js"), "utf8");
+const lowMemoryConfig = await readFile(path.join(distDir, "low-memory-config.js"), "utf8");
 const popup = await readFile(path.join(distDir, "popup", "popup.js"), "utf8");
 const troubleshooting = await readFile(path.join(distDir, "popup", "troubleshooting.js"), "utf8");
 const qa = await readFile(path.join(distDir, "popup", "qa.js"), "utf8");
 
 for (const text of [adapter, content]) assert(text.includes(contractHash), "built current ChatGPT contract hash drifted");
-for (const text of [adapter, answerDocument, content, popup, troubleshooting, qa]) {
+for (const text of [adapter, answerDocument, lowMemoryCore, lowMemoryPage, lowMemoryConfig, content, popup, troubleshooting, qa]) {
   assert(!/__MICA_(?:VERSION|VERSION_NAME|BUILD_LABEL|CHATGPT_CONTRACT_HASH|DEV_BUILD)__/.test(text), "unresolved build placeholder remains");
   new Function(text);
 }
@@ -69,6 +75,7 @@ for (const token of [
   "MICA_SET_SETTINGS",
   "MICA_QA_EXPORT",
   "MICA_GET_ANSWER_DOCUMENT",
+  "MICA_LOAD_FULL_HISTORY",
   "mica-developer-qa.v1",
   `const VERSION = "${MACHINE_VERSION}"`,
   `const BUILD_LABEL = "${BUILD_LABEL}"`,
@@ -76,12 +83,24 @@ for (const token of [
   "rawDomIncluded: false"
 ]) assert(content.includes(token), `content runtime missing ${token}`);
 
+for (const token of ["windowTurboStreamChunk", "windowJsonPayload", "client-history-window", "reactManagedInteractiveNodesDetached"]) {
+  assert(lowMemoryCore.includes(token), `Low Memory core missing ${token}`);
+}
+for (const token of ["__reactRouterContext", "streamController", "conversation-json", "serverMutation: false"]) {
+  assert(lowMemoryPage.includes(token), `Low Memory page interceptor missing ${token}`);
+}
+for (const token of ["mica.lowMemory.config.v2", "mica.lowMemory.bypass.v2", "requestFullHistory"]) {
+  assert(lowMemoryConfig.includes(token), `Low Memory config bridge missing ${token}`);
+}
+
 const reportBody = extractFunctionBody(content, "buildSanitizedQaReport");
 assert(!/innerText|textContent|innerHTML|outerHTML/.test(reportBody), "sanitized QA report must not read conversation text/HTML");
-assert(!/addEventListener\(["'](?:beforeinput|input|keydown|compositionstart|compositionupdate|compositionend)/.test(content), "foundation runtime added a typing hot-path listener");
+for (const text of [content, lowMemoryCore, lowMemoryPage, lowMemoryConfig]) {
+  assert(!/addEventListener\(["'](?:beforeinput|input|keydown|compositionstart|compositionupdate|compositionend)/.test(text), "runtime added a typing hot-path listener");
+}
 
 const normalHtml = await readFile(path.join(distDir, "popup", "index.html"), "utf8");
-for (const token of ["Mica", "Enable Mica", "Checking this page…", "Low memory", "Unavailable in this build", "Page health", "Troubleshooting", "Advanced"]) {
+for (const token of ["Mica", "Enable Mica", "Checking this page…", "Low memory", "Keeps 40 recent turns active", "Load full history", "Page health", "Troubleshooting", "Advanced"]) {
   assert(normalHtml.includes(token), `normal popup missing ${token}`);
 }
 for (const forbidden of ["Start diagnostics", "Stop diagnostics", "Copy report", "mounted", "selector", "Surface Atlas"]) {
@@ -105,7 +124,7 @@ for (const legacy of [
   "connector-continuity.js",
   "send-residual-recovery.js"
 ]) {
-  assert(!manifest.content_scripts[0].js.includes(legacy), `legacy runtime entrypoint remains active: ${legacy}`);
+  assert(!manifest.content_scripts.some((entry) => entry.js.includes(legacy)), `legacy runtime entrypoint remains active: ${legacy}`);
   await assertMissing(path.join(distDir, legacy));
 }
 
