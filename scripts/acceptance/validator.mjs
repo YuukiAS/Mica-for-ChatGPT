@@ -180,6 +180,23 @@ export async function validateBundle(repoRoot, bundleDir, requestedGateIds = nul
 async function validateMeasurement(kind, record, manifest, artifacts, bundleDir, errors) {
   const m = record.measurement || {};
   const fail = (message) => errors.push(`${record.gateId}: ${message}`);
+  const readBoundJson = async (artifactId) => {
+    if (!(record.artifactIds || []).includes(artifactId)) {
+      fail(`measurement is not bound to ${artifactId}`);
+      return null;
+    }
+    const artifact = artifacts.get(artifactId);
+    if (!artifact) {
+      fail(`artifact ${artifactId} is missing`);
+      return null;
+    }
+    try {
+      return JSON.parse(await readArtifactText(bundleDir, artifact));
+    } catch (_error) {
+      fail(`artifact ${artifactId} is not valid JSON`);
+      return null;
+    }
+  };
 
   if (kind === "candidate-identity") {
     if (m.commit !== manifest.candidate?.commit) fail("measurement commit does not match candidate");
@@ -188,12 +205,17 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
   }
 
   if (kind === "popup-render") {
+    const measured = await readBoundJson("popup-render");
     if (record.subject?.surface !== "actual-extension-popup") fail("wrong page/surface target");
     const requiredStates = ["loading", "exact", "compatible", "unknown", "unsupported", "disabled", "contentUnavailable"];
     if (!includesAll(m.states, requiredStates)) fail("required popup states were not rendered");
     if (!includesAll(m.widthsPx, [320, 340, 368, 400])) fail("required popup widths were not rendered");
     if (!includesAll(m.scalesPercent, [100, 125, 150])) fail("required popup scales were not rendered");
     if (!m.keyboard?.focusTraversal || !m.keyboard?.accessibleNames) fail("keyboard/accessibility evidence missing");
+    if (!m.secondaryFocus?.troubleshootingToIndex || !m.secondaryFocus?.qaToTroubleshooting) fail("secondary-view focus return evidence missing");
+    if (!measured?.passed || !sameJson(m.states, measured.states) || !sameJson(m.widthsPx, measured.widthsPx) || !sameJson(m.scalesPercent, measured.scalesPercent) || !sameJson(m.keyboard, measured.keyboard) || !sameJson(m.secondaryFocus, measured.focusReturn)) {
+      fail("popup measurement does not match the bound browser evidence");
+    }
     const light = artifacts.get(m.themeArtifacts?.light);
     const dark = artifacts.get(m.themeArtifacts?.dark);
     if (!light || !dark) fail("light/dark screenshot artifacts missing");
@@ -202,6 +224,9 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
   }
 
   if (kind === "adapter-contract") {
+    const contract = await readBoundJson("chatgpt-contract");
+    const bootstrap = await readBoundJson("current-chatgpt-bootstrap");
+    const foundationCore = await readBoundJson("foundation-core");
     if (record.subject?.surface !== "current-chatgpt") fail("wrong ChatGPT contract surface");
     if (!Array.isArray(m.capabilities) || m.capabilities.length === 0) fail("capability measurements missing");
     for (const capability of m.capabilities || []) {
@@ -216,16 +241,35 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
       }
       const source = (record.artifactIds || []).map((id) => artifacts.get(id)).find((artifact) => artifact?.sha256 === capability.sourceArtifactHash);
       if (!source) fail(`capability ${capability.capabilityId} source artifact hash is not bound to evidence`);
+      if (source?.id !== "current-chatgpt-bootstrap") fail(`capability ${capability.capabilityId} is not bound to current bootstrap evidence`);
+      const declared = contract?.capabilities?.find((item) => item.capabilityId === capability.capabilityId);
+      if (!declared || declared.sourceCapabilityId !== capability.sourceCapabilityId || declared.variantId !== capability.variantId || declared.status !== capability.status || !sameJson(declared.requiredInvariants || [], capability.requiredInvariants || [])) {
+        fail(`capability ${capability.capabilityId} differs from the bound contract artifact`);
+      }
+      const sourceCapability = bootstrap?.capabilities?.find((item) => item.id === capability.sourceCapabilityId);
+      if (!sourceCapability || !bootstrapStatusSupportsContract(sourceCapability.status, capability.status)) {
+        fail(`capability ${capability.capabilityId} is not supported by its current bootstrap capability`);
+      }
     }
+    if (manifest.chatgptContractHash !== artifacts.get("chatgpt-contract")?.sha256) fail("manifest contract hash is not the bound contract artifact hash");
+    if (bootstrap?.gate?.bootstrapEvidence !== "PASS" || bootstrap?.gate?.oldSurfaceAtlasUsedAsCurrentEvidence !== false) fail("current bootstrap evidence identity is invalid");
+    if (foundationCore?.mixedStructureStatus !== "UNKNOWN" || foundationCore?.toolStructureStatus !== "UNKNOWN") fail("adapter partial/mixed turn fail-open evidence is missing");
     return;
   }
 
   if (kind === "answer-document-core") {
+    const measured = await readBoundJson("foundation-core");
     const requiredFields = ["documentId", "conversationId", "turnId", "sourceVersion", "generationState", "orderedBlocks"];
     if (!includesAll(m.documentFields, requiredFields)) fail("AnswerDocument fields missing");
     const requiredKinds = ["heading", "paragraph", "list", "quote", "table", "code", "inline_math", "display_math", "link", "image", "citation", "opaque_interactive", "unknown_block"];
     if (!includesAll(m.blockKinds, requiredKinds)) fail("AnswerDocument block-kind coverage missing");
-    if (!m.streamingIsProvisional || !m.settledIsDurable || !m.opaqueInteractive || !m.singleAdapterProducer) fail("AnswerDocument lifecycle/ownership invariant missing");
+    if (!m.streamingIsProvisional || !m.settledIsDurable || !m.unknownLifecycleRejected || !m.opaqueInteractive || !m.singleAdapterProducer) fail("AnswerDocument lifecycle/ownership invariant missing");
+    const measuredKinds = [...(measured?.blockKinds || []), ...(measured?.inlineKinds || [])];
+    if (!measured?.passed || !includesAll(measuredKinds, requiredKinds)) fail("bound AnswerDocument evidence lacks required block coverage");
+    if (measured?.lifecycle?.streamingDurable !== false || measured?.lifecycle?.settledDurable !== true || measured?.lifecycle?.unknownModelRejected !== true || measured?.lifecycle?.callerCannotForceSettled !== true || measured?.lifecycle?.singleAdapterProducer !== true) {
+      fail("bound AnswerDocument evidence does not prove lifecycle/ownership safety");
+    }
+    if (!sameJson([...new Set(m.blockKinds)].sort(), [...new Set(measuredKinds)].sort())) fail("AnswerDocument measurement differs from bound browser evidence");
     return;
   }
 
@@ -257,16 +301,28 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
   }
 
   if (kind === "core-flow-regression") {
+    const measured = await readBoundJson("foundation-flows");
     for (const flow of ["composer", "send", "streaming", "editBranch", "connector", "toolFileAuth"]) {
       if (m[flow] !== true) fail(`${flow} regression evidence failed`);
+      if (measured?.coreFlows?.[flow] !== m[flow]) fail(`${flow} measurement differs from bound browser evidence`);
     }
+    if (!measured?.passed) fail("bound core-flow evidence did not pass");
     return;
   }
 
   if (kind === "send-lifecycle-safety") {
+    const measured = await readBoundJson("foundation-flows");
     if (m.progressObserved && m.autoResend) fail("fake-waiting lifecycle would resend while progress exists");
     if (m.consequentialFlowActive && m.autoResend) fail("consequential flow would be auto-resent");
     if (m.userTurnCommitted && m.duplicateSend) fail("committed turn would be duplicated");
+    const expected = {
+      progressObserved: measured?.sendLifecycle?.progressObserved === true,
+      autoResend: measured?.sendLifecycle?.autoResendObserved === true,
+      consequentialFlowActive: measured?.sendLifecycle?.consequentialFlowActive === true,
+      userTurnCommitted: measured?.sendLifecycle?.userTurnCommitted === true,
+      duplicateSend: measured?.sendLifecycle?.duplicateSendObserved === true
+    };
+    if (!measured?.passed || !sameJson(m, expected)) fail("send-lifecycle measurement differs from bound browser evidence");
     return;
   }
 
@@ -349,9 +405,13 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
   }
 
   if (kind === "privacy") {
+    const core = await readBoundJson("foundation-core");
+    const flows = await readBoundJson("foundation-flows");
     for (const key of ["conversationTextIncluded", "attachmentContentIncluded", "requestBodyIncluded", "authTokenIncluded", "rawDomIncluded"]) {
       if (m[key] !== false) fail(`privacy flag ${key} must be false`);
+      if (core?.privacy?.[key] !== m[key] || flows?.report?.privacy?.[key] !== m[key]) fail(`privacy flag ${key} differs from bound browser evidence`);
     }
+    if (m.flowPrivacyMatches !== true) fail("privacy evidence sources do not agree");
     return;
   }
 
@@ -462,6 +522,17 @@ function includesAll(actual, required) {
 
 function sameSet(actual, expected) {
   return Array.isArray(actual) && actual.length === expected.length && includesAll(actual, expected);
+}
+
+function sameJson(actual, expected) {
+  return stableStringify(actual) === stableStringify(expected);
+}
+
+function bootstrapStatusSupportsContract(bootstrapStatus, contractStatus) {
+  if (contractStatus === "EXACT") return bootstrapStatus === "EXACT" || bootstrapStatus === "EXACT_FOR_OBSERVED_BLOCKS";
+  if (contractStatus === "COMPATIBLE") return bootstrapStatus === "COMPATIBLE" || bootstrapStatus === "EXACT";
+  if (contractStatus === "UNKNOWN") return bootstrapStatus === "UNOBSERVED" || bootstrapStatus === "UNKNOWN_FAIL_OPEN";
+  return false;
 }
 
 function finitePositive(value) {

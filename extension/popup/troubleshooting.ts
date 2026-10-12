@@ -6,11 +6,17 @@ const exportBundle = document.getElementById("export-bundle");
 const operationStatus = document.getElementById("operation-status");
 const qaLink = document.getElementById("troubleshooting-qa-link");
 
-title.focus();
 qaLink.hidden = !DEV_BUILD;
+selfFocus();
 selfCheck.addEventListener("click", runSelfCheck);
 exportBundle.addEventListener("click", exportDiagnosticBundle);
 void refreshSummary();
+
+function selfFocus() {
+  const focusId = new URLSearchParams(location.search).get("focus");
+  if (focusId === "troubleshooting-qa-link" && !qaLink.hidden) qaLink.focus();
+  else title.focus();
+}
 
 async function refreshSummary() {
   const response = await sendToActiveTab({ type: "MICA_GET_STATUS" });

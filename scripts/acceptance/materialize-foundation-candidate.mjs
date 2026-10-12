@@ -78,7 +78,10 @@ for (const [id, filename, kind] of artifactDefinitions) {
 const artifactHash = (id) => artifacts.find((artifact) => artifact.id === id).sha256;
 const contract = JSON.parse(await readFile(path.join(bundleDir, "artifacts", "chatgpt-contract.json"), "utf8"));
 const popupEvidence = JSON.parse(await readFile(path.join(bundleDir, "artifacts", "popup-render.json"), "utf8"));
+const foundationCore = JSON.parse(await readFile(path.join(bundleDir, "artifacts", "foundation-core.json"), "utf8"));
+const foundationFlows = JSON.parse(await readFile(path.join(bundleDir, "artifacts", "foundation-flows.json"), "utf8"));
 const contractHash = artifactHash("chatgpt-contract");
+const bootstrapHash = artifactHash("current-chatgpt-bootstrap");
 const distHash = artifactHash("dist-tree");
 const requiredGates = [
   "candidate-identity",
@@ -99,28 +102,31 @@ const evidence = [
     widthsPx: popupEvidence.widthsPx,
     scalesPercent: popupEvidence.scalesPercent,
     keyboard: popupEvidence.keyboard,
+    secondaryFocus: popupEvidence.focusReturn,
     themeArtifacts: { light: "popup-light", dark: "popup-dark" }
   }),
-  record("adapter-contract", "REAL_DERIVED_CURRENT_CHATGPT", { surface: "current-chatgpt" }, ["chatgpt-contract", "current-chatgpt-bootstrap"], {
+  record("adapter-contract", "REAL_DERIVED_CURRENT_CHATGPT", { surface: "current-chatgpt" }, ["chatgpt-contract", "current-chatgpt-bootstrap", "foundation-core"], {
     capabilities: contract.capabilities.map((capability) => ({
       capabilityId: capability.capabilityId,
+      sourceCapabilityId: capability.sourceCapabilityId,
       variantId: capability.variantId,
       status: capability.status,
       requiredInvariants: capability.requiredInvariants || [],
       observedInvariants: capability.status === "UNKNOWN" ? [] : capability.requiredInvariants || [],
       contractHash,
-      sourceArtifactHash: contractHash,
+      sourceArtifactHash: bootstrapHash,
       invalidatedBy: [],
       failOpen: capability.status === "UNKNOWN"
     }))
   }),
   record("answer-document-core", "REAL_DERIVED_CURRENT_CHATGPT", { surface: "answer-document" }, ["foundation-core", "chatgpt-contract", "current-chatgpt-bootstrap"], {
     documentFields: ["documentId", "conversationId", "turnId", "sourceVersion", "generationState", "orderedBlocks"],
-    blockKinds: ["heading", "paragraph", "list", "quote", "table", "code", "inline_math", "display_math", "link", "image", "citation", "opaque_interactive", "unknown_block"],
-    streamingIsProvisional: true,
-    settledIsDurable: true,
-    opaqueInteractive: true,
-    singleAdapterProducer: true
+    blockKinds: [...foundationCore.blockKinds, ...foundationCore.inlineKinds],
+    streamingIsProvisional: foundationCore.lifecycle?.streamingDurable === false,
+    settledIsDurable: foundationCore.lifecycle?.settledDurable === true,
+    unknownLifecycleRejected: foundationCore.lifecycle?.unknownModelRejected === true && foundationCore.lifecycle?.callerCannotForceSettled === true,
+    opaqueInteractive: foundationCore.blockKinds?.includes("opaque_interactive") === true,
+    singleAdapterProducer: foundationCore.lifecycle?.singleAdapterProducer === true
   }),
   record("copy-placement", "CURRENT_CHATGPT_READ_ONLY", { surface: "assistant-action-cluster" }, ["chatgpt-contract", "current-chatgpt-bootstrap"], {
     actionInjected: false,
@@ -130,26 +136,22 @@ const evidence = [
     visibleBaseline: true
   }),
   record("core-flow-regression", "LOCAL_REAL_BROWSER", { surface: "local-real-browser" }, ["foundation-flows", "dist-tree"], {
-    composer: true,
-    send: true,
-    streaming: true,
-    editBranch: true,
-    connector: true,
-    toolFileAuth: true
+    ...foundationFlows.coreFlows
   }),
   record("send-lifecycle-safety", "LOCAL_REAL_BROWSER", { surface: "local-real-browser" }, ["foundation-flows", "dist-tree"], {
-    progressObserved: true,
-    autoResend: false,
-    consequentialFlowActive: true,
-    userTurnCommitted: true,
-    duplicateSend: false
+    progressObserved: foundationFlows.sendLifecycle?.progressObserved === true,
+    autoResend: foundationFlows.sendLifecycle?.autoResendObserved === true,
+    consequentialFlowActive: foundationFlows.sendLifecycle?.consequentialFlowActive === true,
+    userTurnCommitted: foundationFlows.sendLifecycle?.userTurnCommitted === true,
+    duplicateSend: foundationFlows.sendLifecycle?.duplicateSendObserved === true
   }),
   record("privacy", "LOCAL_REAL_BROWSER", { surface: "diagnostic-bundle" }, ["foundation-core", "foundation-flows"], {
-    conversationTextIncluded: false,
-    attachmentContentIncluded: false,
-    requestBodyIncluded: false,
-    authTokenIncluded: false,
-    rawDomIncluded: false
+    conversationTextIncluded: foundationCore.privacy?.conversationTextIncluded,
+    attachmentContentIncluded: foundationCore.privacy?.attachmentContentIncluded,
+    requestBodyIncluded: foundationCore.privacy?.requestBodyIncluded,
+    authTokenIncluded: foundationCore.privacy?.authTokenIncluded,
+    rawDomIncluded: foundationCore.privacy?.rawDomIncluded,
+    flowPrivacyMatches: JSON.stringify(foundationCore.privacy) === JSON.stringify(foundationFlows.report?.privacy)
   }),
   record("packaging-version", "LOCAL_REAL_BROWSER", { surface: "built-extension" }, ["built-manifest", "version-report"], {
     builtManifestArtifactId: "built-manifest",

@@ -2,7 +2,7 @@
 
 Mica 是一个本地运行的 Chromium 浏览器扩展，面向需要长期使用 ChatGPT 长对话、整理回答和控制客户端资源占用的人。项目当前正在重建产品基础：先确认 Mica 能安全识别当前 ChatGPT，再逐步交付低内存模式、回答高亮和带可选数学文本的 PDF。
 
-当前开发版是 `0.2.0`（`product-foundation.1`）。它已经换用新的产品界面、`ChatGPTAdapter` 和 `AnswerDocument`，但还不是 `0.3.0` 功能版。Low Memory 在界面中明确显示为 `Unavailable in this build`；现阶段没有把 ChatGPT 原生窗口化、旧 `content-visibility` 或诊断结果冒充为低内存截断。
+当前开发版是 `0.2.1`（`product-foundation.2`）。它已经换用新的产品界面、`ChatGPTAdapter` 和 `AnswerDocument`，但还不是 `0.3.0` 功能版。Low Memory 在界面中明确显示为 `Unavailable in this build`；现阶段没有把 ChatGPT 原生窗口化、旧 `content-visibility` 或诊断结果冒充为低内存截断。
 
 ## 安装开发版
 
@@ -34,7 +34,7 @@ Foundation runtime 目前包括：
 - 一个按 capability 判断 `EXACT`、`COMPATIBLE` 或 `UNKNOWN` 的 `ChatGPTAdapter`；结构不明时停用相关集成，让 ChatGPT 保持原生行为。
 - 一个由 adapter 唯一生成的 `AnswerDocument`，保留 ordered blocks、streaming/settled 状态、版本身份、源码区间，以及文本、列表、表格、代码、链接、引用、图片和行内/展示数学。
 - 独立的 Troubleshooting 与 Developer QA 页面。导出的诊断只包含结构状态、版本和 contract 身份，不包含对话正文、附件内容、请求 body、认证 token 或原始 DOM。
-- 固定开发路径 `dist/mica-dev`，manifest、弹窗和诊断报告均显示 `0.2.0`。
+- 固定开发路径 `dist/mica-dev`，manifest、弹窗和诊断报告均显示 `0.2.1`。
 
 旧的自动提示关闭、composer recovery、connector continuity、send residual recovery、页面状态点和 containment runtime 已从当前 build 入口移除。历史源码和失败 fixture 暂时保留，供迁移真实回归用；它们不再与新 Foundation 同时运行。
 
@@ -56,7 +56,7 @@ C = Mica installed, Low Memory enabled
 LOW_MEMORY_TRUNCATION=PASS
 ```
 
-当前 `0.2.0` 没有这个 PASS，也不能作为 `0.3.0` 发布。
+当前 `0.2.1` 没有这个 PASS，也不能作为 `0.3.0` 发布。
 
 ## 本地验证
 

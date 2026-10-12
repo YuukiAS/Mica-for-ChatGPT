@@ -4,7 +4,7 @@
   <body>
     <main id="main">
       <section data-testid="conversation-turn-1"><div data-message-author-role="user"><p>Initial question</p></div></section>
-      <section data-testid="conversation-turn-2">
+      <section data-testid="conversation-turn-2" data-mica-generation-state="SETTLED">
         <div data-message-author-role="assistant">
           <div class="markdown"><p>Initial answer</p></div>
           <div><button type="button" data-testid="copy-turn-action-button">Copy</button></div>
@@ -37,6 +37,7 @@
           const assistant = document.createElement("section");
           assistant.dataset.testid = `conversation-turn-${nextTurn++}`;
           assistant.dataset.streaming = "true";
+          assistant.dataset.micaGenerationState = "STREAMING";
           assistant.innerHTML = '<div data-message-author-role="assistant"><div class="markdown"><p>Streaming answer</p></div></div>';
           main.append(assistant);
         });
@@ -54,12 +55,14 @@
           completeStreaming() {
             const turn = main.querySelector("[data-streaming='true']");
             turn.dataset.streaming = "false";
+            turn.dataset.micaGenerationState = "SETTLED";
             turn.querySelector("p").textContent = "Settled answer";
           },
           editAnswer() { main.querySelector("[data-testid='conversation-turn-2'] p").textContent = "Edited initial answer"; },
           branchAnswer() {
             const branch = document.createElement("section");
             branch.dataset.testid = `conversation-turn-${nextTurn++}`;
+            branch.dataset.micaGenerationState = "SETTLED";
             branch.innerHTML = '<div data-message-author-role="assistant"><div class="markdown"><p>Branch answer</p></div></div>';
             main.append(branch);
           }

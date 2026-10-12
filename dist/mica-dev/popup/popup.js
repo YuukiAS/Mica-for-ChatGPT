@@ -29,6 +29,14 @@ async function initialize() {
   const response = await sendToActiveTab({ type: "MICA_GET_STATUS" });
   if (response?.settings) enabled.checked = response.settings.enabled;
   render(response?.status || unavailableStatus());
+  restoreOriginFocus();
+}
+
+function restoreOriginFocus() {
+  const focusId = new URLSearchParams(location.search).get("focus");
+  if (focusId === "developer-qa-link") document.getElementById("advanced")?.setAttribute("open", "");
+  const target = focusId ? document.getElementById(focusId) : null;
+  if (target instanceof HTMLElement && !target.hidden) target.focus();
 }
 
 async function onEnabledChange() {

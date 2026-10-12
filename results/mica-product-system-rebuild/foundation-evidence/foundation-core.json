@@ -1,6 +1,6 @@
 {
   "passed": true,
-  "contractHash": "cc6f89fc65d4c36da2f859618ec7dc61efa3ceafd336a21a997ef93d5572bd7f",
+  "contractHash": "c6dd6bf00d015f691cc1433ec557008818ec4a328e625946e8d43ed13d51fecc",
   "status": "EXACT",
   "blockKinds": [
     "heading",
@@ -21,6 +21,15 @@
     "image"
   ],
   "invalidStructureStatus": "UNKNOWN",
+  "mixedStructureStatus": "UNKNOWN",
+  "toolStructureStatus": "UNKNOWN",
+  "lifecycle": {
+    "streamingDurable": false,
+    "settledDurable": true,
+    "unknownModelRejected": true,
+    "callerCannotForceSettled": true,
+    "singleAdapterProducer": true
+  },
   "privacy": {
     "conversationTextIncluded": false,
     "attachmentContentIncluded": false,

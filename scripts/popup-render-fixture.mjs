@@ -58,6 +58,7 @@ try {
 
   const support = await inspectSecondaryView(troubleshootingPath, ["Troubleshooting", "Run self-check", "Export diagnostic bundle"]);
   const qa = await inspectSecondaryView(qaPath, ["Developer QA", "Refresh compatibility", "Run focused checks", "Export sanitized evidence"]);
+  const focusReturn = await inspectFocusReturns();
 
   const output = {
     passed: true,
@@ -67,7 +68,8 @@ try {
     themes: ["light", "dark"],
     keyboard: matrix.find((item) => item.state === "exact")?.keyboard,
     screenshots: screenshots.map(({ state, width, scale, colorScheme, screenshotPath, screenshotSha256 }) => ({ state, width, scale, colorScheme, screenshotPath, screenshotSha256 })),
-    secondaryViews: { troubleshooting: support, developerQa: qa }
+    secondaryViews: { troubleshooting: support, developerQa: qa },
+    focusReturn
   };
   const evidenceOutputDir = path.join(root, "results", "mica-product-system-rebuild", "foundation-evidence");
   await mkdir(evidenceOutputDir, { recursive: true });
@@ -148,6 +150,30 @@ async function inspectSecondaryView(file, expectedText) {
   result.screenshotSha256 = createHash("sha256").update(await readFile(screenshotPath)).digest("hex");
   await context.close();
   return result;
+}
+
+async function inspectFocusReturns() {
+  const context = await browser.newContext({ viewport: { width: 368, height: 900 }, colorScheme: "light" });
+  await installChromeStub(context);
+  const page = await context.newPage();
+  await page.goto(pathToFileURL(popupPath).href, { waitUntil: "load" });
+  await page.waitForFunction(() => document.getElementById("compatibility-title")?.textContent === "Ready on this page");
+  await page.locator("#troubleshooting-link").click();
+  await page.waitForFunction(() => document.activeElement?.id === "view-title");
+  await page.locator("#back-link").click();
+  await page.waitForFunction(() => document.activeElement?.id === "troubleshooting-link");
+  const troubleshootingToIndex = await page.evaluate(() => document.activeElement?.id === "troubleshooting-link");
+
+  await page.locator("#troubleshooting-link").click();
+  await page.waitForFunction(() => document.activeElement?.id === "view-title");
+  await page.locator("#troubleshooting-qa-link").click();
+  await page.waitForFunction(() => document.activeElement?.id === "view-title");
+  await page.locator("#back-link").click();
+  await page.waitForFunction(() => document.activeElement?.id === "troubleshooting-qa-link");
+  const qaToTroubleshooting = await page.evaluate(() => document.activeElement?.id === "troubleshooting-qa-link");
+  await context.close();
+  assert(troubleshootingToIndex && qaToTroubleshooting, "secondary view did not restore focus to its originating link");
+  return { troubleshootingToIndex, qaToTroubleshooting };
 }
 
 async function installChromeStub(context) {

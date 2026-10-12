@@ -22,18 +22,32 @@
   }
 
   function listTurns(doc = document) {
-    if (!isSupportedDocument(doc)) return [];
+    return inspectTurnCandidates(doc).turns;
+  }
+
+  function inspectTurnCandidates(doc = document) {
+    if (!isSupportedDocument(doc)) return { turns: [], invalid: [], candidateCount: 0 };
     const selector = isFixture(doc) ? FIXTURE_TURN_SELECTOR : CURRENT_TURN_SELECTOR;
     const candidates = Array.from(doc.querySelectorAll(selector));
     const turns = [];
+    const invalid = [];
     const seen = new Set();
     for (const element of candidates) {
-      if (!(element instanceof HTMLElement) || seen.has(element)) continue;
+      if (!(element instanceof HTMLElement) || seen.has(element)) {
+        invalid.push({ reason: "invalid or duplicate turn container" });
+        continue;
+      }
       const roleNodes = Array.from(element.querySelectorAll(ROLE_SELECTOR)).filter((node) => node.closest(selector) === element);
-      if (roleNodes.length !== 1) continue;
+      if (roleNodes.length !== 1) {
+        invalid.push({ turnId: element.getAttribute("data-testid"), reason: "turn must have exactly one role owner" });
+        continue;
+      }
       const roleNode = roleNodes[0];
       const role = roleNode.getAttribute("data-message-author-role");
-      if (role !== "user" && role !== "assistant" && role !== "tool") continue;
+      if (role !== "user" && role !== "assistant") {
+        invalid.push({ turnId: element.getAttribute("data-testid"), reason: `unproven turn role: ${role || "missing"}` });
+        continue;
+      }
       const turnId = element.getAttribute("data-testid") || `mica-turn-${turns.length + 1}`;
       turns.push({
         turnId,
@@ -46,7 +60,7 @@
       });
       seen.add(element);
     }
-    return turns;
+    return { turns, invalid, candidateCount: candidates.length };
   }
 
   function findAnswerRoot(roleNode) {
@@ -83,22 +97,31 @@
     };
   }
 
+  function generationStateForTurn(turn) {
+    if (!turn || turn.role !== "assistant" || !(turn.element instanceof HTMLElement)) return null;
+    if (!isFixture(turn.element.ownerDocument)) return null;
+    const state = turn.element.dataset.micaGenerationState;
+    return state === "STREAMING" || state === "SETTLED" ? state : null;
+  }
+
   function inspect(doc = document) {
     if (!isSupportedDocument(doc)) {
       return inspection("UNSUPPORTED", "This page is not a supported ChatGPT surface.", []);
     }
 
     const broadRoleCount = doc.querySelectorAll(ROLE_SELECTOR).length;
-    const turns = listTurns(doc);
+    const turnInspection = inspectTurnCandidates(doc);
+    const turns = turnInspection.turns;
+    const turnStructureValid = turnInspection.invalid.length === 0;
     const assistantTurns = turns.filter((turn) => turn.role === "assistant" && turn.answerRoot);
     const composer = findComposer(doc);
     const actionClusters = assistantTurns.map(findAssistantActionCluster).filter(Boolean);
     const capabilities = [
-      capability("turns.list", "conversation-turn-section-role-v1", turns.length > 0 ? "EXACT" : "UNKNOWN", [
+      capability("turns.list", "conversation-turn-section-role-v1", turns.length > 0 && turnStructureValid ? "EXACT" : "UNKNOWN", [
         "ordered turn container",
         "exactly one role owner",
         "user or assistant role"
-      ], turns.length > 0 ? null : "No contract-valid turn was observed."),
+      ], turns.length > 0 && turnStructureValid ? null : turnInspection.invalid[0]?.reason || "No contract-valid turn was observed."),
       capability("answer.read", "assistant-role-semantic-content-v1", assistantTurns.length > 0 ? "EXACT" : "UNKNOWN", [
         "assistant role ownership",
         "semantic content root"
@@ -108,7 +131,7 @@
         "same assistant turn",
         "sibling cluster parent"
       ], actionClusters.length > 0 ? null : "No safe native action cluster was observed."),
-      capability("composer.editor", composer?.variantId || "prompt-textarea-contenteditable-v1", composer ? "EXACT" : "UNKNOWN", composer ? [
+      capability("composer.editor", composer?.variantId || "prompt-editor-current-variants-v1", composer ? (isFixture(doc) ? "EXACT" : "COMPATIBLE") : "UNKNOWN", composer ? [
         "prompt editor identity",
         "authoritative editor property"
       ] : [], composer ? null : "No contract-valid composer was observed."),
@@ -117,8 +140,11 @@
       capability("lifecycle.streamingEditBranchTools", "unproven-v1", "UNKNOWN", [], "Current lifecycle contract is not yet proven.")
     ];
 
+    if (!turnStructureValid) {
+      return inspection("UNKNOWN", "At least one conversation turn does not match the frozen role/ownership contract.", capabilities, turns, composer);
+    }
     if (turns.length > 0 && assistantTurns.length > 0 && composer) {
-      return inspection("EXACT", "Current conversation structure matches the frozen contract.", capabilities, turns, composer);
+      return inspection(isFixture(doc) ? "EXACT" : "COMPATIBLE", "Current conversation structure matches a proven contract variant.", capabilities, turns, composer);
     }
     if (turns.length > 0 && assistantTurns.length > 0) {
       return inspection("COMPATIBLE", "Conversation content is supported; an optional surface is unavailable.", capabilities, turns, composer);
@@ -162,6 +188,7 @@
     inspect,
     listTurns,
     findComposer,
-    findAssistantActionCluster
+    findAssistantActionCluster,
+    generationStateForTurn
   });
 })();

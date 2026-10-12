@@ -9,7 +9,7 @@
       <section data-testid="conversation-turn-1">
         <div data-message-author-role="user"><p>Fixture question</p></div>
       </section>
-      <section data-testid="conversation-turn-2">
+      <section data-testid="conversation-turn-2" data-mica-generation-state="SETTLED">
         <div data-message-author-role="assistant">
           <div class="markdown" data-message-content>
             <h2>Structured answer</h2>
@@ -31,8 +31,8 @@
             <table><thead><tr><th>Key</th><th>Value</th></tr></thead><tbody><tr><td>A</td><td>1</td></tr></tbody></table>
             <pre><code class="language-js">const value = 1;</code></pre>
             <p>Image <img alt="diagram" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="></p>
-            <div data-mica-opaque-interactive><button type="button" aria-label="Run analysis">Run</button></div>
-            <aside data-mica-unknown-block>Future block</aside>
+            <div><button type="button" aria-label="Run analysis">Run</button></div>
+            <aside>Future block</aside>
           </div>
           <div class="native-actions"><button type="button" data-testid="copy-turn-action-button">Copy</button></div>
         </div>

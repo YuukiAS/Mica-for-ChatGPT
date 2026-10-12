@@ -36,6 +36,8 @@ try {
     const assistant = turns.find((turn) => turn.role === "assistant");
     const settled = model.fromAssistantTurn(assistant, { conversationId: "fixture-conversation", generationState: "SETTLED" });
     const streaming = model.fromAssistantTurn(assistant, { conversationId: "fixture-conversation", generationState: "STREAMING" });
+    const missingState = model.fromAssistantTurn(assistant, { conversationId: "fixture-conversation" });
+    const invalidState = model.fromAssistantTurn(assistant, { conversationId: "fixture-conversation", generationState: "UNKNOWN" });
     const cluster = adapter.findAssistantActionCluster(assistant);
     const composer = adapter.findComposer(document);
     const originalHtml = assistant.answerRoot.innerHTML;
@@ -47,7 +49,10 @@ try {
     const branched = model.fromAssistantTurn(remountedTurn, { conversationId: "fixture-branch", generationState: "SETTLED" });
     const runtime = globalThis.__MICA_FOUNDATION_TEST__;
     const qaReport = runtime.buildSanitizedQaReport();
-    const answerViaRuntime = runtime.getAnswerDocument("conversation-turn-2", "SETTLED");
+    const answerViaRuntime = runtime.getAnswerDocument("conversation-turn-2");
+    assistant.element.removeAttribute("data-mica-generation-state");
+    const callerForcedSettled = runtime.getAnswerDocument("conversation-turn-2", "SETTLED");
+    assistant.element.dataset.micaGenerationState = "SETTLED";
     let synchronousDocumentQueries = 0;
     const originalQuerySelectorAll = Document.prototype.querySelectorAll;
     Document.prototype.querySelectorAll = function (...args) {
@@ -67,11 +72,14 @@ try {
       clusterVariant: cluster?.variantId,
       settled,
       streaming,
+      missingState,
+      invalidState,
       editedSourceVersion: edited.sourceVersion,
       remounted,
       branchedDocumentId: branched.documentId,
       qaReport,
       answerViaRuntime,
+      callerForcedSettled,
       synchronousDocumentQueries,
       disabledReport
     };
@@ -85,11 +93,13 @@ try {
   assert(result.clusterVariant === "native-copy-button-parent-v1", "assistant action cluster was not proven");
   assert(result.settled?.producedBy === "MicaChatGPTAdapter", "AnswerDocument producer identity drifted");
   assert(result.settled?.durable === true && result.streaming?.durable === false, "streaming/settled durability contract failed");
+  assert(result.missingState === null && result.invalidState === null, "AnswerDocument manufactured a settled state from unknown lifecycle input");
   assert(result.settled?.documentId === result.remounted?.documentId, "remount changed AnswerDocument identity");
   assert(result.settled?.sourceVersion === result.remounted?.sourceVersion, "remount changed stable source version");
   assert(result.editedSourceVersion !== result.settled?.sourceVersion, "edit did not change source version");
   assert(result.branchedDocumentId !== result.settled?.documentId, "branch did not change document identity");
   assert(result.answerViaRuntime?.producedBy === "MicaChatGPTAdapter", "content runtime bypassed the single AnswerDocument producer");
+  assert(result.callerForcedSettled === null, "message caller forced an unknown lifecycle into durable settled content");
   assert(result.synchronousDocumentQueries === 0, "ordinary input synchronously queried the document");
   assert(result.disabledReport.runtime.enabled === false && result.disabledReport.runtime.observerActive === false, "disabling Mica left the observer active");
   const reportText = JSON.stringify(result.qaReport);
@@ -115,6 +125,14 @@ try {
   assert(invalidResult.status === "UNKNOWN", "ambiguous role ownership did not fail open");
   assert(invalidResult.turns.length === 0, "ambiguous turn was not rejected");
 
+  await page.setContent("<!doctype html><html data-mica-fixture='true'><body><section data-testid='conversation-turn-good'><div data-message-author-role='assistant'><p>Good</p></div></section><section data-testid='conversation-turn-bad'><div data-message-author-role='user'></div><div data-message-author-role='assistant'></div></section><div id='prompt-textarea' role='textbox' contenteditable='true'></div></body></html>");
+  const mixedResult = await page.evaluate(() => globalThis.MicaChatGPTAdapter.inspect(document));
+  assert(mixedResult.status === "UNKNOWN", "mixed valid/invalid turns manufactured an overall supported state");
+
+  await page.setContent("<!doctype html><html data-mica-fixture='true'><body><section data-testid='conversation-turn-good'><div data-message-author-role='assistant'><p>Good</p></div></section><section data-testid='conversation-turn-tool'><div data-message-author-role='tool'><p>Tool</p></div></section><div id='prompt-textarea' role='textbox' contenteditable='true'></div></body></html>");
+  const toolResult = await page.evaluate(() => globalThis.MicaChatGPTAdapter.inspect(document));
+  assert(toolResult.status === "UNKNOWN", "unproven tool turn was silently removed from an overall supported state");
+
   const output = {
     passed: true,
     contractHash: result.contractHash,
@@ -122,6 +140,15 @@ try {
     blockKinds: [...kinds],
     inlineKinds: [...new Set(paragraphRuns.map((run) => run.kind))],
     invalidStructureStatus: invalidResult.status,
+    mixedStructureStatus: mixedResult.status,
+    toolStructureStatus: toolResult.status,
+    lifecycle: {
+      streamingDurable: result.streaming.durable,
+      settledDurable: result.settled.durable,
+      unknownModelRejected: result.missingState === null && result.invalidState === null,
+      callerCannotForceSettled: result.callerForcedSettled === null,
+      singleAdapterProducer: result.settled.producedBy === "MicaChatGPTAdapter" && result.answerViaRuntime.producedBy === "MicaChatGPTAdapter"
+    },
     privacy: result.qaReport.privacy,
     typingHotPath: { synchronousDocumentQueries: result.synchronousDocumentQueries },
     disabledRuntime: { enabled: result.disabledReport.runtime.enabled, observerActive: result.disabledReport.runtime.observerActive }

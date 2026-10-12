@@ -7,8 +7,13 @@ const refreshButton = document.getElementById("refresh-compatibility");
 const focusedButton = document.getElementById("run-focused-checks");
 const exportButton = document.getElementById("export-evidence");
 const operationStatus = document.getElementById("qa-operation-status");
+const backLink = document.getElementById("back-link");
 let latestReport = null;
 
+if (new URLSearchParams(location.search).get("from") === "troubleshooting") {
+  backLink.href = "troubleshooting.html?focus=troubleshooting-qa-link";
+  backLink.setAttribute("aria-label", "Back to Troubleshooting");
+}
 title.focus();
 refreshButton.addEventListener("click", refresh);
 focusedButton.addEventListener("click", runFocusedChecks);

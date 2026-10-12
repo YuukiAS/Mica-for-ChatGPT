@@ -50,24 +50,24 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 180));
 
     const adapter = globalThis.MicaChatGPTAdapter;
-    const model = globalThis.MicaAnswerDocument;
+    const runtime = globalThis.__MICA_FOUNDATION_TEST__;
     const afterSendTurns = adapter.listTurns(document);
     const streamingTurn = afterSendTurns.find((turn) => turn.element.dataset.streaming === "true");
-    const streamingDocument = model.fromAssistantTurn(streamingTurn, { conversationId: "flow", generationState: "STREAMING" });
+    const streamingDocument = runtime.getAnswerDocument(streamingTurn.turnId);
     globalThis.foundationFlowFixture.completeStreaming();
     await new Promise((resolve) => setTimeout(resolve, 180));
     const settledTurn = adapter.listTurns(document).find((turn) => turn.turnId === streamingTurn.turnId);
-    const settledDocument = model.fromAssistantTurn(settledTurn, { conversationId: "flow", generationState: "SETTLED" });
+    const settledDocument = runtime.getAnswerDocument(settledTurn.turnId);
     const initialTurn = adapter.listTurns(document).find((turn) => turn.turnId === "conversation-turn-2");
-    const initialVersion = model.fromAssistantTurn(initialTurn, { conversationId: "flow", generationState: "SETTLED" }).sourceVersion;
+    const initialVersion = runtime.getAnswerDocument(initialTurn.turnId).sourceVersion;
     globalThis.foundationFlowFixture.editAnswer();
     await new Promise((resolve) => setTimeout(resolve, 180));
     const editedTurn = adapter.listTurns(document).find((turn) => turn.turnId === "conversation-turn-2");
-    const editedVersion = model.fromAssistantTurn(editedTurn, { conversationId: "flow", generationState: "SETTLED" }).sourceVersion;
+    const editedVersion = runtime.getAnswerDocument(editedTurn.turnId).sourceVersion;
     globalThis.foundationFlowFixture.branchAnswer();
     await new Promise((resolve) => setTimeout(resolve, 180));
     const finalTurns = adapter.listTurns(document);
-    const report = globalThis.__MICA_FOUNDATION_TEST__.buildSanitizedQaReport();
+    const report = runtime.buildSanitizedQaReport();
     return {
       inputEvents,
       counters: { ...globalThis.foundationFlowFixture.counters },
@@ -96,7 +96,26 @@ try {
   assert(result.status === "EXACT", "core-flow fixture no longer matches the adapter contract");
   assert(result.report.privacy.conversationTextIncluded === false && result.report.privacy.rawDomIncluded === false, "core-flow QA report privacy drifted");
 
-  const output = { passed: true, ...result, report: { schema: result.report.schema, privacy: result.report.privacy } };
+  const output = {
+    passed: true,
+    ...result,
+    coreFlows: {
+      composer: result.composerPresent,
+      send: result.counters.sends === 1,
+      streaming: result.streamingDurable === false && result.settledDurable === true,
+      editBranch: result.initialVersion !== result.editedVersion && result.finalTurnCount === 5,
+      connector: result.counters.connectorSelections === 1 && result.connectorChooserVisible,
+      toolFileAuth: result.counters.fileClicks === 1 && result.counters.toolClicks === 1 && result.counters.authClicks === 1
+    },
+    sendLifecycle: {
+      progressObserved: result.streamingDurable === false,
+      autoResendObserved: result.counters.sends > 1,
+      consequentialFlowActive: result.counters.connectorSelections === 1 || result.counters.fileClicks === 1 || result.counters.toolClicks === 1 || result.counters.authClicks === 1,
+      userTurnCommitted: result.afterSendTurnCount >= 4,
+      duplicateSendObserved: result.counters.sends > 1
+    },
+    report: { schema: result.report.schema, privacy: result.report.privacy }
+  };
   const evidenceDir = path.join(root, "results", "mica-product-system-rebuild", "foundation-evidence");
   await mkdir(evidenceDir, { recursive: true });
   await writeFile(path.join(evidenceDir, "foundation-flows.json"), `${JSON.stringify(output, null, 2)}\n`);

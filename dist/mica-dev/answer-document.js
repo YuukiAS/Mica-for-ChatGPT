@@ -15,11 +15,13 @@
     "opaque_interactive",
     "unknown_block"
   ]);
-  const BLOCK_SELECTOR = "h1,h2,h3,h4,h5,h6,p,ul,ol,blockquote,table,pre,.katex-display,[data-mica-opaque-interactive],[data-mica-unknown-block]";
+  const KNOWN_BLOCK_SELECTOR = "h1,h2,h3,h4,h5,h6,p,ul,ol,blockquote,table,pre,.katex-display";
+  const INTERACTIVE_SELECTOR = "button,input,select,textarea,iframe,form,[contenteditable='true'],[role='button'],[role='dialog'],[role='menu'],[data-testid*='tool'],[data-testid*='file'],[data-testid*='attachment'],[data-testid*='connector'],[data-testid*='auth']";
 
   function fromAssistantTurn(turn, options = {}) {
     if (!turn || turn.role !== "assistant" || !(turn.answerRoot instanceof HTMLElement)) return null;
-    const generationState = options.generationState === "STREAMING" ? "STREAMING" : "SETTLED";
+    const generationState = options.generationState;
+    if (generationState !== "STREAMING" && generationState !== "SETTLED") return null;
     const conversationId = options.conversationId || conversationIdentity(turn.answerRoot.ownerDocument);
     const documentId = `answer-${hashText(`${conversationId}:${turn.turnId}`)}`;
     const state = { cursor: 0, documentId };
@@ -40,15 +42,19 @@
   }
 
   function parseBlocks(root, state) {
-    const candidates = Array.from(root.querySelectorAll(BLOCK_SELECTOR)).filter((node) => {
-      const parentBlock = node.parentElement?.closest(BLOCK_SELECTOR);
-      return !parentBlock || !root.contains(parentBlock);
-    });
+    if (root.matches(KNOWN_BLOCK_SELECTOR)) return [parseBlock(root, state)].filter(Boolean);
+    const candidates = Array.from(root.childNodes).filter((node) => node instanceof HTMLElement || (node.nodeType === Node.TEXT_NODE && normalizeText(node.nodeValue || "")));
     if (candidates.length === 0) {
       const text = normalizeText(root.textContent || "");
       return text ? [finalizeBlock(state, "paragraph", { text, inlines: textInline(text, state.cursor) })] : [];
     }
-    return candidates.map((node) => parseBlock(node, state)).filter(Boolean);
+    return candidates.map((node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = normalizeText(node.nodeValue || "");
+        return text ? finalizeBlock(state, "paragraph", { text, inlines: textInline(text, state.cursor) }) : null;
+      }
+      return parseBlock(node, state);
+    }).filter(Boolean);
   }
 
   function parseBlock(node, state) {
@@ -84,7 +90,7 @@
     if (node.matches(".katex-display")) {
       return finalizeBlock(state, "display_math", mathPayload(node));
     }
-    if (node.matches("[data-mica-opaque-interactive]")) {
+    if (node.matches("[data-mica-opaque-interactive]") || node.matches(INTERACTIVE_SELECTOR) || node.querySelector(INTERACTIVE_SELECTOR)) {
       return finalizeBlock(state, "opaque_interactive", { label: accessibleLabel(node), interactive: true });
     }
     return finalizeBlock(state, "unknown_block", { tagName: tag, text: normalizeText(node.textContent || "") });

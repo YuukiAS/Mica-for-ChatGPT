@@ -41,7 +41,7 @@
       "scale": 1,
       "colorScheme": "light",
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/exact-light-368-100.png",
-      "screenshotSha256": "0f6aea71de3600219ce8d030745f2df1eb0d2c463aa2ad2f8523af766b08c4f5"
+      "screenshotSha256": "eba772ec75e5c28a225348d0dd9c6995ad0a2ebb39245c0e713307057eeaa6ab"
     },
     {
       "state": "unknown",
@@ -49,7 +49,7 @@
       "scale": 1,
       "colorScheme": "dark",
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/unknown-dark-368-100.png",
-      "screenshotSha256": "05fe95f4aa7ffd2342565e283454a43f0179346b6acbf5449c69e9a46e229328"
+      "screenshotSha256": "753bdd33223bf593abcf6966f7488bebca32a0fface5860a158f43f2effcf623"
     },
     {
       "state": "compatible",
@@ -57,7 +57,7 @@
       "scale": 1.5,
       "colorScheme": "light",
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/compatible-light-320-150.png",
-      "screenshotSha256": "dbcbd37fb6ee352f350f49adf33bdbb52e2826455b48169bdae541a0f4501a9e"
+      "screenshotSha256": "46cea6cf9444a7e2c5c5cbcbe60b47bf09202dadeacfb8be97e43094cac3b438"
     },
     {
       "state": "contentUnavailable",
@@ -65,7 +65,7 @@
       "scale": 1.25,
       "colorScheme": "dark",
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/contentUnavailable-dark-400-125.png",
-      "screenshotSha256": "3ff3301616cde23687ed7635ab35aa15301f3db2c725ec248be71a1deed43fb7"
+      "screenshotSha256": "97b4318989948de485474ca0389b3d7198b9d2869026e068413a4f52f863cb9e"
     }
   ],
   "secondaryViews": {
@@ -81,7 +81,11 @@
       "headingFocused": true,
       "horizontalOverflow": 0,
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/qa-light-368-100.png",
-      "screenshotSha256": "7819c10b1410b88987c19b20c4ad0a5bf06df2351b09b862ce898ea17ab7c04b"
+      "screenshotSha256": "47cec7c0145e7da3dbdc787941987767dad6facfcea70b9231ea114cf7d5100f"
     }
+  },
+  "focusReturn": {
+    "troubleshootingToIndex": true,
+    "qaToTroubleshooting": true
   }
 }

@@ -43,6 +43,26 @@ export async function runControlCorpus(repoRoot) {
     ["duplicate-popup-screenshots", async ({ manifest }) => { evidence(manifest, "popup-render").measurement.themeArtifacts.dark = "popup-light"; refreshRoot(manifest); }],
     ["wrong-popup-surface", async ({ manifest }) => { evidence(manifest, "popup-render").subject.surface = "static-html-mock"; refreshRoot(manifest); }],
     ["hard-coded-pass-only", async ({ manifest }) => { evidence(manifest, "popup-render").measurement = { pass: true }; refreshRoot(manifest); }],
+    ["forged-bound-measurement", async ({ bundleDir, manifest }) => {
+      const file = path.join(bundleDir, "artifacts", "foundation-flows.json");
+      const value = JSON.parse(await readFile(file, "utf8"));
+      value.coreFlows.connector = false;
+      await writeFile(file, JSON.stringify(value));
+      manifest.artifacts.find((item) => item.id === "foundation-flows").sha256 = await sha256File(file);
+      refreshRoot(manifest);
+    }],
+    ["forced-unknown-settled", async ({ bundleDir, manifest }) => {
+      const file = path.join(bundleDir, "artifacts", "foundation-core.json");
+      const value = JSON.parse(await readFile(file, "utf8"));
+      value.lifecycle.callerCannotForceSettled = false;
+      await writeFile(file, JSON.stringify(value));
+      manifest.artifacts.find((item) => item.id === "foundation-core").sha256 = await sha256File(file);
+      refreshRoot(manifest);
+    }],
+    ["wrong-bootstrap-capability-binding", async ({ manifest }) => {
+      evidence(manifest, "adapter-contract").measurement.capabilities[0].sourceCapabilityId = "missing-current-capability";
+      refreshRoot(manifest);
+    }],
     ["evidence-root-mismatch", async ({ manifest }) => { manifest.evidenceRootHash = "0".repeat(64); }],
     ["historical-copy-misplacement", async ({ manifest }) => { evidence(manifest, "copy-placement").measurement.clusterProven = false; refreshRoot(manifest); }],
     ["connector-residual-remount-regression", async ({ manifest }) => { evidence(manifest, "core-flow-regression").measurement.connector = false; refreshRoot(manifest); }],
@@ -122,7 +142,10 @@ async function createGoodBundle(repoRoot) {
     ["dist", "artifacts/dist.zip", "application/zip", "known-good-dist"],
     ["popup-light", "artifacts/popup-light.png", "image/png", "known-good-popup-light"],
     ["popup-dark", "artifacts/popup-dark.png", "image/png", "known-good-popup-dark"],
-    ["chatgpt-contract", "artifacts/chatgpt-contract.json", "application/json", "known-good-current-contract"],
+    ["chatgpt-contract", "artifacts/chatgpt-contract.json", "application/json", JSON.stringify({
+      capabilities: [{ capabilityId: "turns.list", sourceCapabilityId: "conversation-turn-discovery", variantId: "public-shared-v1", status: "EXACT", requiredInvariants: ["ordered turns", "role ownership"] }]
+    })],
+    ["current-chatgpt-bootstrap", "artifacts/current-chatgpt-bootstrap.json", "application/json", JSON.stringify({ capabilities: [{ id: "conversation-turn-discovery", status: "EXACT" }], gate: { bootstrapEvidence: "PASS", oldSurfaceAtlasUsedAsCurrentEvidence: false } })],
     ["pdf", "artifacts/output.pdf", "application/pdf", "%PDF-control-selectable-math"],
     ["privacy-report", "artifacts/privacy.json", "application/json", "known-good-privacy-report"],
     ["copy-plain-expected", "artifacts/copy-plain-expected.txt", "text/plain", "plain markdown output"],
@@ -138,6 +161,29 @@ async function createGoodBundle(repoRoot) {
       diagnosticsVersion: "0.0.0",
       reportedUnpackedVersion: "0.0.0",
       buildLabel: "acceptance-control"
+    })],
+    ["popup-render", "artifacts/popup-render.json", "application/json", JSON.stringify({
+      passed: true,
+      states: ["loading", "exact", "compatible", "unknown", "unsupported", "disabled", "contentUnavailable"],
+      widthsPx: [320, 340, 368, 400],
+      scalesPercent: [100, 125, 150],
+      keyboard: { focusTraversal: true, accessibleNames: true },
+      focusReturn: { troubleshootingToIndex: true, qaToTroubleshooting: true }
+    })],
+    ["foundation-core", "artifacts/foundation-core.json", "application/json", JSON.stringify({
+      passed: true,
+      blockKinds: ["heading", "paragraph", "list", "quote", "table", "code", "display_math", "opaque_interactive", "unknown_block"],
+      inlineKinds: ["inline_math", "link", "image", "citation"],
+      mixedStructureStatus: "UNKNOWN",
+      toolStructureStatus: "UNKNOWN",
+      lifecycle: { streamingDurable: false, settledDurable: true, unknownModelRejected: true, callerCannotForceSettled: true, singleAdapterProducer: true },
+      privacy: { conversationTextIncluded: false, attachmentContentIncluded: false, requestBodyIncluded: false, authTokenIncluded: false, rawDomIncluded: false }
+    })],
+    ["foundation-flows", "artifacts/foundation-flows.json", "application/json", JSON.stringify({
+      passed: true,
+      coreFlows: { composer: true, send: true, streaming: true, editBranch: true, connector: true, toolFileAuth: true },
+      sendLifecycle: { progressObserved: true, autoResendObserved: false, consequentialFlowActive: true, userTurnCommitted: true, duplicateSendObserved: false },
+      report: { privacy: { conversationTextIncluded: false, attachmentContentIncluded: false, requestBodyIncluded: false, authTokenIncluded: false, rawDomIncluded: false } }
     })]
   ];
   for (const [, relative, , content] of artifactSources) {
@@ -150,34 +196,38 @@ async function createGoodBundle(repoRoot) {
   const artifactHash = (id) => artifacts.find((artifact) => artifact.id === id).sha256;
   const commit = "a".repeat(40);
   const distHash = artifactHash("dist");
-  const contractHash = sha256Text("known-good-contract-v1");
+  const contractHash = artifactHash("chatgpt-contract");
+  const bootstrapHash = artifactHash("current-chatgpt-bootstrap");
 
   const records = [
     record("candidate-identity", { surface: "candidate" }, ["dist"], { commit, distHash }),
-    record("popup-render", { surface: "actual-extension-popup" }, ["popup-light", "popup-dark"], {
+    record("popup-render", { surface: "actual-extension-popup" }, ["popup-render", "popup-light", "popup-dark"], {
       states: ["loading", "exact", "compatible", "unknown", "unsupported", "disabled", "contentUnavailable"],
       widthsPx: [320, 340, 368, 400],
       scalesPercent: [100, 125, 150],
       keyboard: { focusTraversal: true, accessibleNames: true },
+      secondaryFocus: { troubleshootingToIndex: true, qaToTroubleshooting: true },
       themeArtifacts: { light: "popup-light", dark: "popup-dark" }
     }),
-    record("adapter-contract", { surface: "current-chatgpt" }, ["chatgpt-contract"], {
+    record("adapter-contract", { surface: "current-chatgpt" }, ["chatgpt-contract", "current-chatgpt-bootstrap", "foundation-core"], {
       capabilities: [{
         capabilityId: "turns.list",
+        sourceCapabilityId: "conversation-turn-discovery",
         variantId: "public-shared-v1",
         status: "EXACT",
         requiredInvariants: ["ordered turns", "role ownership"],
         observedInvariants: ["ordered turns", "role ownership"],
         contractHash,
-        sourceArtifactHash: artifactHash("chatgpt-contract"),
+        sourceArtifactHash: bootstrapHash,
         invalidatedBy: []
       }]
     }),
-    record("answer-document-core", { surface: "answer-document" }, ["chatgpt-contract"], {
+    record("answer-document-core", { surface: "answer-document" }, ["foundation-core", "chatgpt-contract"], {
       documentFields: ["documentId", "conversationId", "turnId", "sourceVersion", "generationState", "orderedBlocks"],
       blockKinds: ["heading", "paragraph", "list", "quote", "table", "code", "inline_math", "display_math", "link", "image", "citation", "opaque_interactive", "unknown_block"],
       streamingIsProvisional: true,
       settledIsDurable: true,
+      unknownLifecycleRejected: true,
       opaqueInteractive: true,
       singleAdapterProducer: true
     }),
@@ -199,7 +249,7 @@ async function createGoodBundle(repoRoot) {
       siblingRelationship: true,
       visibleBaseline: true
     }),
-    record("core-flow-regression", { surface: "local-real-browser" }, ["dist"], {
+    record("core-flow-regression", { surface: "local-real-browser" }, ["foundation-flows", "dist"], {
       composer: true,
       send: true,
       streaming: true,
@@ -207,7 +257,7 @@ async function createGoodBundle(repoRoot) {
       connector: true,
       toolFileAuth: true
     }),
-    record("send-lifecycle-safety", { surface: "local-real-browser" }, ["dist"], {
+    record("send-lifecycle-safety", { surface: "local-real-browser" }, ["foundation-flows", "dist"], {
       progressObserved: true,
       autoResend: false,
       consequentialFlowActive: true,
@@ -248,12 +298,13 @@ async function createGoodBundle(repoRoot) {
       mathSearchable: true,
       highlightPreserved: true
     }),
-    record("privacy", { surface: "diagnostic-bundle" }, ["privacy-report"], {
+    record("privacy", { surface: "diagnostic-bundle" }, ["foundation-core", "foundation-flows", "privacy-report"], {
       conversationTextIncluded: false,
       attachmentContentIncluded: false,
       requestBodyIncluded: false,
       authTokenIncluded: false,
-      rawDomIncluded: false
+      rawDomIncluded: false,
+      flowPrivacyMatches: true
     }),
     record("packaging-version", { surface: "built-extension" }, ["built-manifest", "version-report"], {
       builtManifestArtifactId: "built-manifest",

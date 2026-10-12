@@ -185,7 +185,7 @@
         return false;
       }
       if (message?.type === "MICA_GET_ANSWER_DOCUMENT") {
-        sendResponse({ answerDocument: getAnswerDocument(message.turnId, message.generationState) });
+        sendResponse({ answerDocument: getAnswerDocument(message.turnId) });
         return false;
       }
       return false;
@@ -200,13 +200,15 @@
     else teardownObserver();
   }
 
-  function getAnswerDocument(turnId, generationState) {
+  function getAnswerDocument(turnId) {
     if (!settings.enabled) return null;
     const turn = adapter.listTurns(document).find((candidate) => candidate.turnId === turnId && candidate.role === "assistant");
     if (!turn) return null;
+    const generationState = adapter.generationStateForTurn(turn);
+    if (!generationState) return null;
     return answerDocument.fromAssistantTurn(turn, {
       conversationId: `conversation-${hashText(location.pathname)}`,
-      generationState: generationState === "STREAMING" ? "STREAMING" : "SETTLED"
+      generationState
     });
   }
 
