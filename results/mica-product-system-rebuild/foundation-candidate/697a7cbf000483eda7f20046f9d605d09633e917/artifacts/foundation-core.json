@@ -1,0 +1,47 @@
+{
+  "passed": true,
+  "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+  "status": "EXACT",
+  "blockKinds": [
+    "heading",
+    "paragraph",
+    "display_math",
+    "list",
+    "quote",
+    "table",
+    "code",
+    "opaque_interactive",
+    "unknown_block"
+  ],
+  "inlineKinds": [
+    "text",
+    "inline_math",
+    "link",
+    "citation",
+    "image"
+  ],
+  "invalidStructureStatus": "UNKNOWN",
+  "mixedStructureStatus": "UNKNOWN",
+  "toolStructureStatus": "UNKNOWN",
+  "lifecycle": {
+    "streamingDurable": false,
+    "settledDurable": true,
+    "unknownModelRejected": true,
+    "callerCannotForceSettled": true,
+    "singleAdapterProducer": true
+  },
+  "privacy": {
+    "conversationTextIncluded": false,
+    "attachmentContentIncluded": false,
+    "requestBodyIncluded": false,
+    "authTokenIncluded": false,
+    "rawDomIncluded": false
+  },
+  "typingHotPath": {
+    "synchronousDocumentQueries": 0
+  },
+  "disabledRuntime": {
+    "enabled": false,
+    "observerActive": false
+  }
+}
