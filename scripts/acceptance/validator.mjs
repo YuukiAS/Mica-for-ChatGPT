@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-export const VALIDATOR_VERSION = "1.3.0";
+export const VALIDATOR_VERSION = "1.4.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 const PLACEMENT_PROOF_OBSERVATION_IDS = [
   "copy-inside-assistant-turn",
@@ -539,7 +539,39 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
   }
 
   if (kind === "highlight-remount") {
-    if (!m.restoredAfterRemount || m.attachedToWrongText || !m.ambiguousAnchorStayedUnresolved) fail("highlight remount or ambiguity behavior failed");
+    const fixture = await readBoundJson("highlighter-fixture");
+    const stress = await readBoundJson("highlighter-stress");
+    if (record.subject?.surface !== "local-real-browser") fail("wrong Highlighter surface target");
+    const expected = deriveHighlighterMeasurement(fixture, stress);
+    if (!sameJson(m, expected)) fail("Highlighter measurement differs from bound browser evidence");
+    if (!expected.passed
+      || !expected.restoredAfterRefresh
+      || !expected.restoredAfterRemount
+      || !expected.restoredAfterMathReformat
+      || expected.attachedToWrongText
+      || !expected.ambiguousAnchorStayedUnresolved
+      || !expected.deletedSourceStayedUnresolved
+      || !expected.branchMismatchStayedUnresolved
+      || !expected.invalidSelectionsFailOpen
+      || !expected.keyboardAccessible
+      || !expected.colorOwnership
+      || !expected.deleteOwnership
+      || !expected.localStorageOnly
+      || !expected.noGlobalRangePatch
+      || !expected.noGlobalSelectionPatch
+      || !expected.noPermanentToolbar
+      || !expected.stress?.passed) {
+      fail("highlight remount, ownership, privacy, or ambiguity behavior failed");
+    }
+    if (!sameJson(expected.selectionSequence, ["prose", "inline_math", "prose"]) || !includesAll(expected.mathTeX, ["x+1"]) || !includesAll(expected.rawLatexSources, ["a+b", "c=d"])) {
+      fail("Highlighter prose/math mapping coverage is incomplete");
+    }
+    const screenshotIds = Object.values(m.screenshotArtifacts || {});
+    if (screenshotIds.length !== 3 || !screenshotIds.every((id) => (record.artifactIds || []).includes(id) && artifacts.has(id))) {
+      fail("Highlighter visual artifacts are missing or unbound");
+    } else if (new Set(screenshotIds.map((id) => artifacts.get(id).sha256)).size !== screenshotIds.length) {
+      fail("Highlighter visual states reuse duplicate screenshots");
+    }
     return;
   }
 
@@ -724,6 +756,52 @@ function deriveLowMemoryActionSecurity(page) {
     trustedPointerReloads: page?.historyControl?.reloads,
     trustedKeyboardResumeCalls: page?.fullHistoryBypass?.resumeCalls,
     trustedKeyboardReloads: page?.fullHistoryBypass?.reloads
+  };
+}
+
+function deriveHighlighterMeasurement(fixture, stress) {
+  const rendered = (name) => fixture?.[name]?.status?.renderedCount;
+  const unresolved = (name) => fixture?.[name]?.status?.unresolvedCount;
+  return {
+    passed: fixture?.passed === true,
+    selectionSequence: fixture?.selection?.sequence || [],
+    mathTeX: fixture?.selection?.mathTeX || [],
+    rawLatexSources: fixture?.rawLatexSources || [],
+    restoredAfterRefresh: rendered("refreshed") === 1 && unresolved("refreshed") === 0,
+    restoredAfterRemount: rendered("remounted") === 1 && unresolved("remounted") === 0,
+    restoredAfterMathReformat: rendered("mathReformatted") === 1 && unresolved("mathReformatted") === 0,
+    attachedToWrongText: rendered("ambiguous") !== 0 || rendered("deletedSource") !== 0,
+    ambiguousAnchorStayedUnresolved: rendered("ambiguous") === 0 && unresolved("ambiguous") === 1 && fixture?.ambiguous?.records?.[0]?.unresolvedReason === "ambiguous_anchor",
+    deletedSourceStayedUnresolved: rendered("deletedSource") === 0 && unresolved("deletedSource") === 1 && fixture?.deletedSource?.records?.[0]?.unresolvedReason === "source_missing",
+    branchMismatchStayedUnresolved: fixture?.branchResolution?.status === "unresolved" && fixture?.branchResolution?.reason === "conversation_mismatch" && fixture?.branchResolution?.range == null,
+    invalidSelectionsFailOpen: fixture?.invalidSelections?.composerResult?.ok === false
+      && fixture?.invalidSelections?.codeResult?.ok === false
+      && fixture?.invalidSelections?.streamingResult?.ok === false
+      && fixture?.invalidSelections?.toolbarPresent === false,
+    keyboardAccessible: fixture?.keyboard?.result?.ok === true
+      && fixture?.keyboard?.activeLabel === "Yellow highlight"
+      && fixture?.keyboard?.dismissedWithEscape === true,
+    colorOwnership: fixture?.recolored?.records?.[0]?.color === "mint" && rendered("recolored") === 1,
+    deleteOwnership: fixture?.removed?.status?.recordCount === 0 && fixture?.removed?.status?.renderedCount === 0,
+    localStorageOnly: fixture?.invariants?.localStorageOnly === true,
+    noGlobalRangePatch: fixture?.invariants?.noGlobalRangePatch === true,
+    noGlobalSelectionPatch: fixture?.invariants?.noGlobalSelectionPatch === true,
+    noPermanentToolbar: fixture?.invariants?.noPermanentToolbar === true,
+    stress: {
+      passed: stress?.passed === true
+        && stress?.loops === 8
+        && stress?.runs === 8
+        && Array.isArray(stress?.results)
+        && stress.results.length === 8
+        && stress.results.every((item, index) => item?.loop === index + 1 && item?.script === "scripts/highlighter-fixture-smoke.mjs" && item?.passed === true),
+      loops: stress?.loops,
+      runs: stress?.runs
+    },
+    screenshotArtifacts: {
+      selectionLight: "highlighter-selection-light",
+      activeLight: "highlighter-active-light",
+      editDark: "highlighter-edit-dark"
+    }
   };
 }
 

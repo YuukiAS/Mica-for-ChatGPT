@@ -52,6 +52,7 @@
       "js": [
         "chatgpt-adapter.js",
         "answer-document.js",
+        "highlight-engine.js",
         "content.js"
       ],
       "run_at": "document_idle"

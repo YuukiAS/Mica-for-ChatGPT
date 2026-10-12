@@ -5,6 +5,7 @@
     {"id": "known-good-current-popup", "expected": "ACCEPT"},
     {"id": "known-good-adapter-contract", "expected": "ACCEPT"},
     {"id": "known-good-low-memory-fixture", "expected": "ACCEPT"},
+    {"id": "known-good-highlighter-fixture", "expected": "ACCEPT"},
     {"id": "known-good-selectable-math-pdf", "expected": "ACCEPT"}
   ],
   "knownBad": [
@@ -35,6 +36,9 @@
     {"id": "low-memory-synthetic-click-authorized-rehash", "expected": "REJECT"},
     {"id": "low-memory-target-environment-misclassified", "expected": "REJECT"},
     {"id": "lost-highlight-after-remount", "expected": "REJECT"},
+    {"id": "highlight-ambiguous-wrong-attachment-rehash", "expected": "REJECT"},
+    {"id": "highlight-prototype-patch-rehash", "expected": "REJECT"},
+    {"id": "highlight-duplicate-screenshots", "expected": "REJECT"},
     {"id": "non-selectable-inline-math-pdf", "expected": "REJECT"},
     {"id": "stale-chatgpt-contract", "expected": "REJECT"},
     {"id": "control-bundle-presented-as-candidate", "expected": "REJECT"},

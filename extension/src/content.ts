@@ -7,6 +7,7 @@
   const RECOVERY_AUTH = Object.freeze({ popup: Symbol("popup"), settings: Symbol("settings"), trustedGesture: Symbol("trusted-gesture") });
   const adapter = globalThis.MicaChatGPTAdapter;
   const answerDocument = globalThis.MicaAnswerDocument;
+  const highlightEngine = globalThis.MicaHighlightEngine;
   let settings = { ...DEFAULT_SETTINGS };
   let observer = null;
   let scheduled = false;
@@ -14,6 +15,12 @@
   let lowMemoryStatus = readLowMemoryPageStatus() || defaultLowMemoryStatus();
   let historyControl = null;
   let scrollFrame = 0;
+  let highlightRecords = [];
+  let highlightToolbar = null;
+  let pendingHighlight = null;
+  let highlightFrame = 0;
+  let renderedHighlights = new Map();
+  let highlighterReady = false;
 
   if (!adapter || !answerDocument || !isSupportedPage()) return;
 
@@ -29,6 +36,7 @@
     setupNavigationSignals();
     setupLowMemorySignals();
     if (settings.enabled) setupObserver();
+    await initializeHighlighter();
     refreshStatus();
     exposeFixtureHook();
   }
@@ -66,7 +74,10 @@
 
   function setupObserver() {
     if (observer || typeof MutationObserver === "undefined") return;
-    observer = new MutationObserver(() => scheduleRefresh());
+    observer = new MutationObserver(() => {
+      scheduleRefresh();
+      scheduleHighlightReconcile();
+    });
     observer.observe(document.documentElement, { childList: true, subtree: true });
   }
 
@@ -76,8 +87,12 @@
   }
 
   function setupNavigationSignals() {
-    addEventListener("popstate", scheduleRefresh, { passive: true });
-    addEventListener("hashchange", scheduleRefresh, { passive: true });
+    const onNavigation = () => {
+      scheduleRefresh();
+      scheduleHighlightReconcile();
+    };
+    addEventListener("popstate", onNavigation, { passive: true });
+    addEventListener("hashchange", onNavigation, { passive: true });
   }
 
   function setupLowMemorySignals() {
@@ -255,7 +270,11 @@
       if (safeToReload()) await requestFullHistory("disabled_after_windowing", RECOVERY_AUTH.settings);
     }
     if (settings.enabled) setupObserver();
-    else teardownObserver();
+    else {
+      teardownObserver();
+      clearHighlighterSurface();
+    }
+    if (settings.enabled) scheduleHighlightReconcile();
     reconcileHistoryControl();
   }
 
@@ -394,6 +413,290 @@
     return !String(value).trim() && !sensitive;
   }
 
+  async function initializeHighlighter() {
+    if (!highlightEngine) {
+      highlighterReady = false;
+      return;
+    }
+    highlightRecords = await readHighlightRecords();
+    highlighterReady = supportsCssHighlights();
+    addEventListener("pointerup", handleHighlightPointerUp, { passive: true, capture: true });
+    addEventListener("keyup", handleHighlightKeyUp, { passive: true, capture: true });
+    if (settings.enabled) scheduleHighlightReconcile();
+  }
+
+  function supportsCssHighlights() {
+    return !!(globalThis.CSS?.highlights && typeof globalThis.Highlight === "function");
+  }
+
+  function readHighlightRecords() {
+    if (!highlightEngine) return Promise.resolve([]);
+    return new Promise((resolve) => {
+      const storage = globalThis.chrome?.storage?.local;
+      if (!storage) return resolve([]);
+      storage.get({ [highlightEngine.storeKey]: [] }, (items) => resolve(chrome.runtime?.lastError
+        ? []
+        : highlightEngine.sanitizeRecords(items?.[highlightEngine.storeKey])));
+    });
+  }
+
+  function persistHighlightRecords() {
+    if (!highlightEngine) return Promise.resolve(false);
+    return new Promise((resolve) => {
+      const storage = globalThis.chrome?.storage?.local;
+      if (!storage) return resolve(false);
+      storage.set({ [highlightEngine.storeKey]: highlightRecords }, () => resolve(!chrome.runtime?.lastError));
+    });
+  }
+
+  function handleHighlightPointerUp(event) {
+    if (!settings.enabled || !highlighterReady || highlightToolbar?.contains(event.target)) return;
+    const point = { x: event.clientX, y: event.clientY };
+    requestAnimationFrame(() => {
+      const selection = getSelection();
+      if (selection?.rangeCount === 1 && !selection.isCollapsed) inspectHighlightSelection();
+      else inspectExistingHighlightAtPoint(point);
+    });
+  }
+
+  function handleHighlightKeyUp(event) {
+    if (!settings.enabled || !highlighterReady) return;
+    if (!event.shiftKey || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+    if (isEditableTarget(event.target)) return;
+    requestAnimationFrame(() => inspectHighlightSelection(true));
+  }
+
+  function inspectHighlightSelection(focusToolbar = false) {
+    hideHighlightToolbar();
+    const selection = getSelection();
+    if (!selection || selection.rangeCount !== 1 || selection.isCollapsed) return { ok: false, reason: "no_selection" };
+    const range = selection.getRangeAt(0);
+    if (selectionTouchesExcludedSurface(range)) return { ok: false, reason: "unsupported_selection" };
+    const startTurn = adapter.resolveTurnFromNode?.(range.startContainer, document);
+    const endTurn = adapter.resolveTurnFromNode?.(range.endContainer, document);
+    if (!startTurn || !endTurn || startTurn.turnId !== endTurn.turnId) return { ok: false, reason: "selection_not_in_one_exact_answer" };
+    const generationState = adapter.generationStateForTurn(startTurn);
+    if (generationState !== "SETTLED") return { ok: false, reason: "answer_not_settled" };
+    const documentModel = answerDocument.fromAssistantTurn(startTurn, {
+      conversationId: currentConversationId(),
+      generationState
+    });
+    const snapshot = answerDocument.captureHighlightSelection(startTurn, documentModel, range);
+    if (!snapshot?.range) return { ok: false, reason: "selection_mapping_failed" };
+    const rect = visibleRangeRect(range);
+    if (!rect) return { ok: false, reason: "selection_not_visible" };
+    pendingHighlight = { turn: startTurn, documentModel, snapshot };
+    showHighlightToolbar(rect, null, focusToolbar);
+    return {
+      ok: true,
+      turnId: documentModel.turnId,
+      sourceVersion: documentModel.sourceVersion,
+      quoteLength: snapshot.textQuote.length,
+      mathTeX: [...snapshot.mathTeX],
+      structuralHint: { ...snapshot.structuralHint }
+    };
+  }
+
+  function selectionTouchesExcludedSurface(range) {
+    const start = range.startContainer instanceof Element ? range.startContainer : range.startContainer.parentElement;
+    const end = range.endContainer instanceof Element ? range.endContainer : range.endContainer.parentElement;
+    const excluded = "[data-mica-ui],pre,code,input,textarea,select,button,[contenteditable='true'],[role='dialog'],[role='menu'],[data-testid*='tool'],[data-testid*='file'],[data-testid*='attachment'],[data-testid*='connector'],[data-testid*='auth']";
+    return !start || !end || !!start.closest(excluded) || !!end.closest(excluded);
+  }
+
+  function isEditableTarget(target) {
+    return target instanceof Element && !!target.closest("input,textarea,select,[contenteditable='true'],[role='textbox']");
+  }
+
+  function visibleRangeRect(range) {
+    const rects = Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0);
+    return rects.at(-1) || null;
+  }
+
+  function showHighlightToolbar(rect, recordId, focusToolbar = false) {
+    if (!highlightToolbar) highlightToolbar = createHighlightToolbar();
+    pendingHighlight = recordId ? { recordId } : pendingHighlight;
+    highlightToolbar.toggleAttribute("data-editing", !!recordId);
+    const deleteButton = highlightToolbar.shadowRoot.querySelector("[data-action='delete']");
+    deleteButton.hidden = !recordId;
+    highlightToolbar.style.left = `${Math.max(12, Math.min(innerWidth - 220, rect.left + rect.width / 2 - 94))}px`;
+    highlightToolbar.style.top = `${rect.top >= 58 ? rect.top - 48 : rect.bottom + 8}px`;
+    if (!highlightToolbar.isConnected) document.documentElement.append(highlightToolbar);
+    if (focusToolbar) highlightToolbar.shadowRoot.querySelector("button:not([hidden])")?.focus();
+  }
+
+  function createHighlightToolbar() {
+    const host = document.createElement("div");
+    host.dataset.micaUi = "highlight-toolbar";
+    host.style.cssText = "position:fixed;z-index:2147483646";
+    const shadow = host.attachShadow({ mode: "open" });
+    shadow.innerHTML = `<style>
+      :host{font:500 12px/1 system-ui,sans-serif;color:#17201e}
+      div{display:flex;align-items:center;gap:5px;padding:6px;border:1px solid rgba(23,32,30,.18);border-radius:999px;background:rgba(255,255,255,.98);box-shadow:0 8px 24px rgba(0,0,0,.16)}
+      button{width:28px;height:28px;border:1px solid rgba(23,32,30,.22);border-radius:50%;cursor:pointer;padding:0;background:var(--swatch)}
+      button:focus-visible{outline:2px solid #0b766b;outline-offset:2px}
+      button[data-action='delete']{width:auto;border-radius:999px;padding:0 9px;background:transparent;color:inherit;font:600 11px/1 system-ui,sans-serif}
+      @media(prefers-color-scheme:dark){:host{color:#eef4f1}div{border-color:rgba(238,244,241,.2);background:rgba(23,29,27,.98)}button{border-color:rgba(238,244,241,.35)}}
+      @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+    </style><div role="toolbar" aria-label="Highlight selection">
+      <button type="button" data-color="yellow" aria-label="Yellow highlight" style="--swatch:#f6df79"></button>
+      <button type="button" data-color="mint" aria-label="Mint highlight" style="--swatch:#9ee3cf"></button>
+      <button type="button" data-color="blue" aria-label="Blue highlight" style="--swatch:#9ec9f5"></button>
+      <button type="button" data-color="pink" aria-label="Pink highlight" style="--swatch:#f2acd0"></button>
+      <button type="button" data-action="delete" aria-label="Delete highlight">Delete</button>
+    </div>`;
+    shadow.addEventListener("click", async (event) => {
+      if (!event.isTrusted) return;
+      const button = event.target instanceof Element ? event.target.closest("button") : null;
+      if (!button) return;
+      if (button.dataset.action === "delete" && pendingHighlight?.recordId) await deleteHighlight(pendingHighlight.recordId);
+      else if (button.dataset.color) {
+        if (pendingHighlight?.recordId) await updateHighlightColor(pendingHighlight.recordId, button.dataset.color);
+        else await createHighlightFromPending(button.dataset.color);
+      }
+      getSelection()?.removeAllRanges();
+      hideHighlightToolbar();
+    });
+    shadow.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      hideHighlightToolbar();
+    });
+    return host;
+  }
+
+  async function createHighlightFromPending(color) {
+    if (!highlightEngine || !pendingHighlight?.documentModel || !pendingHighlight?.snapshot) return false;
+    const record = highlightEngine.createRecord(pendingHighlight.documentModel, pendingHighlight.snapshot, color);
+    if (!record) return false;
+    highlightRecords = [...highlightRecords.filter((item) => item.id !== record.id), record].slice(-highlightEngine.maxRecords);
+    await persistHighlightRecords();
+    reconcileHighlights();
+    return true;
+  }
+
+  async function updateHighlightColor(recordId, color) {
+    if (!highlightEngine) return false;
+    const index = highlightRecords.findIndex((record) => record.id === recordId);
+    if (index < 0) return false;
+    const updated = highlightEngine.withColor(highlightRecords[index], color);
+    if (!updated) return false;
+    highlightRecords = highlightRecords.map((record, current) => current === index ? updated : record);
+    await persistHighlightRecords();
+    reconcileHighlights();
+    return true;
+  }
+
+  async function deleteHighlight(recordId) {
+    const next = highlightRecords.filter((record) => record.id !== recordId);
+    if (next.length === highlightRecords.length) return false;
+    highlightRecords = next;
+    await persistHighlightRecords();
+    reconcileHighlights();
+    return true;
+  }
+
+  function inspectExistingHighlightAtPoint(point) {
+    const hits = [];
+    for (const [recordId, range] of renderedHighlights) {
+      if (Array.from(range.getClientRects()).some((rect) => point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom)) {
+        hits.push({ recordId, range });
+      }
+    }
+    if (hits.length !== 1) return hideHighlightToolbar();
+    const rect = visibleRangeRect(hits[0].range);
+    if (rect) showHighlightToolbar(rect, hits[0].recordId);
+  }
+
+  function hideHighlightToolbar() {
+    highlightToolbar?.remove();
+    pendingHighlight = null;
+  }
+
+  function scheduleHighlightReconcile() {
+    if (!settings.enabled || !highlighterReady || highlightFrame) return;
+    highlightFrame = requestAnimationFrame(() => {
+      highlightFrame = 0;
+      reconcileHighlights();
+    });
+  }
+
+  function reconcileHighlights() {
+    if (!highlightEngine || !settings.enabled || !highlighterReady) {
+      clearRenderedHighlights();
+      return highlighterStatus();
+    }
+    ensureHighlightStyles();
+    const turns = new Map(adapter.listTurns(document).filter((turn) => turn.role === "assistant").map((turn) => [turn.turnId, turn]));
+    const colorRanges = new Map(highlightEngine.colors.map((color) => [color, []]));
+    const nextRendered = new Map();
+    let recordsChanged = false;
+    highlightRecords = highlightRecords.map((record) => {
+      if (record.anchor.conversationId !== currentConversationId()) return record;
+      const turn = turns.get(record.anchor.turnId);
+      if (!turn) return record;
+      const generationState = adapter.generationStateForTurn(turn);
+      if (generationState !== "SETTLED") return record;
+      const documentModel = answerDocument.fromAssistantTurn(turn, { conversationId: currentConversationId(), generationState });
+      const resolution = highlightEngine.resolveRecord(record, turn, documentModel);
+      const updated = highlightEngine.withResolution(record, resolution) || record;
+      recordsChanged ||= updated !== record;
+      if (resolution.status === "resolved") {
+        colorRanges.get(updated.color)?.push(resolution.range);
+        nextRendered.set(updated.id, resolution.range);
+      }
+      return updated;
+    });
+    clearRenderedHighlights();
+    for (const [color, ranges] of colorRanges) {
+      if (ranges.length) CSS.highlights.set(`mica-${color}`, new Highlight(...ranges));
+    }
+    renderedHighlights = nextRendered;
+    if (recordsChanged) void persistHighlightRecords();
+    return highlighterStatus();
+  }
+
+  function ensureHighlightStyles() {
+    if (document.querySelector("style[data-mica-highlighter-style]")) return;
+    const style = document.createElement("style");
+    style.dataset.micaHighlighterStyle = "true";
+    style.textContent = `
+      ::highlight(mica-yellow){background-color:#f6df79;color:inherit}
+      ::highlight(mica-mint){background-color:#9ee3cf;color:inherit}
+      ::highlight(mica-blue){background-color:#9ec9f5;color:inherit}
+      ::highlight(mica-pink){background-color:#f2acd0;color:inherit}
+    `;
+    (document.head || document.documentElement).append(style);
+  }
+
+  function clearRenderedHighlights() {
+    if (globalThis.CSS?.highlights) {
+      for (const color of highlightEngine?.colors || []) CSS.highlights.delete(`mica-${color}`);
+    }
+    renderedHighlights = new Map();
+  }
+
+  function clearHighlighterSurface() {
+    hideHighlightToolbar();
+    clearRenderedHighlights();
+  }
+
+  function highlighterStatus() {
+    const current = highlightRecords.filter((record) => record.anchor.conversationId === currentConversationId());
+    return {
+      supported: highlighterReady,
+      localOnly: true,
+      recordCount: current.length,
+      renderedCount: renderedHighlights.size,
+      unresolvedCount: current.filter((record) => record.status === "unresolved").length,
+      permanentToolbar: false
+    };
+  }
+
+  function currentConversationId() {
+    return `conversation-${hashText(location.pathname)}`;
+  }
+
   function getAnswerDocument(turnId) {
     if (!settings.enabled) return null;
     const turn = adapter.listTurns(document).find((candidate) => candidate.turnId === turnId && candidate.role === "assistant");
@@ -401,7 +704,7 @@
     const generationState = adapter.generationStateForTurn(turn);
     if (!generationState) return null;
     return answerDocument.fromAssistantTurn(turn, {
-      conversationId: `conversation-${hashText(location.pathname)}`,
+      conversationId: currentConversationId(),
       generationState
     });
   }
@@ -427,7 +730,8 @@
         adapterProducer: "MicaChatGPTAdapter",
         answerDocumentModelVersion: answerDocument.modelVersion,
         observerActive: !!observer,
-        lowMemory: { ...lowMemoryStatus, enabled: settings.enabled && settings.lowMemory }
+        lowMemory: { ...lowMemoryStatus, enabled: settings.enabled && settings.lowMemory },
+        highlighter: highlighterStatus()
       },
       privacy: {
         conversationTextIncluded: false,
@@ -448,6 +752,12 @@
       applySettings,
       requestFullHistory,
       getLowMemoryStatus: () => ({ ...lowMemoryStatus }),
+      getHighlighterStatus: highlighterStatus,
+      inspectHighlightSelection,
+      reconcileHighlights,
+      getHighlightRecords: () => structuredClone(highlightRecords),
+      updateHighlightColor,
+      deleteHighlight,
       adapter,
       answerDocument
     });

@@ -98,11 +98,29 @@
     };
   }
 
+  function resolveTurnFromNode(node, doc = document) {
+    const element = node instanceof Element ? node : node?.parentElement;
+    if (!(element instanceof Element) || !isSupportedDocument(doc)) return null;
+    const matches = listTurns(doc).filter((turn) => turn.role === "assistant"
+      && turn.answerRoot instanceof HTMLElement
+      && turn.answerRoot.contains(element));
+    return matches.length === 1 ? matches[0] : null;
+  }
+
   function generationStateForTurn(turn) {
     if (!turn || turn.role !== "assistant" || !(turn.element instanceof HTMLElement)) return null;
-    if (!isFixture(turn.element.ownerDocument)) return null;
-    const state = turn.element.dataset.micaGenerationState;
-    return state === "STREAMING" || state === "SETTLED" ? state : null;
+    if (isFixture(turn.element.ownerDocument)) {
+      const state = turn.element.dataset.micaGenerationState;
+      return state === "STREAMING" || state === "SETTLED" ? state : null;
+    }
+    const doc = turn.element.ownerDocument;
+    const streaming = doc.querySelector("[data-is-streaming='true'],[aria-busy='true'][data-message-author-role='assistant'],[data-testid*='stop' i],[aria-label*='Stop generating' i],[aria-label*='停止生成']");
+    if (streaming) return "STREAMING";
+    return turn.answerRoot instanceof HTMLElement && normalizeVisibleText(turn.answerRoot.textContent || "") ? "SETTLED" : null;
+  }
+
+  function normalizeVisibleText(value) {
+    return String(value).replace(/\s+/g, " ").trim();
   }
 
   function inspect(doc = document) {
@@ -188,6 +206,7 @@
     contractVersion: CONTRACT_VERSION,
     inspect,
     listTurns,
+    resolveTurnFromNode,
     findComposer,
     findAssistantActionCluster,
     generationStateForTurn

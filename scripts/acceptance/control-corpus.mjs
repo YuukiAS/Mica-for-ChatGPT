@@ -35,6 +35,7 @@ export async function runControlCorpus(repoRoot) {
     ["known-good-current-popup", async (context) => { context.requestedGateIds = ["popup-render"]; }],
     ["known-good-adapter-contract", async (context) => { context.requestedGateIds = ["adapter-contract"]; }],
     ["known-good-low-memory-fixture", async (context) => { context.requestedGateIds = ["low-memory-benefit"]; }],
+    ["known-good-highlighter-fixture", async (context) => { context.requestedGateIds = ["highlight-remount"]; }],
     ["known-good-selectable-math-pdf", async (context) => { context.requestedGateIds = ["pdf-selection"]; }],
     ["missing-evidence", async ({ manifest }) => { manifest.evidence = manifest.evidence.filter((item) => item.gateId !== "popup-render"); refreshRoot(manifest); }],
     ["tampered-artifact", async ({ bundleDir }) => { await writeFile(path.join(bundleDir, "artifacts", "dist.zip"), "tampered dist"); }],
@@ -157,6 +158,12 @@ export async function runControlCorpus(repoRoot) {
       refreshRoot(manifest);
     }],
     ["lost-highlight-after-remount", async ({ manifest }) => { evidence(manifest, "highlight-remount").measurement.restoredAfterRemount = false; refreshRoot(manifest); }],
+    ["highlight-ambiguous-wrong-attachment-rehash", async (context) => mutateHighlighter(context, (value) => { value.ambiguous.status.renderedCount = 1; })],
+    ["highlight-prototype-patch-rehash", async (context) => mutateHighlighter(context, (value) => { value.invariants.noGlobalRangePatch = false; })],
+    ["highlight-duplicate-screenshots", async ({ manifest }) => {
+      evidence(manifest, "highlight-remount").measurement.screenshotArtifacts.editDark = "highlighter-active-light";
+      refreshRoot(manifest);
+    }],
     ["non-selectable-inline-math-pdf", async ({ manifest }) => { evidence(manifest, "pdf-selection").measurement.pointerSelection = false; refreshRoot(manifest); }],
     ["stale-chatgpt-contract", async ({ manifest }) => { evidence(manifest, "adapter-contract").measurement.capabilities[0].invalidatedBy = ["newer incompatible surface"]; refreshRoot(manifest); }],
     ["control-bundle-presented-as-candidate", async (context) => { context.expectedBundleKind = "candidate"; }],
@@ -311,7 +318,12 @@ async function createGoodBundle(repoRoot) {
     ["low-memory-stress", "artifacts/low-memory-stress.json", "application/json", JSON.stringify(controlStress())],
     ["low-memory-registration", "artifacts/low-memory-registration.json", "application/json", JSON.stringify({
       passed: true, firstInstall: { registered: true }, storageFailure: { registered: false }, siteWritableConfigAccepted: false
-    })]
+    })],
+    ["highlighter-fixture", "artifacts/highlighter-fixture.json", "application/json", JSON.stringify(controlHighlighterFixture())],
+    ["highlighter-stress", "artifacts/highlighter-stress.json", "application/json", JSON.stringify(controlHighlighterStress())],
+    ["highlighter-selection-light", "artifacts/highlighter-selection-light.png", "image/png", "known-good-highlighter-selection-light"],
+    ["highlighter-active-light", "artifacts/highlighter-active-light.png", "image/png", "known-good-highlighter-active-light"],
+    ["highlighter-edit-dark", "artifacts/highlighter-edit-dark.png", "image/png", "known-good-highlighter-edit-dark"]
   ];
   for (const [, relative, , content] of artifactSources) {
     await writeFile(path.join(bundleDir, relative), content);
@@ -435,11 +447,7 @@ async function createGoodBundle(repoRoot) {
       coreFlows: { composer: true, send: true, streaming: true, editBranch: true, connector: true, toolFileAuth: true, typingImeHotPath: true },
       unknownStructureBehavior: "FAIL_OPEN"
     }, "TARGET_CLASS_ENVIRONMENT"),
-    record("highlight-remount", { surface: "local-real-browser" }, ["dist"], {
-      restoredAfterRemount: true,
-      attachedToWrongText: false,
-      ambiguousAnchorStayedUnresolved: true
-    }),
+    record("highlight-remount", { surface: "local-real-browser" }, ["dist", "highlighter-fixture", "highlighter-stress", "highlighter-selection-light", "highlighter-active-light", "highlighter-edit-dark"], controlHighlighterMeasurement()),
     record("pdf-selection", { surface: "actual-pdf-viewer" }, ["pdf"], {
       textExtracted: true,
       pointerSelection: true,
@@ -573,4 +581,87 @@ async function mutateLowMemoryPage({ bundleDir, manifest }, mutate) {
   manifest.artifacts.find((item) => item.id === "low-memory-page").sha256 = await sha256File(file);
   evidence(manifest, "low-memory-benefit").measurement.actionSecurity = value.actionSecurity;
   refreshRoot(manifest);
+}
+
+async function mutateHighlighter({ bundleDir, manifest }, mutate) {
+  const file = path.join(bundleDir, "artifacts", "highlighter-fixture.json");
+  const value = JSON.parse(await readFile(file, "utf8"));
+  mutate(value);
+  await writeFile(file, JSON.stringify(value));
+  manifest.artifacts.find((item) => item.id === "highlighter-fixture").sha256 = await sha256File(file);
+  refreshRoot(manifest);
+}
+
+function controlHighlighterFixture() {
+  const status = (renderedCount, unresolvedCount, recordCount = 1) => ({ supported: true, localOnly: true, recordCount, renderedCount, unresolvedCount, permanentToolbar: false });
+  return {
+    passed: true,
+    selection: { sequence: ["prose", "inline_math", "prose"], mathTeX: ["x+1"] },
+    invalidSelections: {
+      composerResult: { ok: false, reason: "unsupported_selection" },
+      codeResult: { ok: false, reason: "unsupported_selection" },
+      streamingResult: { ok: false, reason: "answer_not_settled" },
+      toolbarPresent: false
+    },
+    keyboard: { result: { ok: true }, activeLabel: "Yellow highlight", dismissedWithEscape: true },
+    refreshed: { status: status(1, 0) },
+    remounted: { status: status(1, 0) },
+    mathReformatted: { status: status(1, 0) },
+    ambiguous: { status: status(0, 1), records: [{ unresolvedReason: "ambiguous_anchor" }] },
+    deletedSource: { status: status(0, 1), records: [{ unresolvedReason: "source_missing" }] },
+    recolored: { status: status(1, 0), records: [{ color: "mint" }] },
+    removed: { status: status(0, 0, 0), records: [] },
+    branchResolution: { status: "unresolved", reason: "conversation_mismatch", range: null },
+    rawLatexSources: ["a+b", "c=d"],
+    invariants: {
+      noGlobalRangePatch: true,
+      noGlobalSelectionPatch: true,
+      noPermanentToolbar: true,
+      localStorageOnly: true
+    }
+  };
+}
+
+function controlHighlighterMeasurement() {
+  return {
+    passed: true,
+    selectionSequence: ["prose", "inline_math", "prose"],
+    mathTeX: ["x+1"],
+    rawLatexSources: ["a+b", "c=d"],
+    restoredAfterRefresh: true,
+    restoredAfterRemount: true,
+    restoredAfterMathReformat: true,
+    attachedToWrongText: false,
+    ambiguousAnchorStayedUnresolved: true,
+    deletedSourceStayedUnresolved: true,
+    branchMismatchStayedUnresolved: true,
+    invalidSelectionsFailOpen: true,
+    keyboardAccessible: true,
+    colorOwnership: true,
+    deleteOwnership: true,
+    localStorageOnly: true,
+    noGlobalRangePatch: true,
+    noGlobalSelectionPatch: true,
+    noPermanentToolbar: true,
+    stress: { passed: true, loops: 8, runs: 8 },
+    screenshotArtifacts: {
+      selectionLight: "highlighter-selection-light",
+      activeLight: "highlighter-active-light",
+      editDark: "highlighter-edit-dark"
+    }
+  };
+}
+
+function controlHighlighterStress() {
+  return {
+    passed: true,
+    loops: 8,
+    runs: 8,
+    results: Array.from({ length: 8 }, (_, index) => ({
+      loop: index + 1,
+      script: "scripts/highlighter-fixture-smoke.mjs",
+      elapsedMs: 100,
+      passed: true
+    }))
+  };
 }

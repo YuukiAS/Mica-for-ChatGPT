@@ -21,7 +21,7 @@ assert(manifest.permissions?.includes("scripting"), "scripting permission missin
 assert(!manifest.host_permissions?.some((host) => !/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(host)), "unexpected host permission");
 assert(manifest.background?.service_worker === "low-memory-background.js", "Low Memory registration service worker missing");
 assert(JSON.stringify(manifest.content_scripts?.[0]?.js) === JSON.stringify(["low-memory-config.js"]) && manifest.content_scripts?.[0]?.run_at === "document_start", "Low Memory config bridge order drifted");
-assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["chatgpt-adapter.js", "answer-document.js", "content.js"]), "foundation content-script order drifted");
+assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["chatgpt-adapter.js", "answer-document.js", "highlight-engine.js", "content.js"]), "foundation/highlighter content-script order drifted");
 assert(!manifest.content_scripts.some((entry) => entry.world === "MAIN"), "Low Memory MAIN scripts must be extension-controlled dynamic registrations");
 
 for (const size of [16, 32, 48, 128]) {
@@ -37,6 +37,7 @@ const contractSource = await readFile(path.join(root, "contracts", "chatgpt", "c
 const contractHash = createHash("sha256").update(contractSource).digest("hex");
 const adapter = await readFile(path.join(distDir, "chatgpt-adapter.js"), "utf8");
 const answerDocument = await readFile(path.join(distDir, "answer-document.js"), "utf8");
+const highlightEngine = await readFile(path.join(distDir, "highlight-engine.js"), "utf8");
 const content = await readFile(path.join(distDir, "content.js"), "utf8");
 const lowMemoryCore = await readFile(path.join(distDir, "low-memory-core.js"), "utf8");
 const lowMemoryPage = await readFile(path.join(distDir, "low-memory-page.js"), "utf8");
@@ -47,7 +48,7 @@ const troubleshooting = await readFile(path.join(distDir, "popup", "troubleshoot
 const qa = await readFile(path.join(distDir, "popup", "qa.js"), "utf8");
 
 for (const text of [adapter, content]) assert(text.includes(contractHash), "built current ChatGPT contract hash drifted");
-for (const text of [adapter, answerDocument, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, troubleshooting, qa]) {
+for (const text of [adapter, answerDocument, highlightEngine, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, troubleshooting, qa]) {
   assert(!/__MICA_(?:VERSION|VERSION_NAME|BUILD_LABEL|CHATGPT_CONTRACT_HASH|DEV_BUILD)__/.test(text), "unresolved build placeholder remains");
   new Function(text);
 }
@@ -73,6 +74,24 @@ for (const token of [
 ]) assert(answerDocument.includes(token), `AnswerDocument core missing ${token}`);
 
 for (const token of [
+  "MicaHighlightEngine",
+  "micaHighlightsV1",
+  "anchor_unresolved",
+  "conversationId",
+  "sourceVersion",
+  "textQuote",
+  "mathTeX"
+]) assert(highlightEngine.includes(token), `HighlightEngine missing ${token}`);
+
+for (const token of ["captureHighlightSelection", "resolveHighlightAnchor", "unique_quote_context", "extractRawMathSources"]) {
+  assert(answerDocument.includes(token), `AnswerDocument highlight mapping missing ${token}`);
+}
+
+for (const token of ["resolveTurnFromNode", "STREAMING", "SETTLED"]) {
+  assert(adapter.includes(token), `adapter highlight capability missing ${token}`);
+}
+
+for (const token of [
   "MICA_GET_STATUS",
   "MICA_SET_SETTINGS",
   "MICA_QA_EXPORT",
@@ -84,6 +103,9 @@ for (const token of [
   "conversationTextIncluded: false",
   "rawDomIncluded: false"
 ]) assert(content.includes(token), `content runtime missing ${token}`);
+for (const token of ["data-mica-ui", "highlight-toolbar", "event.isTrusted", "CSS.highlights", "permanentToolbar: false"]) {
+  assert(content.includes(token), `Highlighter runtime missing ${token}`);
+}
 
 for (const token of ["windowTurboStreamChunk", "windowJsonPayload", "client-history-window", "reactManagedInteractiveNodesDetached"]) {
   assert(lowMemoryCore.includes(token), `Low Memory core missing ${token}`);
@@ -103,9 +125,19 @@ for (const token of ["chrome.scripting.registerContentScripts", "world: \"MAIN\"
 
 const reportBody = extractFunctionBody(content, "buildSanitizedQaReport");
 assert(!/innerText|textContent|innerHTML|outerHTML/.test(reportBody), "sanitized QA report must not read conversation text/HTML");
-for (const text of [content, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground]) {
+for (const text of [highlightEngine, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground]) {
   assert(!/addEventListener\(["'](?:beforeinput|input|keydown|compositionstart|compositionupdate|compositionend)/.test(text), "runtime added a typing hot-path listener");
 }
+assert(!/addEventListener\(["'](?:beforeinput|input|compositionstart|compositionupdate|compositionend)/.test(content), "content runtime added a typing hot-path listener");
+assert(!/(?:document|globalThis|window)\.addEventListener\(["']keydown/.test(content), "content runtime added a global keydown hot-path listener");
+const highlightKeyUpBody = extractFunctionBody(content, "handleHighlightKeyUp");
+for (const token of ["querySelector", "querySelectorAll", "cloneNode", "getComputedStyle", "getBoundingClientRect", "textContent", "innerText", "chrome.storage", "setTimeout", "listTurns"]) {
+  assert(!highlightKeyUpBody.includes(token), `Highlighter keyboard hot path includes heavy work: ${token}`);
+}
+for (const token of ["!event.shiftKey", "isEditableTarget", "requestAnimationFrame"]) {
+  assert(highlightKeyUpBody.includes(token), `Highlighter keyboard hot path missing guard: ${token}`);
+}
+assert(!/Range\.prototype|Selection\.prototype/.test(`${answerDocument}\n${highlightEngine}\n${content}`), "Highlighter must not patch global Range/Selection prototypes");
 
 const normalHtml = await readFile(path.join(distDir, "popup", "index.html"), "utf8");
 for (const token of ["Mica", "Enable Mica", "Checking this page…", "Low memory", "Keeps 40 recent turns active", "Load full history", "Page health", "Troubleshooting", "Advanced"]) {

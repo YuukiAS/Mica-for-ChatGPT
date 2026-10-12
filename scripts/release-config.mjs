@@ -1,6 +1,6 @@
 export const MACHINE_VERSION = "0.3.0";
 export const VERSION_NAME = "0.3.0";
-export const BUILD_LABEL = "low-memory-windowing.3";
+export const BUILD_LABEL = "highlighter.1";
 export const DEV_BUILD = true;
 export const RELEASE_TAG = `v${VERSION_NAME}`;
 export const DEV_DIST_DIR_NAME = "mica-dev";
@@ -10,6 +10,7 @@ export const REQUIRED_EXTENSION_FILES = [
   "manifest.json",
   "chatgpt-adapter.js",
   "answer-document.js",
+  "highlight-engine.js",
   "low-memory-core.js",
   "low-memory-page.js",
   "low-memory-config.js",
