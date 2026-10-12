@@ -1,3 +1,10 @@
+> **SUPERSEDED — DO NOT EXECUTE AS CURRENT AUTHORITY**  
+> Superseded on 2026-10-12 by:
+> - `docs/product/MICA_PRODUCT_SYSTEM_V1.md`
+> - `docs/tasks/2026-10-12-mica-product-system-rebuild-goal.md`
+>
+> This file remains historical evidence only. Its implementation checkpoints may be preserved and replayed, but its product architecture, UI contract, Human Gate, and release sequence are no longer authoritative.
+
 # Mica 产品恢复与当前 ChatGPT 界面收敛总 Goal
 
 ```yaml
