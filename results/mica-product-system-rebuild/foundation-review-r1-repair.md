@@ -1,5 +1,9 @@
 # Foundation independent-review repair candidate
 
+> Historical repair candidate. Independent review returned `REVISE` with two
+> new P1 and one P2 finding. It is superseded by
+> `foundation-review-r2-repair.md`.
+
 Date: 2026-10-12
 
 Runtime candidate commit: `313ac974ed01d1973b3d2e5120943a1e7f889805`
