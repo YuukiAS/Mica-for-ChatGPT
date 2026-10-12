@@ -674,9 +674,9 @@ Compatibility changed; risky recovery paused
 
 ---
 
-## 13. Then implement built-in Highlighter
+## 13. Milestone B — implement built-in ChatGPT Highlighter
 
-Highlighter 现在才进入实现阶段。
+Highlighter 只在 Milestone A 完整通过并发布/冻结后进入实现。
 
 读取：
 
@@ -684,7 +684,7 @@ Highlighter 现在才进入实现阶段。
 YuukiAS/Web_Highlighter
 ```
 
-先做 provenance/license audit。
+它是用户指定的技术行为参考。法律/许可/provenance 不属于本 Goal 的 Planner/Critic/release gate，不得因此阻塞开发。
 
 吸收已经真实验证的行为：
 
@@ -702,13 +702,26 @@ Anchor 至少组合：
 ```text
 conversation identity
 turn identity
+AnswerDocument sourceVersion
+BlockID
 text quote
 prefix/suffix
+source span
 structural hint
 math TeX source
 ```
 
-Highlighter UI 只在 selection 后出现。
+必须覆盖重复文本、edit/branch、remount、math reformat、source deletion 等 ambiguity cases。
+
+不能唯一解析时：
+
+```text
+store record
+-> mark unresolved
+-> do not auto-attach to another location
+```
+
+Highlighter UI 只在 valid selection 后出现。第一、第二 rebuild milestone 的高亮范围只承诺 ChatGPT surface；通用任意网页高亮不在本轮 release claim 内。
 
 ---
 
@@ -745,12 +758,19 @@ ordinary prose -> inline math -> ordinary prose
 - text extraction；
 - PDF.js text layer；
 - programmatic cross-boundary selection/copy；
+- **actual pointer drag/selection in at least one supported real viewer engine**；
 - search；
-- highlight mapping；
+- copy order；
+- visual position/text-layer alignment；
+- highlight mapping（cross-line/cross-page/math）；
 - pagination；
 - formulas；
 - code/table；
 - actual visual review。
+
+PDF.js/extraction 不能替代 pointer-selection hard regression。
+
+`ordinary prose -> inline math -> ordinary prose` 是 baseline hard case，不能用 complex-math fallback 把它改判 PASS。
 
 如果某类复杂公式无法完全保持文本层，必须有明确 fallback 和用户可理解的边界，不能静默退化。
 
@@ -758,9 +778,9 @@ ordinary prose -> inline math -> ordinary prose
 
 ## 15. Notion
 
-Copy for Notion 也必须消费 AnswerDocument。
+Copy for Notion 必须消费同一 AnswerDocument。
 
-测试：
+先验证：
 
 - text/plain；
 - text/html；
@@ -770,9 +790,19 @@ Copy for Notion 也必须消费 AnswerDocument。
 - formula in lists/tables；
 - deterministic fallback。
 
-先用 local MIME/DOM harness。
+Local MIME/DOM harness 只能证明 serialization，不证明真实 Notion 已创建可用公式对象。
 
-真实 Notion 只在无法代理的最后语义确认时才使用，不能变成正常 regression 环。
+若 Notion 要进入 released product，必须有一次 bounded `REAL_NOTION_TARGET` 验证，确认真实粘贴结果满足“无需逐个手工转换大多数公式”的产品目标。
+
+优先由 Codex 在可用的隔离/已授权真实目标上完成；若只缺登录，用户最多承担登录这一 HUMAN_ONLY 动作，后续验证仍由 Codex/reviewer 完成。
+
+若无法取得真实目标证据：
+
+```text
+NOTION_STATUS=DEFERRED_NOT_INDEPENDENTLY_VERIFIED
+```
+
+Notion 保持隐藏/未发布，不得以 local fixture 宣称 PASS，也不得阻塞已经完整通过的 Highlighter+PDF Milestone B。
 
 ---
 
