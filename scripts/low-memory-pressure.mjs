@@ -29,10 +29,12 @@ const summarized = Object.fromEntries(Object.entries(raw).map(([state, samples])
 const output = {
   passed: true,
   generatedAt: new Date().toISOString(),
-  targetDevice: {
-    class: "256-mb-v8-old-space-pressure-target",
+  targetEnvironment: {
+    class: "local-edge-v8-old-space-pressure",
+    executionSurface: "local-isolated-edge",
     browserBuild: raw.A[0].browserBuild,
-    memoryGb: 0.25,
+    rendererOldSpaceLimitMb: 256,
+    physicalMemoryGb: null,
     boundary: "local Chromium renderer constrained with a 256 MB V8 old-space limit; OS process memory is measured across the fresh browser process tree"
   },
   pressureFixture: {

@@ -1,6 +1,6 @@
 export const MACHINE_VERSION = "0.3.0";
 export const VERSION_NAME = "0.3.0";
-export const BUILD_LABEL = "low-memory-windowing.2";
+export const BUILD_LABEL = "low-memory-windowing.3";
 export const DEV_BUILD = true;
 export const RELEASE_TAG = `v${VERSION_NAME}`;
 export const DEV_DIST_DIR_NAME = "mica-dev";

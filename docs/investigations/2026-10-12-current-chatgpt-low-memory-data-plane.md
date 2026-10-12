@@ -129,27 +129,45 @@ removes those assumptions:
   cycles or disconnected nodes;
 - malformed, disconnected, unknown-role and unknown-content JSON and turbo
   payloads remain byte-for-byte unchanged;
-- the recovery fixture clicks the real on-page control, proves an unwindowed
-  161-node reload, exercises `full_history_bypass` and `Resume Low Memory`, and
-  proves a draft-blocked disable retains a later recovery action;
+- page-originated status is explicitly untrusted telemetry. Recovery requires
+  an extension-UI command or an `event.isTrusted` pointer/keyboard gesture;
+  forged status plus a synthetic `.click()` causes zero prepare calls and zero
+  reloads;
+- the recovery fixture scrolls a genuinely tall page from `scrollY=1200` to the
+  top with a real wheel gesture, confirms the history control becomes visible,
+  then uses real pointer and keyboard actions to prove an unwindowed 161-node
+  reload, `full_history_bypass`, `Resume Low Memory`, and draft-blocked disable
+  recovery;
 - the pressure run loads the complete unpacked extension in isolated Edge
   profiles, proves the service worker registration and content runtime for B/C,
   and uses the current React Router flat-graph plus virtualized-turn DOM shapes.
 
-On the final three-sample 800-turn, 100 MiB workload with a 256 MiB V8
-old-space limit, installed/on reduced the decoded mapping from 801 to 41 nodes,
-retained message content from 100 to 5 MiB, and JS heap from 101.633 to
-6.348 MiB versus installed/off. Mounted turns and mutations stayed at 12 and
-62; typing p95 stayed 0.01 ms, scroll p95 improved from 0.10 to 0.01 ms, frame
-p95 changed from 16.8 to 17.2 ms, and steady-state long-task count stayed zero.
-Full browser process private memory changed from 564.176 to 558.664 MiB; the
-extension process overhead means this aggregate is a smaller signal than the
-renderer heap and retained graph reduction.
+The pressure evidence is a local constrained target-class environment, not a
+physical low-memory device: an isolated Edge 155 profile with a 256 MiB V8
+old-space limit; physical RAM is deliberately recorded as `null`. On its final
+three-sample 800-turn, 100 MiB workload, installed/on reduced the decoded
+mapping from 801 to 41 nodes, retained message content from 100 to 5 MiB, and
+JS heap from 101.634 to 6.349 MiB versus installed/off. Mounted turns and
+mutations stayed at 12 and 62; typing p95 stayed 0.01 ms, scroll p95 improved
+from 0.10 to 0.01 ms, frame p95 changed from 16.8 to 17.4 ms, and steady-state
+long-task count stayed zero. Full browser process private memory changed from
+559.625 to 568.984 MiB, a 1.67% increase within fresh-process and extension
+overhead noise. It is not claimed as a process-memory win; the demonstrated
+benefit is the 93.75% renderer-heap reduction and 95% retained-content / 94.88%
+mapping reduction beyond native DOM virtualization.
+
+The candidate also passed eight stress loops (40 focused browser runs). This
+local constrained-environment result is sufficient for the automated candidate
+gate, but it must not be relabelled as `TARGET_LOW_MEMORY_DEVICE`; the final
+claim is limited to the explicitly frozen target-class environment. No physical
+device result is claimed.
 
 ```text
 LOW_MEMORY_FEASIBILITY=PASS
 LOW_MEMORY_TRUNCATION=PASS
 LOW_MEMORY_RESTORE=PASS
 LOW_MEMORY_CORE_FLOW_REGRESSION=PASS
+TARGET_CLASS_ENVIRONMENT=PASS
 TARGET_LOW_MEMORY_EVIDENCE=PASS
+TARGET_LOW_MEMORY_DEVICE=NOT_CLAIMED
 ```

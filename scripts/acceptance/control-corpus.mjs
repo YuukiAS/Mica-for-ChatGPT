@@ -144,6 +144,18 @@ export async function runControlCorpus(repoRoot) {
     ["low-memory-stress-failed-rehash", async (context) => mutateStress(context, (value) => { value.passed = false; value.results[0].passed = false; })],
     ["low-memory-stress-short-rehash", async (context) => mutateStress(context, (value) => { value.runs = 39; value.results.pop(); })],
     ["low-memory-stress-duplicate-script-rehash", async (context) => mutateStress(context, (value) => { value.results[1].script = value.results[0].script; })],
+    ["low-memory-synthetic-click-authorized-rehash", async (context) => mutateLowMemoryPage(context, (value) => {
+      value.forgedPageStatus.prepareCalls = 1;
+      value.forgedPageStatus.reloads = 1;
+      value.actionSecurity.syntheticClickPrepareCalls = 1;
+      value.actionSecurity.syntheticClickReloads = 1;
+    })],
+    ["low-memory-target-environment-misclassified", async ({ manifest }) => {
+      const record = evidence(manifest, "low-memory-benefit");
+      record.evidenceClass = "TARGET_LOW_MEMORY_DEVICE";
+      record.subject = { surface: "target-low-memory-device" };
+      refreshRoot(manifest);
+    }],
     ["lost-highlight-after-remount", async ({ manifest }) => { evidence(manifest, "highlight-remount").measurement.restoredAfterRemount = false; refreshRoot(manifest); }],
     ["non-selectable-inline-math-pdf", async ({ manifest }) => { evidence(manifest, "pdf-selection").measurement.pointerSelection = false; refreshRoot(manifest); }],
     ["stale-chatgpt-contract", async ({ manifest }) => { evidence(manifest, "adapter-contract").measurement.capabilities[0].invalidatedBy = ["newer incompatible surface"]; refreshRoot(manifest); }],
@@ -268,7 +280,7 @@ async function createGoodBundle(repoRoot) {
       B: controlPressureState("mica-installed-low-memory-off", 980, 490, 410, 241, true),
       C: controlPressureState("mica-installed-low-memory-on", 760, 350, 250, 41, true),
       pressureFixture: { memoryLimitMb: 2048, payloadMb: 420, turns: 240, workload: "current-chatgpt-derived-react-router-flat-graph-and-virtualized-turn-renderer", sourceArtifact: "current-chatgpt-surface/low-memory-data-plane-evidence.json" },
-      targetDevice: { class: "2-gb-low-memory-target", browserBuild: "control-browser-1", memoryGb: 2 },
+      targetEnvironment: { class: "local-edge-v8-old-space-pressure", executionSurface: "local-isolated-edge", browserBuild: "control-browser-1", rendererOldSpaceLimitMb: 256, physicalMemoryGb: null },
       actualTruncation: true,
       truncatedRepresentation: "client-history-window",
       reactManagedInteractiveNodesDetached: false,
@@ -286,8 +298,15 @@ async function createGoodBundle(repoRoot) {
     })],
     ["low-memory-page", "artifacts/low-memory-page.json", "application/json", JSON.stringify({
       passed: true,
-      firstInstall: { mappingNodes: 41 }, forgedPageConfig: { mappingNodes: 41 },
-      history: { scrollUpRestoresOlder: true, loadFullHistoryPass: true, reloadRestoresFullHistory: true, disableRestoresFullHistory: true, closeOrUninstallRestoresFullHistory: true, serverHistoryUnchanged: true }
+      firstInstall: { mappingNodes: 41, status: { totalNodes: 241, serverMutation: false } },
+      forgedPageConfig: { mappingNodes: 41 },
+      forgedPageStatus: { telemetryAccepted: true, telemetryTrust: "page_untrusted", recoveryAuthorization: "extension_ui_or_trusted_user_gesture", prepareCalls: 0, reloads: 0 },
+      historyControl: { awayFromTop: { scrollY: 1200, nearTopAttribute: false, visible: false }, nearTop: { scrollY: 0, nearTopAttribute: true, visible: true }, userAction: "trusted_pointer", prepareCalls: 1, reloads: 1 },
+      fullHistoryBypass: { mappingNodes: 241, userAction: "trusted_keyboard", resumeCalls: 1, reloads: 1 },
+      unsafeDisable: { userAction: "trusted_pointer", prepareCalls: 1, reloads: 1 },
+      disabled: { mappingNodes: 241 },
+      history: controlHistory(),
+      actionSecurity: controlActionSecurity()
     })],
     ["low-memory-stress", "artifacts/low-memory-stress.json", "application/json", JSON.stringify(controlStress())],
     ["low-memory-registration", "artifacts/low-memory-registration.json", "application/json", JSON.stringify({
@@ -393,7 +412,7 @@ async function createGoodBundle(repoRoot) {
       userTurnCommitted: true,
       duplicateSend: false
     }),
-    record("low-memory-benefit", { surface: "target-low-memory-device" }, ["dist", "low-memory-pressure", "low-memory-fixture", "low-memory-page", "low-memory-stress", "low-memory-registration", "foundation-flows"], {
+    record("low-memory-benefit", { surface: "local-constrained-target-class-environment" }, ["dist", "low-memory-pressure", "low-memory-fixture", "low-memory-page", "low-memory-stress", "low-memory-registration", "foundation-flows"], {
       A: controlPressureState("mica-absent-or-disabled", 1000, 500, 420, 241, false),
       B: controlPressureState("mica-installed-low-memory-off", 980, 490, 410, 241, true),
       C: controlPressureState("mica-installed-low-memory-on", 760, 350, 250, 41, true),
@@ -404,17 +423,18 @@ async function createGoodBundle(repoRoot) {
         { name: "long", totalTurns: 240, retainedRecentTurns: 40, mountedBefore: 236, mountedAfter: 40, modeApplied: true }
       ],
       pressureFixture: { memoryLimitMb: 2048, payloadMb: 420, turns: 240, workload: "current-chatgpt-derived-react-router-flat-graph-and-virtualized-turn-renderer", sourceArtifact: "current-chatgpt-surface/low-memory-data-plane-evidence.json" },
-      targetDevice: { class: "2-gb-low-memory-target", browserBuild: "control-browser-1", memoryGb: 2 },
+      targetEnvironment: { class: "local-edge-v8-old-space-pressure", executionSurface: "local-isolated-edge", browserBuild: "control-browser-1", rendererOldSpaceLimitMb: 256, physicalMemoryGb: null },
       actualTruncation: true,
       truncatedRepresentation: "client-history-window",
       reactManagedInteractiveNodesDetached: false,
       serverMutation: false,
-      history: { scrollUpRestoresOlder: true, loadFullHistoryPass: true, reloadRestoresFullHistory: true, disableRestoresFullHistory: true, closeOrUninstallRestoresFullHistory: true, serverHistoryUnchanged: true },
+      history: controlHistory(),
+      actionSecurity: controlActionSecurity(),
       registration: { firstInstall: true, storageFailureFailOpen: true, siteWritableConfigAccepted: false, forgedPageEventIgnored: true },
       stress: controlStress(),
       coreFlows: { composer: true, send: true, streaming: true, editBranch: true, connector: true, toolFileAuth: true, typingImeHotPath: true },
       unknownStructureBehavior: "FAIL_OPEN"
-    }),
+    }, "TARGET_CLASS_ENVIRONMENT"),
     record("highlight-remount", { surface: "local-real-browser" }, ["dist"], {
       restoredAfterRemount: true,
       attachedToWrongText: false,
@@ -462,11 +482,11 @@ async function createGoodBundle(repoRoot) {
   return { tempRoot, bundleDir, manifest };
 }
 
-function record(gateId, subject, artifactIds, measurement) {
+function record(gateId, subject, artifactIds, measurement, evidenceClass = "SYNTHETIC_FIXTURE") {
   return {
     id: `${gateId}-control-evidence`,
     gateId,
-    evidenceClass: "SYNTHETIC_FIXTURE",
+    evidenceClass,
     subject,
     artifactIds,
     measurement
@@ -510,6 +530,31 @@ function controlStress() {
   return { passed: true, loops: 8, runs: 40, results };
 }
 
+function controlHistory() {
+  return {
+    scrollUpRestoresOlder: true,
+    loadFullHistoryPass: true,
+    reloadRestoresFullHistory: true,
+    disableRestoresFullHistory: true,
+    closeOrUninstallRestoresFullHistory: true,
+    serverHistoryUnchanged: true
+  };
+}
+
+function controlActionSecurity() {
+  return {
+    pageStatusTelemetryTrusted: false,
+    recoveryAuthorization: "extension_ui_or_trusted_user_gesture",
+    forgedStatusAcceptedAsTelemetry: true,
+    syntheticClickPrepareCalls: 0,
+    syntheticClickReloads: 0,
+    trustedPointerPrepareCalls: 1,
+    trustedPointerReloads: 1,
+    trustedKeyboardResumeCalls: 1,
+    trustedKeyboardReloads: 1
+  };
+}
+
 async function mutateStress({ bundleDir, manifest }, mutate) {
   const file = path.join(bundleDir, "artifacts", "low-memory-stress.json");
   const value = JSON.parse(await readFile(file, "utf8"));
@@ -517,5 +562,15 @@ async function mutateStress({ bundleDir, manifest }, mutate) {
   await writeFile(file, JSON.stringify(value));
   manifest.artifacts.find((item) => item.id === "low-memory-stress").sha256 = await sha256File(file);
   evidence(manifest, "low-memory-benefit").measurement.stress = value;
+  refreshRoot(manifest);
+}
+
+async function mutateLowMemoryPage({ bundleDir, manifest }, mutate) {
+  const file = path.join(bundleDir, "artifacts", "low-memory-page.json");
+  const value = JSON.parse(await readFile(file, "utf8"));
+  mutate(value);
+  await writeFile(file, JSON.stringify(value));
+  manifest.artifacts.find((item) => item.id === "low-memory-page").sha256 = await sha256File(file);
+  evidence(manifest, "low-memory-benefit").measurement.actionSecurity = value.actionSecurity;
   refreshRoot(manifest);
 }

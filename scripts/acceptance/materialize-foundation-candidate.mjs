@@ -221,19 +221,20 @@ const evidence = [
 ];
 if (profile === "milestone-a") {
   evidence.splice(evidence.findIndex((item) => item.gateId === "privacy"), 0,
-    record("low-memory-benefit", "TARGET_LOW_MEMORY_DEVICE", { surface: "target-low-memory-device" }, ["dist-tree", "low-memory-pressure", "low-memory-fixture", "low-memory-page", "low-memory-stress", "low-memory-registration", "foundation-flows", "popup-low-memory-active", "popup-low-memory-restore-required", "popup-low-memory-full-history-bypass"], {
+    record("low-memory-benefit", "TARGET_CLASS_ENVIRONMENT", { surface: "local-constrained-target-class-environment" }, ["dist-tree", "low-memory-pressure", "low-memory-fixture", "low-memory-page", "low-memory-stress", "low-memory-registration", "foundation-flows", "popup-low-memory-active", "popup-low-memory-restore-required", "popup-low-memory-full-history-bypass"], {
       A: lowMemoryPressure.A,
       B: lowMemoryPressure.B,
       C: lowMemoryPressure.C,
       recentTurnLimit: lowMemoryPressure.recentTurnLimit,
       threadProfiles: lowMemoryFixture.profiles,
       pressureFixture: lowMemoryPressure.pressureFixture,
-      targetDevice: lowMemoryPressure.targetDevice,
+      targetEnvironment: lowMemoryPressure.targetEnvironment,
       actualTruncation: lowMemoryPressure.actualTruncation,
       truncatedRepresentation: lowMemoryPressure.truncatedRepresentation,
       reactManagedInteractiveNodesDetached: lowMemoryPressure.reactManagedInteractiveNodesDetached,
       serverMutation: lowMemoryPressure.serverMutation,
-      history: lowMemoryPage.history,
+      history: deriveLowMemoryHistory(lowMemoryPage),
+      actionSecurity: deriveLowMemoryActionSecurity(lowMemoryPage),
       registration: {
         firstInstall: lowMemoryRegistration.firstInstall?.registered === true,
         storageFailureFailOpen: lowMemoryRegistration.storageFailure?.registered === false,
@@ -281,6 +282,37 @@ console.log(JSON.stringify({ bundleDir, commit, version: VERSION_NAME, distHash,
 
 function record(gateId, evidenceClass, subject, artifactIds, measurement) {
   return { id: `${gateId}-foundation-evidence`, gateId, evidenceClass, subject, artifactIds, measurement };
+}
+
+function deriveLowMemoryHistory(page) {
+  const away = page?.historyControl?.awayFromTop;
+  const near = page?.historyControl?.nearTop;
+  const fullNodeCount = page?.firstInstall?.status?.totalNodes;
+  return {
+    scrollUpRestoresOlder: Number.isFinite(away?.scrollY) && away.scrollY >= 96 && away?.nearTopAttribute === false && away?.visible === false
+      && Number.isFinite(near?.scrollY) && near.scrollY < 96 && near?.nearTopAttribute === true && near?.visible === true,
+    loadFullHistoryPass: page?.historyControl?.userAction === "trusted_pointer" && page?.historyControl?.prepareCalls === 1
+      && page?.historyControl?.reloads === 1 && page?.fullHistoryBypass?.mappingNodes === fullNodeCount,
+    reloadRestoresFullHistory: page?.fullHistoryBypass?.mappingNodes === fullNodeCount,
+    disableRestoresFullHistory: page?.unsafeDisable?.userAction === "trusted_pointer" && page?.unsafeDisable?.prepareCalls === 1
+      && page?.unsafeDisable?.reloads === 1 && page?.disabled?.mappingNodes === fullNodeCount,
+    closeOrUninstallRestoresFullHistory: page?.disabled?.mappingNodes === fullNodeCount,
+    serverHistoryUnchanged: page?.firstInstall?.status?.serverMutation === false
+  };
+}
+
+function deriveLowMemoryActionSecurity(page) {
+  return {
+    pageStatusTelemetryTrusted: page?.forgedPageStatus?.telemetryTrust !== "page_untrusted",
+    recoveryAuthorization: page?.forgedPageStatus?.recoveryAuthorization,
+    forgedStatusAcceptedAsTelemetry: page?.forgedPageStatus?.telemetryAccepted === true,
+    syntheticClickPrepareCalls: page?.forgedPageStatus?.prepareCalls,
+    syntheticClickReloads: page?.forgedPageStatus?.reloads,
+    trustedPointerPrepareCalls: page?.historyControl?.prepareCalls,
+    trustedPointerReloads: page?.historyControl?.reloads,
+    trustedKeyboardResumeCalls: page?.fullHistoryBypass?.resumeCalls,
+    trustedKeyboardReloads: page?.fullHistoryBypass?.reloads
+  };
 }
 
 function bootstrapObservationPasses(bootstrap, observation) {

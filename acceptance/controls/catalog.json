@@ -32,6 +32,8 @@
     {"id": "low-memory-stress-failed-rehash", "expected": "REJECT"},
     {"id": "low-memory-stress-short-rehash", "expected": "REJECT"},
     {"id": "low-memory-stress-duplicate-script-rehash", "expected": "REJECT"},
+    {"id": "low-memory-synthetic-click-authorized-rehash", "expected": "REJECT"},
+    {"id": "low-memory-target-environment-misclassified", "expected": "REJECT"},
     {"id": "lost-highlight-after-remount", "expected": "REJECT"},
     {"id": "non-selectable-inline-math-pdf", "expected": "REJECT"},
     {"id": "stale-chatgpt-contract", "expected": "REJECT"},

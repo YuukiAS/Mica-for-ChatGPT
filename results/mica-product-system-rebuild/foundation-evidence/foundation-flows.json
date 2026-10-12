@@ -57,11 +57,13 @@
     "bytesRemoved": 11536,
     "recentTurnLimit": 40,
     "actualTruncation": true,
+    "telemetryTrust": "page_untrusted",
+    "recoveryAuthorization": "extension_ui_or_trusted_user_gesture",
     "truncatedRepresentation": "client-history-window",
     "serverMutation": false,
     "reactManagedInteractiveNodesDetached": false,
     "contentUpload": false,
-    "updatedAt": "2026-10-12T11:13:29.176Z"
+    "updatedAt": "2026-10-12T11:44:58.228Z"
   },
   "windowedGraphFlows": {
     "tool": true,

@@ -4,6 +4,7 @@
   const BUILD_LABEL = "__MICA_BUILD_LABEL__";
   const CONTRACT_HASH = "__MICA_CHATGPT_CONTRACT_HASH__";
   const DEFAULT_SETTINGS = Object.freeze({ enabled: true, lowMemory: true, lowMemoryKeepCount: 40, lowMemoryThreshold: 80 });
+  const RECOVERY_AUTH = Object.freeze({ popup: Symbol("popup"), settings: Symbol("settings"), trustedGesture: Symbol("trusted-gesture") });
   const adapter = globalThis.MicaChatGPTAdapter;
   const answerDocument = globalThis.MicaAnswerDocument;
   let settings = { ...DEFAULT_SETTINGS };
@@ -215,7 +216,7 @@
         return false;
       }
       if (message?.type === "MICA_LOAD_FULL_HISTORY") {
-        void requestFullHistory("popup").then(sendResponse);
+        void requestFullHistory("popup", RECOVERY_AUTH.popup).then(sendResponse);
         return true;
       }
       if (message?.type === "MICA_RESUME_LOW_MEMORY") {
@@ -251,7 +252,7 @@
       }
     } else if (!isLowMemoryEnabled && wasLowMemoryActive) {
       lowMemoryStatus = { ...lowMemoryStatus, state: "restore_required", active: false, reason: "disabled_after_windowing" };
-      if (safeToReload()) await requestFullHistory("disabled_after_windowing");
+      if (safeToReload()) await requestFullHistory("disabled_after_windowing", RECOVERY_AUTH.settings);
     }
     if (settings.enabled) setupObserver();
     else teardownObserver();
@@ -280,6 +281,8 @@
       bytesRemoved: clampNumber(value.bytesRemoved, 0, Number.MAX_SAFE_INTEGER, 0),
       recentTurnLimit: clampNumber(value.recentTurnLimit, 8, 120, settings.lowMemoryKeepCount || 40),
       actualTruncation: value.actualTruncation === true,
+      telemetryTrust: "page_untrusted",
+      recoveryAuthorization: "extension_ui_or_trusted_user_gesture",
       truncatedRepresentation: value.truncatedRepresentation === "client-history-window" ? value.truncatedRepresentation : "client-history-window",
       serverMutation: false,
       reactManagedInteractiveNodesDetached: false,
@@ -293,6 +296,7 @@
       state: "standby", reason, source: "none", active: false, keptTurns: 0, totalTurns: 0,
       removedTurns: 0, keptNodes: 0, totalNodes: 0, bytesBefore: 0, bytesAfter: 0,
       bytesRemoved: 0, recentTurnLimit: 40, actualTruncation: false,
+      telemetryTrust: "page_untrusted", recoveryAuthorization: "extension_ui_or_trusted_user_gesture",
       truncatedRepresentation: "client-history-window", serverMutation: false,
       reactManagedInteractiveNodesDetached: false, contentUpload: false, updatedAt: new Date().toISOString()
     };
@@ -338,14 +342,15 @@
       @media(prefers-color-scheme:dark){:host{color:#eef4f1}aside{border-color:rgba(238,244,241,.2);background:rgba(23,29,27,.96)}button{border-color:#67c7bb;background:#67c7bb;color:#092d28}}
       @media(prefers-reduced-motion:reduce){*{transition:none!important}}
     </style><aside role="status"><span data-summary></span><button type="button">Load full history</button></aside>`;
-    shadow.querySelector("button").addEventListener("click", async () => {
+    shadow.querySelector("button").addEventListener("click", async (event) => {
+      if (!event.isTrusted) return;
       if (lowMemoryStatus.state === "full_history_bypass" || lowMemoryStatus.state === "reload_required") {
         if (!safeToReload()) return;
         const resumed = await globalThis.MicaLowMemoryConfig?.resumeWindowing?.();
         if (resumed?.ok) scheduleReload();
         return;
       }
-      await requestFullHistory("history_control");
+      await requestFullHistory("history_control", RECOVERY_AUTH.trustedGesture);
     });
     return host;
   }
@@ -360,7 +365,8 @@
     });
   }
 
-  async function requestFullHistory(reason) {
+  async function requestFullHistory(reason, authorization) {
+    if (!Object.values(RECOVERY_AUTH).includes(authorization)) return { ok: false, reason: "trusted_action_required" };
     if (!lowMemoryStatus.active && lowMemoryStatus.state !== "restore_required") return { ok: false, reason: "not_windowed" };
     if (!safeToReload()) return { ok: false, reason: "active_draft_or_stream" };
     const prepared = await globalThis.MicaLowMemoryConfig?.prepareFullHistory?.();

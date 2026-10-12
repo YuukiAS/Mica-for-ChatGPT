@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-export const VALIDATOR_VERSION = "1.2.0";
+export const VALIDATOR_VERSION = "1.3.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 const PLACEMENT_PROOF_OBSERVATION_IDS = [
   "copy-inside-assistant-turn",
@@ -37,6 +37,7 @@ const EVIDENCE_CLASSES = new Set([
   "REAL_DERIVED_CURRENT_CHATGPT",
   "CURRENT_CHATGPT_READ_ONLY",
   "CURRENT_CHATGPT_BOUNDED_ACTION",
+  "TARGET_CLASS_ENVIRONMENT",
   "TARGET_LOW_MEMORY_DEVICE",
   "ACTUAL_PDF_VIEWER",
   "REAL_NOTION_TARGET"
@@ -383,11 +384,20 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
       if (!sameJson(m[state], pressure?.[state])) fail(`low-memory state ${state} differs from bound pressure evidence`);
     }
     if (!sameJson(m.threadProfiles, fixture?.profiles)) fail("low-memory thread profiles differ from bound fixture evidence");
-    if (!sameJson(m.pressureFixture, pressure?.pressureFixture) || !sameJson(m.targetDevice, pressure?.targetDevice)) {
+    const targetIdentityMatches = record.evidenceClass === "TARGET_CLASS_ENVIRONMENT"
+      ? sameJson(m.targetEnvironment, pressure?.targetEnvironment) && m.targetDevice == null && pressure?.targetDevice == null
+      : record.evidenceClass === "TARGET_LOW_MEMORY_DEVICE"
+        ? sameJson(m.targetDevice, pressure?.targetDevice) && m.targetEnvironment == null && pressure?.targetEnvironment == null
+        : false;
+    if (!sameJson(m.pressureFixture, pressure?.pressureFixture) || !targetIdentityMatches) {
       fail("low-memory target identity differs from bound pressure evidence");
     }
-    const expectedHistory = page?.history;
+    const expectedHistory = deriveLowMemoryHistory(page);
+    if (!sameJson(page?.history, expectedHistory)) fail("low-memory page artifact contains non-derived history claims");
     if (!sameJson(m.history, expectedHistory)) fail("low-memory history measurement differs from bound page/pressure evidence");
+    const expectedActionSecurity = deriveLowMemoryActionSecurity(page);
+    if (!sameJson(page?.actionSecurity, expectedActionSecurity)) fail("low-memory page artifact contains non-derived action-security claims");
+    if (!sameJson(m.actionSecurity, expectedActionSecurity)) fail("low-memory action-security measurement differs from bound browser evidence");
     const expectedRegistration = {
       firstInstall: registration?.firstInstall?.registered === true,
       storageFailureFailOpen: registration?.storageFailure?.registered === false,
@@ -470,12 +480,38 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
     if (!finitePositive(m.pressureFixture?.memoryLimitMb) || !finitePositive(m.pressureFixture?.payloadMb) || !finitePositive(m.pressureFixture?.turns) || m.pressureFixture?.workload !== "current-chatgpt-derived-react-router-flat-graph-and-virtualized-turn-renderer" || !m.pressureFixture?.sourceArtifact) {
       fail("low-memory pressure fixture identity missing");
     }
-    if (!m.targetDevice?.class || !m.targetDevice?.browserBuild || !finitePositive(m.targetDevice?.memoryGb)) fail("target low-memory device identity missing");
+    if (record.evidenceClass === "TARGET_CLASS_ENVIRONMENT") {
+      if (record.subject?.surface !== "local-constrained-target-class-environment"
+        || m.targetEnvironment?.class !== "local-edge-v8-old-space-pressure"
+        || m.targetEnvironment?.executionSurface !== "local-isolated-edge"
+        || !m.targetEnvironment?.browserBuild
+        || !finitePositive(m.targetEnvironment?.rendererOldSpaceLimitMb)
+        || m.targetEnvironment?.physicalMemoryGb != null) {
+        fail("target-class environment identity is missing or misclassified");
+      }
+    } else if (record.evidenceClass === "TARGET_LOW_MEMORY_DEVICE") {
+      if (record.subject?.surface !== "target-low-memory-device" || m.targetDevice?.physicalDevice !== true || !finitePositive(m.targetDevice?.physicalMemoryGb)) {
+        fail("physical target low-memory device identity missing");
+      }
+    } else {
+      fail("low-memory benefit evidence must use a target-class environment or physical target device");
+    }
     if (!m.actualTruncation || m.truncatedRepresentation !== "client-history-window" || m.reactManagedInteractiveNodesDetached !== false || m.serverMutation !== false) {
       fail("low-memory implementation is not a safe client-only history window");
     }
     if (!m.history?.scrollUpRestoresOlder || !m.history?.loadFullHistoryPass || !m.history?.reloadRestoresFullHistory || !m.history?.disableRestoresFullHistory || !m.history?.closeOrUninstallRestoresFullHistory || !m.history?.serverHistoryUnchanged) {
       fail("low-memory truncation/history restoration invariant missing");
+    }
+    if (m.actionSecurity?.pageStatusTelemetryTrusted !== false
+      || m.actionSecurity?.recoveryAuthorization !== "extension_ui_or_trusted_user_gesture"
+      || m.actionSecurity?.forgedStatusAcceptedAsTelemetry !== true
+      || m.actionSecurity?.syntheticClickPrepareCalls !== 0
+      || m.actionSecurity?.syntheticClickReloads !== 0
+      || m.actionSecurity?.trustedPointerPrepareCalls !== 1
+      || m.actionSecurity?.trustedPointerReloads !== 1
+      || m.actionSecurity?.trustedKeyboardResumeCalls !== 1
+      || m.actionSecurity?.trustedKeyboardReloads !== 1) {
+      fail("page-writable telemetry crossed the trusted recovery-action boundary");
     }
     for (const flow of ["composer", "send", "streaming", "editBranch", "connector", "toolFileAuth", "typingImeHotPath"]) {
       if (m.coreFlows?.[flow] !== true) fail(`low-memory ${flow} regression evidence failed`);
@@ -658,6 +694,37 @@ function bootstrapStatusSupportsContract(bootstrapStatus, contractStatus) {
   if (contractStatus === "COMPATIBLE") return bootstrapStatus === "COMPATIBLE" || bootstrapStatus === "EXACT";
   if (contractStatus === "UNKNOWN") return ["EXACT", "EXACT_FOR_OBSERVED_BLOCKS", "COMPATIBLE", "UNOBSERVED", "UNKNOWN_FAIL_OPEN"].includes(bootstrapStatus);
   return false;
+}
+
+function deriveLowMemoryHistory(page) {
+  const away = page?.historyControl?.awayFromTop;
+  const near = page?.historyControl?.nearTop;
+  const fullNodeCount = page?.firstInstall?.status?.totalNodes;
+  return {
+    scrollUpRestoresOlder: Number.isFinite(away?.scrollY) && away.scrollY >= 96 && away?.nearTopAttribute === false && away?.visible === false
+      && Number.isFinite(near?.scrollY) && near.scrollY < 96 && near?.nearTopAttribute === true && near?.visible === true,
+    loadFullHistoryPass: page?.historyControl?.userAction === "trusted_pointer" && page?.historyControl?.prepareCalls === 1
+      && page?.historyControl?.reloads === 1 && page?.fullHistoryBypass?.mappingNodes === fullNodeCount,
+    reloadRestoresFullHistory: page?.fullHistoryBypass?.mappingNodes === fullNodeCount,
+    disableRestoresFullHistory: page?.unsafeDisable?.userAction === "trusted_pointer" && page?.unsafeDisable?.prepareCalls === 1
+      && page?.unsafeDisable?.reloads === 1 && page?.disabled?.mappingNodes === fullNodeCount,
+    closeOrUninstallRestoresFullHistory: page?.disabled?.mappingNodes === fullNodeCount,
+    serverHistoryUnchanged: page?.firstInstall?.status?.serverMutation === false
+  };
+}
+
+function deriveLowMemoryActionSecurity(page) {
+  return {
+    pageStatusTelemetryTrusted: page?.forgedPageStatus?.telemetryTrust !== "page_untrusted",
+    recoveryAuthorization: page?.forgedPageStatus?.recoveryAuthorization,
+    forgedStatusAcceptedAsTelemetry: page?.forgedPageStatus?.telemetryAccepted === true,
+    syntheticClickPrepareCalls: page?.forgedPageStatus?.prepareCalls,
+    syntheticClickReloads: page?.forgedPageStatus?.reloads,
+    trustedPointerPrepareCalls: page?.historyControl?.prepareCalls,
+    trustedPointerReloads: page?.historyControl?.reloads,
+    trustedKeyboardResumeCalls: page?.fullHistoryBypass?.resumeCalls,
+    trustedKeyboardReloads: page?.fullHistoryBypass?.reloads
+  };
 }
 
 function finitePositive(value) {

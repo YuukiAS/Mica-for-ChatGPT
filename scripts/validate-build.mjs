@@ -94,6 +94,9 @@ for (const token of ["__reactRouterContext", "streamController", "conversation-j
 for (const token of ["MICA_LOW_MEMORY_SYNC", "MICA_LOW_MEMORY_GET_TAB_MODE", "MICA_LOW_MEMORY_PREPARE_FULL_HISTORY", "MICA_LOW_MEMORY_RESUME_WINDOWING"]) {
   assert(lowMemoryConfig.includes(token), `Low Memory config bridge missing ${token}`);
 }
+for (const token of ["event.isTrusted", "trusted_action_required", "page_untrusted", "extension_ui_or_trusted_user_gesture"]) {
+  assert(content.includes(token), `Low Memory recovery trust boundary missing ${token}`);
+}
 for (const token of ["chrome.scripting.registerContentScripts", "world: \"MAIN\"", "persistAcrossSessions: true", "full_history_bypass"]) {
   assert(lowMemoryBackground.includes(token), `Low Memory background controller missing ${token}`);
 }

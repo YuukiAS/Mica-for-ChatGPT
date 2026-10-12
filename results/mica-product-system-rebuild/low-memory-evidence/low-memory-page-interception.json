@@ -19,26 +19,57 @@
       "bytesRemoved": 17352,
       "recentTurnLimit": 40,
       "actualTruncation": true,
+      "telemetryTrust": "page_untrusted",
+      "recoveryAuthorization": "extension_ui_or_trusted_user_gesture",
       "truncatedRepresentation": "client-history-window",
       "serverMutation": false,
       "reactManagedInteractiveNodesDetached": false,
       "contentUpload": false,
-      "updatedAt": "2026-10-12T11:13:32.195Z"
+      "updatedAt": "2026-10-12T11:45:01.250Z"
     },
     "siteLocalConfigPresent": false
   },
   "forgedPageConfig": {
     "mappingNodes": 41
   },
+  "forgedPageStatus": {
+    "telemetryAccepted": true,
+    "telemetryTrust": "page_untrusted",
+    "recoveryAuthorization": "extension_ui_or_trusted_user_gesture",
+    "buttonPresent": true,
+    "syntheticClickTrusted": false,
+    "mode": "windowing",
+    "settings": {
+      "enabled": true,
+      "lowMemory": true
+    },
+    "registered": true,
+    "prepareCalls": 0,
+    "resumeCalls": 0,
+    "reloads": 0
+  },
   "historyControl": {
+    "awayFromTop": {
+      "scrollY": 1200,
+      "nearTopAttribute": false,
+      "visible": false
+    },
+    "nearTop": {
+      "scrollY": 0,
+      "nearTopAttribute": true,
+      "visible": true
+    },
     "buttonPresent": true,
     "label": "Load full history",
+    "userAction": "trusted_pointer",
     "mode": "full_history_bypass",
     "settings": {
       "enabled": true,
       "lowMemory": true
     },
     "registered": false,
+    "prepareCalls": 1,
+    "resumeCalls": 0,
     "reloads": 1
   },
   "fullHistoryBypass": {
@@ -58,19 +89,24 @@
       "bytesRemoved": 0,
       "recentTurnLimit": 40,
       "actualTruncation": false,
+      "telemetryTrust": "page_untrusted",
+      "recoveryAuthorization": "extension_ui_or_trusted_user_gesture",
       "truncatedRepresentation": "client-history-window",
       "serverMutation": false,
       "reactManagedInteractiveNodesDetached": false,
       "contentUpload": false,
-      "updatedAt": "2026-10-12T11:13:32.372Z"
+      "updatedAt": "2026-10-12T11:45:01.527Z"
     },
     "buttonLabel": "Resume Low Memory",
+    "userAction": "trusted_keyboard",
     "mode": "windowing",
     "settings": {
       "enabled": true,
       "lowMemory": true
     },
     "registered": true,
+    "prepareCalls": 0,
+    "resumeCalls": 1,
     "reloads": 1
   },
   "unsafeDisable": {
@@ -89,14 +125,17 @@
       "bytesRemoved": 17352,
       "recentTurnLimit": 40,
       "actualTruncation": true,
+      "telemetryTrust": "page_untrusted",
+      "recoveryAuthorization": "extension_ui_or_trusted_user_gesture",
       "truncatedRepresentation": "client-history-window",
       "serverMutation": false,
       "reactManagedInteractiveNodesDetached": false,
       "contentUpload": false,
-      "updatedAt": "2026-10-12T11:13:32.599Z"
+      "updatedAt": "2026-10-12T11:45:01.773Z"
     },
     "controlRetained": true,
     "buttonLabel": "Restore full history",
+    "userAction": "trusted_pointer",
     "mode": "full_history_bypass",
     "settings": {
       "enabled": true,
@@ -105,6 +144,8 @@
       "lowMemoryThreshold": 80
     },
     "registered": false,
+    "prepareCalls": 1,
+    "resumeCalls": 0,
     "reloads": 1
   },
   "disabled": {
@@ -124,11 +165,13 @@
       "bytesRemoved": 0,
       "recentTurnLimit": 40,
       "actualTruncation": false,
+      "telemetryTrust": "page_untrusted",
+      "recoveryAuthorization": "extension_ui_or_trusted_user_gesture",
       "truncatedRepresentation": "client-history-window",
       "serverMutation": false,
       "reactManagedInteractiveNodesDetached": false,
       "contentUpload": false,
-      "updatedAt": "2026-10-12T11:13:32.793Z"
+      "updatedAt": "2026-10-12T11:45:02.039Z"
     }
   },
   "history": {
@@ -138,5 +181,16 @@
     "disableRestoresFullHistory": true,
     "closeOrUninstallRestoresFullHistory": true,
     "serverHistoryUnchanged": true
+  },
+  "actionSecurity": {
+    "pageStatusTelemetryTrusted": false,
+    "recoveryAuthorization": "extension_ui_or_trusted_user_gesture",
+    "forgedStatusAcceptedAsTelemetry": true,
+    "syntheticClickPrepareCalls": 0,
+    "syntheticClickReloads": 0,
+    "trustedPointerPrepareCalls": 1,
+    "trustedPointerReloads": 1,
+    "trustedKeyboardResumeCalls": 1,
+    "trustedKeyboardReloads": 1
   }
 }
