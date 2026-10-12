@@ -952,32 +952,71 @@ run Atlas for hours
 
 ---
 
-## 19. Documentation cleanup
+## 19. Legacy migration and cleanup
+
+Source audit 后先生成 machine-readable legacy disposition matrix，不创建新的平行 Planner 文档。
+
+每个 class 只能是：
+
+```text
+KEEP_AND_MIGRATE
+KEEP_AS_HISTORICAL_EVIDENCE
+ARCHIVE
+REMOVE
+SUPERSEDE
+```
+
+至少覆盖：
+
+- broad Surface Atlas runtime/UI entry；
+- Atlas scripts/contracts/evidence；
+- old popup diagnostics grid；
+- persistent status dot/overlay；
+- old recovery modules；
+- feature-owned ChatGPT selectors；
+- synthetic fixtures；
+- local-only candidate artifacts；
+- old Goals；
+- old release packages；
+- old PRs/branches；
+- stale README/ROADMAP；
+- legacy Issue closure state。
+
+硬要求：
+
+- normal runtime 不再同时启用旧 Atlas / old diagnostics shell / new product shell；
+- recovery 只保留一个 current state contract；
+- feature-owned selectors 在 adapter migration 后清零；
+- 真实失败 fixture 可迁入 canonical acceptance harness；
+- 只会自证旧架构的 fixtures 归档或删除；
+- old Goals 明确 superseded；
+- unique local work 未确认前不删 branch/worktree；
+- final validator 检查 removed legacy entrypoint 不再进入 build/runtime。
 
 产品和 acceptance system稳定后：
 
 - rewrite README to current truth；
 - rewrite ROADMAP；
-- mark old Goals superseded/historical；
 - explain normal Mica use first；
 - explain Developer QA separately；
-- document external fallback commands only when truly necessary；
+- external fallback command 只记录扩展确实做不了的 browser/OS bootstrap；
 - remove stale version/status claims；
 - keep one canonical development `dist/mica-dev` path。
 
 ---
 
-## 20. Release
+## 20. Two release milestones inside the same Goal
 
-不要提前锁死具体 version number。
+不要提前锁死具体 version number。Source-of-truth audit 后选择 next appropriate SemVer。
 
-Source-of-truth audit 后选择 next appropriate SemVer；若 local 0.4 checkpoint 是真实 current lineage，预计下一 product-system milestone 应为新 minor，而不是伪装成旧 0.4 patch。
+### Milestone A — Daily Core
 
-Release requires:
+必须全部通过：
 
 ```text
 PREBUILD_CRITIC=PASS
-PRODUCT_SYSTEM=PASS
+CURRENT_CHATGPT_EVIDENCE=PASS
+UI_DESIGN_FREEZE=PASS
 NORMAL_POPUP=PASS
 TROUBLESHOOTING=PASS
 DEVELOPER_QA=PASS
@@ -986,12 +1025,10 @@ CHATGPT_UI_REFRESH=PASS
 ACCEPTANCE_HARNESS=PASS
 KNOWN_BAD_CONTROL=REJECTED
 KNOWN_GOOD_CONTROL=ACCEPTED
+LOW_MEMORY_FEASIBILITY=PASS
 LOW_MEMORY_TRUNCATION=PASS
-COPY_EXPORT=PASS
-RELIABILITY=PASS
-HIGHLIGHTER=PASS
-PDF_TEXT_MATH_HIGHLIGHT=PASS
-NOTION=PASS
+MARKDOWN_COPY=PASS
+RELIABILITY_CORE=PASS
 PRODUCER_P0=0
 PRODUCER_P1=0
 PRODUCER_P2=0
@@ -1003,15 +1040,49 @@ CANDIDATE_IDENTITY=PASS
 PACKAGE=PASS
 ```
 
-Only then:
+Highlighter/PDF/Notion 不阻塞 Milestone A。
 
-1. push exact review candidate;
-2. final independent review;
-3. minimal user acceptance;
-4. merge;
-5. package/tag/prerelease as authorized;
-6. update issue closure matrix;
-7. delete/supersede temporary work branches only when safe.
+Milestone A 通过后允许 push immutable candidate -> independent review -> minimal user acceptance -> merge/release。
+
+### Milestone B — Answer Reuse
+
+在 Milestone A 已接受架构上继续，不新建 Goal。
+
+必须全部通过：
+
+```text
+HIGHLIGHTER=PASS
+HIGHLIGHT_AMBIGUITY_FAIL_OPEN=PASS
+HIGHLIGHT_REMOUNT_RESTORE=PASS
+PDF_TEXT_SEARCH_SELECT=PASS
+PROSE_INLINE_MATH_PROSE_POINTER_SELECTION=PASS
+DISPLAY_MATH_SELECTABLE=PASS
+MATH_COPY_RESULT=PASS
+MATH_SEARCHABLE=PASS
+WEB_HIGHLIGHT_CROSS_MATH_TO_PDF=PASS
+ACTUAL_PDF_VIEWER_REVIEW=PASS
+KNOWN_BAD_CONTROL=REJECTED
+KNOWN_GOOD_CONTROL=ACCEPTED
+DETERMINISTIC_VALIDATOR=PASS
+ACTUAL_SURFACE_REVIEW=PASS
+PRODUCER_P0=0
+PRODUCER_P1=0
+PRODUCER_P2=0
+CANDIDATE_IDENTITY=PASS
+PACKAGE=PASS
+```
+
+Notion 只有 `NOTION_REAL_TARGET=PASS` 才能随 Milestone B 公开；否则保持 `DEFERRED_NOT_INDEPENDENTLY_VERIFIED` 并隐藏，不阻塞 Highlighter+PDF release。
+
+每个 milestone 都：
+
+1. push exact immutable review candidate；
+2. final independent review；
+3. minimal user acceptance only when genuinely needed；
+4. merge；
+5. package/tag/prerelease as authorized；
+6. update issue closure matrix；
+7. safe cleanup only after unique work preservation。
 
 ---
 
@@ -1102,24 +1173,36 @@ Only after that admission gate passes, the final Codex Goal should execute:
 
 ```text
 skills/session preflight
--> source/checkpoint preservation
--> final product/contracts freeze
--> acceptance-harness skeleton + frozen validator design
--> current ChatGPT compatibility baseline
--> ChatGPTAdapter
--> visible UI shell
+-> source/checkpoint preservation + legacy inventory
+-> current ChatGPT surface evidence
+-> product/UI freeze
+-> acceptance schema + controls skeleton
+-> Low Memory feasibility gate
+-> ChatGPTAdapter + AnswerDocument core
+-> actual normal UI shell + Troubleshooting + Developer QA
 -> compatibility refresh
--> Low Memory migration
--> Copy/Export + Reliability migration
--> Highlighter
--> PDF/Notion
--> candidate freeze
+-> Low Memory implementation/migration
+-> Markdown Copy + Reliability core
+-> Milestone A candidate freeze
 -> deterministic validation
 -> actual-surface review
 -> repair/re-freeze/review as needed
--> GPT Work
+-> GPT Work if required
 -> minimal user acceptance
--> merge/release
+-> Milestone A merge/release
+-> Highlighter
+-> PDF
+-> real Notion only if independently verifiable
+-> Milestone B candidate freeze/validation/review
+-> Milestone B merge/release
 ```
+
+This order is deliberate:
+
+- actual surface precedes visual freeze;
+- acceptance skeleton precedes broad implementation;
+- Low Memory feasibility is proven early rather than after a month of work;
+- adapter/AnswerDocument precede feature migration;
+- the user receives an independently useful Daily Core milestone before Answer Reuse expansion.
 
 Do not create another ordinary successor Goal after the final freeze.
