@@ -999,11 +999,11 @@ A source/artifact change invalidates the corresponding prior validation/review.
 
 Release readiness is not derived from one executor-written status field.
 
-### 11.1 Two continuous milestones, one overall Goal
+### 11.1 Foundation + two continuous product milestones
 
-The rebuild has two independently useful milestones.
+The rebuild has one internal Foundation Gate followed by two independently useful product milestones.
 
-### 11.1 Internal Foundation Gate
+### 11.2 Internal Foundation Gate
 
 Before feature work, Mica must first establish the rebuild foundation:
 
@@ -1024,7 +1024,7 @@ FOUNDATION_GATE = PASS
 
 No substantial Low Memory, Highlighter, PDF, advanced Reliability or Notion implementation begins before this gate.
 
-### 11.2 Milestone A — Low Memory
+### 11.3 Milestone A — Low Memory
 
 Builds on the accepted Foundation.
 
@@ -1039,7 +1039,7 @@ Required product:
 
 Milestone A may release once its own hard gates pass.
 
-### 11.3 Milestone B — Highlight + PDF
+### 11.4 Milestone B — Highlight + PDF
 
 Builds only on the accepted Foundation and Milestone A architecture.
 
@@ -1053,7 +1053,7 @@ Required product:
 - selectable/searchable/copyable math including the baseline prose → inline math → prose pointer-selection regression;
 - actual PDF viewer acceptance.
 
-### 11.4 Deferred capabilities
+### 11.5 Deferred capabilities
 
 The following are **not current release gates**:
 
@@ -1066,7 +1066,7 @@ They may be pursued only after Milestone B, unless a narrow dependency is techni
 
 The overall prioritized rebuild Goal is complete after Foundation, Milestone A and Milestone B pass. Deferred capabilities remain explicit follow-up scope and must not be falsely reported complete.
 
-### 11.2 Candidate sequence
+### 11.6 Candidate sequence
 
 Each milestone uses:
 
@@ -1194,11 +1194,4 @@ KNOWN_GOOD_CONTROL = ACCEPTED
 USER_IS_FIRST_QA = NO
 ```
 
-If Notion is included in the release:
-
-```text
-NOTION_SERIALIZATION = PASS
-NOTION_REAL_TARGET = PASS
-```
-
-Otherwise it remains hidden/deferred and is not reported as complete.
+Notion is not part of Milestone B completion and remains deferred unless a later explicit Goal promotes it.
