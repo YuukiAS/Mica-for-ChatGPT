@@ -1,6 +1,6 @@
 # Mica Product System Rebuild — Independent GPT Critic Prompt
 
-Status: **CURRENT PRE-IMPLEMENTATION REVIEW AUTHORITY**  
+Status: **CURRENT R2 PRE-IMPLEMENTATION REVIEW AUTHORITY**  
 Date: 2026-10-12  
 Audience: **fresh independent GPT Critic, not Codex Producer/Controller**  
 Repository: `YuukiAS/Mica-for-ChatGPT`
@@ -41,14 +41,13 @@ Read the current repository state and at least:
 ```text
 docs/product/MICA_PRODUCT_SYSTEM_V1.md
 docs/tasks/2026-10-12-mica-product-system-rebuild-goal.md
+docs/reviews/2026-10-12-mica-product-system-critic-r1-disposition.md
 AGENTS.md
 README.md
 docs/ROADMAP.md
-docs/REAL_BUG_CONVERGENCE_WORKFLOW.md
-docs/TEST_ARCHITECTURE_V2.md
 ```
 
-Read historical evidence only to understand failure classes, not as current authority:
+Read historical evidence only to understand failure classes, not as current authority. Do not assume old-branch files exist on current main:
 
 ```text
 docs/tasks/2026-10-05-mica-product-recovery-current-gpt-ui.md
@@ -93,6 +92,23 @@ Pay particular attention to these generic lessons:
 - control machinery must remain smaller than the remaining product problem;
 - one active authority/route;
 - a Human Gate must be genuinely human-only.
+
+
+## 2.1 Explicit out-of-scope finding classes
+
+Do not create findings about:
+
+- software licensing;
+- legal provenance;
+- redistribution permission;
+- upstream license-file presence/absence;
+- legal/compliance review of `Web_Highlighter`, AI Exporter, or other user-directed technical references.
+
+These are excluded by current user/Planner direction.
+
+Also do not reopen a resolved product-scope question merely because Issue #9 historically mentioned broader webpage highlighting. The current rebuild scope intentionally limits the first two milestones to ChatGPT surfaces; general arbitrary-webpage highlighting is a later explicit scope.
+
+A Critic finding is valid only if it affects product behavior, architecture, UI, acceptance fidelity, cleanup, execution discipline, or release truth.
 
 ---
 
@@ -291,7 +307,11 @@ Reject any design where PDF/Highlighter/Copy independently parse ChatGPT.
 
 ## 9. Review Highlighter integration
 
-Use `YuukiAS/Web_Highlighter` only as evidence/reference after provenance/license review.
+`YuukiAS/Web_Highlighter` is a user-directed technical behavior reference.
+
+**Critic scope exclusion:** do not perform, request, or create findings about licensing, legal provenance, upstream redistribution permission, third-party license files, or legal compliance. Those topics are explicitly outside this Mica Planner/Critic task and must not become blockers, P2 suggestions, release gates, or implementation delays.
+
+Source identity may be discussed only when technically necessary to reproduce a behavior/regression.
 
 Audit whether the Mica plan correctly preserves the valuable behaviors:
 
@@ -586,23 +606,24 @@ source audit
 
 ## 17. Review scope and sequencing
 
-The current proposed order is:
+The amended proposed order is:
 
 ```text
-product/contracts
--> visible shell
--> ChatGPTAdapter
+skills/source audit
+-> current ChatGPT surface evidence
+-> product/UI freeze
+-> acceptance schema + controls skeleton
+-> Low Memory feasibility gate
+-> ChatGPTAdapter + AnswerDocument core
+-> normal UI / Troubleshooting / Developer QA
 -> compatibility refresh
--> acceptance harness
--> Low Memory
--> Copy/Export + Reliability
+-> Low Memory implementation
+-> Markdown Copy + Reliability core
+-> Milestone A validation/review/release
 -> Highlighter
--> PDF/Notion
--> frozen validation
--> actual-surface review
--> GPT Work
--> minimal user acceptance
--> release
+-> PDF
+-> real Notion only if independently verifiable
+-> Milestone B validation/review/release
 ```
 
 Critique this sequence.
@@ -767,4 +788,6 @@ RECOMMENDED_FIRST_RELEASE_SCOPE=
 READY_TO_FREEZE_CODEX_GOAL=YES|NO
 ```
 
-If amendment is required, keep it bounded. Do not rewrite the entire plan unless the product model itself is fundamentally wrong.
+This is an R2 review after the Planner addressed R1 findings PSR-01 through PSR-11 and PSR-13. Verify the amendments instead of inventing new process requirements.
+
+If amendment is still required, keep it bounded. Do not rewrite the entire plan unless the product model itself is fundamentally wrong. Do not reintroduce excluded licensing/provenance review.
