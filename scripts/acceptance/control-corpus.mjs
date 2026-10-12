@@ -94,6 +94,38 @@ export async function runControlCorpus(repoRoot) {
       measurement.failOpen = false;
       refreshRoot(manifest);
     }],
+    ["coherent-incomplete-placement-proof", async ({ bundleDir, manifest }) => {
+      const contractFile = path.join(bundleDir, "artifacts", "chatgpt-contract.json");
+      const contract = JSON.parse(await readFile(contractFile, "utf8"));
+      const declared = contract.capabilities.find((item) => item.capabilityId === "answer.actionCluster");
+      declared.status = "EXACT";
+      declared.variantId = "native-copy-button-parent-v1";
+      declared.requiredSourceObservationIds = ["native-copy-action"];
+      declared.failOpen = false;
+      await writeFile(contractFile, JSON.stringify(contract));
+      const contractArtifact = manifest.artifacts.find((item) => item.id === "chatgpt-contract");
+      contractArtifact.sha256 = await sha256File(contractFile);
+      manifest.chatgptContractHash = contractArtifact.sha256;
+
+      const capabilities = evidence(manifest, "adapter-contract").measurement.capabilities;
+      for (const capability of capabilities) capability.contractHash = contractArtifact.sha256;
+      const measured = capabilities.find((item) => item.capabilityId === "answer.actionCluster");
+      measured.status = "EXACT";
+      measured.variantId = "native-copy-button-parent-v1";
+      measured.requiredSourceObservationIds = ["native-copy-action"];
+      measured.observedInvariants = ["native-copy-action"];
+      measured.failOpen = false;
+
+      const placement = evidence(manifest, "copy-placement").measurement;
+      placement.capabilityStatus = "EXACT";
+      placement.placementProven = true;
+      placement.exactAssistantTurn = true;
+      placement.clusterProven = true;
+      placement.siblingRelationship = true;
+      placement.visibleBaseline = true;
+      placement.failOpen = false;
+      refreshRoot(manifest);
+    }],
     ["connector-residual-remount-regression", async ({ manifest }) => { evidence(manifest, "core-flow-regression").measurement.connector = false; refreshRoot(manifest); }],
     ["fake-waiting-send-lifecycle", async ({ manifest }) => { const m = evidence(manifest, "send-lifecycle-safety").measurement; m.progressObserved = true; m.autoResend = true; refreshRoot(manifest); }],
     ["low-memory-no-op", async ({ manifest }) => {
@@ -178,10 +210,10 @@ async function createGoodBundle(repoRoot) {
       ]
     })],
     ["current-chatgpt-bootstrap", "artifacts/current-chatgpt-bootstrap.json", "application/json", JSON.stringify({
-      surfaces: [{ id: "public-shared-conversation", evidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", observed: { turnContainer: { mountedCount: 7 } } }],
+      surfaces: [{ id: "public-shared-conversation", evidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", observed: { turnContainer: { mountedCount: 7 }, assistantContent: { copyActionTestId: "copy-turn-action-button" } } }],
       capabilities: [
         { id: "conversation-turn-discovery", status: "EXACT", evidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", observations: [{ id: "ordered-turn-containers", assertions: [{ surfaceId: "public-shared-conversation", path: "observed.turnContainer.mountedCount", equals: 7 }] }] },
-        { id: "answer-document-static-block-extraction", status: "EXACT_FOR_OBSERVED_BLOCKS", evidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", observations: [] }
+        { id: "answer-document-static-block-extraction", status: "EXACT_FOR_OBSERVED_BLOCKS", evidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", observations: [{ id: "native-copy-action", assertions: [{ surfaceId: "public-shared-conversation", path: "observed.assistantContent.copyActionTestId", equals: "copy-turn-action-button" }] }] }
       ],
       gate: { bootstrapEvidence: "PASS", oldSurfaceAtlasUsedAsCurrentEvidence: false }
     })],

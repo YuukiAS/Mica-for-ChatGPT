@@ -24,6 +24,7 @@
     {"id": "evidence-root-mismatch", "expected": "REJECT"},
     {"id": "historical-copy-misplacement", "expected": "REJECT"},
     {"id": "fabricated-copy-placement-proof", "expected": "REJECT"},
+    {"id": "coherent-incomplete-placement-proof", "expected": "REJECT"},
     {"id": "connector-residual-remount-regression", "expected": "REJECT"},
     {"id": "fake-waiting-send-lifecycle", "expected": "REJECT"},
     {"id": "low-memory-no-op", "expected": "REJECT"},

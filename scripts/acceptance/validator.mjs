@@ -4,6 +4,12 @@ import path from "node:path";
 
 export const VALIDATOR_VERSION = "1.0.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
+const PLACEMENT_PROOF_OBSERVATION_IDS = [
+  "copy-inside-assistant-turn",
+  "action-cluster-parent",
+  "copy-sibling-insertion",
+  "visible-size-baseline"
+];
 
 const FOUNDATION_GATES = [
   "candidate-identity",
@@ -321,7 +327,7 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
     const declared = contract?.capabilities?.find((item) => item.capabilityId === "answer.actionCluster");
     const sourceCapability = bootstrap?.capabilities?.find((item) => item.id === declared?.sourceCapabilityId);
     const observationIds = declared?.requiredSourceObservationIds || [];
-    const placementProven = declared?.status === "EXACT" && observationIds.length > 0 && observationIds.every((id) => {
+    const placementProven = declared?.status === "EXACT" && sameSet(observationIds, PLACEMENT_PROOF_OBSERVATION_IDS) && observationIds.every((id) => {
       const observation = sourceCapability?.observations?.find((item) => item.id === id);
       return observation && bootstrapObservationPasses(bootstrap, observation);
     });

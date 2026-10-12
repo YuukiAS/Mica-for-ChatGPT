@@ -11,6 +11,13 @@ import {
   sha256File
 } from "./validator.mjs";
 
+const PLACEMENT_PROOF_OBSERVATION_IDS = [
+  "copy-inside-assistant-turn",
+  "action-cluster-parent",
+  "copy-sibling-insertion",
+  "visible-size-baseline"
+];
+
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const commit = valueAfter(process.argv.slice(2), "--commit");
 if (!/^[0-9a-f]{40}$/.test(commit || "")) throw new Error("--commit must be a full lowercase SHA-1");
@@ -87,7 +94,7 @@ const distHash = artifactHash("dist-tree");
 const actionClusterContract = contract.capabilities?.find((item) => item.capabilityId === "answer.actionCluster");
 const actionClusterSource = bootstrap.capabilities?.find((item) => item.id === actionClusterContract?.sourceCapabilityId);
 const actionClusterObservationIds = actionClusterContract?.requiredSourceObservationIds || [];
-const placementProven = actionClusterContract?.status === "EXACT" && actionClusterObservationIds.length > 0 && actionClusterObservationIds.every((id) => {
+const placementProven = actionClusterContract?.status === "EXACT" && sameSet(actionClusterObservationIds, PLACEMENT_PROOF_OBSERVATION_IDS) && actionClusterObservationIds.every((id) => {
   const observation = actionClusterSource?.observations?.find((item) => item.id === id);
   return observation && bootstrapObservationPasses(bootstrap, observation);
 });
@@ -216,6 +223,10 @@ function readPath(value, dottedPath) {
 
 function sameJson(actual, expected) {
   return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+function sameSet(actual, expected) {
+  return Array.isArray(actual) && actual.length === expected.length && expected.every((value) => actual.includes(value));
 }
 
 async function walkFiles(directory) {
