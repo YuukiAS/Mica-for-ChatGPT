@@ -542,20 +542,55 @@ Hard release condition:
 LOW_MEMORY_TRUNCATION = PASS
 ```
 
+### 6.1 Feasibility and benefit gate
+
+Before broad feature migration, the rebuild must prove that Low Memory provides **additional value beyond current native ChatGPT behavior**.
+
+Compare the same long-conversation workload in three conditions:
+
+```text
+A = Mica absent/disabled
+B = Mica installed, Low Memory disabled
+C = Mica installed, Low Memory enabled
+```
+
+Use the same representative scroll/typing/send/re-entry sequence.
+
+Measure, where the environment exposes them reliably:
+
+- process/private working-set memory or an equivalent browser-process metric;
+- JS heap;
+- mounted/heavy retained content;
+- long tasks;
+- frame/scroll stalls;
+- input latency;
+- mutation/layout work.
+
+The acceptance result is falsifiable:
+
+- C must show a repeatable resource/performance improvement over A/B on at least one target long-thread workload **without** a material regression in typing, scrolling, send/streaming or history recovery;
+- a fixture that merely reduces synthetic DOM count but does not improve the measured target workload is a known-bad `LOW_MEMORY_NO_EFFECT` control;
+- a candidate that simply reports native ChatGPT windowing cannot pass;
+- noisy memory metrics are reported with repeated samples/ranges; one favorable sample is not sufficient.
+
+The exact numerical threshold may be calibrated during the pre-candidate feasibility run because browser/process metrics vary by machine, but it must be frozen before authoritative candidate validation. The final threshold must reject the historical/no-op control and accept the known-good positive control.
+
+### 6.2 Safety contract
+
 The implementation mechanism may evolve, but the user contract is fixed:
 
-1. substantially reduce additional client memory/render cost for long conversations on target low-memory machines;
-2. preserve recent active context needed for normal work;
-3. never delete server history;
-4. provide deterministic full-history restoration;
-5. disabling Mica returns to native behavior;
-6. preserve send, streaming, edit, branch, tools, attachments, connectors and auth surfaces;
+1. preserve recent active context needed for normal work;
+2. never delete server history;
+3. provide deterministic full-history restoration;
+4. disabling/uninstalling Mica returns to native behavior;
+5. preserve send, streaming, edit, branch, tools, attachments, connectors and auth surfaces;
+6. preserve typing/IME hot-path performance;
 7. unknown/unsafe structures fail-open;
-8. prove measurable value beyond current native ChatGPT behavior.
+8. do not delete or detach React-managed interactive nodes merely to improve a metric unless the mechanism has been explicitly proven safe against the current adapter contract.
 
 “ChatGPT already virtualizes” is a baseline fact, not permission to remove this capability.
 
-Normal UI should describe the outcome, not the mechanism:
+Normal UI describes the outcome, not the mechanism:
 
 ```text
 34 older messages paused
@@ -569,27 +604,45 @@ Load full history
 
 These are one answer-reuse system.
 
-### 7.1 Provenance
+### 7.1 Technical reference boundary
 
-Before integrating code from `YuukiAS/Web_Highlighter` or AI Exporter:
+`YuukiAS/Web_Highlighter` and AI Exporter are user-directed technical references for behavior and regression comparison.
 
-- record upstream/source identity;
-- inspect license/provenance;
-- copy code only when allowed;
-- otherwise reimplement behavior from the observed contract.
+For this Planner/acceptance system:
+
+- legal/licensing/provenance review is out of scope and is not a product gate;
+- source identity may be recorded only when useful for technical reproducibility;
+- Critic/reviewer findings must not block the rebuild on licensing/provenance analysis;
+- the first two rebuild milestones scope highlighting to ChatGPT surfaces. General arbitrary-webpage highlighting is a later explicit scope and must not be silently claimed complete.
 
 ### 7.2 Highlight anchors
 
-A highlight anchor should combine independent evidence where possible:
+A highlight anchor combines independent evidence where possible:
 
 ```text
 conversation identity
 turn identity
+AnswerDocument sourceVersion
+BlockID
 text quote
 prefix/suffix
+source span
 structural hint
 math TeX source
 ```
+
+Anchor resolution must explicitly detect ambiguity.
+
+Required cases:
+
+- repeated identical sentence within one answer;
+- edited/branched answer with similar text;
+- turn remount/virtualization;
+- equivalent or reformatted math;
+- surrounding text changes;
+- deleted source content.
+
+If one unique target cannot be proven, the highlight record remains stored but is not automatically attached to a different location. The UI may mark it unresolved; it must never silently restore to the wrong phrase.
 
 Do not depend on one absolute DOM path.
 
@@ -624,9 +677,18 @@ Validation must combine:
 - PDF text extraction;
 - PDF.js text-layer behavior;
 - programmatic cross-node selection/copy;
+- **real pointer drag/selection in at least one supported real viewer engine**;
 - search;
-- highlight mapping;
+- copy order;
+- visual position/text-layer alignment;
+- highlight mapping, including cross-line/cross-page/math cases;
 - visual comparison.
+
+PDF.js programmatic selection and extraction are supporting evidence, not substitutes for the real pointer-selection regression.
+
+The baseline hard case is ordinary prose → inline math → ordinary prose. It cannot be downgraded to PASS through a complex-formula fallback.
+
+Complex formulas may have a documented fallback only after the baseline case passes. The fallback must be visible and deterministic rather than silently rasterizing selectable text away.
 
 A PDF that merely looks correct is insufficient.
 
