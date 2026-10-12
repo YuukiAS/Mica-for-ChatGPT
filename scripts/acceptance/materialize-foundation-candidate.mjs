@@ -22,14 +22,22 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../
 const commit = valueAfter(process.argv.slice(2), "--commit");
 const profile = valueAfter(process.argv.slice(2), "--profile") || "foundation";
 if (!/^[0-9a-f]{40}$/.test(commit || "")) throw new Error("--commit must be a full lowercase SHA-1");
-if (!["foundation", "milestone-a"].includes(profile)) throw new Error("--profile must be foundation or milestone-a");
+if (!["foundation", "milestone-a", "milestone-b", "release-0.3.0"].includes(profile)) throw new Error("--profile must be foundation, milestone-a, milestone-b, or release-0.3.0");
 
-const bundleDir = path.join(repoRoot, "results", "mica-product-system-rebuild", profile === "foundation" ? "foundation-candidate" : "low-memory-candidate", commit);
+const bundleKind = profile === "foundation" ? "foundation-candidate"
+  : profile === "milestone-a" ? "low-memory-candidate"
+    : profile === "milestone-b" ? "highlight-pdf-candidate"
+      : "release-candidate";
+const includesLowMemory = profile !== "foundation";
+const includesHighlightPdf = profile === "milestone-b" || profile === "release-0.3.0";
+const bundleDir = path.join(repoRoot, "results", "mica-product-system-rebuild", bundleKind, commit);
 await mkdir(path.join(bundleDir, "artifacts"), { recursive: true });
 const distDir = path.join(repoRoot, "dist", DEV_DIST_DIR_NAME);
 const evidenceDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "foundation-evidence");
 const popupDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "foundation-popup");
 const lowMemoryDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "low-memory-evidence");
+const highlighterDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "highlighter-evidence");
+const pdfDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "pdf-evidence");
 
 const distTree = [];
 for (const file of await walkFiles(distDir)) {
@@ -62,7 +70,7 @@ const copies = [
   [path.join(popupDir, "troubleshooting-light-368-100.png"), "troubleshooting.png"],
   [path.join(popupDir, "qa-light-368-100.png"), "developer-qa.png"]
 ];
-if (profile === "milestone-a") {
+if (includesLowMemory) {
   copies.push(
     [path.join(lowMemoryDir, "low-memory-pressure.json"), "low-memory-pressure.json"],
     [path.join(lowMemoryDir, "low-memory-fixture.json"), "low-memory-fixture.json"],
@@ -72,6 +80,23 @@ if (profile === "milestone-a") {
     [path.join(popupDir, "exact-low-memory-active-light-368-100.png"), "popup-low-memory-active.png"],
     [path.join(popupDir, "exact-low-memory-restore-required-light-368-100.png"), "popup-low-memory-restore-required.png"],
     [path.join(popupDir, "exact-low-memory-full-history-bypass-dark-368-100.png"), "popup-low-memory-full-history-bypass.png"]
+  );
+}
+if (includesHighlightPdf) {
+  copies.push(
+    [path.join(highlighterDir, "highlighter-fixture.json"), "highlighter-fixture.json"],
+    [path.join(highlighterDir, "highlighter-stress.json"), "highlighter-stress.json"],
+    [path.join(highlighterDir, "highlighter-selection-light.png"), "highlighter-selection-light.png"],
+    [path.join(highlighterDir, "highlighter-active-light.png"), "highlighter-active-light.png"],
+    [path.join(highlighterDir, "highlighter-edit-dark.png"), "highlighter-edit-dark.png"],
+    [path.join(repoRoot, "output", "pdf", "mica-answer-export-sample.pdf"), "mica-answer-export-sample.pdf"],
+    [path.join(pdfDir, "pdf-export-fixture.json"), "pdf-export-fixture.json"],
+    [path.join(pdfDir, "pdf-background.json"), "pdf-background.json"],
+    [path.join(pdfDir, "pdf-render-1.png"), "pdf-render-1.png"],
+    [path.join(pdfDir, "pdf-render-2.png"), "pdf-render-2.png"],
+    [path.join(pdfDir, "pdf-export-preview.png"), "pdf-export-preview.png"],
+    [path.join(pdfDir, "pdfjs-pointer-selection.png"), "pdfjs-pointer-selection.png"],
+    [path.join(pdfDir, "pdfjs-display-math-selection.png"), "pdfjs-display-math-selection.png"]
   );
 }
 for (const [source, destination] of copies) await cp(source, path.join(bundleDir, "artifacts", destination));
@@ -92,7 +117,7 @@ const artifactDefinitions = [
   ["troubleshooting", "troubleshooting.png", "image/png"],
   ["developer-qa", "developer-qa.png", "image/png"]
 ];
-if (profile === "milestone-a") {
+if (includesLowMemory) {
   artifactDefinitions.push(
     ["low-memory-pressure", "low-memory-pressure.json", "application/json"],
     ["low-memory-fixture", "low-memory-fixture.json", "application/json"],
@@ -102,6 +127,23 @@ if (profile === "milestone-a") {
     ["popup-low-memory-active", "popup-low-memory-active.png", "image/png"],
     ["popup-low-memory-restore-required", "popup-low-memory-restore-required.png", "image/png"],
     ["popup-low-memory-full-history-bypass", "popup-low-memory-full-history-bypass.png", "image/png"]
+  );
+}
+if (includesHighlightPdf) {
+  artifactDefinitions.push(
+    ["highlighter-fixture", "highlighter-fixture.json", "application/json"],
+    ["highlighter-stress", "highlighter-stress.json", "application/json"],
+    ["highlighter-selection-light", "highlighter-selection-light.png", "image/png"],
+    ["highlighter-active-light", "highlighter-active-light.png", "image/png"],
+    ["highlighter-edit-dark", "highlighter-edit-dark.png", "image/png"],
+    ["pdf", "mica-answer-export-sample.pdf", "application/pdf"],
+    ["pdf-fixture", "pdf-export-fixture.json", "application/json"],
+    ["pdf-background", "pdf-background.json", "application/json"],
+    ["pdf-render-1", "pdf-render-1.png", "image/png"],
+    ["pdf-render-2", "pdf-render-2.png", "image/png"],
+    ["pdf-preview", "pdf-export-preview.png", "image/png"],
+    ["pdf-pointer-selection", "pdfjs-pointer-selection.png", "image/png"],
+    ["pdf-display-math-selection", "pdfjs-display-math-selection.png", "image/png"]
   );
 }
 const artifacts = [];
@@ -115,11 +157,15 @@ const bootstrap = JSON.parse(await readFile(path.join(bundleDir, "artifacts", "c
 const popupEvidence = JSON.parse(await readFile(path.join(bundleDir, "artifacts", "popup-render.json"), "utf8"));
 const foundationCore = JSON.parse(await readFile(path.join(bundleDir, "artifacts", "foundation-core.json"), "utf8"));
 const foundationFlows = JSON.parse(await readFile(path.join(bundleDir, "artifacts", "foundation-flows.json"), "utf8"));
-const lowMemoryPressure = profile === "milestone-a" ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-pressure.json"), "utf8")) : null;
-const lowMemoryFixture = profile === "milestone-a" ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-fixture.json"), "utf8")) : null;
-const lowMemoryPage = profile === "milestone-a" ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-page.json"), "utf8")) : null;
-const lowMemoryStress = profile === "milestone-a" ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-stress.json"), "utf8")) : null;
-const lowMemoryRegistration = profile === "milestone-a" ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-registration.json"), "utf8")) : null;
+const lowMemoryPressure = includesLowMemory ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-pressure.json"), "utf8")) : null;
+const lowMemoryFixture = includesLowMemory ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-fixture.json"), "utf8")) : null;
+const lowMemoryPage = includesLowMemory ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-page.json"), "utf8")) : null;
+const lowMemoryStress = includesLowMemory ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-stress.json"), "utf8")) : null;
+const lowMemoryRegistration = includesLowMemory ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-registration.json"), "utf8")) : null;
+const highlighterFixture = includesHighlightPdf ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "highlighter-fixture.json"), "utf8")) : null;
+const highlighterStress = includesHighlightPdf ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "highlighter-stress.json"), "utf8")) : null;
+const pdfFixture = includesHighlightPdf ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "pdf-export-fixture.json"), "utf8")) : null;
+const pdfBackground = includesHighlightPdf ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "pdf-background.json"), "utf8")) : null;
 const contractHash = artifactHash("chatgpt-contract");
 const bootstrapHash = artifactHash("current-chatgpt-bootstrap");
 const distHash = artifactHash("dist-tree");
@@ -141,7 +187,8 @@ const requiredGates = [
   "privacy",
   "packaging-version"
 ];
-if (profile === "milestone-a") requiredGates.splice(requiredGates.indexOf("privacy"), 0, "low-memory-benefit");
+if (includesLowMemory) requiredGates.splice(requiredGates.indexOf("privacy"), 0, "low-memory-benefit");
+if (includesHighlightPdf) requiredGates.splice(requiredGates.indexOf("privacy"), 0, "highlight-remount", "pdf-selection");
 
 const evidence = [
   record("candidate-identity", "LOCAL_REAL_BROWSER", { surface: "built-extension" }, ["dist-tree", "built-manifest"], { commit, distHash }),
@@ -219,7 +266,7 @@ const evidence = [
     versionReportArtifactId: "version-report"
   })
 ];
-if (profile === "milestone-a") {
+if (includesLowMemory) {
   evidence.splice(evidence.findIndex((item) => item.gateId === "privacy"), 0,
     record("low-memory-benefit", "TARGET_CLASS_ENVIRONMENT", { surface: "local-constrained-target-class-environment" }, ["dist-tree", "low-memory-pressure", "low-memory-fixture", "low-memory-page", "low-memory-stress", "low-memory-registration", "foundation-flows", "popup-low-memory-active", "popup-low-memory-restore-required", "popup-low-memory-full-history-bypass"], {
       A: lowMemoryPressure.A,
@@ -258,6 +305,12 @@ if (profile === "milestone-a") {
       },
       unknownStructureBehavior: Object.entries(lowMemoryFixture.failOpen || {}).every(([key, value]) => key.endsWith("Changed") ? value === false : key.endsWith("Unchanged") ? value === true : true) ? "FAIL_OPEN" : "FAILED"
     })
+  );
+}
+if (includesHighlightPdf) {
+  evidence.splice(evidence.findIndex((item) => item.gateId === "privacy"), 0,
+    record("highlight-remount", "LOCAL_REAL_BROWSER", { surface: "local-real-browser" }, ["dist-tree", "highlighter-fixture", "highlighter-stress", "highlighter-selection-light", "highlighter-active-light", "highlighter-edit-dark"], deriveHighlighterMeasurement(highlighterFixture, highlighterStress)),
+    record("pdf-selection", "ACTUAL_PDF_VIEWER", { surface: "actual-pdf-viewer" }, ["pdf", "pdf-fixture", "pdf-background", "highlighter-fixture", "pdf-render-1", "pdf-render-2", "pdf-preview", "pdf-pointer-selection", "pdf-display-math-selection"], derivePdfMeasurement(pdfFixture, pdfBackground, highlighterFixture))
   );
 }
 
@@ -312,6 +365,90 @@ function deriveLowMemoryActionSecurity(page) {
     trustedPointerReloads: page?.historyControl?.reloads,
     trustedKeyboardResumeCalls: page?.fullHistoryBypass?.resumeCalls,
     trustedKeyboardReloads: page?.fullHistoryBypass?.reloads
+  };
+}
+
+function deriveHighlighterMeasurement(fixture, stress) {
+  const rendered = (name) => fixture?.[name]?.status?.renderedCount;
+  const unresolved = (name) => fixture?.[name]?.status?.unresolvedCount;
+  return {
+    passed: fixture?.passed === true,
+    selectionSequence: fixture?.selection?.sequence || [],
+    mathTeX: fixture?.selection?.mathTeX || [],
+    rawLatexSources: fixture?.rawLatexSources || [],
+    restoredAfterRefresh: rendered("refreshed") === 1 && unresolved("refreshed") === 0,
+    restoredAfterRemount: rendered("remounted") === 1 && unresolved("remounted") === 0,
+    restoredAfterMathReformat: rendered("mathReformatted") === 1 && unresolved("mathReformatted") === 0,
+    attachedToWrongText: rendered("ambiguous") !== 0 || rendered("deletedSource") !== 0,
+    ambiguousAnchorStayedUnresolved: rendered("ambiguous") === 0 && unresolved("ambiguous") === 1 && fixture?.ambiguous?.records?.[0]?.unresolvedReason === "ambiguous_anchor",
+    deletedSourceStayedUnresolved: rendered("deletedSource") === 0 && unresolved("deletedSource") === 1 && fixture?.deletedSource?.records?.[0]?.unresolvedReason === "source_missing",
+    branchMismatchStayedUnresolved: fixture?.branchResolution?.status === "unresolved" && fixture?.branchResolution?.reason === "conversation_mismatch" && fixture?.branchResolution?.range == null,
+    invalidSelectionsFailOpen: fixture?.invalidSelections?.composerResult?.ok === false
+      && fixture?.invalidSelections?.codeResult?.ok === false
+      && fixture?.invalidSelections?.streamingResult?.ok === false
+      && fixture?.invalidSelections?.toolbarPresent === false,
+    keyboardAccessible: fixture?.keyboard?.result?.ok === true
+      && fixture?.keyboard?.activeLabel === "Yellow highlight"
+      && fixture?.keyboard?.dismissedWithEscape === true,
+    colorOwnership: fixture?.recolored?.records?.[0]?.color === "mint" && rendered("recolored") === 1,
+    deleteOwnership: fixture?.removed?.status?.recordCount === 0 && fixture?.removed?.status?.renderedCount === 0,
+    localStorageOnly: fixture?.invariants?.localStorageOnly === true,
+    noGlobalRangePatch: fixture?.invariants?.noGlobalRangePatch === true,
+    noGlobalSelectionPatch: fixture?.invariants?.noGlobalSelectionPatch === true,
+    noPermanentToolbar: fixture?.invariants?.noPermanentToolbar === true,
+    stress: {
+      passed: stress?.passed === true
+        && stress?.loops === 8
+        && stress?.runs === 8
+        && Array.isArray(stress?.results)
+        && stress.results.length === 8
+        && stress.results.every((item, index) => item?.loop === index + 1 && item?.script === "scripts/highlighter-fixture-smoke.mjs" && item?.passed === true),
+      loops: stress?.loops,
+      runs: stress?.runs
+    },
+    screenshotArtifacts: {
+      selectionLight: "highlighter-selection-light",
+      activeLight: "highlighter-active-light",
+      editDark: "highlighter-edit-dark"
+    }
+  };
+}
+
+function derivePdfMeasurement(fixture, background, highlighter) {
+  const pointerText = String(fixture?.pdfJs?.pointerSelectionText || "").replace(/\s+/g, " ").trim();
+  const displayText = String(fixture?.pdfJs?.displayMathSelection || "").replace(/\s+/g, " ").trim();
+  return {
+    textExtracted: fixture?.pdfJs?.textExtracted === true,
+    pointerSelection: fixture?.pdfJs?.pointerSelection === true && pointerText.includes("Before x+1 after"),
+    trustedPointerEvents: fixture?.pdfJs?.trustedPointerEvents === true,
+    pointerSequence: fixture?.pdfJs?.pointerSequence || [],
+    displayMathSelectable: displayText.includes("E=mc^2"),
+    mathCopyResult: fixture?.pdfJs?.mathCopyResult === true && pointerText.includes("x+1"),
+    mathSearchable: fixture?.pdfJs?.searchable === true && fixture?.independentExtraction?.searchable === true,
+    independentExtraction: fixture?.independentExtraction?.engine === "pdfplumber" && fixture?.independentExtraction?.textExtracted === true,
+    localExportBoundary: background?.passed === true
+      && background?.trustedSourceOpened === true
+      && background?.unsupportedSourceRejected === true
+      && background?.oneTimeConsumption === true
+      && background?.forgedConsumerRejected === true
+      && background?.persistentConversationStorage === false
+      && background?.serverUpload === false,
+    trustedToolbarHandoff: highlighter?.pdfExportHandoff?.trustedToolbarActionReachedBackground === true
+      && highlighter?.pdfExportHandoff?.schemaVersion === 1
+      && highlighter?.pdfExportHandoff?.localOnly === true
+      && highlighter?.pdfExportHandoff?.containsCrossMathText === true,
+    highlightPreserved: fixture?.highlights?.preservedInPrintModel === true && fixture?.highlights?.crossMath === true,
+    crossPageHighlight: fixture?.highlights?.crossPage === true && fixture?.pdf?.pageCount >= 2,
+    actualViewerEngine: `PDF.js ${fixture?.pdfJs?.version || ""}`.trim(),
+    pageCount: fixture?.pdf?.pageCount,
+    pdfArtifactId: "pdf",
+    visualArtifacts: {
+      renderPage1: "pdf-render-1",
+      renderPage2: "pdf-render-2",
+      preview: "pdf-preview",
+      pointerSelection: "pdf-pointer-selection",
+      displayMathSelection: "pdf-display-math-selection"
+    }
   };
 }
 

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Mica PDF export</title>
+  <link rel="stylesheet" href="pdf-export.css">
+</head>
+<body>
+  <header class="export-bar" aria-label="PDF export controls">
+    <div>
+      <strong>Mica PDF export</strong>
+      <span id="status">Preparing a local print-ready document…</span>
+    </div>
+    <button id="print" type="button" disabled>Print / Save as PDF</button>
+  </header>
+  <main id="document" class="sheet" aria-live="polite"></main>
+  <script src="pdf-export-page.js"></script>
+</body>
+</html>

@@ -21,7 +21,7 @@ assert(manifest.permissions?.includes("scripting"), "scripting permission missin
 assert(!manifest.host_permissions?.some((host) => !/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(host)), "unexpected host permission");
 assert(manifest.background?.service_worker === "low-memory-background.js", "Low Memory registration service worker missing");
 assert(JSON.stringify(manifest.content_scripts?.[0]?.js) === JSON.stringify(["low-memory-config.js"]) && manifest.content_scripts?.[0]?.run_at === "document_start", "Low Memory config bridge order drifted");
-assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["chatgpt-adapter.js", "answer-document.js", "highlight-engine.js", "content.js"]), "foundation/highlighter content-script order drifted");
+assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["chatgpt-adapter.js", "answer-document.js", "highlight-engine.js", "pdf-export-model.js", "content.js"]), "foundation/highlighter/PDF content-script order drifted");
 assert(!manifest.content_scripts.some((entry) => entry.world === "MAIN"), "Low Memory MAIN scripts must be extension-controlled dynamic registrations");
 
 for (const size of [16, 32, 48, 128]) {
@@ -38,6 +38,7 @@ const contractHash = createHash("sha256").update(contractSource).digest("hex");
 const adapter = await readFile(path.join(distDir, "chatgpt-adapter.js"), "utf8");
 const answerDocument = await readFile(path.join(distDir, "answer-document.js"), "utf8");
 const highlightEngine = await readFile(path.join(distDir, "highlight-engine.js"), "utf8");
+const pdfExportModel = await readFile(path.join(distDir, "pdf-export-model.js"), "utf8");
 const content = await readFile(path.join(distDir, "content.js"), "utf8");
 const lowMemoryCore = await readFile(path.join(distDir, "low-memory-core.js"), "utf8");
 const lowMemoryPage = await readFile(path.join(distDir, "low-memory-page.js"), "utf8");
@@ -46,9 +47,10 @@ const lowMemoryBackground = await readFile(path.join(distDir, "low-memory-backgr
 const popup = await readFile(path.join(distDir, "popup", "popup.js"), "utf8");
 const troubleshooting = await readFile(path.join(distDir, "popup", "troubleshooting.js"), "utf8");
 const qa = await readFile(path.join(distDir, "popup", "qa.js"), "utf8");
+const pdfExportPage = await readFile(path.join(distDir, "pdf", "pdf-export-page.js"), "utf8");
 
 for (const text of [adapter, content]) assert(text.includes(contractHash), "built current ChatGPT contract hash drifted");
-for (const text of [adapter, answerDocument, highlightEngine, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, troubleshooting, qa]) {
+for (const text of [adapter, answerDocument, highlightEngine, pdfExportModel, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, troubleshooting, qa, pdfExportPage]) {
   assert(!/__MICA_(?:VERSION|VERSION_NAME|BUILD_LABEL|CHATGPT_CONTRACT_HASH|DEV_BUILD)__/.test(text), "unresolved build placeholder remains");
   new Function(text);
 }
@@ -106,6 +108,9 @@ for (const token of [
 for (const token of ["data-mica-ui", "highlight-toolbar", "event.isTrusted", "CSS.highlights", "permanentToolbar: false"]) {
   assert(content.includes(token), `Highlighter runtime missing ${token}`);
 }
+for (const token of ["MicaPdfExport", "unsupported_answer_structure", "visible-tex-source", "localOnly: true"]) assert(pdfExportModel.includes(token), `PDF export model missing ${token}`);
+for (const token of ["MICA_OPEN_PDF_EXPORT", "MICA_GET_PDF_EXPORT", "MAX_PDF_EXPORT_BYTES", "chrome.tabs.create"]) assert(lowMemoryBackground.includes(token), `PDF background flow missing ${token}`);
+for (const token of ["Print / Save as PDF", "MicaPdfExportPage", "dataset.micaPdfKind", "window.print"]) assert(`${await readFile(path.join(distDir, "pdf", "pdf-export.html"), "utf8")}\n${pdfExportPage}`.includes(token), `PDF export page missing ${token}`);
 
 for (const token of ["windowTurboStreamChunk", "windowJsonPayload", "client-history-window", "reactManagedInteractiveNodesDetached"]) {
   assert(lowMemoryCore.includes(token), `Low Memory core missing ${token}`);
@@ -125,7 +130,7 @@ for (const token of ["chrome.scripting.registerContentScripts", "world: \"MAIN\"
 
 const reportBody = extractFunctionBody(content, "buildSanitizedQaReport");
 assert(!/innerText|textContent|innerHTML|outerHTML/.test(reportBody), "sanitized QA report must not read conversation text/HTML");
-for (const text of [highlightEngine, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground]) {
+for (const text of [highlightEngine, pdfExportModel, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground]) {
   assert(!/addEventListener\(["'](?:beforeinput|input|keydown|compositionstart|compositionupdate|compositionend)/.test(text), "runtime added a typing hot-path listener");
 }
 assert(!/addEventListener\(["'](?:beforeinput|input|compositionstart|compositionupdate|compositionend)/.test(content), "content runtime added a typing hot-path listener");

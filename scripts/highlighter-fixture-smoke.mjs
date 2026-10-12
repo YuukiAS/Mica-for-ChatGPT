@@ -29,7 +29,16 @@ try {
     const readStore = () => JSON.parse(sessionStorage.getItem("mica-fixture-store") || JSON.stringify({ enabled: true, lowMemory: false, micaHighlightsV1: [] }));
     const writeStore = (next) => sessionStorage.setItem("mica-fixture-store", JSON.stringify(next));
     globalThis.chrome = {
-      runtime: { lastError: null, onMessage: { addListener: () => {} } },
+      runtime: {
+        lastError: null,
+        onMessage: { addListener: () => {} },
+        sendMessage: (message, callback) => {
+          if (message?.type === "MICA_OPEN_PDF_EXPORT") {
+            sessionStorage.setItem("mica-fixture-pdf-handoff", JSON.stringify(message));
+            callback?.({ ok: true, tabId: 81 });
+          } else callback?.({ ok: false });
+        }
+      },
       storage: {
         local: {
           get: (defaults, callback) => callback({ ...(defaults || {}), ...readStore() }),
@@ -139,6 +148,23 @@ try {
   });
   await page.mouse.click(editPoint.x, editPoint.y);
   await page.waitForSelector("[data-mica-ui='highlight-toolbar']");
+  await toolbar.locator("button[data-action='pdf']").click();
+  await page.waitForFunction(() => !!sessionStorage.getItem("mica-fixture-pdf-handoff"));
+  const pdfExportHandoff = await page.evaluate(() => {
+    const value = JSON.parse(sessionStorage.getItem("mica-fixture-pdf-handoff"));
+    return {
+      trustedToolbarActionReachedBackground: value?.type === "MICA_OPEN_PDF_EXPORT",
+      schemaVersion: value?.model?.schemaVersion,
+      blockCount: value?.model?.blocks?.length,
+      resolvedHighlights: value?.model?.highlights?.length,
+      localOnly: value?.model?.localOnly,
+      containsCrossMathText: value?.model?.plainText?.includes("Before x+1 after") === true
+    };
+  });
+  assert(pdfExportHandoff.trustedToolbarActionReachedBackground && pdfExportHandoff.schemaVersion === 1 && pdfExportHandoff.localOnly && pdfExportHandoff.containsCrossMathText, "trusted Highlighter-to-PDF handoff failed");
+
+  await page.mouse.click(editPoint.x, editPoint.y);
+  await page.waitForSelector("[data-mica-ui='highlight-toolbar']");
   await page.emulateMedia({ colorScheme: "dark" });
   const editScreenshot = path.join(evidenceDir, "highlighter-edit-dark.png");
   await page.screenshot({ path: editScreenshot });
@@ -178,6 +204,7 @@ try {
     recolored,
     removed,
     branchResolution,
+    pdfExportHandoff,
     rawLatexSources: await page.evaluate(() => globalThis.MicaAnswerDocument.extractRawMathSources("prose \\(a+b\\) then $$c=d$$ end")),
     screenshots: {
       selectionLight: { path: path.relative(root, selectionScreenshot).replaceAll("\\", "/"), sha256: await sha256(selectionScreenshot) },
@@ -196,7 +223,8 @@ try {
       ambiguityFailOpen: ambiguous.status.renderedCount === 0 && ambiguous.status.unresolvedCount === 1,
       sourceDeletionFailOpen: deletedSource.status.renderedCount === 0 && deletedSource.status.unresolvedCount === 1,
       colorOwnership: recolored.records[0]?.color === "mint",
-      deleteOwnership: removed.records.length === 0
+      deleteOwnership: removed.records.length === 0,
+      pdfExportHandoff: pdfExportHandoff.trustedToolbarActionReachedBackground && pdfExportHandoff.localOnly
     }
   };
   assert(pageErrors.length === 0, `Highlighter page errors: ${pageErrors.join(" | ")}`);
@@ -211,7 +239,7 @@ try {
 }
 
 async function loadRuntime(page) {
-  for (const file of ["chatgpt-adapter.js", "answer-document.js", "highlight-engine.js", "content.js"]) {
+  for (const file of ["chatgpt-adapter.js", "answer-document.js", "highlight-engine.js", "pdf-export-model.js", "content.js"]) {
     await page.addScriptTag({ path: path.join(distDir, file) });
   }
   await page.waitForFunction(() => !!globalThis.__MICA_FOUNDATION_TEST__ && globalThis.__MICA_FOUNDATION_TEST__.getHighlighterStatus().supported);

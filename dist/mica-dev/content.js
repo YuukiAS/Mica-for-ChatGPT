@@ -1,13 +1,14 @@
 (() => {
   const VERSION = "0.3.0";
   const VERSION_NAME = "0.3.0";
-  const BUILD_LABEL = "highlighter.1";
+  const BUILD_LABEL = "highlight-pdf.1";
   const CONTRACT_HASH = "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538";
   const DEFAULT_SETTINGS = Object.freeze({ enabled: true, lowMemory: true, lowMemoryKeepCount: 40, lowMemoryThreshold: 80 });
   const RECOVERY_AUTH = Object.freeze({ popup: Symbol("popup"), settings: Symbol("settings"), trustedGesture: Symbol("trusted-gesture") });
   const adapter = globalThis.MicaChatGPTAdapter;
   const answerDocument = globalThis.MicaAnswerDocument;
   const highlightEngine = globalThis.MicaHighlightEngine;
+  const pdfExport = globalThis.MicaPdfExport;
   let settings = { ...DEFAULT_SETTINGS };
   let observer = null;
   let scheduled = false;
@@ -519,7 +520,7 @@
     highlightToolbar.toggleAttribute("data-editing", !!recordId);
     const deleteButton = highlightToolbar.shadowRoot.querySelector("[data-action='delete']");
     deleteButton.hidden = !recordId;
-    highlightToolbar.style.left = `${Math.max(12, Math.min(innerWidth - 220, rect.left + rect.width / 2 - 94))}px`;
+    highlightToolbar.style.left = `${Math.max(12, Math.min(innerWidth - 286, rect.left + rect.width / 2 - 128))}px`;
     highlightToolbar.style.top = `${rect.top >= 58 ? rect.top - 48 : rect.bottom + 8}px`;
     if (!highlightToolbar.isConnected) document.documentElement.append(highlightToolbar);
     if (focusToolbar) highlightToolbar.shadowRoot.querySelector("button:not([hidden])")?.focus();
@@ -535,7 +536,7 @@
       div{display:flex;align-items:center;gap:5px;padding:6px;border:1px solid rgba(23,32,30,.18);border-radius:999px;background:rgba(255,255,255,.98);box-shadow:0 8px 24px rgba(0,0,0,.16)}
       button{width:28px;height:28px;border:1px solid rgba(23,32,30,.22);border-radius:50%;cursor:pointer;padding:0;background:var(--swatch)}
       button:focus-visible{outline:2px solid #0b766b;outline-offset:2px}
-      button[data-action='delete']{width:auto;border-radius:999px;padding:0 9px;background:transparent;color:inherit;font:600 11px/1 system-ui,sans-serif}
+      button[data-action]{width:auto;border-radius:999px;padding:0 9px;background:transparent;color:inherit;font:600 11px/1 system-ui,sans-serif;white-space:nowrap}
       @media(prefers-color-scheme:dark){:host{color:#eef4f1}div{border-color:rgba(238,244,241,.2);background:rgba(23,29,27,.98)}button{border-color:rgba(238,244,241,.35)}}
       @media(prefers-reduced-motion:reduce){*{transition:none!important}}
     </style><div role="toolbar" aria-label="Highlight selection">
@@ -543,6 +544,7 @@
       <button type="button" data-color="mint" aria-label="Mint highlight" style="--swatch:#9ee3cf"></button>
       <button type="button" data-color="blue" aria-label="Blue highlight" style="--swatch:#9ec9f5"></button>
       <button type="button" data-color="pink" aria-label="Pink highlight" style="--swatch:#f2acd0"></button>
+      <button type="button" data-action="pdf" aria-label="Export answer as PDF">Export PDF</button>
       <button type="button" data-action="delete" aria-label="Delete highlight">Delete</button>
     </div>`;
     shadow.addEventListener("click", async (event) => {
@@ -550,6 +552,7 @@
       const button = event.target instanceof Element ? event.target.closest("button") : null;
       if (!button) return;
       if (button.dataset.action === "delete" && pendingHighlight?.recordId) await deleteHighlight(pendingHighlight.recordId);
+      else if (button.dataset.action === "pdf") await exportPendingAnswer();
       else if (button.dataset.color) {
         if (pendingHighlight?.recordId) await updateHighlightColor(pendingHighlight.recordId, button.dataset.color);
         else await createHighlightFromPending(button.dataset.color);
@@ -594,6 +597,25 @@
     await persistHighlightRecords();
     reconcileHighlights();
     return true;
+  }
+
+  async function exportPendingAnswer() {
+    if (!pdfExport || !pendingHighlight) return false;
+    let documentModel = pendingHighlight.documentModel || null;
+    if (!documentModel && pendingHighlight.recordId) {
+      const record = highlightRecords.find((item) => item.id === pendingHighlight.recordId);
+      const turn = record ? adapter.listTurns(document).find((item) => item.role === "assistant" && item.turnId === record.anchor.turnId) : null;
+      const generationState = turn ? adapter.generationStateForTurn(turn) : null;
+      if (turn && generationState === "SETTLED") documentModel = answerDocument.fromAssistantTurn(turn, { conversationId: currentConversationId(), generationState });
+    }
+    if (!documentModel) return false;
+    const built = pdfExport.buildModel(documentModel, highlightRecords);
+    if (!built?.ok) return false;
+    const token = globalThis.crypto?.randomUUID?.();
+    if (!token) return false;
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: "MICA_OPEN_PDF_EXPORT", token, model: built.model }, (response) => resolve(!chrome.runtime.lastError && response?.ok === true));
+    });
   }
 
   function inspectExistingHighlightAtPoint(point) {
@@ -758,6 +780,8 @@
       getHighlightRecords: () => structuredClone(highlightRecords),
       updateHighlightColor,
       deleteHighlight,
+      exportPendingAnswer,
+      buildPdfExportModel: (documentModel) => pdfExport?.buildModel(documentModel, highlightRecords) || null,
       adapter,
       answerDocument
     });

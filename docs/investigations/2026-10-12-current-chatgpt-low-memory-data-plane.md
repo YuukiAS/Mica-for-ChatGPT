@@ -147,14 +147,15 @@ physical low-memory device: an isolated Edge 155 profile with a 256 MiB V8
 old-space limit; physical RAM is deliberately recorded as `null`. On its final
 three-sample 800-turn, 100 MiB workload, installed/on reduced the decoded
 mapping from 801 to 41 nodes, retained message content from 100 to 5 MiB, and
-JS heap from 101.634 to 6.349 MiB versus installed/off. Mounted turns and
-mutations stayed at 12 and 62; typing p95 stayed 0.01 ms, scroll p95 improved
-from 0.10 to 0.01 ms, frame p95 changed from 16.8 to 17.4 ms, and steady-state
-long-task count stayed zero. Full browser process private memory changed from
-559.625 to 568.984 MiB, a 1.67% increase within fresh-process and extension
-overhead noise. It is not claimed as a process-memory win; the demonstrated
-benefit is the 93.75% renderer-heap reduction and 95% retained-content / 94.88%
-mapping reduction beyond native DOM virtualization.
+JS heap from 101.685 to 6.402 MiB versus installed/off. Mounted turns and
+mutations stayed at 12 and 62; typing p95 and scroll p95 stayed at 0.01 ms and
+0.10 ms, frame p95 changed from 16.8 to 16.9 ms, and steady-state long-task
+count stayed zero. Full browser process private memory changed from 643.117 to
+626.672 MiB in this run. That process-tree direction is recorded but is not the
+primary claim because fresh-process measurements are noisier than the retained
+graph and renderer heap. The stable demonstrated benefit is the 93.70% heap
+reduction and 95% retained-content / 94.88% mapping reduction beyond native DOM
+virtualization.
 
 The candidate also passed eight stress loops (40 focused browser runs). This
 local constrained-environment result is sufficient for the automated candidate

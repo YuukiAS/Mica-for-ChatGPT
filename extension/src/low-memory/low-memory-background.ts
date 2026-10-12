@@ -2,6 +2,8 @@ const SCRIPT_ID = "mica-low-memory-main-v3";
 const MATCHES = ["https://chatgpt.com/*", "https://chat.openai.com/*"];
 const MODE_KEY = "mica.lowMemory.tabModes.v3";
 const DEFAULTS = Object.freeze({ enabled: true, lowMemory: true });
+const PDF_EXPORT_PREFIX = "mica.pdf.export.";
+const MAX_PDF_EXPORT_BYTES = 2_000_000;
 const pendingFullHistory = new Set();
 let registrationQueue = Promise.resolve();
 
@@ -33,8 +35,65 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     void resumeWindowing(sender.tab).then(sendResponse);
     return true;
   }
+  if (message?.type === "MICA_OPEN_PDF_EXPORT") {
+    void openPdfExport(message, sender).then(sendResponse);
+    return true;
+  }
+  if (message?.type === "MICA_GET_PDF_EXPORT") {
+    void consumePdfExport(message, sender).then(sendResponse);
+    return true;
+  }
   return false;
 });
+
+async function openPdfExport(message, sender) {
+  if (!isSupportedTab(sender.tab) || !validPdfToken(message?.token) || !validPdfModel(message?.model)) return { ok: false, reason: "invalid_export_request" };
+  const serialized = JSON.stringify(message.model);
+  if (serialized.length > MAX_PDF_EXPORT_BYTES) return { ok: false, reason: "export_too_large" };
+  const key = `${PDF_EXPORT_PREFIX}${message.token}`;
+  try {
+    await chrome.storage.session.set({ [key]: message.model });
+    const tab = await chrome.tabs.create({ url: chrome.runtime.getURL(`pdf/pdf-export.html#${message.token}`), active: true });
+    if (!Number.isInteger(tab?.id)) {
+      await chrome.storage.session.remove(key);
+      return { ok: false, reason: "export_tab_unavailable" };
+    }
+    return { ok: true, tabId: tab.id };
+  } catch (error) {
+    await chrome.storage.session.remove(key).catch(() => {});
+    return { ok: false, reason: `export_open_failed:${String(error?.message || error || "unknown")}` };
+  }
+}
+
+async function consumePdfExport(message, sender) {
+  if (!validPdfToken(message?.token) || !isPdfExportPage(sender.url)) return { ok: false, reason: "invalid_export_consumer" };
+  const key = `${PDF_EXPORT_PREFIX}${message.token}`;
+  try {
+    const items = await chrome.storage.session.get(key);
+    await chrome.storage.session.remove(key);
+    return validPdfModel(items?.[key]) ? { ok: true, model: items[key] } : { ok: false, reason: "export_expired" };
+  } catch (error) {
+    return { ok: false, reason: `export_read_failed:${String(error?.message || error || "unknown")}` };
+  }
+}
+
+function isPdfExportPage(value) {
+  try {
+    const actual = new URL(value);
+    const expected = new URL(chrome.runtime.getURL("pdf/pdf-export.html"));
+    return actual.origin === expected.origin && actual.pathname === expected.pathname;
+  } catch (_error) {
+    return false;
+  }
+}
+
+function validPdfToken(value) {
+  return /^[a-f0-9-]{16,64}$/.test(value || "");
+}
+
+function validPdfModel(value) {
+  return value?.schemaVersion === 1 && typeof value.documentId === "string" && Array.isArray(value.blocks) && Array.isArray(value.highlights) && typeof value.plainText === "string" && value.localOnly === true;
+}
 
 function syncRegistration() {
   registrationQueue = registrationQueue.then(syncRegistrationNow, syncRegistrationNow);

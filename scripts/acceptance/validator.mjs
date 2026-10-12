@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-export const VALIDATOR_VERSION = "1.4.0";
+export const VALIDATOR_VERSION = "1.5.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 const PLACEMENT_PROOF_OBSERVATION_IDS = [
   "copy-inside-assistant-turn",
@@ -576,9 +576,22 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
   }
 
   if (kind === "pdf-selection") {
+    const fixture = await readBoundJson("pdf-fixture");
+    const background = await readBoundJson("pdf-background");
+    const highlighter = await readBoundJson("highlighter-fixture");
     if (record.subject?.surface !== "actual-pdf-viewer") fail("wrong PDF surface target");
-    if (!m.textExtracted || !m.pointerSelection || !m.displayMathSelectable || !m.mathCopyResult || !m.mathSearchable || !m.highlightPreserved) fail("PDF selection/text/highlight measurement incomplete");
-    if (JSON.stringify(m.pointerSequence) !== JSON.stringify(["prose", "inline_math", "prose"])) fail("continuous prose-math-prose pointer selection missing");
+    const expected = derivePdfMeasurement(fixture, background, highlighter);
+    if (!sameJson(m, expected)) fail("PDF measurement differs from bound actual-viewer evidence");
+    if (!m.textExtracted || !m.pointerSelection || !m.trustedPointerEvents || !m.displayMathSelectable || !m.mathCopyResult || !m.mathSearchable || !m.highlightPreserved || !m.crossPageHighlight || !m.independentExtraction || !m.localExportBoundary || !m.trustedToolbarHandoff) fail("PDF selection/text/highlight measurement incomplete");
+    if (!sameJson(m.pointerSequence, ["prose", "inline_math", "prose"])) fail("continuous prose-math-prose pointer selection missing");
+    const pdfArtifact = artifacts.get(m.pdfArtifactId);
+    if (!pdfArtifact || !(record.artifactIds || []).includes(m.pdfArtifactId) || fixture?.pdf?.sha256 !== pdfArtifact?.sha256) fail("generated PDF identity is missing or differs from viewer evidence");
+    const visualIds = Object.values(m.visualArtifacts || {});
+    if (visualIds.length !== 5 || !visualIds.every((id) => (record.artifactIds || []).includes(id) && artifacts.has(id))) {
+      fail("PDF render/viewer visual artifacts are missing or unbound");
+    } else if (new Set(visualIds.map((id) => artifacts.get(id).sha256)).size !== visualIds.length) {
+      fail("PDF render/viewer states reuse duplicate screenshots");
+    }
     return;
   }
 
@@ -801,6 +814,44 @@ function deriveHighlighterMeasurement(fixture, stress) {
       selectionLight: "highlighter-selection-light",
       activeLight: "highlighter-active-light",
       editDark: "highlighter-edit-dark"
+    }
+  };
+}
+
+function derivePdfMeasurement(fixture, background, highlighter) {
+  const pointerText = String(fixture?.pdfJs?.pointerSelectionText || "").replace(/\s+/g, " ").trim();
+  const displayText = String(fixture?.pdfJs?.displayMathSelection || "").replace(/\s+/g, " ").trim();
+  return {
+    textExtracted: fixture?.pdfJs?.textExtracted === true,
+    pointerSelection: fixture?.pdfJs?.pointerSelection === true && pointerText.includes("Before x+1 after"),
+    trustedPointerEvents: fixture?.pdfJs?.trustedPointerEvents === true,
+    pointerSequence: fixture?.pdfJs?.pointerSequence || [],
+    displayMathSelectable: displayText.includes("E=mc^2"),
+    mathCopyResult: fixture?.pdfJs?.mathCopyResult === true && pointerText.includes("x+1"),
+    mathSearchable: fixture?.pdfJs?.searchable === true && fixture?.independentExtraction?.searchable === true,
+    independentExtraction: fixture?.independentExtraction?.engine === "pdfplumber" && fixture?.independentExtraction?.textExtracted === true,
+    localExportBoundary: background?.passed === true
+      && background?.trustedSourceOpened === true
+      && background?.unsupportedSourceRejected === true
+      && background?.oneTimeConsumption === true
+      && background?.forgedConsumerRejected === true
+      && background?.persistentConversationStorage === false
+      && background?.serverUpload === false,
+    trustedToolbarHandoff: highlighter?.pdfExportHandoff?.trustedToolbarActionReachedBackground === true
+      && highlighter?.pdfExportHandoff?.schemaVersion === 1
+      && highlighter?.pdfExportHandoff?.localOnly === true
+      && highlighter?.pdfExportHandoff?.containsCrossMathText === true,
+    highlightPreserved: fixture?.highlights?.preservedInPrintModel === true && fixture?.highlights?.crossMath === true,
+    crossPageHighlight: fixture?.highlights?.crossPage === true && fixture?.pdf?.pageCount >= 2,
+    actualViewerEngine: `PDF.js ${fixture?.pdfJs?.version || ""}`.trim(),
+    pageCount: fixture?.pdf?.pageCount,
+    pdfArtifactId: "pdf",
+    visualArtifacts: {
+      renderPage1: "pdf-render-1",
+      renderPage2: "pdf-render-2",
+      preview: "pdf-preview",
+      pointerSelection: "pdf-pointer-selection",
+      displayMathSelection: "pdf-display-math-selection"
     }
   };
 }

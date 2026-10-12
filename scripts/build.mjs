@@ -51,6 +51,7 @@ const manifest = {
         "chatgpt-adapter.js",
         "answer-document.js",
         "highlight-engine.js",
+        "pdf-export-model.js",
         "content.js"
       ],
       run_at: "document_idle"
@@ -60,6 +61,7 @@ const manifest = {
 
 await rm(outDir, { recursive: true, force: true });
 await mkdir(path.join(outDir, "popup"), { recursive: true });
+await mkdir(path.join(outDir, "pdf"), { recursive: true });
 
 const replacements = {
   __MICA_VERSION__: MACHINE_VERSION,
@@ -74,6 +76,7 @@ const content = render(await readFile(path.join(srcDir, "content.ts"), "utf8"));
 const chatgptAdapter = render(await readFile(path.join(srcDir, "core", "chatgpt-adapter.ts"), "utf8"));
 const answerDocument = render(await readFile(path.join(srcDir, "core", "answer-document.ts"), "utf8"));
 const highlightEngine = render(await readFile(path.join(srcDir, "features", "highlighter", "highlight-engine.ts"), "utf8"));
+const pdfExportModel = render(await readFile(path.join(srcDir, "features", "pdf", "pdf-export-model.ts"), "utf8"));
 const lowMemoryCore = render(await readFile(path.join(srcDir, "low-memory", "low-memory-core.ts"), "utf8"));
 const lowMemoryPage = render(await readFile(path.join(srcDir, "low-memory", "low-memory-page.ts"), "utf8"));
 const lowMemoryConfig = render(await readFile(path.join(srcDir, "low-memory", "low-memory-config.ts"), "utf8"));
@@ -81,11 +84,13 @@ const lowMemoryBackground = render(await readFile(path.join(srcDir, "low-memory"
 const popup = render(await readFile(path.join(popupDir, "popup.ts"), "utf8"));
 const troubleshooting = render(await readFile(path.join(popupDir, "troubleshooting.ts"), "utf8"));
 const qa = render(await readFile(path.join(popupDir, "qa.ts"), "utf8"));
+const pdfExportPage = render(await readFile(path.join(root, "extension", "pdf", "pdf-export-page.ts"), "utf8"));
 
 await writeFile(path.join(outDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 await writeFile(path.join(outDir, "chatgpt-adapter.js"), chatgptAdapter);
 await writeFile(path.join(outDir, "answer-document.js"), answerDocument);
 await writeFile(path.join(outDir, "highlight-engine.js"), highlightEngine);
+await writeFile(path.join(outDir, "pdf-export-model.js"), pdfExportModel);
 await writeFile(path.join(outDir, "low-memory-core.js"), lowMemoryCore);
 await writeFile(path.join(outDir, "low-memory-page.js"), lowMemoryPage);
 await writeFile(path.join(outDir, "low-memory-config.js"), lowMemoryConfig);
@@ -94,10 +99,13 @@ await writeFile(path.join(outDir, "content.js"), content);
 await writeFile(path.join(outDir, "popup", "popup.js"), popup);
 await writeFile(path.join(outDir, "popup", "troubleshooting.js"), troubleshooting);
 await writeFile(path.join(outDir, "popup", "qa.js"), qa);
+await writeFile(path.join(outDir, "pdf", "pdf-export-page.js"), pdfExportPage);
 await cp(path.join(popupDir, "index.html"), path.join(outDir, "popup", "index.html"));
 await cp(path.join(popupDir, "troubleshooting.html"), path.join(outDir, "popup", "troubleshooting.html"));
 await cp(path.join(popupDir, "qa.html"), path.join(outDir, "popup", "qa.html"));
 await cp(path.join(popupDir, "popup.css"), path.join(outDir, "popup", "popup.css"));
+await cp(path.join(root, "extension", "pdf", "pdf-export.html"), path.join(outDir, "pdf", "pdf-export.html"));
+await cp(path.join(root, "extension", "pdf", "pdf-export.css"), path.join(outDir, "pdf", "pdf-export.css"));
 await cp(iconsDir, path.join(outDir, "icons"), { recursive: true });
 
 console.log(`Built unpacked extension at ${outDir}`);

@@ -165,6 +165,13 @@ export async function runControlCorpus(repoRoot) {
       refreshRoot(manifest);
     }],
     ["non-selectable-inline-math-pdf", async ({ manifest }) => { evidence(manifest, "pdf-selection").measurement.pointerSelection = false; refreshRoot(manifest); }],
+    ["pdf-pointer-failed-rehash", async (context) => mutatePdfFixture(context, (value) => { value.pdfJs.pointerSelection = false; value.pdfJs.trustedPointerEvents = false; })],
+    ["pdf-extraction-only-rehash", async (context) => mutatePdfFixture(context, (value) => { value.pdfJs.pointerSelection = false; value.pdfJs.pointerSelectionText = ""; })],
+    ["pdf-duplicate-viewer-screenshots", async ({ manifest }) => {
+      evidence(manifest, "pdf-selection").measurement.visualArtifacts.displayMathSelection = "pdf-pointer-selection";
+      refreshRoot(manifest);
+    }],
+    ["pdf-forged-consumer-rehash", async (context) => mutateJsonArtifact(context, "pdf-background", (value) => { value.forgedConsumerRejected = false; })],
     ["stale-chatgpt-contract", async ({ manifest }) => { evidence(manifest, "adapter-contract").measurement.capabilities[0].invalidatedBy = ["newer incompatible surface"]; refreshRoot(manifest); }],
     ["control-bundle-presented-as-candidate", async (context) => { context.expectedBundleKind = "candidate"; }],
     ["copy-serialization-output-mismatch", async ({ manifest }) => { evidence(manifest, "copy-serialization").measurement.cases[0].actualArtifactId = "copy-rich-actual"; refreshRoot(manifest); }],
@@ -244,6 +251,13 @@ async function createGoodBundle(repoRoot) {
       gate: { bootstrapEvidence: "PASS", oldSurfaceAtlasUsedAsCurrentEvidence: false }
     })],
     ["pdf", "artifacts/output.pdf", "application/pdf", "%PDF-control-selectable-math"],
+    ["pdf-fixture", "artifacts/pdf-fixture.json", "application/json", JSON.stringify(controlPdfFixture())],
+    ["pdf-background", "artifacts/pdf-background.json", "application/json", JSON.stringify(controlPdfBackground())],
+    ["pdf-render-1", "artifacts/pdf-render-1.png", "image/png", "known-good-pdf-render-page-1"],
+    ["pdf-render-2", "artifacts/pdf-render-2.png", "image/png", "known-good-pdf-render-page-2"],
+    ["pdf-preview", "artifacts/pdf-preview.png", "image/png", "known-good-pdf-preview"],
+    ["pdf-pointer-selection", "artifacts/pdf-pointer-selection.png", "image/png", "known-good-pdf-pointer-selection"],
+    ["pdf-display-math-selection", "artifacts/pdf-display-math-selection.png", "image/png", "known-good-pdf-display-math-selection"],
     ["privacy-report", "artifacts/privacy.json", "application/json", "known-good-privacy-report"],
     ["copy-plain-expected", "artifacts/copy-plain-expected.txt", "text/plain", "plain markdown output"],
     ["copy-plain-actual", "artifacts/copy-plain-actual.txt", "text/plain", "plain markdown output"],
@@ -448,15 +462,7 @@ async function createGoodBundle(repoRoot) {
       unknownStructureBehavior: "FAIL_OPEN"
     }, "TARGET_CLASS_ENVIRONMENT"),
     record("highlight-remount", { surface: "local-real-browser" }, ["dist", "highlighter-fixture", "highlighter-stress", "highlighter-selection-light", "highlighter-active-light", "highlighter-edit-dark"], controlHighlighterMeasurement()),
-    record("pdf-selection", { surface: "actual-pdf-viewer" }, ["pdf"], {
-      textExtracted: true,
-      pointerSelection: true,
-      pointerSequence: ["prose", "inline_math", "prose"],
-      displayMathSelectable: true,
-      mathCopyResult: true,
-      mathSearchable: true,
-      highlightPreserved: true
-    }),
+    record("pdf-selection", { surface: "actual-pdf-viewer" }, ["pdf", "pdf-fixture", "pdf-background", "highlighter-fixture", "pdf-render-1", "pdf-render-2", "pdf-preview", "pdf-pointer-selection", "pdf-display-math-selection"], controlPdfMeasurement()),
     record("privacy", { surface: "diagnostic-bundle" }, ["foundation-core", "foundation-flows", "privacy-report"], {
       conversationTextIncluded: false,
       attachmentContentIncluded: false,
@@ -592,6 +598,25 @@ async function mutateHighlighter({ bundleDir, manifest }, mutate) {
   refreshRoot(manifest);
 }
 
+async function mutatePdfFixture({ bundleDir, manifest }, mutate) {
+  const file = path.join(bundleDir, "artifacts", "pdf-fixture.json");
+  const value = JSON.parse(await readFile(file, "utf8"));
+  mutate(value);
+  await writeFile(file, JSON.stringify(value));
+  manifest.artifacts.find((item) => item.id === "pdf-fixture").sha256 = await sha256File(file);
+  refreshRoot(manifest);
+}
+
+async function mutateJsonArtifact({ bundleDir, manifest }, artifactId, mutate) {
+  const artifact = manifest.artifacts.find((item) => item.id === artifactId);
+  const file = path.join(bundleDir, artifact.path);
+  const value = JSON.parse(await readFile(file, "utf8"));
+  mutate(value);
+  await writeFile(file, JSON.stringify(value));
+  artifact.sha256 = await sha256File(file);
+  refreshRoot(manifest);
+}
+
 function controlHighlighterFixture() {
   const status = (renderedCount, unresolvedCount, recordCount = 1) => ({ supported: true, localOnly: true, recordCount, renderedCount, unresolvedCount, permanentToolbar: false });
   return {
@@ -604,6 +629,7 @@ function controlHighlighterFixture() {
       toolbarPresent: false
     },
     keyboard: { result: { ok: true }, activeLabel: "Yellow highlight", dismissedWithEscape: true },
+    pdfExportHandoff: { trustedToolbarActionReachedBackground: true, schemaVersion: 1, blockCount: 2, resolvedHighlights: 1, localOnly: true, containsCrossMathText: true },
     refreshed: { status: status(1, 0) },
     remounted: { status: status(1, 0) },
     mathReformatted: { status: status(1, 0) },
@@ -663,5 +689,64 @@ function controlHighlighterStress() {
       elapsedMs: 100,
       passed: true
     }))
+  };
+}
+
+function controlPdfFixture() {
+  return {
+    passed: true,
+    pdf: { sha256: sha256Text("%PDF-control-selectable-math"), pageCount: 2 },
+    pdfJs: {
+      version: "5.6.205",
+      textExtracted: true,
+      searchable: true,
+      pointerSelection: true,
+      pointerSelectionText: "Before x+1 after",
+      trustedPointerEvents: true,
+      pointerSequence: ["prose", "inline_math", "prose"],
+      displayMathSelection: "E=mc^2",
+      mathCopyResult: true
+    },
+    independentExtraction: { engine: "pdfplumber", textExtracted: true, searchable: true },
+    highlights: { preservedInPrintModel: true, crossMath: true, crossPage: true }
+  };
+}
+
+function controlPdfMeasurement() {
+  return {
+    textExtracted: true,
+    pointerSelection: true,
+    trustedPointerEvents: true,
+    pointerSequence: ["prose", "inline_math", "prose"],
+    displayMathSelectable: true,
+    mathCopyResult: true,
+    mathSearchable: true,
+    independentExtraction: true,
+    localExportBoundary: true,
+    trustedToolbarHandoff: true,
+    highlightPreserved: true,
+    crossPageHighlight: true,
+    actualViewerEngine: "PDF.js 5.6.205",
+    pageCount: 2,
+    pdfArtifactId: "pdf",
+    visualArtifacts: {
+      renderPage1: "pdf-render-1",
+      renderPage2: "pdf-render-2",
+      preview: "pdf-preview",
+      pointerSelection: "pdf-pointer-selection",
+      displayMathSelection: "pdf-display-math-selection"
+    }
+  };
+}
+
+function controlPdfBackground() {
+  return {
+    passed: true,
+    trustedSourceOpened: true,
+    unsupportedSourceRejected: true,
+    oneTimeConsumption: true,
+    forgedConsumerRejected: true,
+    persistentConversationStorage: false,
+    serverUpload: false
   };
 }
