@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "auditedAt": "2026-10-12",
+  "baseCommit": "7059c0dc24b908b57bd0e1f475142ba4f4520621",
+  "historicalBranch": "origin/codex/mica-product-recovery-current-gpt-ui",
+  "historicalTip": "0065a7ba841f72244e6bc1dbce0b5ec2ada12d35",
+  "positiveCheckpoint": "0f2d40e16b2dcd0af8f7d567981dce7bf7b656cc",
+  "rules": {
+    "oldPassInheritance": false,
+    "oldSurfaceEvidenceIsCurrent": false,
+    "directMergeAllowed": false,
+    "parallelLegacyRuntimeAllowed": false
+  },
+  "items": [
+    {
+      "id": "checkpoint-history",
+      "paths": ["origin/codex/mica-product-recovery-current-gpt-ui"],
+      "disposition": "PRESERVE_HISTORICAL",
+      "reason": "Immutable positive baseline and later artifact-preservation commit are remotely addressable."
+    },
+    {
+      "id": "old-product-docs",
+      "paths": ["docs/product/MICA_PRODUCT_CONTRACT.md", "docs/product/MICA_UI_SYSTEM.md", "docs/product/CURRENT_CHATGPT_UI_CONTRACT.md"],
+      "disposition": "REFERENCE_SUPERSEDED",
+      "reason": "Useful decisions may inform implementation, but MICA_PRODUCT_SYSTEM_V1.md is the only current product authority."
+    },
+    {
+      "id": "old-popup-options-shell",
+      "paths": ["extension/popup/**", "extension/options/**"],
+      "disposition": "REIMPLEMENT_FOUNDATION",
+      "reason": "The new normal Popup, Troubleshooting, and Developer QA surfaces require a fresh design freeze and current acceptance harness."
+    },
+    {
+      "id": "old-content-runtime",
+      "paths": ["extension/src/content.ts"],
+      "disposition": "REPLACE_WITH_NEW_COMPOSITION_ROOT",
+      "reason": "No parallel old product shell or independent DOM scrapers may survive the Foundation Gate."
+    },
+    {
+      "id": "old-current-ui-check",
+      "paths": ["extension/src/diagnostics/current-ui-check.ts"],
+      "disposition": "REFERENCE_THEN_REIMPLEMENT_DEVELOPER_QA",
+      "reason": "Selectors and privacy-safe fields are inputs only; old evidence is not current-surface authority."
+    },
+    {
+      "id": "old-low-memory",
+      "paths": ["extension/src/low-memory/**", "tests/fixtures/low-memory-thread.html"],
+      "disposition": "MIGRATION_CANDIDATE_AFTER_FOUNDATION",
+      "reason": "Must pass the new A/B/C feasibility, target-device, restore, core-flow, and known-control gates; old PASS is not inherited."
+    },
+    {
+      "id": "old-highlighter",
+      "paths": ["extension/src/highlight/highlighter.ts", "tests/fixtures/extension-highlighter-coverage.html"],
+      "disposition": "BEHAVIOR_REFERENCE_AFTER_MILESTONE_A",
+      "reason": "Rebuild on AnswerDocument and the new anchor/reconciliation model after Low Memory closes."
+    },
+    {
+      "id": "old-pdf-export",
+      "paths": ["extension/src/export/research-export.ts", "extension/export/**", "scripts/verify-research-pdf.py"],
+      "disposition": "BEHAVIOR_REFERENCE_AFTER_HIGHLIGHTER",
+      "reason": "Rebuild from AnswerDocument plus highlight model and prove actual viewer pointer selection and text-layer behavior."
+    },
+    {
+      "id": "old-markdown-copy",
+      "paths": ["extension/src/copy/markdown-copy.ts"],
+      "disposition": "DEFER_SECONDARY",
+      "reason": "May later serve as a cheap AnswerDocument sanity path but cannot delay P1-P3."
+    },
+    {
+      "id": "legacy-reliability-suite",
+      "paths": ["extension/src/reliability/composer-diagnostics.ts", "extension/src/reliability/connector-continuity.ts", "extension/src/reliability/connector-lifecycle-signal.ts", "extension/src/reliability/known-interruptions.ts", "extension/src/reliability/send-residual-recovery.ts", "extension/src/reliability/stale-composer-recovery.ts"],
+      "disposition": "DEFER_AND_EXCLUDE_FROM_CURRENT_RUNTIME",
+      "reason": "Advanced Reliability is explicitly deferred; only safety boundaries and a clean future hook remain relevant."
+    },
+    {
+      "id": "old-turn-delivery-guard",
+      "paths": ["extension/src/reliability/turn-delivery-guard.ts"],
+      "disposition": "STATIC_SAFETY_REFERENCE",
+      "reason": "May inform safe future boundaries, but is not a current feature gate and must not add hot-path work."
+    },
+    {
+      "id": "old-acceptance-fixtures",
+      "paths": ["scripts/test-core.mjs", "scripts/test-product-core.mjs", "scripts/test-extension-e2e.mjs", "tests/fixtures/**"],
+      "disposition": "REFERENCE_THEN_REPLACE_CANONICAL_HARNESS",
+      "reason": "Useful cases must enter one new production-path harness with self-integrity controls and candidate identity."
+    },
+    {
+      "id": "old-dist-release-evidence",
+      "paths": ["dist/mica-dev/**", "release/**", "output/pdf/**", "results/mica--product-recovery-current-gpt-ui/**"],
+      "disposition": "PRESERVE_HISTORICAL_NOT_PORT",
+      "reason": "Generated artifacts and screenshots remain historical evidence and cannot satisfy new candidate gates."
+    },
+    {
+      "id": "branding-assets",
+      "paths": ["assets/branding/**", "extension/icons/**"],
+      "disposition": "VISUAL_REFERENCE_PENDING_DESIGN_FREEZE",
+      "reason": "Reuse is permitted only if the new visual direction accepts the asset after current-surface evidence."
+    }
+  ]
+}

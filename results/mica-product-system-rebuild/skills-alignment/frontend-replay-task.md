@@ -1,0 +1,1 @@
+Perform a read-only production-plugin identity check. Load the installed web-development plugin through the Frontend Design coordinator entry and report: plugin name, installed version, exact coordinator SKILL.md and source paths, coordinator skill name, and its production actual-surface convergence rule. Do not edit the target repository.

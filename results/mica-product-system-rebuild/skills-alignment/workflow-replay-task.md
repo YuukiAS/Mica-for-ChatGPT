@@ -1,0 +1,1 @@
+Perform a read-only production-plugin identity check. Load the installed workflow-core plugin through its normal skill entry and report: plugin name, installed version, exact SKILL.md path, skill name, and the completion rule that forbids claiming success without current acceptance evidence. Do not edit the target repository.
