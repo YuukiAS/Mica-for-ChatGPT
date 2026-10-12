@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-12T06:46:33.038Z",
+  "capturePolicy": {
+    "browser": "Codex In-app Browser",
+    "browserBuild": "UNAVAILABLE_THROUGH_SUPPORTED_SURFACE",
+    "profile": "isolated unauthenticated",
+    "readOnly": true,
+    "messagesSent": 0,
+    "filesUploaded": 0,
+    "privateConversationAccessed": false,
+    "contentCaptured": false
+  },
+  "surfaces": [
+    {
+      "id": "logged-out-home",
+      "evidenceClass": "REAL_CHATGPT_LOGGED_OUT",
+      "url": "https://chatgpt.com/",
+      "capturedAt": "2026-10-12T06:43:13.154Z",
+      "observed": {
+        "language": "zh-CN",
+        "main": {"tag": "main", "ariaLabel": "ChatGPT"},
+        "composer": {
+          "tag": "textarea",
+          "id": "mobile-composer-prompt",
+          "ariaLabel": "与 ChatGPT 聊天"
+        },
+        "testIds": ["desktop-app-shell", "mobile-app-shell-scroll-container"],
+        "conversationTurnCount": 0,
+        "dataMessageAuthorRoleCount": 0
+      }
+    },
+    {
+      "id": "public-shared-conversation",
+      "evidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+      "url": "https://chatgpt.com/share/8d523f18-86c8-44af-8002-a5bcf45ffbb5",
+      "capturedAt": "2026-10-12T06:44:23.492Z",
+      "viewport": {"width": 1280, "height": 720, "devicePixelRatio": 2},
+      "observed": {
+        "language": "zh-CN",
+        "main": {"tag": "main", "id": "main"},
+        "composer": {
+          "tag": "div",
+          "id": "prompt-textarea",
+          "role": "textbox",
+          "contenteditable": "true",
+          "ariaLabel": "与 ChatGPT 聊天"
+        },
+        "turnContainer": {
+          "tag": "section",
+          "dataTestIdPattern": "conversation-turn-*",
+          "mountedCount": 7,
+          "sampleIds": [
+            "conversation-turn-3",
+            "conversation-turn-7",
+            "conversation-turn-8",
+            "conversation-turn-9",
+            "conversation-turn-10",
+            "conversation-turn-11",
+            "conversation-turn-12"
+          ]
+        },
+        "messageRoleNode": {
+          "selector": "[data-message-author-role]",
+          "mountedCount": 7,
+          "rolesInOrder": ["user", "user", "assistant", "user", "assistant", "user", "assistant"]
+        },
+        "assistantContent": {
+          "paragraphsPresent": true,
+          "prePresent": true,
+          "codePresent": true,
+          "copyActionTestId": "copy-turn-action-button"
+        },
+        "contentKindCounts": {
+          "headings": 8,
+          "codeOrPreNodes": 7,
+          "tables": 0,
+          "images": 0,
+          "math": 0
+        },
+        "scrollContainer": {
+          "count": 1,
+          "clientHeight": 720,
+          "scrollHeight": 7301,
+          "scrollTopAtCapture": 6522
+        },
+        "stableActionTestIds": [
+          "close-sidebar-button",
+          "composer-plus-btn",
+          "composer-speech-button",
+          "copy-turn-action-button",
+          "model-switcher-dropdown-button",
+          "receiver-share-button"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "conversation-turn-discovery",
+      "status": "EXACT",
+      "evidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+      "invariants": [
+        "main#main contains ordered section[data-testid^='conversation-turn-'] nodes",
+        "each sampled turn contains a data-message-author-role node"
+      ]
+    },
+    {
+      "id": "answer-document-static-block-extraction",
+      "status": "EXACT_FOR_OBSERVED_BLOCKS",
+      "evidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+      "invariants": [
+        "assistant role nodes contain semantic paragraph and code/pre descendants",
+        "native copy action is independently discoverable"
+      ]
+    },
+    {
+      "id": "composer-discovery",
+      "status": "COMPATIBLE",
+      "evidenceClass": "REAL_CHATGPT_PUBLIC_SHARED_PLUS_LOGGED_OUT",
+      "invariants": [
+        "public share uses div#prompt-textarea[role='textbox'][contenteditable='true']",
+        "logged-out home can use textarea#mobile-composer-prompt"
+      ]
+    },
+    {
+      "id": "native-virtualization-baseline",
+      "status": "UNOBSERVED",
+      "evidenceClass": "NONE",
+      "reason": "The current public conversation is not a target long thread; seven of seven observed turns were mounted."
+    },
+    {
+      "id": "streaming-edit-branch-tools-files-connectors-auth",
+      "status": "UNKNOWN_FAIL_OPEN",
+      "evidenceClass": "NONE",
+      "reason": "The read-only unauthenticated bootstrap cannot exercise authenticated or mutating flows."
+    },
+    {
+      "id": "math-block-structure",
+      "status": "UNOBSERVED",
+      "evidenceClass": "NONE",
+      "reason": "The sampled public conversation did not contain math."
+    }
+  ],
+  "gate": {
+    "bootstrapEvidence": "PASS",
+    "fullAuthenticatedSurface": "PENDING_DEVELOPER_QA",
+    "oldSurfaceAtlasUsedAsCurrentEvidence": false
+  }
+}
