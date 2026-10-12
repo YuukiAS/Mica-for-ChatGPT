@@ -1,0 +1,693 @@
+{
+  "schemaVersion": 1,
+  "bundleKind": "candidate",
+  "acceptanceProfile": "milestone-a",
+  "candidate": {
+    "commit": "d739c81c91c0045f49987bc24ae907529fb95abd",
+    "version": "0.3.0",
+    "buildLabel": "low-memory-windowing.1",
+    "distArtifactId": "dist-tree",
+    "distHash": "c06fde5756671e6533aab2adb7ad7e955379649a4197b5cabf5db8ae8edc9d0a"
+  },
+  "validator": {
+    "version": "1.1.0",
+    "treeHash": "8dd1ebf03b16ed2fdb217648692e0a737c6cc877119d5165f3607c4be41089a9"
+  },
+  "chatgptContractArtifactId": "chatgpt-contract",
+  "chatgptContractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+  "fixtureSetHash": "64ad57139334d8390fa234d89b1c3bc9fec46a6027fe5f486b40720556e4f163",
+  "evidenceSchemaVersion": 1,
+  "evidenceRootHash": "6aff42a25a020ce5635fff4dba2bc3cf110a65494d792139a420e7d0f721a816",
+  "reportContext": {
+    "candidateCommit": "d739c81c91c0045f49987bc24ae907529fb95abd",
+    "distHash": "c06fde5756671e6533aab2adb7ad7e955379649a4197b5cabf5db8ae8edc9d0a"
+  },
+  "requiredGates": [
+    "candidate-identity",
+    "popup-render",
+    "adapter-contract",
+    "answer-document-core",
+    "copy-placement",
+    "core-flow-regression",
+    "send-lifecycle-safety",
+    "low-memory-benefit",
+    "privacy",
+    "packaging-version"
+  ],
+  "artifacts": [
+    {
+      "id": "dist-tree",
+      "path": "artifacts/dist-tree.json",
+      "kind": "application/json",
+      "sha256": "c06fde5756671e6533aab2adb7ad7e955379649a4197b5cabf5db8ae8edc9d0a"
+    },
+    {
+      "id": "built-manifest",
+      "path": "artifacts/built-manifest.json",
+      "kind": "application/json",
+      "sha256": "cbe74a3c0f9038fe298ad122101f3cf58dd3b7621b3cf01971f702ab56266f00"
+    },
+    {
+      "id": "version-report",
+      "path": "artifacts/version-report.json",
+      "kind": "application/json",
+      "sha256": "c1ec20fcbbc3bb881a96d731142b6148258664bc1ddab5bb92fc05bbe6fb7289"
+    },
+    {
+      "id": "chatgpt-contract",
+      "path": "artifacts/chatgpt-contract.json",
+      "kind": "application/json",
+      "sha256": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538"
+    },
+    {
+      "id": "current-chatgpt-bootstrap",
+      "path": "artifacts/current-chatgpt-bootstrap.json",
+      "kind": "application/json",
+      "sha256": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe"
+    },
+    {
+      "id": "foundation-core",
+      "path": "artifacts/foundation-core.json",
+      "kind": "application/json",
+      "sha256": "d477fa012a1b6247db9154ef536c72d7ca6f65a481e32b9fb43959ccc946595e"
+    },
+    {
+      "id": "foundation-flows",
+      "path": "artifacts/foundation-flows.json",
+      "kind": "application/json",
+      "sha256": "2eba8ba091b1554427d6490c54972b06df9fe9754ab821881b3ef0ffdb58f394"
+    },
+    {
+      "id": "popup-render",
+      "path": "artifacts/popup-render.json",
+      "kind": "application/json",
+      "sha256": "ea27c5b3b3c63dbed02dd2f19292a2cf62acff28045016319c9e53320604f5c4"
+    },
+    {
+      "id": "popup-light",
+      "path": "artifacts/popup-light.png",
+      "kind": "image/png",
+      "sha256": "f6807a9192612de97b3880ae8629b53c5696b6061d5ea176c40f237483dc0398"
+    },
+    {
+      "id": "popup-dark",
+      "path": "artifacts/popup-dark.png",
+      "kind": "image/png",
+      "sha256": "db240942edc18f0eac71d5f51fed1ca6fbf89870a42865cae390c35edafb2dc5"
+    },
+    {
+      "id": "popup-320-150",
+      "path": "artifacts/popup-320-150.png",
+      "kind": "image/png",
+      "sha256": "08d4eb62b8d39068b46a25dccef5f9ae91f2ab67387a43d58923532c19b18d43"
+    },
+    {
+      "id": "popup-400-125",
+      "path": "artifacts/popup-400-125.png",
+      "kind": "image/png",
+      "sha256": "1744b55fb4f501b90b470afadd8d916ab3037a93994960831a4dcf3d73d0f238"
+    },
+    {
+      "id": "troubleshooting",
+      "path": "artifacts/troubleshooting.png",
+      "kind": "image/png",
+      "sha256": "f7eafe89ce8751aefe853daa0daabe96f709df55f451e9ec1597a9dc1b34b728"
+    },
+    {
+      "id": "developer-qa",
+      "path": "artifacts/developer-qa.png",
+      "kind": "image/png",
+      "sha256": "014b69c7081d22d15a138d9c2b658d19c65841b3481a6147f686c1efe26250c9"
+    },
+    {
+      "id": "low-memory-pressure",
+      "path": "artifacts/low-memory-pressure.json",
+      "kind": "application/json",
+      "sha256": "d14f13b59030e4f9e8f721e84b819e2a7b9b636a6a5f85f13f23c94a29bfce65"
+    },
+    {
+      "id": "low-memory-fixture",
+      "path": "artifacts/low-memory-fixture.json",
+      "kind": "application/json",
+      "sha256": "ab81799524f30509cbf336d9f5b4fef5f0db8403e3209c9d6742899274dae22b"
+    },
+    {
+      "id": "low-memory-page",
+      "path": "artifacts/low-memory-page.json",
+      "kind": "application/json",
+      "sha256": "67ea146953c228c8b340088ffae28650f0f6a7d13b5a2ad1cf6d7df284ae3c05"
+    },
+    {
+      "id": "low-memory-stress",
+      "path": "artifacts/low-memory-stress.json",
+      "kind": "application/json",
+      "sha256": "9419a45aad72dbd5042c3fbfef9b34b4e5b6d303bf36abd723350e98c421e21d"
+    },
+    {
+      "id": "popup-low-memory-active",
+      "path": "artifacts/popup-low-memory-active.png",
+      "kind": "image/png",
+      "sha256": "e932a9070e026d00a2a15516b618d688146add8c7b49d4a5d1ae50104e133f33"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "candidate-identity-foundation-evidence",
+      "gateId": "candidate-identity",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "built-extension"
+      },
+      "artifactIds": [
+        "dist-tree",
+        "built-manifest"
+      ],
+      "measurement": {
+        "commit": "d739c81c91c0045f49987bc24ae907529fb95abd",
+        "distHash": "c06fde5756671e6533aab2adb7ad7e955379649a4197b5cabf5db8ae8edc9d0a"
+      }
+    },
+    {
+      "id": "popup-render-foundation-evidence",
+      "gateId": "popup-render",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "actual-extension-popup"
+      },
+      "artifactIds": [
+        "popup-render",
+        "popup-light",
+        "popup-dark",
+        "popup-320-150",
+        "popup-400-125",
+        "troubleshooting",
+        "developer-qa"
+      ],
+      "measurement": {
+        "states": [
+          "loading",
+          "exact",
+          "compatible",
+          "unknown",
+          "unsupported",
+          "disabled",
+          "contentUnavailable"
+        ],
+        "widthsPx": [
+          320,
+          340,
+          368,
+          400
+        ],
+        "scalesPercent": [
+          100,
+          125,
+          150
+        ],
+        "keyboard": {
+          "accessibleNames": true,
+          "interactiveCount": 4,
+          "sampledFocus": [
+            "enabled",
+            "low-memory",
+            "troubleshooting-link",
+            "SUMMARY"
+          ],
+          "focusTraversal": true
+        },
+        "secondaryFocus": {
+          "troubleshootingToIndex": true,
+          "qaToTroubleshooting": true
+        },
+        "themeArtifacts": {
+          "light": "popup-light",
+          "dark": "popup-dark"
+        }
+      }
+    },
+    {
+      "id": "adapter-contract-foundation-evidence",
+      "gateId": "adapter-contract",
+      "evidenceClass": "REAL_DERIVED_CURRENT_CHATGPT",
+      "subject": {
+        "surface": "current-chatgpt"
+      },
+      "artifactIds": [
+        "chatgpt-contract",
+        "current-chatgpt-bootstrap",
+        "foundation-core"
+      ],
+      "measurement": {
+        "capabilities": [
+          {
+            "capabilityId": "turns.list",
+            "sourceCapabilityId": "conversation-turn-discovery",
+            "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+            "requiredSourceObservationIds": [
+              "ordered-turn-containers",
+              "role-owned-turns"
+            ],
+            "variantId": "conversation-turn-section-role-v1",
+            "status": "EXACT",
+            "requiredInvariants": [
+              "ordered turn container",
+              "exactly one role owner",
+              "user or assistant role"
+            ],
+            "observedInvariants": [
+              "ordered-turn-containers",
+              "role-owned-turns"
+            ],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": false
+          },
+          {
+            "capabilityId": "answer.read",
+            "sourceCapabilityId": "answer-document-static-block-extraction",
+            "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+            "requiredSourceObservationIds": [
+              "assistant-semantic-blocks"
+            ],
+            "variantId": "assistant-role-semantic-content-v1",
+            "status": "EXACT",
+            "requiredInvariants": [
+              "assistant role ownership",
+              "semantic p/pre/code descendants"
+            ],
+            "observedInvariants": [
+              "assistant-semantic-blocks"
+            ],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": false
+          },
+          {
+            "capabilityId": "answer.actionCluster",
+            "sourceCapabilityId": "answer-document-static-block-extraction",
+            "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+            "requiredSourceObservationIds": [],
+            "variantId": "unproven-v1",
+            "status": "UNKNOWN",
+            "requiredInvariants": [
+              "native copy button",
+              "same assistant turn",
+              "sibling cluster parent"
+            ],
+            "observedInvariants": [],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": true
+          },
+          {
+            "capabilityId": "composer.editor",
+            "sourceCapabilityId": "composer-discovery",
+            "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED_PLUS_LOGGED_OUT",
+            "requiredSourceObservationIds": [
+              "contenteditable-composer",
+              "mobile-textarea-composer"
+            ],
+            "variantId": "prompt-editor-current-variants-v1",
+            "status": "COMPATIBLE",
+            "requiredInvariants": [
+              "variant-specific prompt editor identity",
+              "contenteditable textbox or mobile textarea property"
+            ],
+            "observedInvariants": [
+              "contenteditable-composer",
+              "mobile-textarea-composer"
+            ],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": false
+          },
+          {
+            "capabilityId": "conversation.scrollRoot",
+            "sourceCapabilityId": "native-virtualization-baseline",
+            "sourceEvidenceClass": "NONE",
+            "requiredSourceObservationIds": [],
+            "variantId": "unproven-v1",
+            "status": "UNKNOWN",
+            "requiredInvariants": [
+              "single conversation scroll owner",
+              "stable restoration anchor"
+            ],
+            "observedInvariants": [],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": true
+          },
+          {
+            "capabilityId": "answer.math",
+            "sourceCapabilityId": "math-block-structure",
+            "sourceEvidenceClass": "NONE",
+            "requiredSourceObservationIds": [],
+            "variantId": "unproven-v1",
+            "status": "UNKNOWN",
+            "requiredInvariants": [
+              "raw TeX source",
+              "rendered text",
+              "inline/display distinction"
+            ],
+            "observedInvariants": [],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": true
+          },
+          {
+            "capabilityId": "lifecycle.streamingEditBranchTools",
+            "sourceCapabilityId": "streaming-edit-branch-tools-files-connectors-auth",
+            "sourceEvidenceClass": "NONE",
+            "requiredSourceObservationIds": [],
+            "variantId": "unproven-v1",
+            "status": "UNKNOWN",
+            "requiredInvariants": [
+              "streaming ownership",
+              "edit branch identity",
+              "tool/file/auth boundaries"
+            ],
+            "observedInvariants": [],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "answer-document-core-foundation-evidence",
+      "gateId": "answer-document-core",
+      "evidenceClass": "REAL_DERIVED_CURRENT_CHATGPT",
+      "subject": {
+        "surface": "answer-document"
+      },
+      "artifactIds": [
+        "foundation-core",
+        "chatgpt-contract",
+        "current-chatgpt-bootstrap"
+      ],
+      "measurement": {
+        "documentFields": [
+          "documentId",
+          "conversationId",
+          "turnId",
+          "sourceVersion",
+          "generationState",
+          "orderedBlocks"
+        ],
+        "blockKinds": [
+          "heading",
+          "paragraph",
+          "display_math",
+          "list",
+          "quote",
+          "table",
+          "code",
+          "opaque_interactive",
+          "unknown_block",
+          "text",
+          "inline_math",
+          "link",
+          "citation",
+          "image"
+        ],
+        "streamingIsProvisional": true,
+        "settledIsDurable": true,
+        "unknownLifecycleRejected": true,
+        "opaqueInteractive": true,
+        "singleAdapterProducer": true
+      }
+    },
+    {
+      "id": "copy-placement-foundation-evidence",
+      "gateId": "copy-placement",
+      "evidenceClass": "CURRENT_CHATGPT_READ_ONLY",
+      "subject": {
+        "surface": "assistant-action-cluster"
+      },
+      "artifactIds": [
+        "chatgpt-contract",
+        "current-chatgpt-bootstrap"
+      ],
+      "measurement": {
+        "actionInjected": false,
+        "capabilityStatus": "UNKNOWN",
+        "placementProven": false,
+        "exactAssistantTurn": false,
+        "clusterProven": false,
+        "siblingRelationship": false,
+        "visibleBaseline": false,
+        "failOpen": true
+      }
+    },
+    {
+      "id": "core-flow-regression-foundation-evidence",
+      "gateId": "core-flow-regression",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "local-real-browser"
+      },
+      "artifactIds": [
+        "foundation-flows",
+        "dist-tree"
+      ],
+      "measurement": {
+        "composer": true,
+        "send": true,
+        "streaming": true,
+        "editBranch": true,
+        "connector": true,
+        "toolFileAuth": true,
+        "typingImeHotPath": true
+      }
+    },
+    {
+      "id": "send-lifecycle-safety-foundation-evidence",
+      "gateId": "send-lifecycle-safety",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "local-real-browser"
+      },
+      "artifactIds": [
+        "foundation-flows",
+        "dist-tree"
+      ],
+      "measurement": {
+        "progressObserved": true,
+        "autoResend": false,
+        "consequentialFlowActive": true,
+        "userTurnCommitted": true,
+        "duplicateSend": false
+      }
+    },
+    {
+      "id": "low-memory-benefit-foundation-evidence",
+      "gateId": "low-memory-benefit",
+      "evidenceClass": "TARGET_LOW_MEMORY_DEVICE",
+      "subject": {
+        "surface": "target-low-memory-device"
+      },
+      "artifactIds": [
+        "dist-tree",
+        "low-memory-pressure",
+        "low-memory-fixture",
+        "low-memory-page",
+        "low-memory-stress",
+        "foundation-flows",
+        "popup-low-memory-active"
+      ],
+      "measurement": {
+        "A": {
+          "variant": "mica-absent-or-disabled",
+          "processMemoryMb": 288.266,
+          "processMemoryRangeMb": [
+            287.426,
+            289.773
+          ],
+          "heapMb": 101.231,
+          "heapRangeMb": [
+            101.231,
+            101.232
+          ],
+          "retainedContentMb": 100,
+          "mountedTurnCount": 12,
+          "mutationCount": 62,
+          "typingP95Ms": 0.01,
+          "typingRangeMs": [
+            0.01,
+            0.01
+          ],
+          "scrollP95Ms": 0.01,
+          "scrollRangeMs": [
+            0.01,
+            0.1
+          ],
+          "mappingNodes": 801,
+          "samples": 3
+        },
+        "B": {
+          "variant": "mica-installed-low-memory-off",
+          "processMemoryMb": 281.711,
+          "processMemoryRangeMb": [
+            280.91,
+            283.438
+          ],
+          "heapMb": 101.776,
+          "heapRangeMb": [
+            101.776,
+            101.776
+          ],
+          "retainedContentMb": 100,
+          "mountedTurnCount": 12,
+          "mutationCount": 62,
+          "typingP95Ms": 0.01,
+          "typingRangeMs": [
+            0.01,
+            0.01
+          ],
+          "scrollP95Ms": 0.1,
+          "scrollRangeMs": [
+            0.1,
+            0.1
+          ],
+          "mappingNodes": 801,
+          "samples": 3
+        },
+        "C": {
+          "variant": "mica-installed-low-memory-on",
+          "processMemoryMb": 248.793,
+          "processMemoryRangeMb": [
+            248.613,
+            251.582
+          ],
+          "heapMb": 6.442,
+          "heapRangeMb": [
+            6.442,
+            6.442
+          ],
+          "retainedContentMb": 5,
+          "mountedTurnCount": 12,
+          "mutationCount": 62,
+          "typingP95Ms": 0.01,
+          "typingRangeMs": [
+            0.01,
+            0.01
+          ],
+          "scrollP95Ms": 0.1,
+          "scrollRangeMs": [
+            0.01,
+            0.1
+          ],
+          "mappingNodes": 41,
+          "samples": 3
+        },
+        "recentTurnLimit": 40,
+        "threadProfiles": [
+          {
+            "name": "short",
+            "totalTurns": 24,
+            "modeApplied": false,
+            "retainedRecentTurns": 24,
+            "mountedBefore": 24,
+            "mountedAfter": 24,
+            "mappingNodesAfter": 25
+          },
+          {
+            "name": "medium",
+            "totalTurns": 72,
+            "modeApplied": false,
+            "retainedRecentTurns": 72,
+            "mountedBefore": 72,
+            "mountedAfter": 72,
+            "mappingNodesAfter": 73
+          },
+          {
+            "name": "long",
+            "totalTurns": 240,
+            "modeApplied": true,
+            "retainedRecentTurns": 40,
+            "mountedBefore": 240,
+            "mountedAfter": 42,
+            "mappingNodesAfter": 47
+          }
+        ],
+        "pressureFixture": {
+          "memoryLimitMb": 256,
+          "payloadMb": 100,
+          "turns": 800
+        },
+        "targetDevice": {
+          "class": "256-mb-v8-old-space-pressure-target",
+          "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+          "memoryGb": 0.25,
+          "boundary": "local Chromium renderer constrained with a 256 MB V8 old-space limit; OS process memory is measured across the fresh browser process tree"
+        },
+        "actualTruncation": true,
+        "truncatedRepresentation": "client-history-window",
+        "reactManagedInteractiveNodesDetached": false,
+        "serverMutation": false,
+        "history": {
+          "scrollUpRestoresOlder": true,
+          "loadFullHistoryPass": true,
+          "reloadRestoresFullHistory": true,
+          "disableRestoresFullHistory": true,
+          "closeOrUninstallRestoresFullHistory": true,
+          "serverHistoryUnchanged": true
+        },
+        "coreFlows": {
+          "composer": true,
+          "send": true,
+          "streaming": true,
+          "editBranch": true,
+          "connector": true,
+          "toolFileAuth": true,
+          "typingImeHotPath": true
+        },
+        "unknownStructureBehavior": "FAIL_OPEN"
+      }
+    },
+    {
+      "id": "privacy-foundation-evidence",
+      "gateId": "privacy",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "diagnostic-bundle"
+      },
+      "artifactIds": [
+        "foundation-core",
+        "foundation-flows"
+      ],
+      "measurement": {
+        "conversationTextIncluded": false,
+        "attachmentContentIncluded": false,
+        "requestBodyIncluded": false,
+        "authTokenIncluded": false,
+        "rawDomIncluded": false,
+        "flowPrivacyMatches": true
+      }
+    },
+    {
+      "id": "packaging-version-foundation-evidence",
+      "gateId": "packaging-version",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "built-extension"
+      },
+      "artifactIds": [
+        "built-manifest",
+        "version-report"
+      ],
+      "measurement": {
+        "builtManifestArtifactId": "built-manifest",
+        "versionReportArtifactId": "version-report"
+      }
+    }
+  ]
+}

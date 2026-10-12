@@ -1,0 +1,92 @@
+{
+  "passed": true,
+  "inputEvents": [
+    {
+      "type": "keydown",
+      "defaultPrevented": false
+    },
+    {
+      "type": "beforeinput",
+      "defaultPrevented": false
+    },
+    {
+      "type": "input",
+      "defaultPrevented": false
+    },
+    {
+      "type": "compositionstart",
+      "defaultPrevented": false
+    },
+    {
+      "type": "compositionupdate",
+      "defaultPrevented": false
+    },
+    {
+      "type": "compositionend",
+      "defaultPrevented": false
+    }
+  ],
+  "counters": {
+    "sends": 1,
+    "connectorSelections": 1,
+    "fileClicks": 1,
+    "toolClicks": 1,
+    "authClicks": 1
+  },
+  "composerPresent": true,
+  "connectorChooserVisible": true,
+  "afterSendTurnCount": 4,
+  "finalTurnCount": 5,
+  "streamingDurable": false,
+  "settledDurable": true,
+  "initialVersion": "settled-cf81bb7b",
+  "editedVersion": "settled-9e08f904",
+  "status": "EXACT",
+  "lowMemory": {
+    "state": "active",
+    "reason": "windowed",
+    "source": "react-router-stream",
+    "active": true,
+    "keptTurns": 40,
+    "totalTurns": 120,
+    "removedTurns": 80,
+    "keptNodes": 41,
+    "totalNodes": 121,
+    "bytesBefore": 17735,
+    "bytesAfter": 6064,
+    "bytesRemoved": 11671,
+    "recentTurnLimit": 40,
+    "actualTruncation": true,
+    "truncatedRepresentation": "client-history-window",
+    "serverMutation": false,
+    "reactManagedInteractiveNodesDetached": false,
+    "contentUpload": false,
+    "updatedAt": "2026-10-12T10:13:57.772Z"
+  },
+  "report": {
+    "schema": "mica-developer-qa.v1",
+    "privacy": {
+      "conversationTextIncluded": false,
+      "attachmentContentIncluded": false,
+      "requestBodyIncluded": false,
+      "authTokenIncluded": false,
+      "rawDomIncluded": false
+    }
+  },
+  "coreFlows": {
+    "composer": true,
+    "send": true,
+    "streaming": true,
+    "editBranch": true,
+    "connector": true,
+    "toolFileAuth": true,
+    "typingImeHotPath": true
+  },
+  "sendLifecycle": {
+    "progressObserved": true,
+    "autoResendObserved": false,
+    "consequentialFlowActive": true,
+    "userTurnCommitted": true,
+    "duplicateSendObserved": false
+  }
+}
