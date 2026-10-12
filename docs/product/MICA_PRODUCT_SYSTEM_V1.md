@@ -1,6 +1,6 @@
 # Mica Product System V1
 
-Status: **AMENDED PLANNER INPUT / PENDING FRESH GPT CRITIC R2**  
+Status: **FROZEN PLANNER AUTHORITY / GPT CRITIC R2 PASS / POST-R2 PRIORITY AMENDMENT**  
 Date: 2026-10-12  
 Repository: `YuukiAS/Mica-for-ChatGPT`
 
@@ -8,14 +8,25 @@ This document defines what Mica is supposed to be before another implementation 
 
 The product is a **small local browser extension that makes ChatGPT more usable without becoming a second ChatGPT client**.
 
-The four product jobs are:
+The durable product jobs are:
 
 1. keep very long conversations usable on low-memory machines;
-2. make answer reuse reliable: Markdown/LaTeX, Notion, highlighting, PDF;
-3. recover from a small set of high-confidence ChatGPT web failures without creating duplicate actions;
-4. survive ChatGPT UI changes through an explicit compatibility layer rather than scattered selectors.
+2. make ChatGPT answer highlighting reliable and persistent;
+3. export high-fidelity local PDF, preserving highlights and selectable/searchable mathematics;
+4. support answer reuse and conservative reliability improvements without turning Mica into a second ChatGPT client;
+5. survive ChatGPT UI changes through an explicit compatibility layer rather than scattered selectors.
 
-Everything else is subordinate to those jobs.
+Current implementation priority is narrower than the full durable product scope:
+
+```text
+P0 FOUNDATION = rebuild product shell + ChatGPTAdapter + compatibility refresh + acceptance harness
+P1 FEATURE = Low Memory
+P2 FEATURE = built-in ChatGPT Highlighter
+P3 FEATURE = highlight-preserving PDF export with selectable math
+DEFERRED = advanced Reliability (~60s no-progress recovery), Notion, other secondary reuse features
+```
+
+Everything else is subordinate to that order. No deferred feature may delay P0–P3.
 
 ---
 
@@ -142,18 +153,15 @@ Requirements:
 - remove/change-color actions remain simple;
 - if anchoring becomes ambiguous, do not silently attach to the wrong text.
 
-### D. Reliability
+### D. Reliability — durable future capability, not current priority
 
 Reliability is normally invisible.
 
-Only high-confidence abnormal states may surface a recovery card/toast, for example:
+The safety semantics in §8 remain frozen for later work, but advanced recovery is **not part of the current prioritized rebuild path**. In particular, the ~60-second no-structural-progress recovery behavior is deferred until Foundation, Low Memory, Highlighter and PDF are stable.
 
-- send intent but no committed user turn;
-- generation error with recoverable draft;
-- prolonged fake-waiting/stalled generation;
-- known safe acknowledgement dialog.
+Existing Reliability code may be preserved, simplified, disabled or migrated only as required to keep the rebuild safe. Codex must not spend substantial implementation/review budget expanding Reliability before P0–P3 are closed.
 
-The recovery UI gives one clear next action. It does not expose an internal state machine.
+When later activated, only high-confidence abnormal states may surface a recovery card/toast.
 
 ---
 
@@ -995,43 +1003,68 @@ Release readiness is not derived from one executor-written status field.
 
 The rebuild has two independently useful milestones.
 
-#### Milestone A — Daily Core
+### 11.1 Internal Foundation Gate
+
+Before feature work, Mica must first establish the rebuild foundation:
+
+- current ChatGPT capability evidence;
+- frozen product/UI direction;
+- normal popup / Troubleshooting / Developer QA separation;
+- single ChatGPTAdapter authority;
+- compatibility verify/refresh/diff path;
+- versioned AnswerDocument core sufficient for highlighting/PDF mapping;
+- self-validating acceptance harness;
+- legacy-path disposition and no parallel old product shell.
+
+Foundation is an internal gate, not a fake feature release.
+
+```text
+FOUNDATION_GATE = PASS
+```
+
+No substantial Low Memory, Highlighter, PDF, advanced Reliability or Notion implementation begins before this gate.
+
+### 11.2 Milestone A — Low Memory
+
+Builds on the accepted Foundation.
 
 Required product:
 
-- current ChatGPT capability contract and refresh path;
-- normal popup / Troubleshooting / Developer QA separation;
-- single ChatGPTAdapter authority;
-- self-validating acceptance harness;
-- falsifiably useful Low Memory;
-- Markdown copy from AnswerDocument;
-- conservative Reliability recovery.
+- falsifiable Low Memory feasibility;
+- real additional resource/performance benefit over native ChatGPT baseline on the target workload;
+- safe recent-history windowing/truncation behavior;
+- full-history restore;
+- disable/uninstall -> native behavior;
+- no material regression in typing/scroll/send/stream/edit/branch/tool/file/connector/auth paths.
 
-Milestone A may release once its own hard gates pass. Highlighter/PDF/Notion do not block this release.
+Milestone A may release once its own hard gates pass.
 
-#### Milestone B — Answer Reuse
+### 11.3 Milestone B — Highlight + PDF
 
-Builds only on the accepted Milestone A architecture.
+Builds only on the accepted Foundation and Milestone A architecture.
 
 Required product:
 
 - built-in ChatGPT-scoped Highlighter;
 - highlight persistence/remount reconciliation;
+- ambiguity fail-open;
 - local PDF export;
+- highlight preservation;
 - selectable/searchable/copyable math including the baseline prose → inline math → prose pointer-selection regression;
-- highlight-preserving PDF.
+- actual PDF viewer acceptance.
 
-Notion is included in Milestone B **only when real Notion target evidence is available**. A local clipboard/contenteditable fixture may prove serialization structure but cannot produce `NOTION_REAL_TARGET=PASS`.
+### 11.4 Deferred capabilities
 
-If a bounded real Notion paste cannot be independently verified:
+The following are **not current release gates**:
 
-```text
-NOTION_STATUS = DEFERRED_NOT_INDEPENDENTLY_VERIFIED
-```
+- advanced Reliability recovery, including the ~60-second no-progress path;
+- Notion;
+- broader Markdown/LaTeX export enhancements beyond what the Highlighter/PDF architecture requires;
+- arbitrary non-ChatGPT webpage highlighting.
 
-and the feature must remain unreleased/hidden rather than block a fully accepted Highlighter+PDF milestone or be falsely marked PASS.
+They may be pursued only after Milestone B, unless a narrow dependency is technically required by P0–P3.
 
-The overall rebuild Goal is complete after both required milestones are released and every in-scope feature is either PASS or explicitly deferred with truthful non-release status. It is not complete merely because Milestone A ships.
+The overall prioritized rebuild Goal is complete after Foundation, Milestone A and Milestone B pass. Deferred capabilities remain explicit follow-up scope and must not be falsely reported complete.
 
 ### 11.2 Candidate sequence
 
@@ -1096,9 +1129,9 @@ Task-local historical rules that contradict the 2026-10-12 frozen Goal are super
 
 ---
 
-## 13. Definition of Milestone A product-system completion
+## 13. Definition of Foundation completion
 
-Milestone A is complete only when:
+Foundation is complete only when:
 
 ```text
 CURRENT_CHATGPT_EVIDENCE = PASS
@@ -1111,22 +1144,36 @@ CHATGPT_UI_REFRESH = PASS
 MULTI_VARIANT_COMPATIBILITY = PASS
 UNKNOWN_FAIL_OPEN = PASS
 ANSWER_DOCUMENT_CORE_MODEL = PASS
+ACCEPTANCE_HARNESS_SELF_VALIDATES = PASS
+KNOWN_BAD_CONTROL = REJECTED
+KNOWN_GOOD_CONTROL = ACCEPTED
+LEGACY_PARALLEL_RUNTIME = NONE
+USER_IS_FIRST_QA = NO
+```
+
+---
+
+## 14. Definition of Milestone A — Low Memory completion
+
+Milestone A is complete only when:
+
+```text
+FOUNDATION_GATE = PASS
 LOW_MEMORY_FEASIBILITY = PASS
 LOW_MEMORY_TRUNCATION = PASS
-MARKDOWN_COPY = PASS
-RELIABILITY_CORE = PASS
-ACCEPTANCE_HARNESS_SELF_VALIDATES = PASS
+LOW_MEMORY_RESTORE = PASS
+LOW_MEMORY_DISABLE_NATIVE = PASS
+LOW_MEMORY_CORE_FLOW_REGRESSION = PASS
+TARGET_LOW_MEMORY_EVIDENCE = PASS
 KNOWN_BAD_CONTROL = REJECTED
 KNOWN_GOOD_CONTROL = ACCEPTED
 ACTUAL_SURFACE_REVIEW = PASS
 USER_IS_FIRST_QA = NO
 ```
 
-Highlighter/PDF/Notion are not Milestone A release gates.
-
 ---
 
-## 14. Definition of Milestone B completion
+## 15. Definition of Milestone B — Highlight + PDF completion
 
 Milestone B is complete only when:
 
