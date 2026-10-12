@@ -1,15 +1,15 @@
 # Mica Product System Rebuild Goal
 
-Status: **PLANNER DRAFT — DO NOT EXECUTE UNTIL INDEPENDENT GPT CRITIC PASS**  
+Status: **FROZEN FINAL CODEX GOAL — GPT CRITIC R2 PASS**  
 Date: 2026-10-12
 
 ```yaml
 task_key: mica--product-system-rebuild
 repository: YuukiAS/Mica-for-ChatGPT
-mode: discover_critic_plan_execute_validate_review_release
-execution_model: planner_draft_then_independent_gpt_critic_then_one_durable_codex_goal
+mode: execute_validate_review_release
+execution_model: one_durable_codex_goal_after_gpt_critic_r2_pass
 planner_authority: docs/product/MICA_PRODUCT_SYSTEM_V1.md
-prebuild_critic: docs/reviews/2026-10-12-mica-product-system-gpt-critic-prompt.md
+critic_r2_verdict: docs/reviews/2026-10-12-mica-product-system-critic-r2-verdict.md
 old_goal: docs/tasks/2026-10-05-mica-product-recovery-current-gpt-ui.md
 old_goal_disposition: SUPERSEDED_HISTORICAL_EVIDENCE_ONLY
 working_branch: codex/mica-product-system-rebuild
@@ -35,7 +35,17 @@ release_before_internal_acceptance: forbidden
 -> 用户不再当第一轮 QA
 ```
 
-Highlighter、PDF、Notion 是本 Goal 后半段的重要产品能力，但不得在产品系统、兼容层和验收架构成型前各自继续长出独立实现。
+当前优先级已经冻结：
+
+```text
+P0 = rebuild foundation
+P1 = Low Memory
+P2 = built-in ChatGPT Highlighter
+P3 = highlight-preserving PDF export with selectable math
+DEFERRED = advanced Reliability, Notion, secondary reuse features
+```
+
+Highlighter 和 PDF 是当前核心功能，不得再被 Markdown Copy、Notion、60 秒无进展恢复或其他次要功能抢占。所有具体 feature 都必须建立在 rebuild foundation 通过之后。
 
 ---
 
@@ -48,6 +58,7 @@ docs/product/MICA_PRODUCT_SYSTEM_V1.md
 docs/tasks/2026-10-12-mica-product-system-rebuild-goal.md
 docs/reviews/2026-10-12-mica-product-system-gpt-critic-prompt.md
 docs/reviews/2026-10-12-mica-product-system-critic-r1-disposition.md
+docs/reviews/2026-10-12-mica-product-system-critic-r2-verdict.md
 AGENTS.md
 README.md
 docs/ROADMAP.md
@@ -152,65 +163,40 @@ POSITIVE_CHECKPOINT_STATUS=MISSING_WITH_EVIDENCE
 
 ---
 
-## 4. Independent GPT Critic — mandatory before Codex kickoff
+## 4. GPT Critic admission is complete
 
-这是 major/recovery 级产品与交付架构重建，因此 **当前文件仍是 Planner draft，不是可执行 Codex Goal**。
-
-禁止让 Codex Parent、Producer 或任何 Codex 子代理自行启动、替代或满足这一层 Critic。
-
-下一步必须在一个 fresh independent GPT context 中执行：
-
-```text
-docs/reviews/2026-10-12-mica-product-system-gpt-critic-prompt.md
-```
-
-GPT Critic 必须审核完整方案，而不只是实现细节，至少覆盖：
-
-```text
-产品定位
-正常 UI / Troubleshooting / Developer QA
-当前 ChatGPT UI 适配与后续 refresh
-Low Memory
-AnswerDocument / Copy / Highlighter / PDF / Notion
-Reliability
-开发架构
-验收器与 known-good / known-bad controls
-actual-surface review
-GPT Work / Codex / ChatGPT Planner / user 分工
-旧 Atlas / 旧 UI / 旧测试体系清理
-source-of-truth / Git / release
-scope 与过度工程风险
-执行纪律与 Human Gate
-```
-
-只有 GPT Critic 返回：
+Independent GPT Critic R2 has passed on the Planner architecture:
 
 ```text
 CRITIC_VERDICT=PASS
 P0=0
 P1=0
+P2=0
 READY_TO_FREEZE_CODEX_GOAL=YES
 ```
 
-Planner 才能根据 Critic 结果把本文件修订并冻结为最终可执行 Codex Goal。
-
-在此之前：
+Binding record:
 
 ```text
-CODEX_IMPLEMENTATION_ALLOWED=NO
-RUNTIME_UI_MUTATION_ALLOWED=NO
-RELEASE_CLOSURE_ALLOWED=NO
+docs/reviews/2026-10-12-mica-product-system-critic-r2-verdict.md
 ```
 
-如果 Critic 返回 `PLANNER_AMENDMENT_REQUIRED`：
+This is sufficient Planner admission. Codex must **not** launch another architecture Critic and must not reopen product planning unless it encounters a genuine new product decision or contradictory real evidence.
 
-1. ChatGPT Planner 消化 findings；
-2. 更新 Product System / Goal；
-3. 必要时处理真正的用户产品决策；
-4. 使用 fresh GPT Critic 复审；
-5. PASS 后才给 Codex kickoff。
+The user's post-R2 priority amendment narrows scope only:
 
-Critic 结果不由 Codex 自己写入“PASS”；它是 Codex 执行之前的 Planner-level admission gate。
+- rebuild foundation first;
+- Low Memory next;
+- Highlighter next;
+- PDF next;
+- advanced Reliability (~60s no-progress recovery), Notion and secondary reuse remain deferred.
+
+This scope narrowing does not require R3.
+
+```text
+CODEX_IMPLEMENTATION_ALLOWED=YES
+R3_CRITIC_REQUIRED=NO
+```
 
 ---
 
@@ -267,7 +253,7 @@ current surface evidence
 
 这是 **design-first specification stage**，不是要求现在就先写 popup runtime。
 
-本节先基于 current ChatGPT surface evidence 冻结 UI 目标；实际 product-shell implementation 按 §23 canonical execution order，在 acceptance skeleton、Low Memory feasibility gate、ChatGPTAdapter/AnswerDocument core 建立之后进行。
+本节先基于 current ChatGPT surface evidence 冻结 UI 目标；实际 product-shell implementation 按 §23 canonical execution order，在 acceptance skeleton、ChatGPTAdapter/AnswerDocument core 建立之后进行。Low Memory feasibility 和所有 feature work 都在 Foundation Gate 之后。
 
 ### 6.1 Normal popup
 
@@ -561,9 +547,9 @@ Reviewer 不看 Producer“我做完了”的总结。
 
 ---
 
-## 10. Migrate and re-prove Low Memory
+## 10. Milestone A — Low Memory
 
-Low Memory 是核心功能。
+Low Memory 是 Foundation 后的第一优先级产品功能。
 
 不得降级成：
 
@@ -573,37 +559,62 @@ diagnostics only
 no-op
 ```
 
-必须在新架构下重新证明：
+先做 feasibility，再做正式实现：
 
 ```text
+A = Mica disabled/absent
+B = Mica installed + Low Memory off
+C = Mica installed + Low Memory on
+```
+
+在同一 long-thread workload 下比较可获得的：
+
+- process/private working-set memory 或等价 browser-process metric；
+- JS heap；
+- heavy retained content；
+- long tasks；
+- frame/scroll stalls；
+- input latency；
+- mutation/layout work。
+
+要求：
+
+```text
+FOUNDATION_GATE=PASS
+LOW_MEMORY_FEASIBILITY=PASS
 LOW_MEMORY_TRUNCATION=PASS
 ```
 
-至少覆盖：
+PASS 必须表示 C 对 A/B 在至少一个真实目标 long-thread workload 上产生重复可测的额外收益，同时没有 material typing/scroll/send/stream/history regression。
+
+一个只减少 synthetic DOM、真实 workload 无额外效果的实现必须作为 `LOW_MEMORY_NO_EFFECT` known-bad control 被 validator 拒绝。
+
+最终至少覆盖：
 
 - short/medium/long fixture；
 - recent-message budget；
-- actual memory/render cost；
 - current ChatGPT native baseline；
-- Mica additional benefit；
+- target long-thread workload；
 - load full history；
-- disable -> native；
+- disable/uninstall -> native；
 - reload；
 - scroll history；
-- send；
-- streaming；
+- send/streaming；
 - edit/branch；
 - connector；
 - tool/file/auth；
 - typing/IME hot path。
 
-如果旧 checkpoint 的 low-memory 实现已经优秀，允许迁移/保留，但必须通过新 validator；旧 PASS 不能自动继承。
+不得为了指标随意删除/拆卸 React 管理的 interactive nodes。
 
+如果旧 checkpoint 的 low-memory 实现已经优秀，允许迁移/保留，但必须通过新 feasibility + validator；旧 PASS 不能自动继承。
+
+Milestone A 完成后可以独立冻结、验收和发布，不等待 Highlighter/PDF。
 ---
 
-## 11. Build the versioned AnswerDocument core and migrate Markdown Copy
+## 11. AnswerDocument core belongs to Foundation; Markdown Copy is secondary
 
-先建立由 adapter 唯一生成的 ordered/versioned `AnswerDocument`。
+由 adapter 唯一生成 ordered/versioned `AnswerDocument`，这是 Highlighter/PDF 的基础架构，不是为了优先开发 Markdown Copy。
 
 至少包含：
 
@@ -638,49 +649,37 @@ orderedBlocks[]
 - streaming snapshot 不作为 durable final export/highlight anchor；
 - settled version 才进入 durable reuse；
 - edit/branch/remount 触发 version reconciliation；
-- interactive blocks 默认 opaque，不把隐藏交互状态伪装成 Markdown；
-- Copy/Highlighter/PDF/Notion 不得各自抓 ChatGPT DOM。
+- interactive blocks 默认 opaque，不把隐藏交互状态伪装成静态正文；
+- Highlighter/PDF/未来 Copy/Notion 不得各自抓 ChatGPT DOM。
 
-Milestone A 只要求先完成 Markdown Copy。Notion/PDF 在 Milestone B 使用同一模型。
-
-页面只保留一个 Mica answer action/menu；action cluster UNKNOWN 时只能使用 EXACT-resolved answer context fallback，不能猜 latest/viewport answer。
-
+Markdown Copy 可以作为 AnswerDocument 的低成本 sanity path 或后续 secondary feature，但**不得延迟 Low Memory、Highlighter 或 PDF**。
 ---
 
-## 12. Migrate Reliability onto one evidence/action contract
+## 12. Reliability is deferred
 
-实现 `MICA_PRODUCT_SYSTEM_V1.md §8` 的 evidence → action table。
+Advanced Reliability work is **not a current implementation priority**.
 
-硬规则：
-
-- send commit 必须以新 user turn identity 为主；
-- “约 60 秒无进展”指无 structural progress，不只是无新文字；
-- 60 秒触发一次 bounded recovery cycle，不直接证明“应重发”；
-- reload 后若原 user turn 未 commit 且无 consequential context，可 resend 一次；
-- reload 后若 user turn 已 commit，不得创建第二个 user message，应恢复 existing turn/generation 或只显示一个安全 recovery action；
-- delayed commit 出现时取消 pending resend；
-- stale draft 只有 confirmed commit + exact snapshot match + no later edit 时才清理；
-- stale response 只用结构/identity/fingerprint 高置信 evidence，不用语义猜测自动 regenerate；
-- tool/file/connector/auth/consequential flow 禁止自动 resend/regenerate；
-- 每 turn 有 dedupe key、明确次数上限和 kill switch；
-- ordinary typing/IME synchronous path 不允许 broad DOM scan、serialization、layout read、hash 或 timer churn；
-- unknown fail-open。
-
-内部状态不暴露成普通 UI。
-
-Troubleshooting 只给用户看：
+The evidence/action safety contract in `MICA_PRODUCT_SYSTEM_V1.md §8` remains durable future authority, including the ~60-second no-structural-progress behavior, but Codex must not spend significant implementation or review budget on it before:
 
 ```text
-No issues
-Recovered one stalled send
-Compatibility changed; risky recovery paused
+FOUNDATION_GATE=PASS
+MILESTONE_A_LOW_MEMORY=PASS
+MILESTONE_B_HIGHLIGHT_PDF=PASS
 ```
 
+During the prioritized rebuild, Codex may only:
+
+- preserve an already-safe existing behavior;
+- disable/remove conflicting or dangerous old recovery code;
+- ensure the new architecture leaves a clean future hook;
+- prevent reliability observers/diagnostics from regressing typing/IME performance.
+
+Do not build the ~60-second recovery feature now.
 ---
 
-## 13. Milestone B — implement built-in ChatGPT Highlighter
+## 13. Milestone B part 1 — built-in ChatGPT Highlighter
 
-Highlighter 只在 Milestone A 完整通过并发布/冻结后进入实现。
+Highlighter 是 Low Memory 之后的第二优先级产品功能，只在 Foundation 和 Milestone A 完整通过后进入实现。
 
 读取：
 
@@ -729,7 +728,7 @@ Highlighter UI 只在 valid selection 后出现。第一、第二 rebuild milest
 
 ---
 
-## 14. Then implement PDF Export and fix math selection
+## 14. Milestone B part 2 — PDF Export and math selection
 
 参考 AI Exporter 的 local print-document 思路，但不得复制其已知数学选择缺陷。
 
@@ -780,34 +779,17 @@ PDF.js/extraction 不能替代 pointer-selection hard regression。
 
 ---
 
-## 15. Notion
+## 15. Notion is deferred
 
-Copy for Notion 必须消费同一 AnswerDocument。
+Notion is not part of the current prioritized rebuild and is not a Foundation, Milestone A or Milestone B release gate.
 
-先验证：
-
-- text/plain；
-- text/html；
-- headings/lists/code/table；
-- inline/display math；
-- many formulas；
-- formula in lists/tables；
-- deterministic fallback。
-
-Local MIME/DOM harness 只能证明 serialization，不证明真实 Notion 已创建可用公式对象。
-
-若 Notion 要进入 released product，必须有一次 bounded `REAL_NOTION_TARGET` 验证，确认真实粘贴结果满足“无需逐个手工转换大多数公式”的产品目标。
-
-优先由 Codex 在可用的隔离/已授权真实目标上完成；若只缺登录，用户最多承担登录这一 HUMAN_ONLY 动作，后续验证仍由 Codex/reviewer 完成。
-
-若无法取得真实目标证据：
+Keep only the architectural invariant:
 
 ```text
-NOTION_STATUS=DEFERRED_NOT_INDEPENDENTLY_VERIFIED
+future Notion export must consume AnswerDocument
 ```
 
-Notion 保持隐藏/未发布，不得以 local fixture 宣称 PASS，也不得阻塞已经完整通过的 Highlighter+PDF Milestone B。
-
+Do not implement or validate real Notion behavior until after Low Memory, Highlighter and PDF are complete, unless the user explicitly reprioritizes it.
 ---
 
 ## 16. Review ownership and delivery discipline
@@ -1009,16 +991,16 @@ SUPERSEDE
 
 ---
 
-## 20. Two release milestones inside the same Goal
+## 20. Foundation + two prioritized release milestones
 
 不要提前锁死具体 version number。Source-of-truth audit 后选择 next appropriate SemVer。
 
-### Milestone A — Daily Core
+### Foundation Gate — internal, not a fake release
 
 必须全部通过：
 
 ```text
-PREBUILD_CRITIC=PASS
+PREBUILD_CRITIC_R2=PASS
 CURRENT_CHATGPT_EVIDENCE=PASS
 UI_DESIGN_FREEZE=PASS
 NORMAL_POPUP=PASS
@@ -1026,35 +1008,50 @@ TROUBLESHOOTING=PASS
 DEVELOPER_QA=PASS
 CHATGPT_ADAPTER=PASS
 CHATGPT_UI_REFRESH=PASS
+ANSWER_DOCUMENT_CORE=PASS
 ACCEPTANCE_HARNESS=PASS
 KNOWN_BAD_CONTROL=REJECTED
 KNOWN_GOOD_CONTROL=ACCEPTED
-LOW_MEMORY_FEASIBILITY=PASS
-LOW_MEMORY_TRUNCATION=PASS
-MARKDOWN_COPY=PASS
-RELIABILITY_CORE=PASS
+LEGACY_PARALLEL_RUNTIME=NONE
 PRODUCER_P0=0
 PRODUCER_P1=0
 PRODUCER_P2=0
-DETERMINISTIC_VALIDATOR=PASS
-ACTUAL_SURFACE_REVIEW=PASS
-GPT_WORK=PASS | NOT_REQUIRED_WITH_JUSTIFICATION
 USER_IS_FIRST_QA=NO
-CANDIDATE_IDENTITY=PASS
-PACKAGE=PASS
 ```
 
-Highlighter/PDF/Notion 不阻塞 Milestone A。
+Foundation Gate 通过后才允许进入具体 feature implementation。
 
-Milestone A 通过后允许 push immutable candidate -> independent review -> minimal user acceptance -> merge/release。
-
-### Milestone B — Answer Reuse
-
-在 Milestone A 已接受架构上继续，不新建 Goal。
+### Milestone A — Low Memory
 
 必须全部通过：
 
 ```text
+FOUNDATION_GATE=PASS
+LOW_MEMORY_FEASIBILITY=PASS
+LOW_MEMORY_TRUNCATION=PASS
+LOW_MEMORY_RESTORE=PASS
+LOW_MEMORY_DISABLE_NATIVE=PASS
+LOW_MEMORY_CORE_FLOW_REGRESSION=PASS
+TARGET_LOW_MEMORY_EVIDENCE=PASS
+KNOWN_BAD_CONTROL=REJECTED
+KNOWN_GOOD_CONTROL=ACCEPTED
+DETERMINISTIC_VALIDATOR=PASS
+ACTUAL_SURFACE_REVIEW=PASS
+PRODUCER_P0=0
+PRODUCER_P1=0
+PRODUCER_P2=0
+CANDIDATE_IDENTITY=PASS
+PACKAGE=PASS
+```
+
+Milestone A 可以独立 push immutable candidate -> independent review -> minimal user acceptance if genuinely needed -> merge/release。
+
+### Milestone B — Highlighter + PDF
+
+必须全部通过：
+
+```text
+FOUNDATION_GATE=PASS
 HIGHLIGHTER=PASS
 HIGHLIGHT_AMBIGUITY_FAIL_OPEN=PASS
 HIGHLIGHT_REMOUNT_RESTORE=PASS
@@ -1076,18 +1073,18 @@ CANDIDATE_IDENTITY=PASS
 PACKAGE=PASS
 ```
 
-Notion 只有 `NOTION_REAL_TARGET=PASS` 才能随 Milestone B 公开；否则保持 `DEFERRED_NOT_INDEPENDENTLY_VERIFIED` 并隐藏，不阻塞 Highlighter+PDF release。
+Advanced Reliability、Notion、secondary Markdown/LaTeX export 不阻塞 Milestone B，也不得被标成已完成。
 
-每个 milestone 都：
+每个 product milestone 都：
 
 1. push exact immutable review candidate；
 2. final independent review；
-3. minimal user acceptance only when genuinely needed；
-4. merge；
-5. package/tag/prerelease as authorized；
-6. update issue closure matrix；
-7. safe cleanup only after unique work preservation。
-
+3. GPT Work only after internal closure and only for holistic UX/product quality；
+4. minimal user acceptance only when genuinely needed；
+5. merge；
+6. package/tag/prerelease as authorized；
+7. update issue closure matrix；
+8. safe cleanup only after unique work preservation。
 ---
 
 ## 21. Stop rules
@@ -1136,15 +1133,15 @@ Then record:
 RESULT=
 FINAL_COMMIT=
 FINAL_VERSION=
-RELEASE=
-PRODUCT_SYSTEM=
+FOUNDATION_GATE=
+MILESTONE_A_LOW_MEMORY=
+MILESTONE_B_HIGHLIGHT_PDF=
 CHATGPT_UI_REFRESH=
 LOW_MEMORY_TRUNCATION=
-COPY_EXPORT=
 HIGHLIGHTER=
 PDF_MATH_SELECTION=
-NOTION=
-RELIABILITY=
+DEFERRED_RELIABILITY=
+DEFERRED_NOTION=
 KNOWN_BAD_CONTROL=
 KNOWN_GOOD_CONTROL=
 PRODUCER_P0_P1_P2=
@@ -1160,20 +1157,11 @@ Do not report `complete` if a hard product gate is missing.
 
 ---
 
-## 23. Current next step and eventual Codex start order
+## 23. Start now — canonical Codex execution order
 
-**Current next step is NOT Codex implementation.**
+The Planner/Critic phase is complete. **The next step is Codex implementation.**
 
-First:
-
-```text
-fresh independent GPT Critic
--> Planner amendment if required
--> fresh GPT Critic PASS
--> freeze final Codex Goal
-```
-
-Only after that admission gate passes, the final Codex Goal should execute:
+Execute this same Goal continuously:
 
 ```text
 skills/session preflight
@@ -1181,32 +1169,37 @@ skills/session preflight
 -> current ChatGPT surface evidence
 -> product/UI freeze
 -> acceptance schema + controls skeleton
--> Low Memory feasibility gate
 -> ChatGPTAdapter + AnswerDocument core
 -> actual normal UI shell + Troubleshooting + Developer QA
 -> compatibility refresh
+-> Foundation Gate validation
+-> Low Memory feasibility
 -> Low Memory implementation/migration
--> Markdown Copy + Reliability core
--> Milestone A candidate freeze
--> deterministic validation
--> actual-surface review
--> repair/re-freeze/review as needed
--> GPT Work if required
--> minimal user acceptance
--> Milestone A merge/release
--> Highlighter
--> PDF
--> real Notion only if independently verifiable
+-> Milestone A candidate freeze/validation/review
+-> Milestone A merge/release when accepted
+-> built-in Highlighter
+-> PDF export + selectable-math + highlight-preservation
 -> Milestone B candidate freeze/validation/review
--> Milestone B merge/release
+-> Milestone B merge/release when accepted
 ```
 
-This order is deliberate:
+Deferred after Milestone B unless the user reprioritizes:
 
-- actual surface precedes visual freeze;
-- acceptance skeleton precedes broad implementation;
-- Low Memory feasibility is proven early rather than after a month of work;
-- adapter/AnswerDocument precede feature migration;
-- the user receives an independently useful Daily Core milestone before Answer Reuse expansion.
+```text
+advanced Reliability (~60s no-progress recovery)
+Notion
+secondary Markdown/LaTeX export enhancements
+arbitrary non-ChatGPT webpage highlighting
+```
 
-Do not create another ordinary successor Goal after the final freeze.
+This order is mandatory:
+
+- Foundation first;
+- then Low Memory;
+- then Highlighter;
+- then PDF;
+- deferred features may not consume substantial implementation or review budget before those close.
+
+Do not create another ordinary successor Goal.
+
+Stop only for a genuine new product decision, HUMAN_ONLY action, safety/authority blocker, or unsupported-with-evidence condition.
