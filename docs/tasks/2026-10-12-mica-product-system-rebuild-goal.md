@@ -597,15 +597,22 @@ LOW_MEMORY_TRUNCATION=PASS
 
 ---
 
-## 11. Migrate Copy & Export onto AnswerDocument
+## 11. Build the versioned AnswerDocument core and migrate Markdown Copy
 
-先建立：
+先建立由 adapter 唯一生成的 ordered/versioned `AnswerDocument`。
+
+至少包含：
 
 ```text
-AnswerDocument
+documentId
+conversationId
+turnId
+sourceVersion
+generationState = STREAMING | SETTLED
+orderedBlocks[]
 ```
 
-由 adapter 唯一生成。
+每个 block 有 BlockID、order、source spans 和 content identity。
 
 支持：
 
@@ -615,34 +622,47 @@ AnswerDocument
 - quote；
 - table；
 - code；
-- inline/display math；
+- inline/display math（保留 rawTeX/renderedText/sourceSpan）；
 - link；
 - citation；
 - image；
-- interactive/unknown block。
+- opaque interactive；
+- unknown block。
 
-Copy Markdown / Copy for Notion / PDF 都消费 AnswerDocument。
+规则：
 
-不得每个 exporter 自己抓 DOM。
+- streaming snapshot 不作为 durable final export/highlight anchor；
+- settled version 才进入 durable reuse；
+- edit/branch/remount 触发 version reconciliation；
+- interactive blocks 默认 opaque，不把隐藏交互状态伪装成 Markdown；
+- Copy/Highlighter/PDF/Notion 不得各自抓 ChatGPT DOM。
 
-页面只保留一个 Mica answer action/menu。
+Milestone A 只要求先完成 Markdown Copy。Notion/PDF 在 Milestone B 使用同一模型。
+
+页面只保留一个 Mica answer action/menu；action cluster UNKNOWN 时只能使用 EXACT-resolved answer context fallback，不能猜 latest/viewport answer。
 
 ---
 
-## 12. Migrate Reliability onto adapter/state contracts
+## 12. Migrate Reliability onto one evidence/action contract
 
-保留产品要求：
+实现 `MICA_PRODUCT_SYSTEM_V1.md §8` 的 evidence → action table。
+
+硬规则：
 
 - send commit 必须以新 user turn identity 为主；
-- fake-waiting/stall；
-- stale response high-confidence；
-- draft recovery；
-- bounded retry；
-- dedupe；
-- consequential flow 禁止自动 resend；
+- “约 60 秒无进展”指无 structural progress，不只是无新文字；
+- 60 秒触发一次 bounded recovery cycle，不直接证明“应重发”；
+- reload 后若原 user turn 未 commit 且无 consequential context，可 resend 一次；
+- reload 后若 user turn 已 commit，不得创建第二个 user message，应恢复 existing turn/generation 或只显示一个安全 recovery action；
+- delayed commit 出现时取消 pending resend；
+- stale draft 只有 confirmed commit + exact snapshot match + no later edit 时才清理；
+- stale response 只用结构/identity/fingerprint 高置信 evidence，不用语义猜测自动 regenerate；
+- tool/file/connector/auth/consequential flow 禁止自动 resend/regenerate；
+- 每 turn 有 dedupe key、明确次数上限和 kill switch；
+- ordinary typing/IME synchronous path 不允许 broad DOM scan、serialization、layout read、hash 或 timer churn；
 - unknown fail-open。
 
-但不再把内部状态暴露成普通 UI。
+内部状态不暴露成普通 UI。
 
 Troubleshooting 只给用户看：
 
