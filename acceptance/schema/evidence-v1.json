@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mica://acceptance/evidence-v1",
+  "title": "Mica acceptance evidence record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "gateId", "evidenceClass", "subject", "artifactIds", "measurement"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "gateId": {"type": "string", "minLength": 1},
+    "evidenceClass": {
+      "enum": [
+        "SYNTHETIC_FIXTURE",
+        "LOCAL_REAL_BROWSER",
+        "REAL_DERIVED_CURRENT_CHATGPT",
+        "CURRENT_CHATGPT_READ_ONLY",
+        "CURRENT_CHATGPT_BOUNDED_ACTION",
+        "TARGET_LOW_MEMORY_DEVICE",
+        "ACTUAL_PDF_VIEWER",
+        "REAL_NOTION_TARGET"
+      ]
+    },
+    "subject": {"type": "object"},
+    "artifactIds": {"type": "array", "items": {"type": "string"}},
+    "measurement": {"type": "object"},
+    "producerClaim": {"type": "string"}
+  }
+}

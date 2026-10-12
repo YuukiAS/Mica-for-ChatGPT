@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mica://acceptance/bundle-v1",
+  "title": "Mica canonical acceptance bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "bundleKind",
+    "acceptanceProfile",
+    "candidate",
+    "validator",
+    "chatgptContractArtifactId",
+    "chatgptContractHash",
+    "fixtureSetHash",
+    "evidenceSchemaVersion",
+    "evidenceRootHash",
+    "reportContext",
+    "requiredGates",
+    "artifacts",
+    "evidence"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "bundleKind": {"enum": ["candidate", "control"]},
+    "acceptanceProfile": {"enum": ["foundation", "milestone-a", "milestone-b", "release-0.3.0"]},
+    "candidate": {"$ref": "mica://acceptance/candidate-v1"},
+    "validator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "treeHash"],
+      "properties": {
+        "version": {"type": "string", "minLength": 1},
+        "treeHash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "chatgptContractArtifactId": {"type": "string", "minLength": 1},
+    "chatgptContractHash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "fixtureSetHash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "evidenceSchemaVersion": {"const": 1},
+    "evidenceRootHash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "reportContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidateCommit", "distHash"],
+      "properties": {
+        "candidateCommit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "distHash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "requiredGates": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "artifacts": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+    "evidence": {"type": "array", "minItems": 1, "items": {"$ref": "mica://acceptance/evidence-v1"}}
+  }
+}

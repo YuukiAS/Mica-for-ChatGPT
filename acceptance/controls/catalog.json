@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "knownGood": [
+    {"id": "complete-measured-bundle", "expected": "ACCEPT"},
+    {"id": "known-good-current-popup", "expected": "ACCEPT"},
+    {"id": "known-good-adapter-contract", "expected": "ACCEPT"},
+    {"id": "known-good-low-memory-fixture", "expected": "ACCEPT"},
+    {"id": "known-good-selectable-math-pdf", "expected": "ACCEPT"}
+  ],
+  "knownBad": [
+    {"id": "missing-evidence", "expected": "REJECT"},
+    {"id": "tampered-artifact", "expected": "REJECT"},
+    {"id": "wrong-candidate-dist-hash", "expected": "REJECT"},
+    {"id": "stale-prior-candidate-report", "expected": "REJECT"},
+    {"id": "duplicate-popup-screenshots", "expected": "REJECT"},
+    {"id": "wrong-popup-surface", "expected": "REJECT"},
+    {"id": "hard-coded-pass-only", "expected": "REJECT"},
+    {"id": "evidence-root-mismatch", "expected": "REJECT"},
+    {"id": "historical-copy-misplacement", "expected": "REJECT"},
+    {"id": "connector-residual-remount-regression", "expected": "REJECT"},
+    {"id": "fake-waiting-send-lifecycle", "expected": "REJECT"},
+    {"id": "low-memory-no-op", "expected": "REJECT"},
+    {"id": "lost-highlight-after-remount", "expected": "REJECT"},
+    {"id": "non-selectable-inline-math-pdf", "expected": "REJECT"},
+    {"id": "stale-chatgpt-contract", "expected": "REJECT"},
+    {"id": "control-bundle-presented-as-candidate", "expected": "REJECT"},
+    {"id": "copy-serialization-output-mismatch", "expected": "REJECT"},
+    {"id": "packaging-version-mismatch", "expected": "REJECT"},
+    {"id": "omitted-release-gate", "expected": "REJECT"}
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "validatorVersion": "1.0.0",
+  "evidenceSchemaVersion": 1,
+  "controlsUseProductionValidators": true,
+  "gates": [
+    {
+      "id": "candidate-identity",
+      "validatorKind": "candidate-identity",
+      "candidateEvidenceClasses": ["LOCAL_REAL_BROWSER", "CURRENT_CHATGPT_READ_ONLY", "CURRENT_CHATGPT_BOUNDED_ACTION", "TARGET_LOW_MEMORY_DEVICE", "ACTUAL_PDF_VIEWER"]
+    },
+    {
+      "id": "popup-render",
+      "validatorKind": "popup-render",
+      "candidateEvidenceClasses": ["LOCAL_REAL_BROWSER"]
+    },
+    {
+      "id": "adapter-contract",
+      "validatorKind": "adapter-contract",
+      "candidateEvidenceClasses": ["REAL_DERIVED_CURRENT_CHATGPT", "CURRENT_CHATGPT_READ_ONLY", "CURRENT_CHATGPT_BOUNDED_ACTION"]
+    },
+    {
+      "id": "answer-document-core",
+      "validatorKind": "answer-document-core",
+      "candidateEvidenceClasses": ["REAL_DERIVED_CURRENT_CHATGPT", "CURRENT_CHATGPT_READ_ONLY", "CURRENT_CHATGPT_BOUNDED_ACTION"]
+    },
+    {
+      "id": "copy-serialization",
+      "validatorKind": "copy-serialization",
+      "candidateEvidenceClasses": ["SYNTHETIC_FIXTURE", "LOCAL_REAL_BROWSER"]
+    },
+    {
+      "id": "copy-placement",
+      "validatorKind": "copy-placement",
+      "candidateEvidenceClasses": ["CURRENT_CHATGPT_READ_ONLY", "CURRENT_CHATGPT_BOUNDED_ACTION"]
+    },
+    {
+      "id": "core-flow-regression",
+      "validatorKind": "core-flow-regression",
+      "candidateEvidenceClasses": ["LOCAL_REAL_BROWSER", "CURRENT_CHATGPT_BOUNDED_ACTION"]
+    },
+    {
+      "id": "send-lifecycle-safety",
+      "validatorKind": "send-lifecycle-safety",
+      "candidateEvidenceClasses": ["LOCAL_REAL_BROWSER", "CURRENT_CHATGPT_BOUNDED_ACTION"]
+    },
+    {
+      "id": "low-memory-benefit",
+      "validatorKind": "low-memory-benefit",
+      "candidateEvidenceClasses": ["TARGET_LOW_MEMORY_DEVICE"]
+    },
+    {
+      "id": "highlight-remount",
+      "validatorKind": "highlight-remount",
+      "candidateEvidenceClasses": ["LOCAL_REAL_BROWSER", "CURRENT_CHATGPT_BOUNDED_ACTION"]
+    },
+    {
+      "id": "pdf-selection",
+      "validatorKind": "pdf-selection",
+      "candidateEvidenceClasses": ["ACTUAL_PDF_VIEWER"]
+    },
+    {
+      "id": "privacy",
+      "validatorKind": "privacy",
+      "candidateEvidenceClasses": ["LOCAL_REAL_BROWSER", "CURRENT_CHATGPT_READ_ONLY", "CURRENT_CHATGPT_BOUNDED_ACTION"]
+    },
+    {
+      "id": "packaging-version",
+      "validatorKind": "packaging-version",
+      "candidateEvidenceClasses": ["LOCAL_REAL_BROWSER"]
+    }
+  ]
+}

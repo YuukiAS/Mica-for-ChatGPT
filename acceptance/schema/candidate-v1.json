@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mica://acceptance/candidate-v1",
+  "title": "Mica acceptance candidate identity",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["commit", "version", "buildLabel", "distArtifactId", "distHash"],
+  "properties": {
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "buildLabel": {"type": "string", "minLength": 1},
+    "distArtifactId": {"type": "string", "minLength": 1},
+    "distHash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
