@@ -973,10 +973,56 @@ A source/artifact change invalidates the corresponding prior validation/review.
 
 Release readiness is not derived from one executor-written status field.
 
-Required sequence:
+### 11.1 Two continuous milestones, one overall Goal
+
+The rebuild has two independently useful milestones.
+
+#### Milestone A — Daily Core
+
+Required product:
+
+- current ChatGPT capability contract and refresh path;
+- normal popup / Troubleshooting / Developer QA separation;
+- single ChatGPTAdapter authority;
+- self-validating acceptance harness;
+- falsifiably useful Low Memory;
+- Markdown copy from AnswerDocument;
+- conservative Reliability recovery.
+
+Milestone A may release once its own hard gates pass. Highlighter/PDF/Notion do not block this release.
+
+#### Milestone B — Answer Reuse
+
+Builds only on the accepted Milestone A architecture.
+
+Required product:
+
+- built-in ChatGPT-scoped Highlighter;
+- highlight persistence/remount reconciliation;
+- local PDF export;
+- selectable/searchable/copyable math including the baseline prose → inline math → prose pointer-selection regression;
+- highlight-preserving PDF.
+
+Notion is included in Milestone B **only when real Notion target evidence is available**. A local clipboard/contenteditable fixture may prove serialization structure but cannot produce `NOTION_REAL_TARGET=PASS`.
+
+If a bounded real Notion paste cannot be independently verified:
 
 ```text
-Product/contract freeze
+NOTION_STATUS = DEFERRED_NOT_INDEPENDENTLY_VERIFIED
+```
+
+and the feature must remain unreleased/hidden rather than block a fully accepted Highlighter+PDF milestone or be falsely marked PASS.
+
+The overall rebuild Goal is complete after both required milestones are released and every in-scope feature is either PASS or explicitly deferred with truthful non-release status. It is not complete merely because Milestone A ships.
+
+### 11.2 Candidate sequence
+
+Each milestone uses:
+
+```text
+current surface evidence
+-> product/visual contract freeze
+-> acceptance schema/control freeze
 -> Producer
 -> self-QA
 -> candidate freeze
@@ -991,15 +1037,54 @@ Product/contract freeze
 
 Do not release from a local-only commit that independent reviewers cannot fetch.
 
-Do not merge merely to make a candidate reviewable; push the review branch first.
+Do not merge merely to make a candidate reviewable; push the immutable review branch first.
 
 ---
 
-## 12. Definition of Mica V1 product-system completion
+## 12. Legacy cleanup and single-authority migration
 
-The product system is complete only when:
+The rebuild must not leave two product shells or parallel validation systems enabled.
+
+Every legacy class receives one disposition:
 
 ```text
+KEEP_AND_MIGRATE
+KEEP_AS_HISTORICAL_EVIDENCE
+ARCHIVE
+REMOVE
+SUPERSEDE
+```
+
+Minimum migration table:
+
+| Legacy class | Required disposition |
+|---|---|
+| broad Surface Atlas runtime/UI entry | REMOVE from normal runtime; historical capture data may be KEEP_AS_HISTORICAL_EVIDENCE |
+| Atlas scripts/contracts that uniquely preserve old failure evidence | KEEP_AS_HISTORICAL_EVIDENCE or ARCHIVE; not current compatibility authority |
+| old popup diagnostics grid | REMOVE/SUPERSEDE |
+| persistent status dot/overlay | REMOVE unless a later frozen design proves a real user job |
+| old recovery modules | KEEP_AND_MIGRATE only if folded into one Reliability state contract; otherwise REMOVE |
+| feature-owned ChatGPT selectors | REMOVE after adapter migration |
+| synthetic fixtures that reproduce real failures | KEEP_AND_MIGRATE into the canonical acceptance harness |
+| fixtures that only self-certify obsolete architecture | ARCHIVE or REMOVE |
+| old Goals | SUPERSEDE, historical only |
+| old release packages | KEEP_AS_HISTORICAL_EVIDENCE, never current candidate |
+| old PRs/branches | close/archive only after source-of-truth audit and preservation of unique work |
+| stale README/ROADMAP claims | SUPERSEDE by current product truth |
+
+The final acceptance harness checks that removed legacy entrypoints are not simultaneously active in the runtime/build.
+
+Task-local historical rules that contradict the 2026-10-12 frozen Goal are superseded only where the final Goal explicitly says so. Privacy, destructive-action, credential, external-mutation and platform safety boundaries remain durable.
+
+---
+
+## 13. Definition of Milestone A product-system completion
+
+Milestone A is complete only when:
+
+```text
+CURRENT_CHATGPT_EVIDENCE = PASS
+UI_DESIGN_FREEZE = PASS
 NORMAL_POPUP_IS_PRODUCT_UI = PASS
 TROUBLESHOOTING_IS_BOUNDED = PASS
 DEVELOPER_QA_SEPARATE = PASS
@@ -1007,10 +1092,48 @@ CHATGPT_ADAPTER_SINGLE_AUTHORITY = PASS
 CHATGPT_UI_REFRESH = PASS
 MULTI_VARIANT_COMPATIBILITY = PASS
 UNKNOWN_FAIL_OPEN = PASS
-ANSWER_DOCUMENT_SHARED_MODEL = PASS
+ANSWER_DOCUMENT_CORE_MODEL = PASS
+LOW_MEMORY_FEASIBILITY = PASS
 LOW_MEMORY_TRUNCATION = PASS
+MARKDOWN_COPY = PASS
+RELIABILITY_CORE = PASS
 ACCEPTANCE_HARNESS_SELF_VALIDATES = PASS
+KNOWN_BAD_CONTROL = REJECTED
+KNOWN_GOOD_CONTROL = ACCEPTED
+ACTUAL_SURFACE_REVIEW = PASS
 USER_IS_FIRST_QA = NO
 ```
 
-Highlighter/PDF/Notion may be implemented after this foundation, but they must use it rather than create new parallel DOM, UI, or acceptance systems.
+Highlighter/PDF/Notion are not Milestone A release gates.
+
+---
+
+## 14. Definition of Milestone B completion
+
+Milestone B is complete only when:
+
+```text
+HIGHLIGHTER = PASS
+HIGHLIGHT_AMBIGUITY_FAIL_OPEN = PASS
+HIGHLIGHT_REMOUNT_RESTORE = PASS
+PDF_TEXT_SEARCH_SELECT = PASS
+PROSE_INLINE_MATH_PROSE_POINTER_SELECTION = PASS
+DISPLAY_MATH_SELECTABLE = PASS
+MATH_COPY_RESULT = PASS
+MATH_SEARCHABLE = PASS
+WEB_HIGHLIGHT_CROSS_MATH_TO_PDF = PASS
+ACTUAL_PDF_VIEWER_REVIEW = PASS
+ACCEPTANCE_HARNESS_SELF_VALIDATES = PASS
+KNOWN_BAD_CONTROL = REJECTED
+KNOWN_GOOD_CONTROL = ACCEPTED
+USER_IS_FIRST_QA = NO
+```
+
+If Notion is included in the release:
+
+```text
+NOTION_SERIALIZATION = PASS
+NOTION_REAL_TARGET = PASS
+```
+
+Otherwise it remains hidden/deferred and is not reported as complete.
