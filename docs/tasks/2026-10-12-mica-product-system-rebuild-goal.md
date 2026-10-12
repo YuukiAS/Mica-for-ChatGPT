@@ -377,6 +377,23 @@ npm run chatgpt-ui:refresh
 npm run chatgpt-ui:diff
 ```
 
+每个 capability contract 必须记录：
+
+```text
+capabilityId
+variantId
+requiredInvariants
+observedInvariants
+status = EXACT | COMPATIBLE | UNKNOWN
+evidenceClass
+observedAt
+sourceArtifactHash
+contractHash
+invalidatedBy
+```
+
+Synthetic/local fixture 不能单独把 current ChatGPT capability 提升为 release-authoritative EXACT。一个 capability 漂移只使该 capability 和依赖它的 feature 失效，不得无故拖垮其他已验证能力。
+
 ### verify
 
 - read-only；
@@ -428,6 +445,8 @@ interactiveBlocks = UNKNOWN_NEW_CLASS
 
 ## 9. Build one canonical acceptance harness before migrating features
 
+在 adapter/feature 大规模迁移之前，先冻结 acceptance schema、evidence schema、candidate identity schema、minimum evidence class 和 canonical validator entrypoint。
+
 建立：
 
 ```text
@@ -440,9 +459,9 @@ npm run acceptance:candidate
 
 ### 9.1 Freeze
 
-Validator 必须在 candidate freeze 前完成版本冻结。
+在开发早期冻结验收**路径和证据模式**；validator 实现只有在证明验收器本身存在缺陷时才可修改。
 
-记录：
+进入 authoritative candidate 前必须冻结：
 
 ```text
 CANDIDATE_COMMIT
@@ -451,8 +470,11 @@ VALIDATOR_VERSION
 VALIDATOR_TREE_HASH
 CHATGPT_CONTRACT_HASH
 FIXTURE_SET_HASH
+EVIDENCE_SCHEMA_VERSION
 EVIDENCE_ROOT_HASH
 ```
+
+candidate、validator、threshold、contract、相关 fixture/control 或 evidence schema 任一改变，受影响的旧 PASS 自动失效。
 
 ### 9.2 Controls
 
@@ -485,21 +507,53 @@ KNOWN_GOOD_CONTROL=ACCEPTED
 
 - fixture-specific rejects；
 - hard-coded PASS；
-- candidate 实现期间修改 threshold 让它通过；
+- 根据 fixture 名、expected label 或 control identity 选择不同验证逻辑；
+- 用 Producer 自己写的布尔状态代替测量；
+- candidate freeze 后修改 threshold/validator 让它通过；
 - same Producer process 作为 authoritative validator。
+
+验收器自身必须用同一 production path 拒绝：
+
+- missing/tampered evidence；
+- wrong candidate/dist hash；
+- stale prior report；
+- duplicate screenshot/crop 冒充不同 surface；
+- wrong turn/page/surface target；
+- evidence-root mismatch；
+- low-memory 无额外效果却自称 PASS；
+- PDF 只有 extraction 而没有实际 pointer-selection evidence；
+- stale ChatGPT contract 冒充 current。
+
+同时必须证明一个 known-good control 能通过，避免“永远拒绝”的假严格 validator。
 
 ### 9.3 Fresh rendered/actual-surface reviewer
 
-Validator PASS 后，由 fresh read-only reviewer 看：
+Validator PASS 后，由 fresh read-only reviewer 按每个 gate 的最低 evidence class 检查：
+
+```text
+SYNTHETIC_FIXTURE
+LOCAL_REAL_BROWSER
+CURRENT_CHATGPT_READ_ONLY
+CURRENT_CHATGPT_BOUNDED_ACTION
+TARGET_LOW_MEMORY_DEVICE
+ACTUAL_PDF_VIEWER
+REAL_NOTION_TARGET
+```
+
+至少包括适用的：
 
 - actual extension popup；
 - actual injected surface；
 - light/dark/scale；
-- actual PDF；
+- actual low-memory target；
+- actual PDF viewer；
 - recovery states；
-- current ChatGPT compatibility state。
+- current ChatGPT compatibility state；
+- real Notion target（仅当 Notion 在 release scope）。
 
-不看 Producer“我做完了”的总结。
+无法达到 mandatory evidence class 时报告 `NOT_INDEPENDENTLY_VERIFIED`，不能伪装 PASS，也不能简单把整个验收剧本转给用户。用户若只负责一次登录/OS/physical HUMAN_ONLY 动作，之后验证仍由 reviewer/Codex 完成。
+
+Reviewer 不看 Producer“我做完了”的总结。
 
 ---
 
