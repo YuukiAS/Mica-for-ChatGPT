@@ -1,0 +1,142 @@
+{
+  "passed": true,
+  "firstInstall": {
+    "inputEntries": 1309,
+    "outputEntries": 349,
+    "mappingNodes": 41,
+    "status": {
+      "state": "active",
+      "reason": "windowed",
+      "source": "react-router-stream",
+      "active": true,
+      "keptTurns": 40,
+      "totalTurns": 160,
+      "removedTurns": 120,
+      "keptNodes": 41,
+      "totalNodes": 161,
+      "bytesBefore": 25279,
+      "bytesAfter": 7927,
+      "bytesRemoved": 17352,
+      "recentTurnLimit": 40,
+      "actualTruncation": true,
+      "truncatedRepresentation": "client-history-window",
+      "serverMutation": false,
+      "reactManagedInteractiveNodesDetached": false,
+      "contentUpload": false,
+      "updatedAt": "2026-10-12T11:13:32.195Z"
+    },
+    "siteLocalConfigPresent": false
+  },
+  "forgedPageConfig": {
+    "mappingNodes": 41
+  },
+  "historyControl": {
+    "buttonPresent": true,
+    "label": "Load full history",
+    "mode": "full_history_bypass",
+    "settings": {
+      "enabled": true,
+      "lowMemory": true
+    },
+    "registered": false,
+    "reloads": 1
+  },
+  "fullHistoryBypass": {
+    "mappingNodes": 161,
+    "status": {
+      "state": "full_history_bypass",
+      "reason": "user_requested_full_history",
+      "source": "none",
+      "active": false,
+      "keptTurns": 0,
+      "totalTurns": 0,
+      "removedTurns": 0,
+      "keptNodes": 0,
+      "totalNodes": 0,
+      "bytesBefore": 0,
+      "bytesAfter": 0,
+      "bytesRemoved": 0,
+      "recentTurnLimit": 40,
+      "actualTruncation": false,
+      "truncatedRepresentation": "client-history-window",
+      "serverMutation": false,
+      "reactManagedInteractiveNodesDetached": false,
+      "contentUpload": false,
+      "updatedAt": "2026-10-12T11:13:32.372Z"
+    },
+    "buttonLabel": "Resume Low Memory",
+    "mode": "windowing",
+    "settings": {
+      "enabled": true,
+      "lowMemory": true
+    },
+    "registered": true,
+    "reloads": 1
+  },
+  "unsafeDisable": {
+    "before": {
+      "state": "restore_required",
+      "reason": "disabled_after_windowing",
+      "source": "react-router-stream",
+      "active": false,
+      "keptTurns": 40,
+      "totalTurns": 160,
+      "removedTurns": 120,
+      "keptNodes": 41,
+      "totalNodes": 161,
+      "bytesBefore": 25279,
+      "bytesAfter": 7927,
+      "bytesRemoved": 17352,
+      "recentTurnLimit": 40,
+      "actualTruncation": true,
+      "truncatedRepresentation": "client-history-window",
+      "serverMutation": false,
+      "reactManagedInteractiveNodesDetached": false,
+      "contentUpload": false,
+      "updatedAt": "2026-10-12T11:13:32.599Z"
+    },
+    "controlRetained": true,
+    "buttonLabel": "Restore full history",
+    "mode": "full_history_bypass",
+    "settings": {
+      "enabled": true,
+      "lowMemory": false,
+      "lowMemoryKeepCount": 40,
+      "lowMemoryThreshold": 80
+    },
+    "registered": false,
+    "reloads": 1
+  },
+  "disabled": {
+    "mappingNodes": 161,
+    "status": {
+      "state": "standby",
+      "reason": "status_unavailable",
+      "source": "none",
+      "active": false,
+      "keptTurns": 0,
+      "totalTurns": 0,
+      "removedTurns": 0,
+      "keptNodes": 0,
+      "totalNodes": 0,
+      "bytesBefore": 0,
+      "bytesAfter": 0,
+      "bytesRemoved": 0,
+      "recentTurnLimit": 40,
+      "actualTruncation": false,
+      "truncatedRepresentation": "client-history-window",
+      "serverMutation": false,
+      "reactManagedInteractiveNodesDetached": false,
+      "contentUpload": false,
+      "updatedAt": "2026-10-12T11:13:32.793Z"
+    }
+  },
+  "history": {
+    "scrollUpRestoresOlder": true,
+    "loadFullHistoryPass": true,
+    "reloadRestoresFullHistory": true,
+    "disableRestoresFullHistory": true,
+    "closeOrUninstallRestoresFullHistory": true,
+    "serverHistoryUnchanged": true
+  }
+}

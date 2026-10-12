@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "path": "answer-document.js",
+      "sha256": "848363644a6e580b8935f2dc13ee8689d20c8ce9bdef083b59ab519b7b848e1c"
+    },
+    {
+      "path": "chatgpt-adapter.js",
+      "sha256": "29abd487564bf7ca097ff4530651136b1d8b3ea9598693dd21b5525b4d0f0df1"
+    },
+    {
+      "path": "content.js",
+      "sha256": "5bec0df688a3eff255d64c9ba45f6341fc4fef61b24d00d183a5c7538b40c437"
+    },
+    {
+      "path": "icons/icon128.png",
+      "sha256": "a3170791f4b1b371d3bac9916c66e6baad0d1d6b444b9c7c021f173cf1d64a83"
+    },
+    {
+      "path": "icons/icon16.png",
+      "sha256": "69ca20dd42eefd513adc8ae25a1f1d6bcaf764fecb5ac8d37a6e43f848aeff2d"
+    },
+    {
+      "path": "icons/icon32.png",
+      "sha256": "aac5ea0ac47d6bd08e95b58d75a75817db4f3c8f9926683b7c42b2cfdfd6087e"
+    },
+    {
+      "path": "icons/icon48.png",
+      "sha256": "4190beb19d6e36199f44b893993a880a3e2e0e74894946a4f7b66dccb973bcae"
+    },
+    {
+      "path": "icons/icon512.png",
+      "sha256": "9e8f9ff9e10f20157a8dde785dade1287a58a354f848232241255485a2f777b2"
+    },
+    {
+      "path": "low-memory-background.js",
+      "sha256": "1634c80739d2803cd847af67234b49db7d3ad863171e5873c524db2fb090c9e4"
+    },
+    {
+      "path": "low-memory-config.js",
+      "sha256": "98b1c17c73fc06cc8cb2fe6d325962cebf7bf7650b5c9f500708264f99592857"
+    },
+    {
+      "path": "low-memory-core.js",
+      "sha256": "c4d39acf8db0fc61ab8691393357034d0dc391d94134f608b20a1499124ce941"
+    },
+    {
+      "path": "low-memory-page.js",
+      "sha256": "36bf18b97aab8d5a0ac3e06f4505ec0a5f2578e0ec9958d98de18245984d78bd"
+    },
+    {
+      "path": "manifest.json",
+      "sha256": "64811e9909917f55db8f38f6d7f83b7da9e840922e203e478a7294ce60f6dd9f"
+    },
+    {
+      "path": "popup/index.html",
+      "sha256": "fa9ae2bda6771dd640c914005d1f67c1d6f08418df7a1b60918ee63a4a195a3a"
+    },
+    {
+      "path": "popup/popup.css",
+      "sha256": "8646c829cc21278082d62e65cbe29a94f6a193c722db6caba89ad270848e9ae8"
+    },
+    {
+      "path": "popup/popup.js",
+      "sha256": "be234e93ecad43ca150a39b326ac0d8f421524f88da43a80027329d81d065c69"
+    },
+    {
+      "path": "popup/qa.html",
+      "sha256": "2217f26069064a2d3a255e1a28fcc0404334e312d368f1a8aead5fe19622de65"
+    },
+    {
+      "path": "popup/qa.js",
+      "sha256": "1b1881fc9902a21302066a2b80189751992fc08ea4e9de7c6ca6ab42c58c1f13"
+    },
+    {
+      "path": "popup/troubleshooting.html",
+      "sha256": "e8c212d6f7819e95743866faf02aa75457258ccf620bb78471c11efc841e668c"
+    },
+    {
+      "path": "popup/troubleshooting.js",
+      "sha256": "aa4f393d1ed31da342fa84c7ad6c005d616432c0cd1df82946227cab64219d5f"
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "passed": true,
+  "profiles": [
+    {
+      "name": "short",
+      "totalTurns": 24,
+      "modeApplied": false,
+      "retainedRecentTurns": 24,
+      "mountedBefore": 24,
+      "mountedAfter": 24,
+      "mappingNodesAfter": 25
+    },
+    {
+      "name": "medium",
+      "totalTurns": 72,
+      "modeApplied": false,
+      "retainedRecentTurns": 72,
+      "mountedBefore": 72,
+      "mountedAfter": 72,
+      "mappingNodesAfter": 73
+    },
+    {
+      "name": "long",
+      "totalTurns": 240,
+      "modeApplied": true,
+      "retainedRecentTurns": 40,
+      "mountedBefore": 240,
+      "mountedAfter": 42,
+      "mappingNodesAfter": 47
+    }
+  ],
+  "json": {
+    "changed": true,
+    "bytesBefore": 2208835,
+    "bytesAfter": 385389,
+    "serializedBefore": 2208877,
+    "serializedAfter": 385431,
+    "currentPreserved": true,
+    "structuralRootPreserved": true,
+    "branchPreserved": true,
+    "toolDependencyPreserved": true,
+    "fileAuthMetadataPreserved": true
+  },
+  "turbo": {
+    "action": "replace",
+    "inputEntries": 2176,
+    "outputEntries": 432,
+    "mappingNodes": 47,
+    "currentPreserved": true,
+    "continuationAction": "replace",
+    "continuationIndex": 430,
+    "mappedPromiseIndex": 430,
+    "subsequentInitialAction": "pass",
+    "subsequentInitialReason": "below_threshold",
+    "subsequentInitialPreserved": true
+  },
+  "failOpen": {
+    "malformedChanged": false,
+    "malformedReason": "graph_invalid",
+    "malformedUnchanged": true,
+    "unknownChanged": false,
+    "unknownReason": "shape_unrecognized",
+    "unknownUnchanged": true,
+    "disconnectedChanged": false,
+    "disconnectedUnchanged": true,
+    "unknownRoleChanged": false,
+    "unknownRoleUnchanged": true,
+    "unknownContentChanged": false,
+    "unknownContentUnchanged": true
+  },
+  "supportedStructures": {
+    "changed": true,
+    "currentPreserved": true,
+    "streamingInProgress": true,
+    "multimodalFileAuthConnectorPlugin": true
+  },
+  "turboFailOpen": [
+    {
+      "action": "pass",
+      "unchanged": true,
+      "reason": "graph_invalid"
+    },
+    {
+      "action": "pass",
+      "unchanged": true,
+      "reason": "structure_unrecognized"
+    },
+    {
+      "action": "pass",
+      "unchanged": true,
+      "reason": "structure_unrecognized"
+    }
+  ],
+  "pressureFixture": {
+    "memoryLimitMb": 256,
+    "payloadMb": 1.875,
+    "turns": 240
+  }
+}
