@@ -36,18 +36,10 @@ const manifest = {
       128: "icons/icon128.png"
     }
   },
-  permissions: ["storage", "activeTab"],
+  permissions: ["storage", "activeTab", "scripting"],
   host_permissions: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+  background: { service_worker: "low-memory-background.js" },
   content_scripts: [
-    {
-      matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
-      js: [
-        "low-memory-core.js",
-        "low-memory-page.js"
-      ],
-      run_at: "document_start",
-      world: "MAIN"
-    },
     {
       matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
       js: ["low-memory-config.js"],
@@ -83,6 +75,7 @@ const answerDocument = render(await readFile(path.join(srcDir, "core", "answer-d
 const lowMemoryCore = render(await readFile(path.join(srcDir, "low-memory", "low-memory-core.ts"), "utf8"));
 const lowMemoryPage = render(await readFile(path.join(srcDir, "low-memory", "low-memory-page.ts"), "utf8"));
 const lowMemoryConfig = render(await readFile(path.join(srcDir, "low-memory", "low-memory-config.ts"), "utf8"));
+const lowMemoryBackground = render(await readFile(path.join(srcDir, "low-memory", "low-memory-background.ts"), "utf8"));
 const popup = render(await readFile(path.join(popupDir, "popup.ts"), "utf8"));
 const troubleshooting = render(await readFile(path.join(popupDir, "troubleshooting.ts"), "utf8"));
 const qa = render(await readFile(path.join(popupDir, "qa.ts"), "utf8"));
@@ -93,6 +86,7 @@ await writeFile(path.join(outDir, "answer-document.js"), answerDocument);
 await writeFile(path.join(outDir, "low-memory-core.js"), lowMemoryCore);
 await writeFile(path.join(outDir, "low-memory-page.js"), lowMemoryPage);
 await writeFile(path.join(outDir, "low-memory-config.js"), lowMemoryConfig);
+await writeFile(path.join(outDir, "low-memory-background.js"), lowMemoryBackground);
 await writeFile(path.join(outDir, "content.js"), content);
 await writeFile(path.join(outDir, "popup", "popup.js"), popup);
 await writeFile(path.join(outDir, "popup", "troubleshooting.js"), troubleshooting);

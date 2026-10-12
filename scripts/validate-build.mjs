@@ -17,11 +17,12 @@ assert(manifest.action?.default_popup === "popup/index.html", "action.default_po
 assert(manifest.action?.default_title === "Mica", "action.default_title missing");
 assert(manifest.permissions?.includes("storage"), "storage permission missing");
 assert(manifest.permissions?.includes("activeTab"), "activeTab permission missing");
+assert(manifest.permissions?.includes("scripting"), "scripting permission missing");
 assert(!manifest.host_permissions?.some((host) => !/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(host)), "unexpected host permission");
-assert(JSON.stringify(manifest.content_scripts?.[0]?.js) === JSON.stringify(["low-memory-core.js", "low-memory-page.js"]), "Low Memory MAIN-world script order drifted");
-assert(manifest.content_scripts?.[0]?.run_at === "document_start" && manifest.content_scripts?.[0]?.world === "MAIN", "Low Memory data interceptor must run in MAIN world at document_start");
-assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["low-memory-config.js"]) && manifest.content_scripts?.[1]?.run_at === "document_start", "Low Memory config bridge order drifted");
-assert(JSON.stringify(manifest.content_scripts?.[2]?.js) === JSON.stringify(["chatgpt-adapter.js", "answer-document.js", "content.js"]), "foundation content-script order drifted");
+assert(manifest.background?.service_worker === "low-memory-background.js", "Low Memory registration service worker missing");
+assert(JSON.stringify(manifest.content_scripts?.[0]?.js) === JSON.stringify(["low-memory-config.js"]) && manifest.content_scripts?.[0]?.run_at === "document_start", "Low Memory config bridge order drifted");
+assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["chatgpt-adapter.js", "answer-document.js", "content.js"]), "foundation content-script order drifted");
+assert(!manifest.content_scripts.some((entry) => entry.world === "MAIN"), "Low Memory MAIN scripts must be extension-controlled dynamic registrations");
 
 for (const size of [16, 32, 48, 128]) {
   assert(manifest.icons?.[size] === `icons/icon${size}.png`, `manifest icon${size} missing`);
@@ -40,12 +41,13 @@ const content = await readFile(path.join(distDir, "content.js"), "utf8");
 const lowMemoryCore = await readFile(path.join(distDir, "low-memory-core.js"), "utf8");
 const lowMemoryPage = await readFile(path.join(distDir, "low-memory-page.js"), "utf8");
 const lowMemoryConfig = await readFile(path.join(distDir, "low-memory-config.js"), "utf8");
+const lowMemoryBackground = await readFile(path.join(distDir, "low-memory-background.js"), "utf8");
 const popup = await readFile(path.join(distDir, "popup", "popup.js"), "utf8");
 const troubleshooting = await readFile(path.join(distDir, "popup", "troubleshooting.js"), "utf8");
 const qa = await readFile(path.join(distDir, "popup", "qa.js"), "utf8");
 
 for (const text of [adapter, content]) assert(text.includes(contractHash), "built current ChatGPT contract hash drifted");
-for (const text of [adapter, answerDocument, lowMemoryCore, lowMemoryPage, lowMemoryConfig, content, popup, troubleshooting, qa]) {
+for (const text of [adapter, answerDocument, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, troubleshooting, qa]) {
   assert(!/__MICA_(?:VERSION|VERSION_NAME|BUILD_LABEL|CHATGPT_CONTRACT_HASH|DEV_BUILD)__/.test(text), "unresolved build placeholder remains");
   new Function(text);
 }
@@ -89,13 +91,16 @@ for (const token of ["windowTurboStreamChunk", "windowJsonPayload", "client-hist
 for (const token of ["__reactRouterContext", "streamController", "conversation-json", "serverMutation: false"]) {
   assert(lowMemoryPage.includes(token), `Low Memory page interceptor missing ${token}`);
 }
-for (const token of ["mica.lowMemory.config.v2", "mica.lowMemory.bypass.v2", "requestFullHistory"]) {
+for (const token of ["MICA_LOW_MEMORY_SYNC", "MICA_LOW_MEMORY_GET_TAB_MODE", "MICA_LOW_MEMORY_PREPARE_FULL_HISTORY", "MICA_LOW_MEMORY_RESUME_WINDOWING"]) {
   assert(lowMemoryConfig.includes(token), `Low Memory config bridge missing ${token}`);
+}
+for (const token of ["chrome.scripting.registerContentScripts", "world: \"MAIN\"", "persistAcrossSessions: true", "full_history_bypass"]) {
+  assert(lowMemoryBackground.includes(token), `Low Memory background controller missing ${token}`);
 }
 
 const reportBody = extractFunctionBody(content, "buildSanitizedQaReport");
 assert(!/innerText|textContent|innerHTML|outerHTML/.test(reportBody), "sanitized QA report must not read conversation text/HTML");
-for (const text of [content, lowMemoryCore, lowMemoryPage, lowMemoryConfig]) {
+for (const text of [content, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground]) {
   assert(!/addEventListener\(["'](?:beforeinput|input|keydown|compositionstart|compositionupdate|compositionend)/.test(text), "runtime added a typing hot-path listener");
 }
 

@@ -30,6 +30,8 @@ const matrix = [];
 const screenshotPlans = [
   { state: "exact", width: 368, scale: 1, colorScheme: "light" },
   { state: "exact", lowMemoryMode: "active", width: 368, scale: 1, colorScheme: "light" },
+  { state: "exact", lowMemoryMode: "restore_required", width: 368, scale: 1, colorScheme: "light" },
+  { state: "exact", lowMemoryMode: "full_history_bypass", width: 368, scale: 1, colorScheme: "dark" },
   { state: "unknown", width: 368, scale: 1, colorScheme: "dark" },
   { state: "compatible", width: 320, scale: 1.5, colorScheme: "light" },
   { state: "contentUnavailable", width: 400, scale: 1.25, colorScheme: "dark" }
@@ -55,7 +57,7 @@ try {
 
   const screenshots = [];
   for (const plan of screenshotPlans) screenshots.push(await renderPopup({ ...plan, screenshot: true }));
-  assert(screenshots[0].screenshotSha256 !== screenshots[2].screenshotSha256, "light/dark screenshots are duplicate artifacts");
+  assert(screenshots[0].screenshotSha256 !== screenshots.find((item) => item.colorScheme === "dark")?.screenshotSha256, "light/dark screenshots are duplicate artifacts");
   assert(screenshots[0].screenshotSha256 !== screenshots[1].screenshotSha256, "standby and active Low Memory screenshots are duplicate artifacts");
   const activeLowMemory = screenshots.find((item) => item.lowMemoryMode === "active");
   assert(activeLowMemory?.historyActionVisible, "active Low Memory state did not expose full-history recovery");
@@ -63,6 +65,10 @@ try {
   const standbyExact = matrix.find((item) => item.state === "exact");
   assert(!standbyExact?.keyboard.sampledFocus.includes("load-full-history"), "hidden full-history recovery remained keyboard-focusable");
   assert(activeLowMemory?.keyboard.sampledFocus.includes("load-full-history"), "active full-history recovery was not keyboard-focusable");
+  const restoreRequired = screenshots.find((item) => item.lowMemoryMode === "restore_required");
+  const fullHistoryBypass = screenshots.find((item) => item.lowMemoryMode === "full_history_bypass");
+  assert(restoreRequired?.historyActionVisible && restoreRequired?.lowMemoryState === "Reload to restore", "restore-required surface did not expose truthful recovery");
+  assert(fullHistoryBypass?.historyActionVisible && fullHistoryBypass?.lowMemoryState === "Full history loaded", "full-history bypass surface did not expose resume state");
 
   const support = await inspectSecondaryView(troubleshootingPath, ["Troubleshooting", "Run self-check", "Export diagnostic bundle"]);
   const qa = await inspectSecondaryView(qaPath, ["Developer QA", "Refresh compatibility", "Run focused checks", "Export sanitized evidence"]);
@@ -131,7 +137,7 @@ async function renderPopup({ state, lowMemoryMode = "standby", width, scale, col
   assert(errors.length === 0, `popup ${state} produced page errors: ${errors.join(" | ")}`);
 
   if (screenshot) {
-    const filename = `${state}${lowMemoryMode === "active" ? "-low-memory-active" : ""}-${colorScheme}-${width}-${Math.round(scale * 100)}.png`;
+    const filename = `${state}${lowMemoryMode === "standby" ? "" : `-low-memory-${lowMemoryMode.replaceAll("_", "-")}`}-${colorScheme}-${width}-${Math.round(scale * 100)}.png`;
     const screenshotPath = path.join(evidenceDir, filename);
     await page.locator("main").screenshot({ path: screenshotPath });
     result.screenshotPath = path.relative(root, screenshotPath).replaceAll("\\", "/");
@@ -218,7 +224,12 @@ async function installChromeStub(context) {
         query: (_query, callback) => callback([{ id: 1 }]),
         sendMessage: (_id, message, callback) => {
           if (message.type === "MICA_QA_EXPORT") callback({ report });
-          else callback({ settings: { enabled: requestedState !== "disabled", lowMemory: true, lowMemoryKeepCount: 40 }, status: { state: runtimeState, lowMemory: lowMemoryMode === "active" ? { state: "active", active: true, actualTruncation: true, keptTurns: 40, removedTurns: 120 } : { state: "standby", active: false, actualTruncation: false } } });
+          else {
+            const lowMemoryStatus = lowMemoryMode === "active"
+              ? { state: "active", active: true, actualTruncation: true, keptTurns: 40, removedTurns: 120 }
+              : { state: lowMemoryMode, active: false, actualTruncation: false };
+            callback({ settings: { enabled: requestedState !== "disabled", lowMemory: true, lowMemoryKeepCount: 40 }, status: { state: runtimeState, lowMemory: lowMemoryStatus } });
+          }
         }
       }
     };

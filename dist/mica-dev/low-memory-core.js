@@ -3,6 +3,13 @@
   const DEFAULT_THRESHOLD = 80;
   const MAX_GRAPH_NODES = 20000;
   const HIDDEN_CONTENT_TYPES = new Set(["model_editable_context"]);
+  const SUPPORTED_ROLES = new Set(["system", "user", "assistant", "tool"]);
+  const SUPPORTED_CONTENT_TYPES = new Set([
+    "text", "multimodal_text", "code", "execution_output", "model_editable_context",
+    "tether_browsing_display", "tether_quote", "computer_initialize_state", "computer_output",
+    "reasoning_recap", "thoughts", "audio_transcription", "image_asset_pointer"
+  ]);
+  const SUPPORTED_MESSAGE_STATUS = new Set(["finished_successfully", "in_progress"]);
 
   function windowJsonPayload(payload, options = {}) {
     const candidates = findConversationCandidates(payload);
@@ -85,6 +92,8 @@
     }
     const adapter = {
       getNode: (id) => entries.get(id)?.node || null,
+      entries: () => entries.keys(),
+      getId: (node) => readFlatStringProperty(node, "id", flat),
       getParent: (node) => readFlatStringProperty(node, "parent", flat),
       getChildren: (node) => readFlatStringArrayProperty(node, "children", flat),
       getRole: (node) => {
@@ -96,7 +105,10 @@
         const message = readFlatObjectProperty(node, "message", flat);
         const content = readFlatObjectProperty(message, "content", flat);
         return readFlatStringProperty(content, "content_type", flat);
-      }
+      },
+      getMessage: (node) => readFlatObjectProperty(node, "message", flat),
+      getStatus: (node) => readFlatStringProperty(readFlatObjectProperty(node, "message", flat), "status", flat),
+      getEndTurn: (node) => readFlatScalarProperty(readFlatObjectProperty(node, "message", flat), "end_turn", flat)
     };
     const analysis = analyzeGraph(entries.size, currentNode, adapter, options);
     if (!analysis.ok) return unchanged(analysis.reason, analysis.meta);
@@ -131,10 +143,15 @@
   function analyzeMapping(mapping, currentNode, options) {
     const adapter = {
       getNode: (id) => mapping[id] || null,
+      entries: () => Object.keys(mapping),
+      getId: (node) => node?.id,
       getParent: (node) => node?.parent,
       getChildren: (node) => node?.children,
       getRole: (node) => node?.message?.author?.role,
-      getContentType: (node) => node?.message?.content?.content_type
+      getContentType: (node) => node?.message?.content?.content_type,
+      getMessage: (node) => node?.message,
+      getStatus: (node) => node?.message?.status,
+      getEndTurn: (node) => node?.message?.end_turn
     };
     const result = analyzeGraph(Object.keys(mapping).length, currentNode, adapter, options);
     return { ...result, originalMapping: mapping };
@@ -144,6 +161,8 @@
     const keepCount = clamp(options.keepCount ?? DEFAULT_KEEP_COUNT, 8, 120);
     const threshold = Math.max(keepCount + 2, clamp(options.threshold ?? DEFAULT_THRESHOLD, keepCount + 2, 500));
     if (!Number.isInteger(totalNodes) || totalNodes < 1 || totalNodes > MAX_GRAPH_NODES) return { ok: false, reason: "graph_invalid" };
+    const validated = validateWholeGraph(totalNodes, currentNode, adapter);
+    if (!validated.ok) return validated;
     const reversePath = [];
     const visited = new Set();
     let cursor = currentNode;
@@ -211,6 +230,49 @@
       retainedIds,
       meta: { ...baseMeta, retainedRecentTurns: keepCount, visibleKept, keptNodes: retainedIds.size, removedNodes: totalNodes - retainedIds.size }
     };
+  }
+
+  function validateWholeGraph(totalNodes, currentNode, adapter) {
+    if (typeof currentNode !== "string" || !adapter.getNode(currentNode)) return { ok: false, reason: "graph_invalid" };
+    const ids = [...adapter.entries()];
+    if (ids.length !== totalNodes || new Set(ids).size !== totalNodes) return { ok: false, reason: "graph_invalid" };
+    const roots = [];
+    for (const id of ids) {
+      const node = adapter.getNode(id);
+      if (!isRecord(node) || adapter.getId(node) !== id) return { ok: false, reason: "graph_invalid" };
+      const parent = adapter.getParent(node);
+      const children = adapter.getChildren(node);
+      if (!Array.isArray(children) || new Set(children).size !== children.length) return { ok: false, reason: "graph_invalid" };
+      if (parent == null) roots.push(id);
+      else if (typeof parent !== "string" || !adapter.getNode(parent)) return { ok: false, reason: "graph_invalid" };
+      for (const childId of children) {
+        const child = adapter.getNode(childId);
+        if (typeof childId !== "string" || !child || adapter.getParent(child) !== id) return { ok: false, reason: "graph_invalid" };
+      }
+      const message = adapter.getMessage(node);
+      if (message == null) {
+        if (parent != null) return { ok: false, reason: "structure_unrecognized" };
+        continue;
+      }
+      if (!isRecord(message)) return { ok: false, reason: "structure_unrecognized" };
+      if (!SUPPORTED_ROLES.has(adapter.getRole(node)) || !SUPPORTED_CONTENT_TYPES.has(adapter.getContentType(node))) {
+        return { ok: false, reason: "structure_unrecognized" };
+      }
+      const status = adapter.getStatus(node);
+      if (status != null && !SUPPORTED_MESSAGE_STATUS.has(status)) return { ok: false, reason: "structure_unrecognized" };
+      const endTurn = adapter.getEndTurn(node);
+      if (endTurn != null && typeof endTurn !== "boolean") return { ok: false, reason: "structure_unrecognized" };
+    }
+    if (roots.length !== 1) return { ok: false, reason: "graph_invalid" };
+    const reached = new Set();
+    const stack = [roots[0]];
+    while (stack.length) {
+      const id = stack.pop();
+      if (reached.has(id)) return { ok: false, reason: "graph_invalid" };
+      reached.add(id);
+      for (const child of adapter.getChildren(adapter.getNode(id))) stack.push(child);
+    }
+    return reached.size === totalNodes ? { ok: true } : { ok: false, reason: "graph_invalid" };
   }
 
   function compactFlatGraph(flat) {
@@ -312,6 +374,11 @@
     if (!Array.isArray(value)) return null;
     const strings = value.map((item) => dereference(item, flat));
     return strings.every((item) => typeof item === "string") ? strings : null;
+  }
+
+  function readFlatScalarProperty(owner, name, flat) {
+    const prop = findFlatProperty(owner, name, flat);
+    return prop ? dereference(prop.value, flat) : undefined;
   }
 
   function isVisible(node, adapter) {

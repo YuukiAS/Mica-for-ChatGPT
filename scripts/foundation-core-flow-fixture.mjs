@@ -18,12 +18,15 @@ try {
   page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
   await page.addInitScript(() => {
     globalThis.chrome = {
-      runtime: { lastError: null, onMessage: { addListener: () => {} } },
+      runtime: {
+        lastError: null,
+        onMessage: { addListener: () => {} },
+        sendMessage: (message, callback) => callback?.(message.type === "MICA_LOW_MEMORY_GET_TAB_MODE" ? { ok: true, mode: "windowing" } : { ok: true, registered: true })
+      },
       storage: { local: { get: (_keys, callback) => callback({ enabled: true }), set: (_value, callback) => callback?.() } }
     };
   });
   await page.goto(pathToFileURL(fixturePath).href, { waitUntil: "load" });
-  await page.evaluate(() => localStorage.setItem("mica.lowMemory.config.v2", JSON.stringify({ enabled: true, keepCount: 40, threshold: 80, updatedAt: Date.now() })));
   for (const script of ["low-memory-core.js", "low-memory-page.js"]) {
     await page.addScriptTag({ path: path.join(distDir, script) });
   }
@@ -33,7 +36,14 @@ try {
     for (let index = 1; index <= 120; index += 1) {
       const id = `flow-turn-${index}`;
       mapping[parent].children.push(id);
-      mapping[id] = { id, parent, children: [], message: { author: { role: index % 2 ? "user" : "assistant" }, content: { content_type: "text", parts: ["flow"] }, metadata: {} } };
+      const role = index === 110 ? "tool" : index % 2 ? "user" : "assistant";
+      const contentType = index === 110 ? "execution_output" : index === 112 ? "multimodal_text" : "text";
+      mapping[id] = { id, parent, children: [], message: {
+        author: { role },
+        content: { content_type: contentType, parts: index === 112 ? [{ content_type: "image_asset_pointer", asset_pointer: "fixture" }, "flow"] : ["flow"] },
+        metadata: index === 112 ? { connector_id: "fixture", plugin_ids: ["fixture"], attachments: [{ id: "file-fixture" }], auth: { required: true } } : {},
+        ...(index === 120 ? { status: "in_progress", end_turn: false } : {})
+      } };
       parent = id;
     }
     const flat = [];
@@ -41,7 +51,7 @@ try {
     const seen = new Map();
     encode({ loaderData: { route: { serverResponse: { data: { mapping, current_node: parent, root: "root" } } } } }, 0);
     globalThis.__reactRouterContext = {};
-    globalThis.__reactRouterContext.streamController = { enqueue: () => {} };
+    globalThis.__reactRouterContext.streamController = { enqueue: (chunk) => { globalThis.__flowWindowedChunk = chunk; } };
     globalThis.__reactRouterContext.streamController.enqueue(JSON.stringify(flat));
 
     function encode(value, forcedIndex = null) {
@@ -62,7 +72,7 @@ try {
       const index = flat.length; flat.push(value); strings.set(value, index); return index;
     }
   });
-  for (const script of ["chatgpt-adapter.js", "answer-document.js", "content.js"]) {
+  for (const script of ["low-memory-config.js", "chatgpt-adapter.js", "answer-document.js", "content.js"]) {
     await page.addScriptTag({ path: path.join(distDir, script) });
   }
   await page.waitForFunction(() => !!globalThis.__MICA_FOUNDATION_TEST__);
@@ -107,6 +117,8 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 180));
     const finalTurns = adapter.listTurns(document);
     const report = runtime.buildSanitizedQaReport();
+    const windowed = decodeTurbo(JSON.parse(globalThis.__flowWindowedChunk)).loaderData.route.serverResponse.data;
+    const windowedNodes = Object.values(windowed.mapping);
     return {
       inputEvents,
       counters: { ...globalThis.foundationFlowFixture.counters },
@@ -120,8 +132,25 @@ try {
       editedVersion,
       status: adapter.inspect(document).status,
       lowMemory: runtime.getLowMemoryStatus(),
+      windowedGraphFlows: {
+        tool: windowedNodes.some((node) => node.message?.author?.role === "tool" && node.message?.content?.content_type === "execution_output"),
+        fileAuthConnectorPlugin: windowedNodes.some((node) => node.message?.metadata?.auth?.required === true && node.message?.metadata?.connector_id === "fixture" && node.message?.metadata?.plugin_ids?.[0] === "fixture"),
+        multimodal: windowedNodes.some((node) => node.message?.content?.content_type === "multimodal_text"),
+        streamingContinuation: windowed.mapping[windowed.current_node]?.message?.status === "in_progress" && windowed.mapping[windowed.current_node]?.message?.end_turn === false
+      },
       report
     };
+
+    function decodeTurbo(flat) {
+      const cache = new Map(); return decode(0);
+      function decode(index) {
+        if (cache.has(index)) return cache.get(index);
+        const value = flat[index];
+        if (Array.isArray(value)) { const array = []; cache.set(index, array); for (const item of value) array.push(Number.isInteger(item) && item >= 0 ? decode(item) : item); return array; }
+        if (value && typeof value === "object") { const object = {}; cache.set(index, object); for (const [key, item] of Object.entries(value)) object[flat[Number(key.slice(1))]] = Number.isInteger(item) && item >= 0 ? decode(item) : item; return object; }
+        return value;
+      }
+    }
   });
 
   assert(errors.length === 0, `core-flow page errors: ${errors.join(" | ")}`);
@@ -135,6 +164,7 @@ try {
   assert(result.initialVersion !== result.editedVersion, "edit did not reconcile AnswerDocument source version");
   assert(result.status === "EXACT", "core-flow fixture no longer matches the adapter contract");
   assert(result.lowMemory.active === true && result.lowMemory.actualTruncation === true, "core-flow fixture did not run with active Low Memory windowing");
+  assert(Object.values(result.windowedGraphFlows).every(Boolean), "windowed graph did not preserve tool/file/auth/connector/plugin/multimodal/streaming structures");
   assert(result.report.privacy.conversationTextIncluded === false && result.report.privacy.rawDomIncluded === false, "core-flow QA report privacy drifted");
 
   const output = {
@@ -143,10 +173,10 @@ try {
     coreFlows: {
       composer: result.composerPresent,
       send: result.counters.sends === 1,
-      streaming: result.streamingDurable === false && result.settledDurable === true,
+      streaming: result.streamingDurable === false && result.settledDurable === true && result.windowedGraphFlows.streamingContinuation,
       editBranch: result.initialVersion !== result.editedVersion && result.finalTurnCount === 5,
-      connector: result.counters.connectorSelections === 1 && result.connectorChooserVisible,
-      toolFileAuth: result.counters.fileClicks === 1 && result.counters.toolClicks === 1 && result.counters.authClicks === 1,
+      connector: result.counters.connectorSelections === 1 && result.connectorChooserVisible && result.windowedGraphFlows.fileAuthConnectorPlugin,
+      toolFileAuth: result.counters.fileClicks === 1 && result.counters.toolClicks === 1 && result.counters.authClicks === 1 && result.windowedGraphFlows.tool && result.windowedGraphFlows.multimodal,
       typingImeHotPath: result.inputEvents.length === 6 && result.inputEvents.every((event) => !event.defaultPrevented)
     },
     sendLifecycle: {

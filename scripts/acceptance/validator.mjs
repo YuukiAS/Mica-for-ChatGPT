@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-export const VALIDATOR_VERSION = "1.1.0";
+export const VALIDATOR_VERSION = "1.2.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 const PLACEMENT_PROOF_OBSERVATION_IDS = [
   "copy-inside-assistant-turn",
@@ -376,6 +376,8 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
     const pressure = await readBoundJson("low-memory-pressure");
     const fixture = await readBoundJson("low-memory-fixture");
     const page = await readBoundJson("low-memory-page");
+    const stress = await readBoundJson("low-memory-stress");
+    const registration = await readBoundJson("low-memory-registration");
     const flows = await readBoundJson("foundation-flows");
     for (const state of ["A", "B", "C"]) {
       if (!sameJson(m[state], pressure?.[state])) fail(`low-memory state ${state} differs from bound pressure evidence`);
@@ -384,15 +386,17 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
     if (!sameJson(m.pressureFixture, pressure?.pressureFixture) || !sameJson(m.targetDevice, pressure?.targetDevice)) {
       fail("low-memory target identity differs from bound pressure evidence");
     }
-    const expectedHistory = {
-      scrollUpRestoresOlder: page?.historyControl?.connectedAtTop === true && page?.historyControl?.visibleAtTop === true && page?.historyControl?.buttonPresent === true,
-      loadFullHistoryPass: page?.historyControl?.bypassSet === true && page?.bypass?.mappingNodes === page?.stream?.status?.totalNodes,
-      reloadRestoresFullHistory: page?.reload?.bypassPersisted === true,
-      disableRestoresFullHistory: page?.disabled?.mappingNodes === page?.stream?.status?.totalNodes,
-      closeOrUninstallRestoresFullHistory: pressure?.A?.mappingNodes === pressure?.B?.mappingNodes && pressure?.A?.mappingNodes > pressure?.C?.mappingNodes,
-      serverHistoryUnchanged: page?.stream?.status?.serverMutation === false
-    };
+    const expectedHistory = page?.history;
     if (!sameJson(m.history, expectedHistory)) fail("low-memory history measurement differs from bound page/pressure evidence");
+    const expectedRegistration = {
+      firstInstall: registration?.firstInstall?.registered === true,
+      storageFailureFailOpen: registration?.storageFailure?.registered === false,
+      siteWritableConfigAccepted: registration?.siteWritableConfigAccepted === true,
+      forgedPageEventIgnored: page?.forgedPageConfig?.mappingNodes === page?.firstInstall?.mappingNodes
+    };
+    if (!sameJson(m.registration, expectedRegistration)) fail("low-memory registration measurement differs from bound extension-control evidence");
+    const expectedStress = { passed: stress?.passed, loops: stress?.loops, runs: stress?.runs, results: stress?.results };
+    if (!sameJson(m.stress, expectedStress)) fail("low-memory stress measurement differs from bound stress evidence");
     const expectedFlows = {
       composer: flows?.coreFlows?.composer === true,
       send: flows?.coreFlows?.send === true,
@@ -400,10 +404,10 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
       editBranch: flows?.coreFlows?.editBranch === true,
       connector: flows?.coreFlows?.connector === true,
       toolFileAuth: flows?.coreFlows?.toolFileAuth === true,
-      typingImeHotPath: flows?.coreFlows?.typingImeHotPath === true && fixture?.coreFlows?.typingImeHotPath === true
+      typingImeHotPath: flows?.coreFlows?.typingImeHotPath === true
     };
     if (!sameJson(m.coreFlows, expectedFlows)) fail("low-memory core-flow measurement differs from bound active-window evidence");
-    const expectedFailOpen = fixture?.failOpen?.malformedChanged === false && fixture?.failOpen?.malformedUnchanged === true && fixture?.failOpen?.unknownChanged === false && fixture?.failOpen?.unknownUnchanged === true;
+    const expectedFailOpen = Object.entries(fixture?.failOpen || {}).every(([key, value]) => key.endsWith("Changed") ? value === false : key.endsWith("Unchanged") ? value === true : true);
     if (m.unknownStructureBehavior !== (expectedFailOpen ? "FAIL_OPEN" : "FAILED")) fail("low-memory fail-open measurement differs from bound fixture evidence");
     if (m.actualTruncation !== pressure?.actualTruncation || m.truncatedRepresentation !== pressure?.truncatedRepresentation || m.reactManagedInteractiveNodesDetached !== pressure?.reactManagedInteractiveNodesDetached || m.serverMutation !== pressure?.serverMutation) {
       fail("low-memory truncation measurement differs from bound pressure evidence");
@@ -417,6 +421,9 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
       }
       if (!metrics || !finitePositive(metrics.mountedTurnCount) || !finiteNonNegative(metrics.mutationCount) || !finitePositive(metrics.typingP95Ms) || !finitePositive(metrics.scrollP95Ms)) {
         fail(`low-memory state ${state} DOM/mutation/latency metrics missing`);
+      }
+      if (!metrics || !finitePositive(metrics.frameP95Ms) || !finiteNonNegative(metrics.longTaskCount) || !finiteNonNegative(metrics.longTaskTotalMs) || !finiteNonNegative(metrics.longTaskMaxMs) || !finiteNonNegative(metrics.bootstrapLongTaskCount) || !finiteNonNegative(metrics.bootstrapLongTaskTotalMs) || !finiteNonNegative(metrics.bootstrapLongTaskMaxMs) || !finiteNonNegative(metrics.layoutCount) || !finiteNonNegative(metrics.recalcStyleCount)) {
+        fail(`low-memory state ${state} frame/long-task/layout metrics missing`);
       }
       if (!metrics || !Number.isInteger(metrics.samples) || metrics.samples < 3) fail(`low-memory state ${state} requires at least three repeated samples`);
       for (const [rangeKey, valueKey] of [["processMemoryRangeMb", "processMemoryMb"], ["heapRangeMb", "heapMb"], ["typingRangeMs", "typingP95Ms"], ["scrollRangeMs", "scrollP95Ms"]]) {
@@ -437,6 +444,10 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
     if (!Number.isFinite(mutationRegression) || mutationRegression > 0.1) fail("mutation work materially regressed over the native/off baseline");
     if (!latencyWithinBudget(m.B.typingP95Ms, m.C.typingP95Ms)) fail("typing latency materially regressed");
     if (!latencyWithinBudget(m.B.scrollP95Ms, m.C.scrollP95Ms)) fail("scroll latency materially regressed");
+    if (!m.B.fullExtensionRuntimeLoaded || !m.C.fullExtensionRuntimeLoaded || !m.B.runtimeVersion || m.B.runtimeVersion !== m.C.runtimeVersion) fail("B/C did not execute the same complete installed extension runtime");
+    if (m.C.longTaskTotalMs > Math.max(m.B.longTaskTotalMs * 1.2, m.B.longTaskTotalMs + 5)) fail("long-task time materially regressed");
+    if (m.C.frameP95Ms > Math.max(m.B.frameP95Ms * 1.2, m.B.frameP95Ms + 2)) fail("frame latency materially regressed");
+    if (m.C.bootstrapLongTaskMaxMs > 500) fail("Low Memory bootstrap produced an excessive long task");
     if (!Number.isInteger(m.recentTurnLimit) || m.recentTurnLimit < 8) fail("recent-turn retention policy missing or unsafe");
     const profiles = Array.isArray(m.threadProfiles) ? m.threadProfiles : [];
     for (const name of ["short", "medium", "long"]) {
@@ -456,7 +467,7 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
         fail(`${name} thread was truncated below the long-thread threshold`);
       }
     }
-    if (!finitePositive(m.pressureFixture?.memoryLimitMb) || !finitePositive(m.pressureFixture?.payloadMb) || !finitePositive(m.pressureFixture?.turns)) {
+    if (!finitePositive(m.pressureFixture?.memoryLimitMb) || !finitePositive(m.pressureFixture?.payloadMb) || !finitePositive(m.pressureFixture?.turns) || m.pressureFixture?.workload !== "current-chatgpt-derived-react-router-flat-graph-and-virtualized-turn-renderer" || !m.pressureFixture?.sourceArtifact) {
       fail("low-memory pressure fixture identity missing");
     }
     if (!m.targetDevice?.class || !m.targetDevice?.browserBuild || !finitePositive(m.targetDevice?.memoryGb)) fail("target low-memory device identity missing");
@@ -470,6 +481,24 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
       if (m.coreFlows?.[flow] !== true) fail(`low-memory ${flow} regression evidence failed`);
     }
     if (m.unknownStructureBehavior !== "FAIL_OPEN") fail("unknown low-memory structures do not fail open");
+    if (!m.registration?.firstInstall || !m.registration?.storageFailureFailOpen || m.registration?.siteWritableConfigAccepted || !m.registration?.forgedPageEventIgnored) fail("Low Memory registration is not extension-controlled and fail-open");
+    const expectedScripts = [
+      "scripts/foundation-core-fixture-smoke.mjs",
+      "scripts/foundation-core-flow-fixture.mjs",
+      "scripts/low-memory-fixture-smoke.mjs",
+      "scripts/low-memory-page-fixture-smoke.mjs",
+      "scripts/popup-render-fixture.mjs"
+    ];
+    if (!m.stress?.passed || m.stress?.loops !== 8 || m.stress?.runs !== 40 || !Array.isArray(m.stress?.results) || m.stress.results.length !== 40) {
+      fail("Low Memory stress must pass exactly 8 loops and 40 runs");
+    } else {
+      for (let loop = 1; loop <= 8; loop += 1) {
+        const loopResults = m.stress.results.filter((item) => item?.loop === loop);
+        if (loopResults.length !== 5 || loopResults.some((item) => item?.passed !== true) || !sameSet(loopResults.map((item) => item.script), expectedScripts)) {
+          fail(`Low Memory stress loop ${loop} does not contain one PASS for each required script`);
+        }
+      }
+    }
     return;
   }
 

@@ -1,10 +1,9 @@
 (() => {
   const VERSION = "0.3.0";
   const VERSION_NAME = "0.3.0";
-  const BUILD_LABEL = "low-memory-windowing.1";
+  const BUILD_LABEL = "low-memory-windowing.2";
   const CONTRACT_HASH = "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538";
   const DEFAULT_SETTINGS = Object.freeze({ enabled: true, lowMemory: true, lowMemoryKeepCount: 40, lowMemoryThreshold: 80 });
-  const STORAGE_KEYS = Object.keys(DEFAULT_SETTINGS);
   const adapter = globalThis.MicaChatGPTAdapter;
   const answerDocument = globalThis.MicaAnswerDocument;
   let settings = { ...DEFAULT_SETTINGS };
@@ -20,8 +19,11 @@
   initialize();
 
   async function initialize() {
-    settings = { ...DEFAULT_SETTINGS, ...(await readSettings()) };
-    globalThis.MicaLowMemoryConfig?.configure?.(settings);
+    settings = await readSettings();
+    const tabMode = await globalThis.MicaLowMemoryConfig?.getTabMode?.();
+    if (tabMode?.mode === "full_history_bypass") {
+      lowMemoryStatus = { ...defaultLowMemoryStatus("user_requested_full_history"), state: "full_history_bypass" };
+    }
     setupMessages();
     setupNavigationSignals();
     setupLowMemorySignals();
@@ -37,8 +39,10 @@
   function readSettings() {
     return new Promise((resolve) => {
       const storage = globalThis.chrome?.storage?.local;
-      if (!storage) return resolve({});
-      storage.get(STORAGE_KEYS, (items) => resolve(chrome.runtime?.lastError ? {} : sanitizeSettings(items || {})));
+      if (!storage) return resolve({ ...DEFAULT_SETTINGS, enabled: false, lowMemory: false });
+      storage.get(DEFAULT_SETTINGS, (items) => resolve(chrome.runtime?.lastError
+        ? { ...DEFAULT_SETTINGS, enabled: false, lowMemory: false }
+        : sanitizeSettings(items || DEFAULT_SETTINGS)));
     });
   }
 
@@ -185,6 +189,7 @@
         contractVersion: adapter.contractVersion,
         capabilities: []
       },
+      lowMemory: { ...lowMemoryStatus, enabled: false },
       updatedAt: new Date().toISOString()
     };
   }
@@ -210,8 +215,19 @@
         return false;
       }
       if (message?.type === "MICA_LOAD_FULL_HISTORY") {
-        sendResponse(requestFullHistory("popup"));
-        return false;
+        void requestFullHistory("popup").then(sendResponse);
+        return true;
+      }
+      if (message?.type === "MICA_RESUME_LOW_MEMORY") {
+        if (!safeToReload()) {
+          sendResponse({ ok: false, reason: "active_draft_or_stream" });
+          return false;
+        }
+        void globalThis.MicaLowMemoryConfig?.resumeWindowing?.().then((response) => {
+          if (response?.ok) scheduleReload();
+          sendResponse(response || { ok: false, reason: "runtime_unavailable" });
+        });
+        return true;
       }
       return false;
     });
@@ -223,14 +239,19 @@
     const next = sanitizeSettings({ ...settings, ...(value || {}) });
     settings = next;
     await writeSettings(settings);
-    globalThis.MicaLowMemoryConfig?.configure?.(settings);
+    const registration = await globalThis.MicaLowMemoryConfig?.syncRegistration?.();
     const isLowMemoryEnabled = settings.enabled && settings.lowMemory;
-    if (isLowMemoryEnabled && !wasLowMemoryEnabled && globalThis.MicaLowMemoryConfig?.isFullHistoryBypassed?.()) {
-      globalThis.MicaLowMemoryConfig.clearFullHistoryBypass();
-      if (safeToReload()) location.reload();
+    if (!registration?.ok) {
+      lowMemoryStatus = { ...defaultLowMemoryStatus("registration_failed"), state: "degraded" };
+    } else if (isLowMemoryEnabled && !wasLowMemoryEnabled) {
+      lowMemoryStatus = { ...defaultLowMemoryStatus("enabled_requires_reload"), state: "reload_required" };
+      if (safeToReload()) {
+        const resumed = await globalThis.MicaLowMemoryConfig?.resumeWindowing?.();
+        if (resumed?.ok) scheduleReload();
+      }
     } else if (!isLowMemoryEnabled && wasLowMemoryActive) {
       lowMemoryStatus = { ...lowMemoryStatus, state: "restore_required", active: false, reason: "disabled_after_windowing" };
-      if (safeToReload() && globalThis.MicaLowMemoryConfig?.requestFullHistory?.()) location.reload();
+      if (safeToReload()) await requestFullHistory("disabled_after_windowing");
     }
     if (settings.enabled) setupObserver();
     else teardownObserver();
@@ -278,14 +299,28 @@
   }
 
   function reconcileHistoryControl() {
-    if (!settings.enabled || !settings.lowMemory || !lowMemoryStatus.active) {
+    const recoveryState = ["restore_required", "reload_required", "full_history_bypass"].includes(lowMemoryStatus.state);
+    if (!lowMemoryStatus.active && !recoveryState) {
       historyControl?.remove();
       historyControl = null;
       return;
     }
     if (!historyControl) historyControl = createHistoryControl();
     const summary = historyControl.shadowRoot.querySelector("[data-summary]");
-    summary.textContent = `${lowMemoryStatus.keptTurns} recent turns active`;
+    const button = historyControl.shadowRoot.querySelector("button");
+    if (lowMemoryStatus.state === "full_history_bypass") {
+      summary.textContent = "Full history is active for this tab";
+      button.textContent = "Resume Low Memory";
+    } else if (lowMemoryStatus.state === "restore_required") {
+      summary.textContent = "Reload when your draft or stream is finished";
+      button.textContent = "Restore full history";
+    } else if (lowMemoryStatus.state === "reload_required") {
+      summary.textContent = "Reload when your draft or stream is finished";
+      button.textContent = "Start Low Memory";
+    } else {
+      summary.textContent = `${lowMemoryStatus.keptTurns} recent turns active`;
+      button.textContent = "Load full history";
+    }
     if (!historyControl.isConnected) document.documentElement.append(historyControl);
     scheduleHistoryControlVisibility();
   }
@@ -303,7 +338,15 @@
       @media(prefers-color-scheme:dark){:host{color:#eef4f1}aside{border-color:rgba(238,244,241,.2);background:rgba(23,29,27,.96)}button{border-color:#67c7bb;background:#67c7bb;color:#092d28}}
       @media(prefers-reduced-motion:reduce){*{transition:none!important}}
     </style><aside role="status"><span data-summary></span><button type="button">Load full history</button></aside>`;
-    shadow.querySelector("button").addEventListener("click", () => requestFullHistory("history_control"));
+    shadow.querySelector("button").addEventListener("click", async () => {
+      if (lowMemoryStatus.state === "full_history_bypass" || lowMemoryStatus.state === "reload_required") {
+        if (!safeToReload()) return;
+        const resumed = await globalThis.MicaLowMemoryConfig?.resumeWindowing?.();
+        if (resumed?.ok) scheduleReload();
+        return;
+      }
+      await requestFullHistory("history_control");
+    });
     return host;
   }
 
@@ -317,13 +360,25 @@
     });
   }
 
-  function requestFullHistory(reason) {
-    if (!lowMemoryStatus.active) return { ok: false, reason: "not_windowed" };
+  async function requestFullHistory(reason) {
+    if (!lowMemoryStatus.active && lowMemoryStatus.state !== "restore_required") return { ok: false, reason: "not_windowed" };
     if (!safeToReload()) return { ok: false, reason: "active_draft_or_stream" };
-    if (!globalThis.MicaLowMemoryConfig?.requestFullHistory?.()) return { ok: false, reason: "storage_unavailable" };
+    const prepared = await globalThis.MicaLowMemoryConfig?.prepareFullHistory?.();
+    if (!prepared?.ok) return { ok: false, reason: prepared?.reason || "runtime_unavailable" };
     lowMemoryStatus = { ...lowMemoryStatus, state: "restoring", active: false, reason };
-    setTimeout(() => location.reload(), 0);
+    reconcileHistoryControl();
+    scheduleReload();
     return { ok: true, reason: "reloading_full_history" };
+  }
+
+  function scheduleReload() {
+    setTimeout(() => {
+      if (document.documentElement.dataset.micaFixture === "true" && typeof globalThis.__MICA_FIXTURE_RELOAD__ === "function") {
+        globalThis.__MICA_FIXTURE_RELOAD__();
+      } else {
+        location.reload();
+      }
+    }, 0);
   }
 
   function safeToReload() {

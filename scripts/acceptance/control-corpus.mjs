@@ -137,6 +137,13 @@ export async function runControlCorpus(repoRoot) {
       m.C.retainedContentMb = m.B.retainedContentMb;
       refreshRoot(manifest);
     }],
+    ["low-memory-stress-missing", async ({ manifest }) => {
+      manifest.artifacts = manifest.artifacts.filter((item) => item.id !== "low-memory-stress");
+      refreshRoot(manifest);
+    }],
+    ["low-memory-stress-failed-rehash", async (context) => mutateStress(context, (value) => { value.passed = false; value.results[0].passed = false; })],
+    ["low-memory-stress-short-rehash", async (context) => mutateStress(context, (value) => { value.runs = 39; value.results.pop(); })],
+    ["low-memory-stress-duplicate-script-rehash", async (context) => mutateStress(context, (value) => { value.results[1].script = value.results[0].script; })],
     ["lost-highlight-after-remount", async ({ manifest }) => { evidence(manifest, "highlight-remount").measurement.restoredAfterRemount = false; refreshRoot(manifest); }],
     ["non-selectable-inline-math-pdf", async ({ manifest }) => { evidence(manifest, "pdf-selection").measurement.pointerSelection = false; refreshRoot(manifest); }],
     ["stale-chatgpt-contract", async ({ manifest }) => { evidence(manifest, "adapter-contract").measurement.capabilities[0].invalidatedBy = ["newer incompatible surface"]; refreshRoot(manifest); }],
@@ -257,10 +264,10 @@ async function createGoodBundle(repoRoot) {
       report: { privacy: { conversationTextIncluded: false, attachmentContentIncluded: false, requestBodyIncluded: false, authTokenIncluded: false, rawDomIncluded: false } }
     })],
     ["low-memory-pressure", "artifacts/low-memory-pressure.json", "application/json", JSON.stringify({
-      A: { variant: "mica-absent-or-disabled", processMemoryMb: 1000, processMemoryRangeMb: [970, 1035], heapMb: 500, heapRangeMb: [485, 520], retainedContentMb: 420, mountedTurnCount: 12, mutationCount: 62, typingP95Ms: 20, typingRangeMs: [18, 22], scrollP95Ms: 24, scrollRangeMs: [22, 27], mappingNodes: 241, samples: 5 },
-      B: { variant: "mica-installed-low-memory-off", processMemoryMb: 980, processMemoryRangeMb: [955, 1010], heapMb: 490, heapRangeMb: [475, 510], retainedContentMb: 410, mountedTurnCount: 12, mutationCount: 62, typingP95Ms: 20, typingRangeMs: [18, 22], scrollP95Ms: 24, scrollRangeMs: [22, 27], mappingNodes: 241, samples: 5 },
-      C: { variant: "mica-installed-low-memory-on", processMemoryMb: 760, processMemoryRangeMb: [735, 790], heapMb: 350, heapRangeMb: [335, 370], retainedContentMb: 250, mountedTurnCount: 12, mutationCount: 62, typingP95Ms: 21, typingRangeMs: [19, 23], scrollP95Ms: 25, scrollRangeMs: [23, 28], mappingNodes: 41, samples: 5 },
-      pressureFixture: { memoryLimitMb: 2048, payloadMb: 420, turns: 240 },
+      A: controlPressureState("mica-absent-or-disabled", 1000, 500, 420, 241, false),
+      B: controlPressureState("mica-installed-low-memory-off", 980, 490, 410, 241, true),
+      C: controlPressureState("mica-installed-low-memory-on", 760, 350, 250, 41, true),
+      pressureFixture: { memoryLimitMb: 2048, payloadMb: 420, turns: 240, workload: "current-chatgpt-derived-react-router-flat-graph-and-virtualized-turn-renderer", sourceArtifact: "current-chatgpt-surface/low-memory-data-plane-evidence.json" },
       targetDevice: { class: "2-gb-low-memory-target", browserBuild: "control-browser-1", memoryGb: 2 },
       actualTruncation: true,
       truncatedRepresentation: "client-history-window",
@@ -279,11 +286,12 @@ async function createGoodBundle(repoRoot) {
     })],
     ["low-memory-page", "artifacts/low-memory-page.json", "application/json", JSON.stringify({
       passed: true,
-      stream: { status: { totalNodes: 241, serverMutation: false, reactManagedInteractiveNodesDetached: false } },
-      bypass: { mappingNodes: 241 },
-      disabled: { mappingNodes: 241 },
-      historyControl: { connectedAtTop: true, visibleAtTop: true, buttonPresent: true, bypassSet: true },
-      reload: { bypassPersisted: true }
+      firstInstall: { mappingNodes: 41 }, forgedPageConfig: { mappingNodes: 41 },
+      history: { scrollUpRestoresOlder: true, loadFullHistoryPass: true, reloadRestoresFullHistory: true, disableRestoresFullHistory: true, closeOrUninstallRestoresFullHistory: true, serverHistoryUnchanged: true }
+    })],
+    ["low-memory-stress", "artifacts/low-memory-stress.json", "application/json", JSON.stringify(controlStress())],
+    ["low-memory-registration", "artifacts/low-memory-registration.json", "application/json", JSON.stringify({
+      passed: true, firstInstall: { registered: true }, storageFailure: { registered: false }, siteWritableConfigAccepted: false
     })]
   ];
   for (const [, relative, , content] of artifactSources) {
@@ -385,23 +393,25 @@ async function createGoodBundle(repoRoot) {
       userTurnCommitted: true,
       duplicateSend: false
     }),
-    record("low-memory-benefit", { surface: "target-low-memory-device" }, ["dist", "low-memory-pressure", "low-memory-fixture", "low-memory-page", "foundation-flows"], {
-      A: { variant: "mica-absent-or-disabled", processMemoryMb: 1000, processMemoryRangeMb: [970, 1035], heapMb: 500, heapRangeMb: [485, 520], retainedContentMb: 420, mountedTurnCount: 12, mutationCount: 62, typingP95Ms: 20, typingRangeMs: [18, 22], scrollP95Ms: 24, scrollRangeMs: [22, 27], mappingNodes: 241, samples: 5 },
-      B: { variant: "mica-installed-low-memory-off", processMemoryMb: 980, processMemoryRangeMb: [955, 1010], heapMb: 490, heapRangeMb: [475, 510], retainedContentMb: 410, mountedTurnCount: 12, mutationCount: 62, typingP95Ms: 20, typingRangeMs: [18, 22], scrollP95Ms: 24, scrollRangeMs: [22, 27], mappingNodes: 241, samples: 5 },
-      C: { variant: "mica-installed-low-memory-on", processMemoryMb: 760, processMemoryRangeMb: [735, 790], heapMb: 350, heapRangeMb: [335, 370], retainedContentMb: 250, mountedTurnCount: 12, mutationCount: 62, typingP95Ms: 21, typingRangeMs: [19, 23], scrollP95Ms: 25, scrollRangeMs: [23, 28], mappingNodes: 41, samples: 5 },
+    record("low-memory-benefit", { surface: "target-low-memory-device" }, ["dist", "low-memory-pressure", "low-memory-fixture", "low-memory-page", "low-memory-stress", "low-memory-registration", "foundation-flows"], {
+      A: controlPressureState("mica-absent-or-disabled", 1000, 500, 420, 241, false),
+      B: controlPressureState("mica-installed-low-memory-off", 980, 490, 410, 241, true),
+      C: controlPressureState("mica-installed-low-memory-on", 760, 350, 250, 41, true),
       recentTurnLimit: 40,
       threadProfiles: [
         { name: "short", totalTurns: 12, retainedRecentTurns: 12, mountedBefore: 12, mountedAfter: 12, modeApplied: false },
         { name: "medium", totalTurns: 36, retainedRecentTurns: 36, mountedBefore: 36, mountedAfter: 36, modeApplied: false },
         { name: "long", totalTurns: 240, retainedRecentTurns: 40, mountedBefore: 236, mountedAfter: 40, modeApplied: true }
       ],
-      pressureFixture: { memoryLimitMb: 2048, payloadMb: 420, turns: 240 },
+      pressureFixture: { memoryLimitMb: 2048, payloadMb: 420, turns: 240, workload: "current-chatgpt-derived-react-router-flat-graph-and-virtualized-turn-renderer", sourceArtifact: "current-chatgpt-surface/low-memory-data-plane-evidence.json" },
       targetDevice: { class: "2-gb-low-memory-target", browserBuild: "control-browser-1", memoryGb: 2 },
       actualTruncation: true,
       truncatedRepresentation: "client-history-window",
       reactManagedInteractiveNodesDetached: false,
       serverMutation: false,
       history: { scrollUpRestoresOlder: true, loadFullHistoryPass: true, reloadRestoresFullHistory: true, disableRestoresFullHistory: true, closeOrUninstallRestoresFullHistory: true, serverHistoryUnchanged: true },
+      registration: { firstInstall: true, storageFailureFailOpen: true, siteWritableConfigAccepted: false, forgedPageEventIgnored: true },
+      stress: controlStress(),
       coreFlows: { composer: true, send: true, streaming: true, editBranch: true, connector: true, toolFileAuth: true, typingImeHotPath: true },
       unknownStructureBehavior: "FAIL_OPEN"
     }),
@@ -469,4 +479,43 @@ function evidence(manifest, gateId) {
 
 function refreshRoot(manifest) {
   manifest.evidenceRootHash = computeEvidenceRootHash(manifest.artifacts, manifest.evidence);
+}
+
+function controlPressureState(variant, processMemoryMb, heapMb, retainedContentMb, mappingNodes, installed) {
+  return {
+    variant,
+    processMemoryMb, processMemoryRangeMb: [processMemoryMb - 20, processMemoryMb + 20],
+    heapMb, heapRangeMb: [heapMb - 15, heapMb + 15], retainedContentMb,
+    mountedTurnCount: 12, mutationCount: 62,
+    typingP95Ms: variant.endsWith("-on") ? 21 : 20, typingRangeMs: [18, 22],
+    scrollP95Ms: variant.endsWith("-on") ? 25 : 24, scrollRangeMs: [22, 27],
+    frameP95Ms: 17, longTaskCount: 0, longTaskTotalMs: 0, longTaskMaxMs: 0,
+    bootstrapLongTaskCount: 1, bootstrapLongTaskTotalMs: 120, bootstrapLongTaskMaxMs: 120,
+    layoutCount: 12, recalcStyleCount: 18, mappingNodes, samples: 5,
+    fullExtensionRuntimeLoaded: installed,
+    runtimeVersion: installed ? "0.3.0" : null
+  };
+}
+
+function controlStress() {
+  const scripts = [
+    "scripts/foundation-core-fixture-smoke.mjs",
+    "scripts/foundation-core-flow-fixture.mjs",
+    "scripts/low-memory-fixture-smoke.mjs",
+    "scripts/low-memory-page-fixture-smoke.mjs",
+    "scripts/popup-render-fixture.mjs"
+  ];
+  const results = [];
+  for (let loop = 1; loop <= 8; loop += 1) for (const script of scripts) results.push({ loop, script, elapsedMs: 100, passed: true });
+  return { passed: true, loops: 8, runs: 40, results };
+}
+
+async function mutateStress({ bundleDir, manifest }, mutate) {
+  const file = path.join(bundleDir, "artifacts", "low-memory-stress.json");
+  const value = JSON.parse(await readFile(file, "utf8"));
+  mutate(value);
+  await writeFile(file, JSON.stringify(value));
+  manifest.artifacts.find((item) => item.id === "low-memory-stress").sha256 = await sha256File(file);
+  evidence(manifest, "low-memory-benefit").measurement.stress = value;
+  refreshRoot(manifest);
 }

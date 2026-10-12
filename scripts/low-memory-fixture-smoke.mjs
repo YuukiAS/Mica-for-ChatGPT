@@ -33,6 +33,30 @@ try {
     const malformedBefore = JSON.stringify(malformed);
     const malformedResult = core.windowJsonPayload(malformed, { keepCount: 40, threshold: 80 });
 
+    const disconnected = makeConversation(120);
+    disconnected.mapping.orphan = { id: "orphan", children: [], message: { author: { role: "assistant" }, content: { content_type: "text", parts: ["orphan"] }, metadata: {} } };
+    const disconnectedBefore = JSON.stringify(disconnected);
+    const disconnectedResult = core.windowJsonPayload(disconnected, { keepCount: 40, threshold: 80 });
+    const unknownRole = makeConversation(120);
+    unknownRole.mapping[unknownRole.current_node].message.author.role = "future_agent";
+    const unknownRoleBefore = JSON.stringify(unknownRole);
+    const unknownRoleResult = core.windowJsonPayload(unknownRole, { keepCount: 40, threshold: 80 });
+    const unknownContent = makeConversation(120);
+    unknownContent.mapping[unknownContent.current_node].message.content.content_type = "future_content";
+    const unknownContentBefore = JSON.stringify(unknownContent);
+    const unknownContentResult = core.windowJsonPayload(unknownContent, { keepCount: 40, threshold: 80 });
+    const supportedSensitive = makeConversation(120, { dependencies: true });
+    supportedSensitive.mapping[supportedSensitive.current_node].message.status = "in_progress";
+    supportedSensitive.mapping[supportedSensitive.current_node].message.end_turn = false;
+    supportedSensitive.mapping[supportedSensitive.current_node].message.content = { content_type: "multimodal_text", parts: [{ content_type: "image_asset_pointer", asset_pointer: "fixture" }, "streaming"] };
+    supportedSensitive.mapping[supportedSensitive.current_node].message.metadata = { connector_id: "fixture", plugin_ids: ["fixture"], attachments: [{ id: "file-fixture" }], auth: { required: true } };
+    const supportedSensitiveResult = core.windowJsonPayload(supportedSensitive, { keepCount: 40, threshold: 80 });
+    const turboFailOpen = [disconnectedBefore, unknownRoleBefore, unknownContentBefore].map((serialized) => {
+      const input = JSON.stringify(encodeTurbo({ loaderData: { route: { serverResponse: { data: JSON.parse(serialized) } } } }));
+      const output = core.windowTurboStreamChunk(input, {}, { keepCount: 40, threshold: 80 });
+      return { action: output.action, unchanged: output.chunk === input, reason: output.reason };
+    });
+
     const turboConversation = makeConversation(240, { branchAt: 220, dependencies: true, heavyBytes: 8192 });
     const turbo = encodeTurbo({ loaderData: { route: { serverResponse: { data: turboConversation } } }, trace: "fixture" });
     const promiseKey = encodeString(turbo, "statsigGateEvaluationsPromise");
@@ -91,17 +115,21 @@ try {
         malformedUnchanged: JSON.stringify(malformed) === malformedBefore,
         unknownChanged: unknownResult.changed,
         unknownReason: unknownResult.reason,
-        unknownUnchanged: JSON.stringify(unknownPayload) === beforeUnknown
+        unknownUnchanged: JSON.stringify(unknownPayload) === beforeUnknown,
+        disconnectedChanged: disconnectedResult.changed,
+        disconnectedUnchanged: JSON.stringify(disconnected) === disconnectedBefore,
+        unknownRoleChanged: unknownRoleResult.changed,
+        unknownRoleUnchanged: JSON.stringify(unknownRole) === unknownRoleBefore,
+        unknownContentChanged: unknownContentResult.changed,
+        unknownContentUnchanged: JSON.stringify(unknownContent) === unknownContentBefore
       },
-      coreFlows: {
-        composer: true,
-        send: true,
-        streaming: continuation.action === "replace",
-        editBranch: !!long.mapping["branch-220"],
-        connector: true,
-        toolFileAuth: Object.values(long.mapping).some((node) => node.message?.metadata?.fileAuth === true),
-        typingImeHotPath: true
-      }
+      supportedStructures: {
+        changed: supportedSensitiveResult.changed,
+        currentPreserved: !!supportedSensitive.mapping[supportedSensitive.current_node],
+        streamingInProgress: supportedSensitive.mapping[supportedSensitive.current_node]?.message?.status === "in_progress",
+        multimodalFileAuthConnectorPlugin: supportedSensitive.mapping[supportedSensitive.current_node]?.message?.metadata?.auth?.required === true
+      },
+      turboFailOpen
     };
 
     function profile(name, totalTurns, profileResult, payload) {
@@ -227,7 +255,11 @@ try {
   assert(result.turbo.continuationIndex === result.turbo.mappedPromiseIndex, "turbo-stream continuation index was not remapped");
   assert(result.turbo.subsequentInitialAction === "pass" && result.turbo.subsequentInitialReason === "below_threshold" && result.turbo.subsequentInitialPreserved, "subsequent turbo-stream initial payload reused stale continuation state");
   assert(!result.failOpen.malformedChanged && result.failOpen.malformedUnchanged && !result.failOpen.unknownChanged && result.failOpen.unknownUnchanged, "unknown or malformed graph did not fail open");
-  assert(Object.values(result.coreFlows).every(Boolean), "core-flow fixture coverage failed");
+  assert(!result.failOpen.disconnectedChanged && result.failOpen.disconnectedUnchanged, "disconnected graph did not fail open");
+  assert(!result.failOpen.unknownRoleChanged && result.failOpen.unknownRoleUnchanged, "unknown role did not fail open");
+  assert(!result.failOpen.unknownContentChanged && result.failOpen.unknownContentUnchanged, "unknown content did not fail open");
+  assert(Object.values(result.supportedStructures).every(Boolean), "supported streaming/tool/file/auth/connector/plugin structures were not preserved");
+  assert(result.turboFailOpen.every((item) => item.action === "pass" && item.unchanged), "turbo unknown/malformed graph did not fail open byte-for-byte");
 
   const output = { passed: true, ...result, pressureFixture: { memoryLimitMb: 256, payloadMb: 240 * 8192 / 1024 / 1024, turns: 240 } };
   const evidenceDir = path.join(root, "results", "mica-product-system-rebuild", "low-memory-evidence");

@@ -48,20 +48,26 @@
     "source": "react-router-stream",
     "active": true,
     "keptTurns": 40,
-    "totalTurns": 120,
-    "removedTurns": 80,
-    "keptNodes": 41,
+    "totalTurns": 119,
+    "removedTurns": 79,
+    "keptNodes": 42,
     "totalNodes": 121,
-    "bytesBefore": 17735,
-    "bytesAfter": 6064,
-    "bytesRemoved": 11671,
+    "bytesBefore": 18090,
+    "bytesAfter": 6554,
+    "bytesRemoved": 11536,
     "recentTurnLimit": 40,
     "actualTruncation": true,
     "truncatedRepresentation": "client-history-window",
     "serverMutation": false,
     "reactManagedInteractiveNodesDetached": false,
     "contentUpload": false,
-    "updatedAt": "2026-10-12T10:13:57.772Z"
+    "updatedAt": "2026-10-12T11:13:29.176Z"
+  },
+  "windowedGraphFlows": {
+    "tool": true,
+    "fileAuthConnectorPlugin": true,
+    "multimodal": true,
+    "streamingContinuation": true
   },
   "report": {
     "schema": "mica-developer-qa.v1",

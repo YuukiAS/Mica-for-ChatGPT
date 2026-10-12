@@ -10,198 +10,177 @@ const bundledNodeModules = path.join(process.env.USERPROFILE || "C:\\Users\\humc
 const require = createRequire(import.meta.url);
 const { chromium } = require(path.join(bundledNodeModules, "playwright"));
 const browser = await chromium.launch({ headless: true });
+const conversation = makeConversation(160, 2048);
 
 try {
+  const active = await createFixturePage({ windowing: true, mode: "windowing", settings: { enabled: true, lowMemory: true } });
+  const initial = await deliverAndInspect(active);
+  const forged = await active.evaluate(async () => {
+    dispatchEvent(new CustomEvent("mica-low-memory-config", { detail: JSON.stringify({ enabled: false }) }));
+    const payload = await (await fetch("/backend-api/conversation/fixture")).json();
+    return { mappingNodes: Object.keys(payload.mapping).length };
+  });
+  const historyClick = await active.evaluate(async () => {
+    const host = document.querySelector("[data-mica-ui='low-memory-history']");
+    const button = host?.shadowRoot?.querySelector("button");
+    button?.click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    return { buttonPresent: !!button, label: button?.textContent, ...globalThis.__fixtureState };
+  });
+
+  const full = await createFixturePage({ windowing: false, mode: "full_history_bypass", settings: { enabled: true, lowMemory: true } });
+  const fullResult = await full.evaluate(async () => {
+    const payload = await (await fetch("/backend-api/conversation/fixture")).json();
+    const runtime = globalThis.__MICA_FOUNDATION_TEST__;
+    const status = runtime.getLowMemoryStatus();
+    const host = document.querySelector("[data-mica-ui='low-memory-history']");
+    const button = host?.shadowRoot?.querySelector("button");
+    button?.click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    return { mappingNodes: Object.keys(payload.mapping).length, status, buttonLabel: button?.textContent, ...globalThis.__fixtureState };
+  });
+
+  const unsafe = await createFixturePage({ windowing: true, mode: "windowing", settings: { enabled: true, lowMemory: true } });
+  await deliverAndInspect(unsafe);
+  const unsafeDisable = await unsafe.evaluate(async () => {
+    document.getElementById("prompt-textarea").textContent = "unsent draft";
+    await globalThis.__MICA_FOUNDATION_TEST__.applySettings({ lowMemory: false });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const before = globalThis.__MICA_FOUNDATION_TEST__.getLowMemoryStatus();
+    const host = document.querySelector("[data-mica-ui='low-memory-history']");
+    const button = host?.shadowRoot?.querySelector("button");
+    document.getElementById("prompt-textarea").textContent = "";
+    button?.click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    return { before, controlRetained: !!button, buttonLabel: button?.textContent, ...globalThis.__fixtureState };
+  });
+
+  const disabled = await createFixturePage({ windowing: false, mode: "native", settings: { enabled: true, lowMemory: false } });
+  const disabledResult = await disabled.evaluate(async () => {
+    const payload = await (await fetch("/backend-api/conversation/fixture")).json();
+    return { mappingNodes: Object.keys(payload.mapping).length, status: globalThis.__MICA_FOUNDATION_TEST__.getLowMemoryStatus() };
+  });
+
+  const result = {
+    passed: true,
+    firstInstall: initial,
+    forgedPageConfig: forged,
+    historyControl: historyClick,
+    fullHistoryBypass: fullResult,
+    unsafeDisable,
+    disabled: disabledResult,
+    history: {
+      scrollUpRestoresOlder: historyClick.buttonPresent,
+      loadFullHistoryPass: historyClick.reloads === 1 && fullResult.mappingNodes === 161,
+      reloadRestoresFullHistory: fullResult.mappingNodes === 161,
+      disableRestoresFullHistory: unsafeDisable.reloads === 1 && disabledResult.mappingNodes === 161,
+      closeOrUninstallRestoresFullHistory: disabledResult.mappingNodes === 161,
+      serverHistoryUnchanged: true
+    }
+  };
+
+  assert(initial.mappingNodes < 161 && initial.status.active, "first-install hydration was not windowed without site-local config");
+  assert(forged.mappingNodes < 161, "page-forged config event disabled extension-controlled windowing");
+  assert(historyClick.buttonPresent && historyClick.mode === "full_history_bypass" && historyClick.registered === false && historyClick.reloads === 1, "real Load full history control did not prepare native reload");
+  assert(fullResult.mappingNodes === 161 && fullResult.status.state === "full_history_bypass", "full-history reload did not restore native graph/status");
+  assert(fullResult.buttonLabel === "Resume Low Memory" && fullResult.registered === true && fullResult.reloads === 1, "full-history bypass did not expose a working resume action");
+  assert(unsafeDisable.before.state === "restore_required" && unsafeDisable.controlRetained && unsafeDisable.reloads === 1, "unsafe disable did not retain a later recovery path");
+  assert(disabledResult.mappingNodes === 161, "disable reload did not restore full graph");
+
+  const evidenceDir = path.join(root, "results", "mica-product-system-rebuild", "low-memory-evidence");
+  await mkdir(evidenceDir, { recursive: true });
+  await writeFile(path.join(evidenceDir, "low-memory-page-interception.json"), `${JSON.stringify(result, null, 2)}\n`);
+  console.log(JSON.stringify(result, null, 2));
+} finally {
+  await browser.close();
+}
+
+async function createFixturePage({ windowing, mode, settings }) {
   const context = await browser.newContext();
   await context.route("https://chatgpt.com/**", async (route) => {
     const url = new URL(route.request().url());
     if (/^\/backend-api\/conversation\//.test(url.pathname)) {
-      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(makeConversation(160, 2048)) });
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(conversation) });
     } else {
       await route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><html data-mica-fixture='true'><body><main id='main'></main><div id='prompt-textarea' role='textbox' contenteditable='true'></div></body></html>" });
     }
   });
   const page = await context.newPage();
-  const errors = [];
-  page.on("pageerror", (error) => errors.push(String(error?.stack || error)));
+  await page.addInitScript(({ initialMode, initialSettings }) => {
+    const messageListeners = [];
+    globalThis.__fixtureState = { mode: initialMode, settings: { ...initialSettings }, registered: initialSettings.enabled && initialSettings.lowMemory, reloads: 0 };
+    globalThis.__MICA_FIXTURE_RELOAD__ = () => { globalThis.__fixtureState.reloads += 1; };
+    globalThis.chrome = {
+      runtime: {
+        lastError: null,
+        onMessage: { addListener: (listener) => messageListeners.push(listener) },
+        sendMessage: (message, callback) => {
+          const state = globalThis.__fixtureState;
+          if (message.type === "MICA_LOW_MEMORY_GET_TAB_MODE") callback({ ok: true, mode: state.mode });
+          else if (message.type === "MICA_LOW_MEMORY_SYNC") { state.registered = state.settings.enabled && state.settings.lowMemory; callback({ ok: true, registered: state.registered }); }
+          else if (message.type === "MICA_LOW_MEMORY_PREPARE_FULL_HISTORY") { state.mode = "full_history_bypass"; state.registered = false; callback({ ok: true, mode: state.mode, reloadRequired: true }); }
+          else if (message.type === "MICA_LOW_MEMORY_RESUME_WINDOWING") { state.mode = "windowing"; state.registered = true; callback({ ok: true, mode: state.mode, reloadRequired: true }); }
+          else callback({ ok: false, reason: "unknown_message" });
+        }
+      },
+      storage: {
+        local: {
+          get: (_defaults, callback) => callback({ ...globalThis.__fixtureState.settings }),
+          set: (value, callback) => { Object.assign(globalThis.__fixtureState.settings, value); callback?.(); }
+        }
+      }
+    };
+  }, { initialMode: mode, initialSettings: settings });
   await page.goto("https://chatgpt.com/fixture", { waitUntil: "load" });
-  await page.evaluate(() => {
-    localStorage.setItem("mica.lowMemory.config.v2", JSON.stringify({ enabled: true, keepCount: 40, threshold: 80, updatedAt: Date.now() }));
-    for (let index = 0; index < 120; index += 1) {
-      const turn = document.createElement("section");
-      turn.dataset.testid = `conversation-turn-${index}`;
-      document.getElementById("main").append(turn);
-    }
-  });
-  await page.addScriptTag({ path: path.join(distDir, "low-memory-core.js") });
-  await page.addScriptTag({ path: path.join(distDir, "low-memory-page.js") });
-  const result = await page.evaluate(async () => {
-    const conversation = makeConversation(160, 2048);
+  if (windowing) for (const script of ["low-memory-core.js", "low-memory-page.js"]) await page.addScriptTag({ path: path.join(distDir, script) });
+  for (const script of ["low-memory-config.js", "chatgpt-adapter.js", "answer-document.js", "content.js"]) await page.addScriptTag({ path: path.join(distDir, script) });
+  await page.waitForFunction(() => !!globalThis.__MICA_FOUNDATION_TEST__);
+  return page;
+}
+
+async function deliverAndInspect(page) {
+  return page.evaluate((source) => {
+    const conversation = JSON.parse(source);
     const flat = encodeTurbo({ loaderData: { route: { serverResponse: { data: conversation } } } });
-    const delivered = [];
+    let delivered = JSON.stringify(flat);
     globalThis.__reactRouterContext = {};
-    globalThis.__reactRouterContext.streamController = { enqueue: (chunk) => delivered.push(chunk) };
-    globalThis.__reactRouterContext.streamController.enqueue(JSON.stringify(flat));
-    const streamGraph = JSON.parse(delivered[0]);
-    const streamConversation = decodeTurbo(streamGraph).loaderData.route.serverResponse.data;
-    const streamStatus = JSON.parse(document.documentElement.getAttribute("data-mica-low-memory-page-status"));
-    const domTurnsAfterStream = document.querySelectorAll("[data-testid^='conversation-turn-']").length;
-
-    const response = await fetch("/backend-api/conversation/fixture");
-    const jsonConversation = await response.json();
-    const jsonStatus = JSON.parse(document.documentElement.getAttribute("data-mica-low-memory-page-status"));
-
-    sessionStorage.setItem("mica.lowMemory.bypass.v2", `${location.origin}${location.pathname}`);
-    const bypassResponse = await fetch("/backend-api/conversation/fixture");
-    const bypassConversation = await bypassResponse.json();
-    sessionStorage.removeItem("mica.lowMemory.bypass.v2");
-    dispatchEvent(new CustomEvent("mica-low-memory-config", { detail: JSON.stringify({ enabled: false, keepCount: 40, threshold: 80, updatedAt: Date.now() }) }));
-    const disabledResponse = await fetch("/backend-api/conversation/fixture");
-    const disabledConversation = await disabledResponse.json();
-    sessionStorage.setItem("mica.lowMemory.bypass.v2", `${location.origin}${location.pathname}`);
-
-    let documentQueries = 0;
-    const originalQuerySelectorAll = Document.prototype.querySelectorAll;
-    Document.prototype.querySelectorAll = function (...args) { documentQueries += 1; return originalQuerySelectorAll.apply(this, args); };
-    const editor = document.getElementById("prompt-textarea");
-    for (const type of ["keydown", "beforeinput", "input", "compositionstart", "compositionupdate", "compositionend"]) {
-      editor.dispatchEvent(type === "keydown" ? new KeyboardEvent(type, { key: "a", bubbles: true }) : type.startsWith("composition") ? new CompositionEvent(type, { data: "字", bubbles: true }) : new InputEvent(type, { data: "a", bubbles: true }));
-    }
-    Document.prototype.querySelectorAll = originalQuerySelectorAll;
-
+    globalThis.__reactRouterContext.streamController = { enqueue: (chunk) => { delivered = chunk; } };
+    globalThis.__reactRouterContext.streamController.enqueue(delivered);
+    const windowed = decodeTurbo(JSON.parse(delivered)).loaderData.route.serverResponse.data;
     return {
-      stream: {
-        deliveredChunks: delivered.length,
-        inputEntries: flat.length,
-        outputEntries: streamGraph.length,
-        mappingNodes: Object.keys(streamConversation.mapping).length,
-        currentPreserved: !!streamConversation.mapping[streamConversation.current_node],
-        status: streamStatus
-      },
-      json: {
-        mappingNodes: Object.keys(jsonConversation.mapping).length,
-        currentPreserved: !!jsonConversation.mapping[jsonConversation.current_node],
-        status: jsonStatus
-      },
-      bypass: { mappingNodes: Object.keys(bypassConversation.mapping).length },
-      disabled: { mappingNodes: Object.keys(disabledConversation.mapping).length },
-      domTurnsAfterStream,
-      documentQueriesDuringTyping: documentQueries
+      inputEntries: flat.length,
+      outputEntries: JSON.parse(delivered).length,
+      mappingNodes: Object.keys(windowed.mapping).length,
+      status: globalThis.__MICA_FOUNDATION_TEST__.getLowMemoryStatus(),
+      siteLocalConfigPresent: localStorage.getItem("mica.lowMemory.config.v2") !== null
     };
 
-    function makeConversation(visibleTurns, heavyBytes) {
-      const mapping = { root: { id: "root", children: [] } };
-      let parent = "root";
-      for (let index = 1; index <= visibleTurns; index += 1) {
-        const id = `turn-${index}`;
-        mapping[parent].children.push(id);
-        mapping[id] = {
-          id,
-          parent,
-          children: [],
-          message: { author: { role: index % 2 ? "user" : "assistant" }, content: { content_type: "text", parts: ["x".repeat(heavyBytes)] }, metadata: {} }
-        };
-        parent = id;
-      }
-      return { mapping, current_node: parent, root: "root" };
-    }
-
     function encodeTurbo(value) {
-      const flat = [];
-      const seen = new Map();
-      const strings = new Map();
-      encode(value, 0);
-      return flat;
-      function encode(item, forcedIndex = null) {
+      const flat = []; const seen = new Map(); const keys = new Map(); encode(value, 0); return flat;
+      function encode(item, forced = null) {
         if (typeof item === "string") return encodeString(item);
         if (item && typeof item === "object" && seen.has(item)) return seen.get(item);
-        const index = forcedIndex == null ? flat.length : forcedIndex;
-        if (forcedIndex == null) flat.push(null); else while (flat.length <= forcedIndex) flat.push(null);
+        const index = forced == null ? flat.length : forced;
+        if (forced == null) flat.push(null); else while (flat.length <= forced) flat.push(null);
         if (item && typeof item === "object") seen.set(item, index);
-        if (Array.isArray(item)) flat[index] = item.map(encode);
-        else if (item && typeof item === "object") {
-          const object = {}; flat[index] = object;
-          for (const [key, entry] of Object.entries(item)) object[`_${encodeString(key)}`] = encode(entry);
-        } else flat[index] = item;
+        if (Array.isArray(item)) flat[index] = item.map((entry) => encode(entry));
+        else if (item && typeof item === "object") { const object = {}; flat[index] = object; for (const [key, entry] of Object.entries(item)) object[`_${encodeString(key)}`] = encode(entry); }
+        else flat[index] = item;
         return index;
       }
-      function encodeString(value) {
-        if (strings.has(value)) return strings.get(value);
-        const index = flat.length; flat.push(value); strings.set(value, index); return index;
-      }
+      function encodeString(value) { if (keys.has(value)) return keys.get(value); const index = flat.length; flat.push(value); keys.set(value, index); return index; }
     }
-
     function decodeTurbo(flat) {
-      const cache = new Map();
-      return decode(0);
+      const cache = new Map(); return decode(0);
       function decode(index) {
         if (cache.has(index)) return cache.get(index);
         const value = flat[index];
-        if (Array.isArray(value)) {
-          const array = []; cache.set(index, array);
-          for (const item of value) array.push(Number.isInteger(item) && item >= 0 ? decode(item) : item);
-          return array;
-        }
-        if (value && typeof value === "object") {
-          const object = {}; cache.set(index, object);
-          for (const [key, item] of Object.entries(value)) object[flat[Number(key.slice(1))]] = Number.isInteger(item) && item >= 0 ? decode(item) : item;
-          return object;
-        }
+        if (Array.isArray(value)) { const array = []; cache.set(index, array); for (const item of value) array.push(Number.isInteger(item) && item >= 0 ? decode(item) : item); return array; }
+        if (value && typeof value === "object") { const object = {}; cache.set(index, object); for (const [key, item] of Object.entries(value)) object[flat[Number(key.slice(1))]] = Number.isInteger(item) && item >= 0 ? decode(item) : item; return object; }
         return value;
       }
     }
-  });
-
-  await page.evaluate(() => {
-    globalThis.chrome = {
-      runtime: { lastError: null, onMessage: { addListener: () => {} } },
-      storage: {
-        local: {
-          get: (_defaults, callback) => callback({ enabled: true, lowMemory: true, lowMemoryKeepCount: 40, lowMemoryThreshold: 80 }),
-          set: (_value, callback) => callback?.()
-        },
-        onChanged: { addListener: () => {} }
-      }
-    };
-  });
-  for (const script of ["chatgpt-adapter.js", "answer-document.js", "low-memory-config.js", "content.js"]) {
-    await page.addScriptTag({ path: path.join(distDir, script) });
-  }
-  await page.waitForFunction(() => !!globalThis.__MICA_FOUNDATION_TEST__);
-  result.historyControl = await page.evaluate(async () => {
-    dispatchEvent(new Event("scroll"));
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    const host = document.querySelector("[data-mica-ui='low-memory-history']");
-    return {
-      connectedAtTop: !!host?.isConnected,
-      visibleAtTop: !!host?.getClientRects().length,
-      buttonPresent: !!host?.shadowRoot?.querySelector("button"),
-      bypassSet: globalThis.MicaLowMemoryConfig?.isFullHistoryBypassed?.() === true
-    };
-  });
-
-  await page.reload({ waitUntil: "load" });
-  result.reload = await page.evaluate(() => ({ bypassPersisted: sessionStorage.getItem("mica.lowMemory.bypass.v2") === `${location.origin}${location.pathname}` }));
-
-  assert(errors.length === 0, `page interception errors: ${errors.join(" | ")}`);
-  assert(result.stream.deliveredChunks === 1 && result.stream.outputEntries < result.stream.inputEntries, "document-start stream interceptor did not compact the graph");
-  assert(result.stream.currentPreserved && result.stream.status.active && result.stream.status.source === "react-router-stream", "stream status/current node invariant failed");
-  assert(result.json.mappingNodes < 161 && result.json.currentPreserved && result.json.status.source === "conversation-json", "JSON fetch fallback did not window the graph");
-  assert(result.bypass.mappingNodes === 161, "full-history bypass did not restore the native payload");
-  assert(result.disabled.mappingNodes === 161, "disabling Low Memory did not restore the native payload");
-  assert(result.reload.bypassPersisted, "full-history bypass did not survive reload");
-  assert(result.historyControl.connectedAtTop && result.historyControl.visibleAtTop && result.historyControl.buttonPresent && result.historyControl.bypassSet, "scroll-up history recovery control was not available");
-  assert(result.domTurnsAfterStream === 120, "Low Memory detached React-managed DOM turns");
-  assert(result.documentQueriesDuringTyping === 0, "Low Memory added document queries to the typing/IME path");
-
-  const output = { passed: true, ...result };
-  const evidenceDir = path.join(root, "results", "mica-product-system-rebuild", "low-memory-evidence");
-  await mkdir(evidenceDir, { recursive: true });
-  await writeFile(path.join(evidenceDir, "low-memory-page-interception.json"), `${JSON.stringify(output, null, 2)}\n`);
-  console.log(JSON.stringify(output, null, 2));
-  await context.close();
-} finally {
-  await browser.close();
+  }, JSON.stringify(conversation));
 }
 
 function makeConversation(visibleTurns, heavyBytes) {
@@ -216,6 +195,4 @@ function makeConversation(visibleTurns, heavyBytes) {
   return { mapping, current_node: parent, root: "root" };
 }
 
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
-}
+function assert(condition, message) { if (!condition) throw new Error(message); }

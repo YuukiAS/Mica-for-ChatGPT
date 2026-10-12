@@ -1,29 +1,16 @@
 (() => {
-  const CONFIG_KEY = "mica.lowMemory.config.v2";
-  const BYPASS_KEY = "mica.lowMemory.bypass.v2";
   const STATUS_EVENT = "mica-low-memory-page-status";
   const core = globalThis.MicaLowMemoryCore;
   if (!core) return;
 
-  let config = readConfig();
+  const config = Object.freeze({ enabled: true, keepCount: core.DEFAULT_KEEP_COUNT, threshold: core.DEFAULT_THRESHOLD });
   let lastStatus = status("standby", "initializing");
   const streamState = {};
   const nativeFetch = globalThis.fetch?.bind(globalThis);
 
   installReactRouterHook();
   if (nativeFetch) globalThis.fetch = (...args) => interceptFetch(nativeFetch, ...args);
-  globalThis.addEventListener("mica-low-memory-config", onConfig);
   publish(lastStatus);
-
-  function onConfig(event) {
-    try {
-      const next = JSON.parse(String(event.detail || ""));
-      if (typeof next.enabled !== "boolean") return;
-      config = normalizeConfig(next);
-    } catch (_error) {
-      config = null;
-    }
-  }
 
   function installReactRouterHook() {
     const key = "__reactRouterContext";
@@ -80,7 +67,6 @@
     if (!controller || typeof controller.enqueue !== "function" || controller.enqueue.__micaLowMemoryWrapped) return;
     const original = controller.enqueue;
     const wrapped = function (chunk, ...rest) {
-      if (!isActiveForPage()) return original.call(this, chunk, ...rest);
       try {
         const result = core.windowTurboStreamChunk(chunk, streamState, config);
         if (result.meta) publish(status(result.meta.actualTruncation ? "active" : "standby", result.reason, result.meta, "react-router-stream"));
@@ -98,7 +84,7 @@
 
   async function interceptFetch(fetchImpl, ...args) {
     const request = describeRequest(args[0], args[1]);
-    if (!request || !isConversationRequest(request) || !isActiveForPage()) return fetchImpl(...args);
+    if (!request || !isConversationRequest(request)) return fetchImpl(...args);
     const response = await fetchImpl(...args);
     try {
       if (!response.ok || !/application\/json/i.test(response.headers.get("content-type") || "")) return response;
@@ -110,10 +96,6 @@
       publish(status("degraded", "json_processing_failed", {}, "conversation-json"));
       return response;
     }
-  }
-
-  function isActiveForPage() {
-    return config?.enabled === true && !isBypassedConversation();
   }
 
   function isConversationRequest(request) {
@@ -141,27 +123,6 @@
     return next;
   }
 
-  function readConfig() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(CONFIG_KEY) || "null");
-      return typeof parsed?.enabled === "boolean" ? normalizeConfig(parsed) : null;
-    } catch (_error) { return null; }
-  }
-
-  function normalizeConfig(value) {
-    return {
-      enabled: value.enabled === true,
-      keepCount: clamp(value.keepCount || core.DEFAULT_KEEP_COUNT, 8, 120),
-      threshold: clamp(value.threshold || core.DEFAULT_THRESHOLD, 10, 500),
-      updatedAt: Number(value.updatedAt) || Date.now()
-    };
-  }
-
-  function isBypassedConversation() {
-    try { return sessionStorage.getItem(BYPASS_KEY) === `${location.origin}${location.pathname}`; }
-    catch (_error) { return false; }
-  }
-
   function status(stateName, reason, meta = {}, source = "none") {
     return {
       schemaVersion: 2,
@@ -177,7 +138,7 @@
       bytesBefore: meta.bytesBefore || 0,
       bytesAfter: meta.bytesAfter || 0,
       bytesRemoved: meta.bytesRemoved || 0,
-      recentTurnLimit: meta.recentTurnLimit || config?.keepCount || core.DEFAULT_KEEP_COUNT,
+      recentTurnLimit: meta.recentTurnLimit || core.DEFAULT_KEEP_COUNT,
       actualTruncation: meta.actualTruncation === true,
       truncatedRepresentation: meta.truncatedRepresentation || "client-history-window",
       serverMutation: false,
@@ -194,14 +155,10 @@
     globalThis.dispatchEvent(new CustomEvent(STATUS_EVENT, { detail }));
   }
 
-  function clamp(value, min, max) {
-    return Math.min(max, Math.max(min, Math.round(Number(value) || min)));
-  }
-
   if (document.documentElement?.dataset?.micaFixture === "true") {
     globalThis.__MICA_LOW_MEMORY_PAGE_TEST__ = Object.freeze({
       snapshot: () => ({ ...lastStatus }),
-      processChunk: (chunk) => core.windowTurboStreamChunk(chunk, {}, config || { enabled: true, keepCount: 40, threshold: 80 })
+      processChunk: (chunk) => core.windowTurboStreamChunk(chunk, {}, config)
     });
   }
 })();

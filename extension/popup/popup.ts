@@ -1,4 +1,5 @@
 const DEV_BUILD = __MICA_DEV_BUILD__;
+let renderedLowMemoryState = "standby";
 const enabled = document.getElementById("enabled");
 const lowMemory = document.getElementById("low-memory");
 const lowMemoryState = document.getElementById("low-memory-state");
@@ -68,7 +69,10 @@ async function onLowMemoryChange() {
 
 async function onLoadFullHistory() {
   loadFullHistory.disabled = true;
-  const response = await sendToActiveTab({ type: "MICA_LOAD_FULL_HISTORY" });
+  const type = renderedLowMemoryState === "full_history_bypass" || renderedLowMemoryState === "reload_required"
+    ? "MICA_RESUME_LOW_MEMORY"
+    : "MICA_LOAD_FULL_HISTORY";
+  const response = await sendToActiveTab({ type });
   if (!response?.ok) {
     lowMemoryState.textContent = response?.reason === "active_draft_or_stream" ? "Finish current work first" : "Reload unavailable";
     loadFullHistory.disabled = false;
@@ -88,9 +92,21 @@ function render(status) {
 }
 
 function renderLowMemory(status) {
+  renderedLowMemoryState = status?.state || "standby";
   const active = status?.active === true && status?.actualTruncation === true;
-  historyActionRow.hidden = !active;
-  if (!enabled.checked || !lowMemory.checked) {
+  const recoverable = ["restore_required", "reload_required", "full_history_bypass"].includes(status?.state);
+  historyActionRow.hidden = !active && !recoverable;
+  loadFullHistory.textContent = status?.state === "full_history_bypass" || status?.state === "reload_required" ? "Resume Low Memory" : status?.state === "restore_required" ? "Restore full history" : "Load full history";
+  if (status?.state === "restore_required") {
+    lowMemoryState.textContent = "Reload to restore";
+    lowMemoryDetail.textContent = "Finish the current draft, stream, or dialog, then restore the native full history.";
+  } else if (status?.state === "full_history_bypass") {
+    lowMemoryState.textContent = "Full history loaded";
+    lowMemoryDetail.textContent = "This tab is using ChatGPT’s native full history. Low Memory returns on the next reload or when resumed.";
+  } else if (status?.state === "reload_required") {
+    lowMemoryState.textContent = "Reload to start";
+    lowMemoryDetail.textContent = "Finish the current draft, stream, or dialog, then reload into Low Memory.";
+  } else if (!enabled.checked || !lowMemory.checked) {
     lowMemoryState.textContent = "Off";
     lowMemoryDetail.textContent = "ChatGPT keeps its native full history.";
   } else if (active) {
@@ -99,8 +115,6 @@ function renderLowMemory(status) {
   } else if (status?.state === "degraded") {
     lowMemoryState.textContent = "Native fallback";
     lowMemoryDetail.textContent = "This conversation shape was not safe to window.";
-  } else if (status?.state === "restore_required") {
-    lowMemoryState.textContent = "Reload to restore";
   } else {
     lowMemoryState.textContent = "Ready";
     lowMemoryDetail.textContent = "Keeps 40 recent turns active. Full history stays on ChatGPT.";

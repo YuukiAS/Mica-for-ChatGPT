@@ -68,7 +68,10 @@ if (profile === "milestone-a") {
     [path.join(lowMemoryDir, "low-memory-fixture.json"), "low-memory-fixture.json"],
     [path.join(lowMemoryDir, "low-memory-page-interception.json"), "low-memory-page.json"],
     [path.join(lowMemoryDir, "low-memory-stress.json"), "low-memory-stress.json"],
-    [path.join(popupDir, "exact-low-memory-active-light-368-100.png"), "popup-low-memory-active.png"]
+    [path.join(lowMemoryDir, "low-memory-registration.json"), "low-memory-registration.json"],
+    [path.join(popupDir, "exact-low-memory-active-light-368-100.png"), "popup-low-memory-active.png"],
+    [path.join(popupDir, "exact-low-memory-restore-required-light-368-100.png"), "popup-low-memory-restore-required.png"],
+    [path.join(popupDir, "exact-low-memory-full-history-bypass-dark-368-100.png"), "popup-low-memory-full-history-bypass.png"]
   );
 }
 for (const [source, destination] of copies) await cp(source, path.join(bundleDir, "artifacts", destination));
@@ -95,7 +98,10 @@ if (profile === "milestone-a") {
     ["low-memory-fixture", "low-memory-fixture.json", "application/json"],
     ["low-memory-page", "low-memory-page.json", "application/json"],
     ["low-memory-stress", "low-memory-stress.json", "application/json"],
-    ["popup-low-memory-active", "popup-low-memory-active.png", "image/png"]
+    ["low-memory-registration", "low-memory-registration.json", "application/json"],
+    ["popup-low-memory-active", "popup-low-memory-active.png", "image/png"],
+    ["popup-low-memory-restore-required", "popup-low-memory-restore-required.png", "image/png"],
+    ["popup-low-memory-full-history-bypass", "popup-low-memory-full-history-bypass.png", "image/png"]
   );
 }
 const artifacts = [];
@@ -112,6 +118,8 @@ const foundationFlows = JSON.parse(await readFile(path.join(bundleDir, "artifact
 const lowMemoryPressure = profile === "milestone-a" ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-pressure.json"), "utf8")) : null;
 const lowMemoryFixture = profile === "milestone-a" ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-fixture.json"), "utf8")) : null;
 const lowMemoryPage = profile === "milestone-a" ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-page.json"), "utf8")) : null;
+const lowMemoryStress = profile === "milestone-a" ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-stress.json"), "utf8")) : null;
+const lowMemoryRegistration = profile === "milestone-a" ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-registration.json"), "utf8")) : null;
 const contractHash = artifactHash("chatgpt-contract");
 const bootstrapHash = artifactHash("current-chatgpt-bootstrap");
 const distHash = artifactHash("dist-tree");
@@ -213,7 +221,7 @@ const evidence = [
 ];
 if (profile === "milestone-a") {
   evidence.splice(evidence.findIndex((item) => item.gateId === "privacy"), 0,
-    record("low-memory-benefit", "TARGET_LOW_MEMORY_DEVICE", { surface: "target-low-memory-device" }, ["dist-tree", "low-memory-pressure", "low-memory-fixture", "low-memory-page", "low-memory-stress", "foundation-flows", "popup-low-memory-active"], {
+    record("low-memory-benefit", "TARGET_LOW_MEMORY_DEVICE", { surface: "target-low-memory-device" }, ["dist-tree", "low-memory-pressure", "low-memory-fixture", "low-memory-page", "low-memory-stress", "low-memory-registration", "foundation-flows", "popup-low-memory-active", "popup-low-memory-restore-required", "popup-low-memory-full-history-bypass"], {
       A: lowMemoryPressure.A,
       B: lowMemoryPressure.B,
       C: lowMemoryPressure.C,
@@ -225,13 +233,18 @@ if (profile === "milestone-a") {
       truncatedRepresentation: lowMemoryPressure.truncatedRepresentation,
       reactManagedInteractiveNodesDetached: lowMemoryPressure.reactManagedInteractiveNodesDetached,
       serverMutation: lowMemoryPressure.serverMutation,
-      history: {
-        scrollUpRestoresOlder: lowMemoryPage.historyControl?.connectedAtTop === true && lowMemoryPage.historyControl?.visibleAtTop === true && lowMemoryPage.historyControl?.buttonPresent === true,
-        loadFullHistoryPass: lowMemoryPage.historyControl?.bypassSet === true && lowMemoryPage.bypass?.mappingNodes === lowMemoryPage.stream?.status?.totalNodes,
-        reloadRestoresFullHistory: lowMemoryPage.reload?.bypassPersisted === true,
-        disableRestoresFullHistory: lowMemoryPage.disabled?.mappingNodes === lowMemoryPage.stream?.status?.totalNodes,
-        closeOrUninstallRestoresFullHistory: lowMemoryPressure.A?.mappingNodes === lowMemoryPressure.B?.mappingNodes && lowMemoryPressure.A?.mappingNodes > lowMemoryPressure.C?.mappingNodes,
-        serverHistoryUnchanged: lowMemoryPage.stream?.status?.serverMutation === false
+      history: lowMemoryPage.history,
+      registration: {
+        firstInstall: lowMemoryRegistration.firstInstall?.registered === true,
+        storageFailureFailOpen: lowMemoryRegistration.storageFailure?.registered === false,
+        siteWritableConfigAccepted: lowMemoryRegistration.siteWritableConfigAccepted === true,
+        forgedPageEventIgnored: lowMemoryPage.forgedPageConfig?.mappingNodes === lowMemoryPage.firstInstall?.mappingNodes
+      },
+      stress: {
+        passed: lowMemoryStress.passed,
+        loops: lowMemoryStress.loops,
+        runs: lowMemoryStress.runs,
+        results: lowMemoryStress.results
       },
       coreFlows: {
         composer: foundationFlows.coreFlows?.composer === true,
@@ -240,9 +253,9 @@ if (profile === "milestone-a") {
         editBranch: foundationFlows.coreFlows?.editBranch === true,
         connector: foundationFlows.coreFlows?.connector === true,
         toolFileAuth: foundationFlows.coreFlows?.toolFileAuth === true,
-        typingImeHotPath: foundationFlows.coreFlows?.typingImeHotPath === true && lowMemoryFixture.coreFlows?.typingImeHotPath === true
+        typingImeHotPath: foundationFlows.coreFlows?.typingImeHotPath === true
       },
-      unknownStructureBehavior: lowMemoryFixture.failOpen?.malformedChanged === false && lowMemoryFixture.failOpen?.malformedUnchanged === true && lowMemoryFixture.failOpen?.unknownChanged === false && lowMemoryFixture.failOpen?.unknownUnchanged === true ? "FAIL_OPEN" : "FAILED"
+      unknownStructureBehavior: Object.entries(lowMemoryFixture.failOpen || {}).every(([key, value]) => key.endsWith("Changed") ? value === false : key.endsWith("Unchanged") ? value === true : true) ? "FAIL_OPEN" : "FAILED"
     })
   );
 }

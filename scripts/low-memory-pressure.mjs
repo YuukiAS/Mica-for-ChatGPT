@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEV_DIST_DIR_NAME } from "./release-config.mjs";
@@ -34,7 +35,13 @@ const output = {
     memoryGb: 0.25,
     boundary: "local Chromium renderer constrained with a 256 MB V8 old-space limit; OS process memory is measured across the fresh browser process tree"
   },
-  pressureFixture: { memoryLimitMb: 256, payloadMb: TURNS * BYTES_PER_TURN * 2 / 1024 / 1024, turns: TURNS },
+  pressureFixture: {
+    memoryLimitMb: 256,
+    payloadMb: TURNS * BYTES_PER_TURN * 2 / 1024 / 1024,
+    turns: TURNS,
+    workload: "current-chatgpt-derived-react-router-flat-graph-and-virtualized-turn-renderer",
+    sourceArtifact: "current-chatgpt-surface/low-memory-data-plane-evidence.json"
+  },
   recentTurnLimit: 40,
   nativeVirtualizationBaseline: { currentPublicMountedTurns: 7, fixtureMountedTurns: 12, source: "2026-10-12 current read-only public ChatGPT bootstrap" },
   A: summarized.A,
@@ -53,6 +60,9 @@ assert(gain(output.B.retainedContentMb, output.C.retainedContentMb) >= 0.15, "Lo
 assert(output.C.mountedTurnCount <= output.B.mountedTurnCount * 1.1, "mounted DOM regressed");
 assert(latencyWithinBudget(output.B.typingP95Ms, output.C.typingP95Ms), "typing latency regressed");
 assert(latencyWithinBudget(output.B.scrollP95Ms, output.C.scrollP95Ms), "scroll latency regressed");
+assert(output.B.fullExtensionRuntimeLoaded && output.C.fullExtensionRuntimeLoaded, "B/C did not run the complete installed extension runtime");
+assert(output.C.longTaskTotalMs <= Math.max(output.B.longTaskTotalMs * 1.2, output.B.longTaskTotalMs + 5), "long-task time regressed");
+assert(output.C.frameP95Ms <= Math.max(output.B.frameP95Ms * 1.2, output.B.frameP95Ms + 2), "frame latency regressed");
 assert(output.actualTruncation, "pressure fixture did not actually truncate client history");
 
 const evidenceDir = path.join(root, "results", "mica-product-system-rebuild", "low-memory-evidence");
@@ -61,18 +71,37 @@ await writeFile(path.join(evidenceDir, "low-memory-pressure.json"), `${JSON.stri
 console.log(JSON.stringify(output, null, 2));
 
 async function runSample(state, variant, sample) {
-  const browserServer = await chromium.launchServer({ headless: true, args: ["--js-flags=--expose-gc --max-old-space-size=256", "--disable-background-timer-throttling"] });
-  const browser = await chromium.connect(browserServer.wsEndpoint());
+  const launched = await launchMeasuredBrowser(variant);
+  const browser = launched.browser;
   try {
-    const page = await browser.newPage({ viewport: { width: 1000, height: 760 } });
-    await page.route("https://chatgpt.com/fixture", (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><html data-mica-fixture='true'><body><div id='native-window'></div><div id='prompt-textarea' role='textbox' contenteditable='true'></div></body></html>" }));
-    await page.goto("https://chatgpt.com/fixture", { waitUntil: "load" });
-    await page.evaluate(({ enabled }) => localStorage.setItem("mica.lowMemory.config.v2", JSON.stringify({ enabled, keepCount: 40, threshold: 80, updatedAt: Date.now() })), { enabled: variant.enabled });
+    let worker = null;
+    let runtimeProof = null;
+    let registrationProof = null;
+    await launched.context.route("https://chatgpt.com/fixture", (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><html data-mica-fixture='true'><body><div id='native-window'></div><div id='prompt-textarea' role='textbox' contenteditable='true'></div></body></html>" }));
     if (variant.install) {
-      await page.addScriptTag({ path: path.join(distDir, "low-memory-core.js") });
-      await page.addScriptTag({ path: path.join(distDir, "low-memory-page.js") });
+      worker = await waitForExtensionWorker(browser);
+      registrationProof = await worker.evaluate(async (enabled) => {
+        await chrome.storage.local.set({ enabled: true, lowMemory: enabled, lowMemoryKeepCount: 40, lowMemoryThreshold: 80 });
+        const synced = await syncRegistration();
+        const scripts = await chrome.scripting.getRegisteredContentScripts();
+        return { synced, scripts };
+      }, variant.enabled);
     }
-    const result = await page.evaluate(({ turns, bytesPerTurn, enabled, installed }) => {
+    const page = await launched.context.newPage();
+    await page.goto("https://chatgpt.com/fixture", { waitUntil: "load" });
+    if (variant.install) {
+      runtimeProof = await waitForContentRuntime(worker);
+    }
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Performance.enable");
+    const beforePerformance = await cdp.send("Performance.getMetrics");
+    const beforeMetrics = Object.fromEntries(beforePerformance.metrics.map((metric) => [metric.name, metric.value]));
+    const result = await page.evaluate(async ({ turns, bytesPerTurn, enabled, installed }) => {
+      const longTasks = [];
+      const longTaskObserver = typeof PerformanceObserver === "function" ? new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) longTasks.push(entry.duration);
+      }) : null;
+      try { longTaskObserver?.observe({ type: "longtask", buffered: true }); } catch (_error) { /* optional browser metric */ }
       const conversation = makeConversation(turns, bytesPerTurn);
       const flat = encodeTurbo({ loaderData: { route: { serverResponse: { data: conversation } } } });
       let delivered = JSON.stringify(flat);
@@ -82,6 +111,9 @@ async function runSample(state, variant, sample) {
       globalThis.__pressureRetained = decodeTurbo(JSON.parse(delivered));
       const retainedConversation = globalThis.__pressureRetained.loaderData.route.serverResponse.data;
       const mapping = retainedConversation.mapping;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+      const bootstrapLongTasks = longTasks.splice(0);
       const nativeWindow = document.getElementById("native-window");
       const ids = Object.keys(mapping).filter((id) => mapping[id]?.message?.author?.role === "user" || mapping[id]?.message?.author?.role === "assistant").slice(-12);
       const observerState = { count: 0 };
@@ -90,6 +122,12 @@ async function runSample(state, variant, sample) {
       for (const id of ids) {
         const turn = document.createElement("section");
         turn.dataset.testid = `conversation-turn-${id}`;
+        turn.dataset.turn = id;
+        const article = document.createElement("article");
+        article.dataset.messageAuthorRole = mapping[id]?.message?.author?.role || "assistant";
+        const body = document.createElement("div"); body.className = "markdown prose";
+        const paragraph = document.createElement("p"); paragraph.textContent = mapping[id]?.message?.content?.parts?.[0]?.slice(0, 512) || "";
+        body.append(paragraph); article.append(body); turn.append(article);
         nativeWindow.append(turn);
       }
       for (let cycle = 0; cycle < 4; cycle += 1) for (const turn of nativeWindow.children) turn.toggleAttribute("data-cycle", cycle % 2 === 0);
@@ -109,12 +147,20 @@ async function runSample(state, variant, sample) {
         nativeWindow.dispatchEvent(new Event("scroll"));
         scroll.push(Math.max(0.01, performance.now() - start));
       }
+      const frame = [];
+      for (let index = 0; index < 30; index += 1) {
+        const start = performance.now();
+        nativeWindow.scrollTop = (index * 211) % 7600;
+        editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "x" }));
+        await new Promise((resolve) => requestAnimationFrame(() => { frame.push(performance.now() - start); resolve(); }));
+      }
       const retainedContentBytes = Object.values(mapping).reduce((total, node) => total + (node?.message?.content?.parts || []).reduce((sum, part) => sum + (typeof part === "string" ? part.length * 2 : 0), 0), 0);
       const pageStatus = installed ? JSON.parse(document.documentElement.getAttribute("data-mica-low-memory-page-status") || "null") : null;
-      return new Promise((resolve) => setTimeout(() => {
-        observer.disconnect();
-        globalThis.gc?.();
-        resolve({
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      observer.disconnect();
+      longTaskObserver?.disconnect();
+      globalThis.gc?.();
+      return {
           state: enabled ? "on" : "off",
           mappingNodes: Object.keys(mapping).length,
           retainedContentMb: retainedContentBytes / 1024 / 1024,
@@ -122,10 +168,16 @@ async function runSample(state, variant, sample) {
           mutationCount: observerState.count,
           typingP95Ms: percentile(typing, 0.95),
           scrollP95Ms: percentile(scroll, 0.95),
+          frameP95Ms: percentile(frame, 0.95),
+          longTaskCount: longTasks.length,
+          longTaskTotalMs: longTasks.reduce((total, value) => total + value, 0),
+          longTaskMaxMs: longTasks.length ? Math.max(...longTasks) : 0,
+          bootstrapLongTaskCount: bootstrapLongTasks.length,
+          bootstrapLongTaskTotalMs: bootstrapLongTasks.reduce((total, value) => total + value, 0),
+          bootstrapLongTaskMaxMs: bootstrapLongTasks.length ? Math.max(...bootstrapLongTasks) : 0,
           status: pageStatus,
           browserBuild: navigator.userAgent
-        });
-      }, 30));
+        };
 
       function makeConversation(count, size) {
         const mapping = { root: { id: "root", children: [] } };
@@ -170,23 +222,82 @@ async function runSample(state, variant, sample) {
     }, { turns: TURNS, bytesPerTurn: BYTES_PER_TURN, enabled: variant.enabled, installed: variant.install });
 
     await page.evaluate(() => globalThis.gc?.());
-    const cdp = await page.context().newCDPSession(page);
-    await cdp.send("Performance.enable");
     const performanceMetrics = await cdp.send("Performance.getMetrics");
     const metrics = Object.fromEntries(performanceMetrics.metrics.map((metric) => [metric.name, metric.value]));
-    const processMemoryMb = measureProcessTreeMb(browserServer.process().pid);
+    const processMemoryMb = measureProcessTreeMb(resolveBrowserPid(launched.profileDir));
     return {
       sample: sample + 1,
       state,
       variant: variant.variant,
       processMemoryMb,
       heapMb: metrics.JSHeapUsedSize / 1024 / 1024,
+      layoutCount: (metrics.LayoutCount || 0) - (beforeMetrics.LayoutCount || 0),
+      recalcStyleCount: (metrics.RecalcStyleCount || 0) - (beforeMetrics.RecalcStyleCount || 0),
+      fullExtensionRuntime: runtimeProof,
+      registrationProof,
       ...result
     };
   } finally {
-    await browser.close();
-    await browserServer.close();
+    await launched.close();
   }
+}
+
+async function launchMeasuredBrowser(variant) {
+  const profileDir = await mkdtemp(path.join(os.tmpdir(), "mica-pressure-profile-"));
+  const extensionArgs = variant.install ? [`--disable-extensions-except=${distDir}`, `--load-extension=${distDir}`] : ["--disable-extensions"];
+  const context = await chromium.launchPersistentContext(profileDir, {
+    channel: "msedge",
+    headless: false,
+    viewport: { width: 1000, height: 760 },
+    ignoreDefaultArgs: variant.install ? ["--disable-extensions"] : [],
+    args: ["--window-position=-32000,-32000", "--window-size=1000,760", "--js-flags=--expose-gc --max-old-space-size=256", "--disable-background-timer-throttling", ...extensionArgs]
+  });
+  const browser = context.browser();
+  return {
+    browser,
+    context,
+    profileDir,
+    async close() {
+      try { await context.close(); } catch (_error) { /* cleanup continues */ }
+      await rm(profileDir, { recursive: true, force: true });
+    }
+  };
+}
+
+function resolveBrowserPid(profileDir) {
+  const literal = profileDir.replaceAll("'", "''");
+  const script = `$ErrorActionPreference='Stop';$profile='${literal}';$match=Get-CimInstance Win32_Process|Where-Object{$_.CommandLine-and$_.CommandLine.Contains($profile)}|Sort-Object CreationDate|Select-Object -First 1;if(-not$match){throw 'browser pid not found'};[int]$match.ProcessId`;
+  return Number(execFileSync("powershell.exe", ["-NoProfile", "-Command", script], { encoding: "utf8" }).trim());
+}
+
+async function waitForExtensionWorker(browser) {
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    for (const context of browser.contexts()) {
+      const worker = context.serviceWorkers().find((candidate) => candidate.url().startsWith("chrome-extension://"));
+      if (worker) return worker;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error("full extension service worker did not load");
+}
+
+async function waitForContentRuntime(worker) {
+  const deadline = Date.now() + 5000;
+  let lastError = "content runtime unavailable";
+  while (Date.now() < deadline) {
+    try {
+      const proof = await worker.evaluate(async () => {
+        const tabs = await chrome.tabs.query({});
+        const tab = tabs.find((candidate) => candidate.url?.startsWith("https://chatgpt.com/fixture"));
+        if (!tab?.id) throw new Error("fixture tab not found");
+        return chrome.tabs.sendMessage(tab.id, { type: "MICA_GET_STATUS" });
+      });
+      if (proof?.status && proof?.settings) return { loaded: true, version: proof.status.version, lowMemoryEnabled: proof.settings.enabled && proof.settings.lowMemory };
+    } catch (error) { lastError = String(error?.message || error); }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(`full extension content runtime did not load: ${lastError}`);
 }
 
 function summarize(variant, samples) {
@@ -204,6 +315,19 @@ function summarize(variant, samples) {
     scrollP95Ms: median(samples.map((item) => item.scrollP95Ms)),
     scrollRangeMs: range(samples.map((item) => item.scrollP95Ms)),
     mappingNodes: median(samples.map((item) => item.mappingNodes)),
+    frameP95Ms: median(samples.map((item) => item.frameP95Ms)),
+    longTaskCount: median(samples.map((item) => item.longTaskCount)),
+    longTaskTotalMs: median(samples.map((item) => item.longTaskTotalMs)),
+    longTaskMaxMs: median(samples.map((item) => item.longTaskMaxMs)),
+    bootstrapLongTaskCount: median(samples.map((item) => item.bootstrapLongTaskCount)),
+    bootstrapLongTaskTotalMs: median(samples.map((item) => item.bootstrapLongTaskTotalMs)),
+    bootstrapLongTaskMaxMs: median(samples.map((item) => item.bootstrapLongTaskMaxMs)),
+    layoutCount: median(samples.map((item) => item.layoutCount)),
+    recalcStyleCount: median(samples.map((item) => item.recalcStyleCount)),
+    fullExtensionRuntimeLoaded: samples.every((item) => item.fullExtensionRuntime?.loaded === true),
+    runtimeVersion: samples.find((item) => item.fullExtensionRuntime?.version)?.fullExtensionRuntime?.version || null,
+    registrationProof: samples[0]?.registrationProof || null,
+    windowingStatus: samples[0]?.status || null,
     samples: samples.length
   };
 }
