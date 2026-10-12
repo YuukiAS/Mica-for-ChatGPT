@@ -229,12 +229,21 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
     const foundationCore = await readBoundJson("foundation-core");
     if (record.subject?.surface !== "current-chatgpt") fail("wrong ChatGPT contract surface");
     if (!Array.isArray(m.capabilities) || m.capabilities.length === 0) fail("capability measurements missing");
+    const declaredCapabilities = Array.isArray(contract?.capabilities) ? contract.capabilities : [];
+    const measuredCapabilityIds = (m.capabilities || []).map((item) => item?.capabilityId);
+    const declaredCapabilityIds = declaredCapabilities.map((item) => item?.capabilityId);
+    const bootstrapCapabilityIds = (bootstrap?.capabilities || []).map((item) => item?.id);
+    if (!uniqueStrings(declaredCapabilityIds)) fail("bound contract capability IDs must be present and unique");
+    if (!uniqueStrings(measuredCapabilityIds)) fail("measured capability IDs must be present and unique");
+    if (!uniqueStrings(bootstrapCapabilityIds)) fail("bootstrap capability IDs must be present and unique");
+    if (!sameSet(measuredCapabilityIds, declaredCapabilityIds)) fail("measured capability set does not match the bound contract capability set");
     for (const capability of m.capabilities || []) {
       if (!capability.capabilityId || !capability.variantId) fail("capability identity missing");
       if (!["EXACT", "COMPATIBLE", "UNKNOWN"].includes(capability.status)) fail(`capability ${capability.capabilityId} has invalid status`);
       if (!isSha256(capability.contractHash) || !isSha256(capability.sourceArtifactHash)) fail(`capability ${capability.capabilityId} hash identity missing`);
       if (["EXACT", "COMPATIBLE"].includes(capability.status)) {
-        if (!includesAll(capability.observedInvariants, capability.requiredInvariants || [])) fail(`capability ${capability.capabilityId} missing required invariant`);
+        if (!Array.isArray(capability.requiredInvariants) || capability.requiredInvariants.length === 0) fail(`capability ${capability.capabilityId} required invariant contract is empty`);
+        if (!Array.isArray(capability.requiredSourceObservationIds) || capability.requiredSourceObservationIds.length === 0) fail(`capability ${capability.capabilityId} source observation contract is empty`);
         if ((capability.invalidatedBy || []).length > 0) fail(`capability ${capability.capabilityId} is stale or invalidated`);
       } else if (capability.failOpen !== true) {
         fail(`unknown capability ${capability.capabilityId} must fail open`);
@@ -242,13 +251,26 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
       const source = (record.artifactIds || []).map((id) => artifacts.get(id)).find((artifact) => artifact?.sha256 === capability.sourceArtifactHash);
       if (!source) fail(`capability ${capability.capabilityId} source artifact hash is not bound to evidence`);
       if (source?.id !== "current-chatgpt-bootstrap") fail(`capability ${capability.capabilityId} is not bound to current bootstrap evidence`);
-      const declared = contract?.capabilities?.find((item) => item.capabilityId === capability.capabilityId);
-      if (!declared || declared.sourceCapabilityId !== capability.sourceCapabilityId || declared.variantId !== capability.variantId || declared.status !== capability.status || !sameJson(declared.requiredInvariants || [], capability.requiredInvariants || [])) {
+      const declared = declaredCapabilities.find((item) => item.capabilityId === capability.capabilityId);
+      if (!declared || declared.sourceCapabilityId !== capability.sourceCapabilityId || declared.sourceEvidenceClass !== capability.sourceEvidenceClass || declared.variantId !== capability.variantId || declared.status !== capability.status || !sameJson(declared.requiredInvariants || [], capability.requiredInvariants || []) || !sameJson(declared.requiredSourceObservationIds || [], capability.requiredSourceObservationIds || [])) {
         fail(`capability ${capability.capabilityId} differs from the bound contract artifact`);
       }
       const sourceCapability = bootstrap?.capabilities?.find((item) => item.id === capability.sourceCapabilityId);
       if (!sourceCapability || !bootstrapStatusSupportsContract(sourceCapability.status, capability.status)) {
         fail(`capability ${capability.capabilityId} is not supported by its current bootstrap capability`);
+      }
+      if (sourceCapability?.evidenceClass !== capability.sourceEvidenceClass) fail(`capability ${capability.capabilityId} evidence class differs from current bootstrap`);
+      const sourceObservationIds = (sourceCapability?.observations || []).map((item) => item?.id);
+      if (!uniqueStrings(sourceObservationIds)) fail(`capability ${capability.capabilityId} bootstrap observation IDs must be present and unique`);
+      const requiredObservationIds = capability.requiredSourceObservationIds || [];
+      if (!uniqueStrings(requiredObservationIds)) fail(`capability ${capability.capabilityId} required source observation IDs must be unique`);
+      if (!includesAll(sourceObservationIds, requiredObservationIds)) fail(`capability ${capability.capabilityId} references a missing bootstrap observation`);
+      const provenObservationIds = requiredObservationIds.filter((id) => {
+        const observation = sourceCapability?.observations?.find((item) => item.id === id);
+        return observation && bootstrapObservationPasses(bootstrap, observation);
+      });
+      if (!sameJson(capability.observedInvariants || [], provenObservationIds) || !sameJson(requiredObservationIds, provenObservationIds)) {
+        fail(`capability ${capability.capabilityId} observed invariants are not mechanically proven by current bootstrap surfaces`);
       }
     }
     if (manifest.chatgptContractHash !== artifacts.get("chatgpt-contract")?.sha256) fail("manifest contract hash is not the bound contract artifact hash");
@@ -526,6 +548,21 @@ function sameSet(actual, expected) {
 
 function sameJson(actual, expected) {
   return stableStringify(actual) === stableStringify(expected);
+}
+
+function uniqueStrings(values) {
+  return Array.isArray(values) && values.every((value) => typeof value === "string" && value.length > 0) && new Set(values).size === values.length;
+}
+
+function bootstrapObservationPasses(bootstrap, observation) {
+  return Array.isArray(observation?.assertions) && observation.assertions.length > 0 && observation.assertions.every((assertion) => {
+    const surface = bootstrap?.surfaces?.find((item) => item.id === assertion.surfaceId);
+    return surface && surface.evidenceClass && surface.evidenceClass !== "NONE" && sameJson(readPath(surface, assertion.path), assertion.equals);
+  });
+}
+
+function readPath(value, dottedPath) {
+  return String(dottedPath || "").split(".").filter(Boolean).reduce((current, key) => current?.[key], value);
 }
 
 function bootstrapStatusSupportsContract(bootstrapStatus, contractStatus) {

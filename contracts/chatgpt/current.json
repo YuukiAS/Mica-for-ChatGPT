@@ -8,6 +8,8 @@
     {
       "capabilityId": "turns.list",
       "sourceCapabilityId": "conversation-turn-discovery",
+      "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+      "requiredSourceObservationIds": ["ordered-turn-containers", "role-owned-turns"],
       "variantId": "conversation-turn-section-role-v1",
       "status": "EXACT",
       "requiredInvariants": ["ordered turn container", "exactly one role owner", "user or assistant role"],
@@ -16,6 +18,8 @@
     {
       "capabilityId": "answer.read",
       "sourceCapabilityId": "answer-document-static-block-extraction",
+      "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+      "requiredSourceObservationIds": ["assistant-semantic-blocks"],
       "variantId": "assistant-role-semantic-content-v1",
       "status": "EXACT",
       "requiredInvariants": ["assistant role ownership", "semantic p/pre/code descendants"],
@@ -24,6 +28,8 @@
     {
       "capabilityId": "answer.actionCluster",
       "sourceCapabilityId": "answer-document-static-block-extraction",
+      "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+      "requiredSourceObservationIds": ["native-copy-action"],
       "variantId": "native-copy-button-parent-v1",
       "status": "EXACT",
       "requiredInvariants": ["native copy button", "same assistant turn", "sibling cluster parent"],
@@ -32,6 +38,8 @@
     {
       "capabilityId": "composer.editor",
       "sourceCapabilityId": "composer-discovery",
+      "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED_PLUS_LOGGED_OUT",
+      "requiredSourceObservationIds": ["contenteditable-composer", "mobile-textarea-composer"],
       "variantId": "prompt-editor-current-variants-v1",
       "variantIds": ["prompt-textarea-contenteditable-v1", "mobile-composer-textarea-v1"],
       "status": "COMPATIBLE",
@@ -41,6 +49,8 @@
     {
       "capabilityId": "conversation.scrollRoot",
       "sourceCapabilityId": "native-virtualization-baseline",
+      "sourceEvidenceClass": "NONE",
+      "requiredSourceObservationIds": [],
       "variantId": "unproven-v1",
       "status": "UNKNOWN",
       "requiredInvariants": ["single conversation scroll owner", "stable restoration anchor"],
@@ -49,6 +59,8 @@
     {
       "capabilityId": "answer.math",
       "sourceCapabilityId": "math-block-structure",
+      "sourceEvidenceClass": "NONE",
+      "requiredSourceObservationIds": [],
       "variantId": "unproven-v1",
       "status": "UNKNOWN",
       "requiredInvariants": ["raw TeX source", "rendered text", "inline/display distinction"],
@@ -57,6 +69,8 @@
     {
       "capabilityId": "lifecycle.streamingEditBranchTools",
       "sourceCapabilityId": "streaming-edit-branch-tools-files-connectors-auth",
+      "sourceEvidenceClass": "NONE",
+      "requiredSourceObservationIds": [],
       "variantId": "unproven-v1",
       "status": "UNKNOWN",
       "requiredInvariants": ["streaming ownership", "edit branch identity", "tool/file/auth boundaries"],

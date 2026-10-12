@@ -2,18 +2,22 @@
 
 ## Project objective
 
-Mica is a local browser extension that improves the ChatGPT web experience. The current P0 is **long-thread performance recovery**: replace the now-unreliable LightSession behavior with a working extension that can be manually installed immediately.
+Mica is a local browser extension that improves the ChatGPT web experience. The current authority is the 2026-10-12 product-system rebuild Goal. Work proceeds in this fixed order: **Foundation → Low Memory → built-in ChatGPT Highlighter → highlight-preserving PDF**. Advanced Reliability, Notion, and secondary reuse features remain deferred.
 
 Read these first:
 
-1. `README.md`
-2. `docs/PHASE_1_LONG_THREAD_RECOVERY.md`
-3. `docs/ROADMAP.md`
-4. `docs/VERSIONING.md`
+1. `docs/tasks/2026-10-12-mica-product-system-rebuild-goal.md`
+2. `docs/product/MICA_PRODUCT_SYSTEM_V1.md`
+3. `README.md`
+4. `docs/ROADMAP.md`
+5. `docs/VERSIONING.md`
+6. `docs/PHASE_1_LONG_THREAD_RECOVERY.md`（Low Memory 历史调查与回归参考）
 
-## P0 rules
+## Current execution rules
 
-- Do not expand scope into Markdown export, retry automation, or UI polish until long-thread performance is demonstrably fixed.
+- Do not begin substantial Low Memory, Highlighter, or PDF implementation until the internal Foundation gate passes.
+- After Foundation, complete and review Low Memory before Highlighter/PDF. Do not substitute native ChatGPT virtualization, diagnostics, a no-op, or render containment for measured client-history truncation.
+- Do not expand scope into advanced Reliability, Notion, arbitrary-webpage highlighting, or secondary reuse features before the prioritized rebuild Goal closes.
 - Reproduce the current failure before copying or rewriting LightSession behavior.
 - Treat ChatGPT private endpoints and DOM structure as unstable.
 - Prefer fail-open behavior: if Mica cannot safely identify a structure, disable optimization instead of guessing.

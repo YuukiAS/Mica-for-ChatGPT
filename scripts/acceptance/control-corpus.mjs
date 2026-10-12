@@ -63,6 +63,25 @@ export async function runControlCorpus(repoRoot) {
       evidence(manifest, "adapter-contract").measurement.capabilities[0].sourceCapabilityId = "missing-current-capability";
       refreshRoot(manifest);
     }],
+    ["missing-contract-capability", async ({ manifest }) => {
+      evidence(manifest, "adapter-contract").measurement.capabilities = [];
+      refreshRoot(manifest);
+    }],
+    ["duplicate-contract-capability", async ({ manifest }) => {
+      const capabilities = evidence(manifest, "adapter-contract").measurement.capabilities;
+      capabilities.push({ ...capabilities[0] });
+      refreshRoot(manifest);
+    }],
+    ["bootstrap-invariant-mismatch", async ({ bundleDir, manifest }) => {
+      const file = path.join(bundleDir, "artifacts", "current-chatgpt-bootstrap.json");
+      const value = JSON.parse(await readFile(file, "utf8"));
+      value.surfaces[0].observed.turnContainer.mountedCount = 0;
+      await writeFile(file, JSON.stringify(value));
+      const artifact = manifest.artifacts.find((item) => item.id === "current-chatgpt-bootstrap");
+      artifact.sha256 = await sha256File(file);
+      for (const capability of evidence(manifest, "adapter-contract").measurement.capabilities) capability.sourceArtifactHash = artifact.sha256;
+      refreshRoot(manifest);
+    }],
     ["evidence-root-mismatch", async ({ manifest }) => { manifest.evidenceRootHash = "0".repeat(64); }],
     ["historical-copy-misplacement", async ({ manifest }) => { evidence(manifest, "copy-placement").measurement.clusterProven = false; refreshRoot(manifest); }],
     ["connector-residual-remount-regression", async ({ manifest }) => { evidence(manifest, "core-flow-regression").measurement.connector = false; refreshRoot(manifest); }],
@@ -143,9 +162,13 @@ async function createGoodBundle(repoRoot) {
     ["popup-light", "artifacts/popup-light.png", "image/png", "known-good-popup-light"],
     ["popup-dark", "artifacts/popup-dark.png", "image/png", "known-good-popup-dark"],
     ["chatgpt-contract", "artifacts/chatgpt-contract.json", "application/json", JSON.stringify({
-      capabilities: [{ capabilityId: "turns.list", sourceCapabilityId: "conversation-turn-discovery", variantId: "public-shared-v1", status: "EXACT", requiredInvariants: ["ordered turns", "role ownership"] }]
+      capabilities: [{ capabilityId: "turns.list", sourceCapabilityId: "conversation-turn-discovery", sourceEvidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", requiredSourceObservationIds: ["ordered-turn-containers"], variantId: "public-shared-v1", status: "EXACT", requiredInvariants: ["ordered turns", "role ownership"] }]
     })],
-    ["current-chatgpt-bootstrap", "artifacts/current-chatgpt-bootstrap.json", "application/json", JSON.stringify({ capabilities: [{ id: "conversation-turn-discovery", status: "EXACT" }], gate: { bootstrapEvidence: "PASS", oldSurfaceAtlasUsedAsCurrentEvidence: false } })],
+    ["current-chatgpt-bootstrap", "artifacts/current-chatgpt-bootstrap.json", "application/json", JSON.stringify({
+      surfaces: [{ id: "public-shared-conversation", evidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", observed: { turnContainer: { mountedCount: 7 } } }],
+      capabilities: [{ id: "conversation-turn-discovery", status: "EXACT", evidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", observations: [{ id: "ordered-turn-containers", assertions: [{ surfaceId: "public-shared-conversation", path: "observed.turnContainer.mountedCount", equals: 7 }] }] }],
+      gate: { bootstrapEvidence: "PASS", oldSurfaceAtlasUsedAsCurrentEvidence: false }
+    })],
     ["pdf", "artifacts/output.pdf", "application/pdf", "%PDF-control-selectable-math"],
     ["privacy-report", "artifacts/privacy.json", "application/json", "known-good-privacy-report"],
     ["copy-plain-expected", "artifacts/copy-plain-expected.txt", "text/plain", "plain markdown output"],
@@ -213,10 +236,12 @@ async function createGoodBundle(repoRoot) {
       capabilities: [{
         capabilityId: "turns.list",
         sourceCapabilityId: "conversation-turn-discovery",
+        sourceEvidenceClass: "REAL_CHATGPT_PUBLIC_SHARED",
+        requiredSourceObservationIds: ["ordered-turn-containers"],
         variantId: "public-shared-v1",
         status: "EXACT",
         requiredInvariants: ["ordered turns", "role ownership"],
-        observedInvariants: ["ordered turns", "role ownership"],
+        observedInvariants: ["ordered-turn-containers"],
         contractHash,
         sourceArtifactHash: bootstrapHash,
         invalidatedBy: []

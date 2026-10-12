@@ -100,6 +100,23 @@
       "id": "conversation-turn-discovery",
       "status": "EXACT",
       "evidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+      "observations": [
+        {
+          "id": "ordered-turn-containers",
+          "assertions": [
+            {"surfaceId": "public-shared-conversation", "path": "observed.main.id", "equals": "main"},
+            {"surfaceId": "public-shared-conversation", "path": "observed.turnContainer.dataTestIdPattern", "equals": "conversation-turn-*"},
+            {"surfaceId": "public-shared-conversation", "path": "observed.turnContainer.mountedCount", "equals": 7}
+          ]
+        },
+        {
+          "id": "role-owned-turns",
+          "assertions": [
+            {"surfaceId": "public-shared-conversation", "path": "observed.messageRoleNode.mountedCount", "equals": 7},
+            {"surfaceId": "public-shared-conversation", "path": "observed.messageRoleNode.rolesInOrder", "equals": ["user", "user", "assistant", "user", "assistant", "user", "assistant"]}
+          ]
+        }
+      ],
       "invariants": [
         "main#main contains ordered section[data-testid^='conversation-turn-'] nodes",
         "each sampled turn contains a data-message-author-role node"
@@ -109,6 +126,22 @@
       "id": "answer-document-static-block-extraction",
       "status": "EXACT_FOR_OBSERVED_BLOCKS",
       "evidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+      "observations": [
+        {
+          "id": "assistant-semantic-blocks",
+          "assertions": [
+            {"surfaceId": "public-shared-conversation", "path": "observed.assistantContent.paragraphsPresent", "equals": true},
+            {"surfaceId": "public-shared-conversation", "path": "observed.assistantContent.prePresent", "equals": true},
+            {"surfaceId": "public-shared-conversation", "path": "observed.assistantContent.codePresent", "equals": true}
+          ]
+        },
+        {
+          "id": "native-copy-action",
+          "assertions": [
+            {"surfaceId": "public-shared-conversation", "path": "observed.assistantContent.copyActionTestId", "equals": "copy-turn-action-button"}
+          ]
+        }
+      ],
       "invariants": [
         "assistant role nodes contain semantic paragraph and code/pre descendants",
         "native copy action is independently discoverable"
@@ -118,6 +151,24 @@
       "id": "composer-discovery",
       "status": "COMPATIBLE",
       "evidenceClass": "REAL_CHATGPT_PUBLIC_SHARED_PLUS_LOGGED_OUT",
+      "observations": [
+        {
+          "id": "contenteditable-composer",
+          "assertions": [
+            {"surfaceId": "public-shared-conversation", "path": "observed.composer.tag", "equals": "div"},
+            {"surfaceId": "public-shared-conversation", "path": "observed.composer.id", "equals": "prompt-textarea"},
+            {"surfaceId": "public-shared-conversation", "path": "observed.composer.role", "equals": "textbox"},
+            {"surfaceId": "public-shared-conversation", "path": "observed.composer.contenteditable", "equals": "true"}
+          ]
+        },
+        {
+          "id": "mobile-textarea-composer",
+          "assertions": [
+            {"surfaceId": "logged-out-home", "path": "observed.composer.tag", "equals": "textarea"},
+            {"surfaceId": "logged-out-home", "path": "observed.composer.id", "equals": "mobile-composer-prompt"}
+          ]
+        }
+      ],
       "invariants": [
         "public share uses div#prompt-textarea[role='textbox'][contenteditable='true']",
         "logged-out home can use textarea#mobile-composer-prompt"
@@ -127,18 +178,21 @@
       "id": "native-virtualization-baseline",
       "status": "UNOBSERVED",
       "evidenceClass": "NONE",
+      "observations": [],
       "reason": "The current public conversation is not a target long thread; seven of seven observed turns were mounted."
     },
     {
       "id": "streaming-edit-branch-tools-files-connectors-auth",
       "status": "UNKNOWN_FAIL_OPEN",
       "evidenceClass": "NONE",
+      "observations": [],
       "reason": "The read-only unauthenticated bootstrap cannot exercise authenticated or mutating flows."
     },
     {
       "id": "math-block-structure",
       "status": "UNOBSERVED",
       "evidenceClass": "NONE",
+      "observations": [],
       "reason": "The sampled public conversation did not contain math."
     }
   ],

@@ -77,6 +77,7 @@ for (const [id, filename, kind] of artifactDefinitions) {
 }
 const artifactHash = (id) => artifacts.find((artifact) => artifact.id === id).sha256;
 const contract = JSON.parse(await readFile(path.join(bundleDir, "artifacts", "chatgpt-contract.json"), "utf8"));
+const bootstrap = JSON.parse(await readFile(path.join(bundleDir, "artifacts", "current-chatgpt-bootstrap.json"), "utf8"));
 const popupEvidence = JSON.parse(await readFile(path.join(bundleDir, "artifacts", "popup-render.json"), "utf8"));
 const foundationCore = JSON.parse(await readFile(path.join(bundleDir, "artifacts", "foundation-core.json"), "utf8"));
 const foundationFlows = JSON.parse(await readFile(path.join(bundleDir, "artifacts", "foundation-flows.json"), "utf8"));
@@ -106,18 +107,28 @@ const evidence = [
     themeArtifacts: { light: "popup-light", dark: "popup-dark" }
   }),
   record("adapter-contract", "REAL_DERIVED_CURRENT_CHATGPT", { surface: "current-chatgpt" }, ["chatgpt-contract", "current-chatgpt-bootstrap", "foundation-core"], {
-    capabilities: contract.capabilities.map((capability) => ({
-      capabilityId: capability.capabilityId,
-      sourceCapabilityId: capability.sourceCapabilityId,
-      variantId: capability.variantId,
-      status: capability.status,
-      requiredInvariants: capability.requiredInvariants || [],
-      observedInvariants: capability.status === "UNKNOWN" ? [] : capability.requiredInvariants || [],
-      contractHash,
-      sourceArtifactHash: bootstrapHash,
-      invalidatedBy: [],
-      failOpen: capability.status === "UNKNOWN"
-    }))
+    capabilities: contract.capabilities.map((capability) => {
+      const sourceCapability = bootstrap.capabilities?.find((item) => item.id === capability.sourceCapabilityId);
+      const requiredSourceObservationIds = capability.requiredSourceObservationIds || [];
+      const observedInvariants = requiredSourceObservationIds.filter((id) => {
+        const observation = sourceCapability?.observations?.find((item) => item.id === id);
+        return observation && bootstrapObservationPasses(bootstrap, observation);
+      });
+      return {
+        capabilityId: capability.capabilityId,
+        sourceCapabilityId: capability.sourceCapabilityId,
+        sourceEvidenceClass: capability.sourceEvidenceClass,
+        requiredSourceObservationIds,
+        variantId: capability.variantId,
+        status: capability.status,
+        requiredInvariants: capability.requiredInvariants || [],
+        observedInvariants,
+        contractHash,
+        sourceArtifactHash: bootstrapHash,
+        invalidatedBy: [],
+        failOpen: capability.status === "UNKNOWN"
+      };
+    })
   }),
   record("answer-document-core", "REAL_DERIVED_CURRENT_CHATGPT", { surface: "answer-document" }, ["foundation-core", "chatgpt-contract", "current-chatgpt-bootstrap"], {
     documentFields: ["documentId", "conversationId", "turnId", "sourceVersion", "generationState", "orderedBlocks"],
@@ -180,6 +191,21 @@ console.log(JSON.stringify({ bundleDir, commit, version: VERSION_NAME, distHash,
 
 function record(gateId, evidenceClass, subject, artifactIds, measurement) {
   return { id: `${gateId}-foundation-evidence`, gateId, evidenceClass, subject, artifactIds, measurement };
+}
+
+function bootstrapObservationPasses(bootstrap, observation) {
+  return Array.isArray(observation?.assertions) && observation.assertions.length > 0 && observation.assertions.every((assertion) => {
+    const surface = bootstrap.surfaces?.find((item) => item.id === assertion.surfaceId);
+    return surface && surface.evidenceClass && surface.evidenceClass !== "NONE" && sameJson(readPath(surface, assertion.path), assertion.equals);
+  });
+}
+
+function readPath(value, dottedPath) {
+  return String(dottedPath || "").split(".").filter(Boolean).reduce((current, key) => current?.[key], value);
+}
+
+function sameJson(actual, expected) {
+  return JSON.stringify(actual) === JSON.stringify(expected);
 }
 
 async function walkFiles(directory) {

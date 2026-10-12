@@ -1,6 +1,6 @@
 (() => {
   const CONTRACT_ID = "chatgpt-current-2026-10-12-v1";
-  const CONTRACT_HASH = "c6dd6bf00d015f691cc1433ec557008818ec4a328e625946e8d43ed13d51fecc";
+  const CONTRACT_HASH = "2ca0f3276af681b5d721101e4b15145547f8a457b77159dc76f5f2d592ba068b";
   const CONTRACT_VERSION = 1;
   const CURRENT_TURN_SELECTOR = "section[data-testid^='conversation-turn-']";
   const FIXTURE_TURN_SELECTOR = "[data-testid^='conversation-turn-']";

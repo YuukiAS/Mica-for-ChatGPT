@@ -41,7 +41,7 @@
       "scale": 1,
       "colorScheme": "light",
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/exact-light-368-100.png",
-      "screenshotSha256": "eba772ec75e5c28a225348d0dd9c6995ad0a2ebb39245c0e713307057eeaa6ab"
+      "screenshotSha256": "97d87a4efa8f77a327b996c8e6716dee32100081aad755ac968afdaa46345980"
     },
     {
       "state": "unknown",
@@ -49,7 +49,7 @@
       "scale": 1,
       "colorScheme": "dark",
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/unknown-dark-368-100.png",
-      "screenshotSha256": "753bdd33223bf593abcf6966f7488bebca32a0fface5860a158f43f2effcf623"
+      "screenshotSha256": "a1b2a936907b130c41128a4f2b114e81d52bc574b775e1f046ddc4dd33557288"
     },
     {
       "state": "compatible",
@@ -57,7 +57,7 @@
       "scale": 1.5,
       "colorScheme": "light",
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/compatible-light-320-150.png",
-      "screenshotSha256": "46cea6cf9444a7e2c5c5cbcbe60b47bf09202dadeacfb8be97e43094cac3b438"
+      "screenshotSha256": "20333cbc158b6ff783830fb3cee5184e96dabbb35602ec5e08f87476411c9e77"
     },
     {
       "state": "contentUnavailable",
@@ -65,7 +65,7 @@
       "scale": 1.25,
       "colorScheme": "dark",
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/contentUnavailable-dark-400-125.png",
-      "screenshotSha256": "97b4318989948de485474ca0389b3d7198b9d2869026e068413a4f52f863cb9e"
+      "screenshotSha256": "726e3b842bcdd7862ee61398b8f662005e96838ef80797eb9af3999cb309072e"
     }
   ],
   "secondaryViews": {
@@ -81,7 +81,7 @@
       "headingFocused": true,
       "horizontalOverflow": 0,
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/qa-light-368-100.png",
-      "screenshotSha256": "47cec7c0145e7da3dbdc787941987767dad6facfcea70b9231ea114cf7d5100f"
+      "screenshotSha256": "8edf4dbb280fa09f9bec24395e25a6b7d4c2a03062b2e8d1c2ee760a78298679"
     }
   },
   "focusReturn": {
