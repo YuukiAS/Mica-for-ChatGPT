@@ -1,15 +1,15 @@
 # Mica Product System Rebuild Goal
 
-Status: **ACTIVE CANONICAL GOAL AFTER PREBUILD CRITIC PASS**  
+Status: **PLANNER DRAFT — DO NOT EXECUTE UNTIL INDEPENDENT GPT CRITIC PASS**  
 Date: 2026-10-12
 
 ```yaml
 task_key: mica--product-system-rebuild
 repository: YuukiAS/Mica-for-ChatGPT
 mode: discover_critic_plan_execute_validate_review_release
-execution_model: one_durable_goal
+execution_model: planner_draft_then_independent_gpt_critic_then_one_durable_codex_goal
 planner_authority: docs/product/MICA_PRODUCT_SYSTEM_V1.md
-prebuild_critic: docs/reviews/2026-10-12-mica-product-system-rebuild-critic.md
+prebuild_critic: docs/reviews/2026-10-12-mica-product-system-gpt-critic-prompt.md
 old_goal: docs/tasks/2026-10-05-mica-product-recovery-current-gpt-ui.md
 old_goal_disposition: SUPERSEDED_HISTORICAL_EVIDENCE_ONLY
 working_branch: codex/mica-product-system-rebuild
@@ -143,38 +143,65 @@ POSITIVE_CHECKPOINT_STATUS=MISSING_WITH_EVIDENCE
 
 ---
 
-## 4. Mandatory prebuild Critic
+## 4. Independent GPT Critic — mandatory before Codex kickoff
 
-这是 major/recovery architecture task。
+这是 major/recovery 级产品与交付架构重建，因此 **当前文件仍是 Planner draft，不是可执行 Codex Goal**。
 
-**禁止直接开始 UI/runtime coding。**
+禁止让 Codex Parent、Producer 或任何 Codex 子代理自行启动、替代或满足这一层 Critic。
 
-Codex Parent 必须启动一个 fresh、read-only Critic，严格执行：
+下一步必须在一个 fresh independent GPT context 中执行：
 
 ```text
-docs/reviews/2026-10-12-mica-product-system-rebuild-critic.md
+docs/reviews/2026-10-12-mica-product-system-gpt-critic-prompt.md
 ```
 
-Critic 不读 Producer completion prose，不改 repo。
+GPT Critic 必须审核完整方案，而不只是实现细节，至少覆盖：
 
-只有：
+```text
+产品定位
+正常 UI / Troubleshooting / Developer QA
+当前 ChatGPT UI 适配与后续 refresh
+Low Memory
+AnswerDocument / Copy / Highlighter / PDF / Notion
+Reliability
+开发架构
+验收器与 known-good / known-bad controls
+actual-surface review
+GPT Work / Codex / ChatGPT Planner / user 分工
+旧 Atlas / 旧 UI / 旧测试体系清理
+source-of-truth / Git / release
+scope 与过度工程风险
+执行纪律与 Human Gate
+```
+
+只有 GPT Critic 返回：
 
 ```text
 CRITIC_VERDICT=PASS
 P0=0
 P1=0
-READY_FOR_IMPLEMENTATION=YES
+READY_TO_FREEZE_CODEX_GOAL=YES
 ```
 
-才允许进入实现。
+Planner 才能根据 Critic 结果把本文件修订并冻结为最终可执行 Codex Goal。
+
+在此之前：
+
+```text
+CODEX_IMPLEMENTATION_ALLOWED=NO
+RUNTIME_UI_MUTATION_ALLOWED=NO
+RELEASE_CLOSURE_ALLOWED=NO
+```
 
 如果 Critic 返回 `PLANNER_AMENDMENT_REQUIRED`：
 
-- P0/P1 中属于明确合同缺口、且现有用户指令已经唯一决定方向的，可由 Parent 生成一个 docs-only amendment proposal；
-- 不得让 Producer私自修改产品定义；
-- 如果 finding 真正需要新的产品主观选择，输出一个最小 `STOP_PLANNER_DECISION_REQUIRED`；
-- 不得带着 Critic FAIL 开始实现；
-- amendment 后必须 fresh Critic 重审。
+1. ChatGPT Planner 消化 findings；
+2. 更新 Product System / Goal；
+3. 必要时处理真正的用户产品决策；
+4. 使用 fresh GPT Critic 复审；
+5. PASS 后才给 Codex kickoff。
+
+Critic 结果不由 Codex 自己写入“PASS”；它是 Codex 执行之前的 Planner-level admission gate。
 
 ---
 
@@ -923,30 +950,41 @@ Do not report `complete` if a hard product gate is missing.
 
 ---
 
-## 23. Start instruction
+## 23. Current next step and eventual Codex start order
 
-Start now.
+**Current next step is NOT Codex implementation.**
 
-Order is mandatory:
+First:
+
+```text
+fresh independent GPT Critic
+-> Planner amendment if required
+-> fresh GPT Critic PASS
+-> freeze final Codex Goal
+```
+
+Only after that admission gate passes, the final Codex Goal should execute:
 
 ```text
 skills/session preflight
 -> source/checkpoint preservation
--> fresh prebuild Critic
--> product/contracts freeze
--> UI shell
+-> final product/contracts freeze
+-> acceptance-harness skeleton + frozen validator design
+-> current ChatGPT compatibility baseline
 -> ChatGPTAdapter
+-> visible UI shell
 -> compatibility refresh
--> acceptance harness
 -> Low Memory migration
 -> Copy/Export + Reliability migration
 -> Highlighter
 -> PDF/Notion
--> full frozen validation
+-> candidate freeze
+-> deterministic validation
 -> actual-surface review
+-> repair/re-freeze/review as needed
 -> GPT Work
 -> minimal user acceptance
 -> merge/release
 ```
 
-Do not create another ordinary successor Goal.
+Do not create another ordinary successor Goal after the final freeze.
