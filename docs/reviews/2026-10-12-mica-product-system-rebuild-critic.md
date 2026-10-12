@@ -1,3 +1,13 @@
+> **SUPERSEDED — DO NOT USE AS CURRENT CRITIC AUTHORITY**
+>
+> This file incorrectly framed the prebuild Critic as something launched by Codex.
+> The current independent GPT Critic authority is:
+>
+> `docs/reviews/2026-10-12-mica-product-system-gpt-critic-prompt.md`
+>
+> The GPT Critic review happens before the Codex implementation Goal is frozen.
+> Codex must not self-launch or self-satisfy this planner-level review.
+>
 # Mica Product System Rebuild — Prebuild Critic
 
 Status: **MANDATORY FRESH READ-ONLY CRITIC BEFORE IMPLEMENTATION**  
