@@ -530,6 +530,10 @@ When browser security prevents the extension from completing a required develope
 
 That is fallback, not primary workflow.
 
+Bootstrap exception for this rebuild: because Developer QA does not exist yet, the **first** current-ChatGPT evidence pack may be acquired through an already-supported read-only browser surface or one existing/self-tested bounded helper. It must obey the same privacy and capability-scoped contract and must not automate the user's normal browsing profile or generate a repeated real-request loop.
+
+After Developer QA is implemented and validated, ordinary compatibility refresh must move into Mica; the bootstrap route becomes fallback only.
+
 ---
 
 ## 6. Low-memory contract
