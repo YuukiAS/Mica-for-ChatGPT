@@ -1,0 +1,137 @@
+{
+  "passed": true,
+  "states": [
+    "loading",
+    "exact",
+    "compatible",
+    "unknown",
+    "unsupported",
+    "disabled",
+    "contentUnavailable"
+  ],
+  "widthsPx": [
+    320,
+    340,
+    368,
+    400
+  ],
+  "scalesPercent": [
+    100,
+    125,
+    150
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "keyboard": {
+    "accessibleNames": true,
+    "interactiveCount": 4,
+    "sampledFocus": [
+      "enabled",
+      "low-memory",
+      "troubleshooting-link",
+      "SUMMARY"
+    ],
+    "focusTraversal": true
+  },
+  "screenshots": [
+    {
+      "state": "exact",
+      "lowMemoryMode": "standby",
+      "width": 368,
+      "scale": 1,
+      "colorScheme": "light",
+      "lowMemoryState": "Ready",
+      "historyActionVisible": false,
+      "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/exact-light-368-100.png",
+      "screenshotSha256": "f6807a9192612de97b3880ae8629b53c5696b6061d5ea176c40f237483dc0398"
+    },
+    {
+      "state": "exact",
+      "lowMemoryMode": "active",
+      "width": 368,
+      "scale": 1,
+      "colorScheme": "light",
+      "lowMemoryState": "40 kept",
+      "historyActionVisible": true,
+      "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/exact-low-memory-active-light-368-100.png",
+      "screenshotSha256": "e932a9070e026d00a2a15516b618d688146add8c7b49d4a5d1ae50104e133f33"
+    },
+    {
+      "state": "exact",
+      "lowMemoryMode": "restore_required",
+      "width": 368,
+      "scale": 1,
+      "colorScheme": "light",
+      "lowMemoryState": "Reload to restore",
+      "historyActionVisible": true,
+      "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/exact-low-memory-restore-required-light-368-100.png",
+      "screenshotSha256": "7539e0878ac15307f3ab96f67320aba52965baf83294819d7e3101bc5b9d2e5e"
+    },
+    {
+      "state": "exact",
+      "lowMemoryMode": "full_history_bypass",
+      "width": 368,
+      "scale": 1,
+      "colorScheme": "dark",
+      "lowMemoryState": "Full history loaded",
+      "historyActionVisible": true,
+      "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/exact-low-memory-full-history-bypass-dark-368-100.png",
+      "screenshotSha256": "1c4f9492f55105e6b1313446e05a6c344b43ffc3f9d1cb2b25ac75ac601bae04"
+    },
+    {
+      "state": "unknown",
+      "lowMemoryMode": "standby",
+      "width": 368,
+      "scale": 1,
+      "colorScheme": "dark",
+      "lowMemoryState": "Ready",
+      "historyActionVisible": false,
+      "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/unknown-dark-368-100.png",
+      "screenshotSha256": "db240942edc18f0eac71d5f51fed1ca6fbf89870a42865cae390c35edafb2dc5"
+    },
+    {
+      "state": "compatible",
+      "lowMemoryMode": "standby",
+      "width": 320,
+      "scale": 1.5,
+      "colorScheme": "light",
+      "lowMemoryState": "Ready",
+      "historyActionVisible": false,
+      "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/compatible-light-320-150.png",
+      "screenshotSha256": "08d4eb62b8d39068b46a25dccef5f9ae91f2ab67387a43d58923532c19b18d43"
+    },
+    {
+      "state": "contentUnavailable",
+      "lowMemoryMode": "standby",
+      "width": 400,
+      "scale": 1.25,
+      "colorScheme": "dark",
+      "lowMemoryState": "Ready",
+      "historyActionVisible": false,
+      "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/contentUnavailable-dark-400-125.png",
+      "screenshotSha256": "1744b55fb4f501b90b470afadd8d916ab3037a93994960831a4dcf3d73d0f238"
+    }
+  ],
+  "secondaryViews": {
+    "troubleshooting": {
+      "labelsPresent": true,
+      "headingFocused": true,
+      "horizontalOverflow": 0,
+      "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/troubleshooting-light-368-100.png",
+      "screenshotSha256": "f7eafe89ce8751aefe853daa0daabe96f709df55f451e9ec1597a9dc1b34b728"
+    },
+    "developerQa": {
+      "labelsPresent": true,
+      "headingFocused": true,
+      "horizontalOverflow": 0,
+      "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/qa-light-368-100.png",
+      "screenshotSha256": "e68553df1da2725604066c071346c6eaa7f2a69c52085ce88d053ac8e6479836"
+    }
+  },
+  "focusReturn": {
+    "troubleshootingToIndex": true,
+    "qaToTroubleshooting": true
+  }
+}

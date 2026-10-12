@@ -1,0 +1,37 @@
+{
+  "passed": true,
+  "firstInstall": {
+    "beforeDelay": false,
+    "registered": true,
+    "registerCalls": 1,
+    "unregisterCalls": 0,
+    "storageError": false,
+    "delayMs": 25
+  },
+  "storageFailure": {
+    "beforeDelay": true,
+    "registered": false,
+    "registerCalls": 0,
+    "unregisterCalls": 1,
+    "storageError": true,
+    "delayMs": 0
+  },
+  "disabled": {
+    "beforeDelay": true,
+    "registered": false,
+    "registerCalls": 0,
+    "unregisterCalls": 1,
+    "storageError": false,
+    "delayMs": 0
+  },
+  "workerRestartRecovery": {
+    "unregisteredBeforeReload": true,
+    "stayedUnregisteredAfterRestart": true,
+    "registeredAfterComplete": true,
+    "mode": "full_history_bypass",
+    "registerCalls": 2,
+    "unregisterCalls": 1
+  },
+  "controlChannel": "chrome.scripting.registerContentScripts",
+  "siteWritableConfigAccepted": false
+}

@@ -1,0 +1,1073 @@
+{
+  "schemaVersion": 1,
+  "bundleKind": "candidate",
+  "acceptanceProfile": "milestone-a",
+  "candidate": {
+    "commit": "57fa880cf004d7a3c5585f0cabe1b1f17ef269e3",
+    "version": "0.3.0",
+    "buildLabel": "low-memory-windowing.3",
+    "distArtifactId": "dist-tree",
+    "distHash": "7a7942eb59f2043ebe6578a0d7dd59cd3b5a58337b4b9d28f83a4121430b51fb"
+  },
+  "validator": {
+    "version": "1.3.0",
+    "treeHash": "cef4679bbc8dc83dddb40c48cf4a75a4745e58ef236077c631b6c84f3216990d"
+  },
+  "chatgptContractArtifactId": "chatgpt-contract",
+  "chatgptContractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+  "fixtureSetHash": "ee1d9ef37329e831fde223daaf91688ee244255e05aea6b69f30202e0176a788",
+  "evidenceSchemaVersion": 1,
+  "evidenceRootHash": "2c9b3162cb34ed7b855d2466a05946dc36f90f78fcf8719bc86cd338ef38d485",
+  "reportContext": {
+    "candidateCommit": "57fa880cf004d7a3c5585f0cabe1b1f17ef269e3",
+    "distHash": "7a7942eb59f2043ebe6578a0d7dd59cd3b5a58337b4b9d28f83a4121430b51fb"
+  },
+  "requiredGates": [
+    "candidate-identity",
+    "popup-render",
+    "adapter-contract",
+    "answer-document-core",
+    "copy-placement",
+    "core-flow-regression",
+    "send-lifecycle-safety",
+    "low-memory-benefit",
+    "privacy",
+    "packaging-version"
+  ],
+  "artifacts": [
+    {
+      "id": "dist-tree",
+      "path": "artifacts/dist-tree.json",
+      "kind": "application/json",
+      "sha256": "7a7942eb59f2043ebe6578a0d7dd59cd3b5a58337b4b9d28f83a4121430b51fb"
+    },
+    {
+      "id": "built-manifest",
+      "path": "artifacts/built-manifest.json",
+      "kind": "application/json",
+      "sha256": "64811e9909917f55db8f38f6d7f83b7da9e840922e203e478a7294ce60f6dd9f"
+    },
+    {
+      "id": "version-report",
+      "path": "artifacts/version-report.json",
+      "kind": "application/json",
+      "sha256": "25fbb3af9abfac7cb3bb6519adaa0e529bb8b2fdcea63b37164d422a52048aa5"
+    },
+    {
+      "id": "chatgpt-contract",
+      "path": "artifacts/chatgpt-contract.json",
+      "kind": "application/json",
+      "sha256": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538"
+    },
+    {
+      "id": "current-chatgpt-bootstrap",
+      "path": "artifacts/current-chatgpt-bootstrap.json",
+      "kind": "application/json",
+      "sha256": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe"
+    },
+    {
+      "id": "foundation-core",
+      "path": "artifacts/foundation-core.json",
+      "kind": "application/json",
+      "sha256": "d477fa012a1b6247db9154ef536c72d7ca6f65a481e32b9fb43959ccc946595e"
+    },
+    {
+      "id": "foundation-flows",
+      "path": "artifacts/foundation-flows.json",
+      "kind": "application/json",
+      "sha256": "ceb6f356a1ff07696ce186a138c553fb47ab1a53fd76c1033375d92df5c2b5f2"
+    },
+    {
+      "id": "popup-render",
+      "path": "artifacts/popup-render.json",
+      "kind": "application/json",
+      "sha256": "77016bf3ce7f035022f1a5e3452de10cd48cdbffc0c3c6112b7cc182c2f12da8"
+    },
+    {
+      "id": "popup-light",
+      "path": "artifacts/popup-light.png",
+      "kind": "image/png",
+      "sha256": "f6807a9192612de97b3880ae8629b53c5696b6061d5ea176c40f237483dc0398"
+    },
+    {
+      "id": "popup-dark",
+      "path": "artifacts/popup-dark.png",
+      "kind": "image/png",
+      "sha256": "db240942edc18f0eac71d5f51fed1ca6fbf89870a42865cae390c35edafb2dc5"
+    },
+    {
+      "id": "popup-320-150",
+      "path": "artifacts/popup-320-150.png",
+      "kind": "image/png",
+      "sha256": "08d4eb62b8d39068b46a25dccef5f9ae91f2ab67387a43d58923532c19b18d43"
+    },
+    {
+      "id": "popup-400-125",
+      "path": "artifacts/popup-400-125.png",
+      "kind": "image/png",
+      "sha256": "1744b55fb4f501b90b470afadd8d916ab3037a93994960831a4dcf3d73d0f238"
+    },
+    {
+      "id": "troubleshooting",
+      "path": "artifacts/troubleshooting.png",
+      "kind": "image/png",
+      "sha256": "f7eafe89ce8751aefe853daa0daabe96f709df55f451e9ec1597a9dc1b34b728"
+    },
+    {
+      "id": "developer-qa",
+      "path": "artifacts/developer-qa.png",
+      "kind": "image/png",
+      "sha256": "e68553df1da2725604066c071346c6eaa7f2a69c52085ce88d053ac8e6479836"
+    },
+    {
+      "id": "low-memory-pressure",
+      "path": "artifacts/low-memory-pressure.json",
+      "kind": "application/json",
+      "sha256": "008089be3b08df71d845d3243c4174191a43592bb8fcf1c5514864a3d9cd56f4"
+    },
+    {
+      "id": "low-memory-fixture",
+      "path": "artifacts/low-memory-fixture.json",
+      "kind": "application/json",
+      "sha256": "13964e3744d0c13934d7514723ef4e151a758b3b174c9e880b09372bef030a0b"
+    },
+    {
+      "id": "low-memory-page",
+      "path": "artifacts/low-memory-page.json",
+      "kind": "application/json",
+      "sha256": "8e16081c5af420c2e8436044f5d7b4b77a63e357ba95449fb94bc4be45f618f8"
+    },
+    {
+      "id": "low-memory-stress",
+      "path": "artifacts/low-memory-stress.json",
+      "kind": "application/json",
+      "sha256": "3f72d78554d5c60b98f591d788ffbe9317e795128c5883551c8b183656b4f813"
+    },
+    {
+      "id": "low-memory-registration",
+      "path": "artifacts/low-memory-registration.json",
+      "kind": "application/json",
+      "sha256": "57a2d2d06292f25d56f8a0ff3148b7fb9cf42f2177c4770556c989d0598c36f8"
+    },
+    {
+      "id": "popup-low-memory-active",
+      "path": "artifacts/popup-low-memory-active.png",
+      "kind": "image/png",
+      "sha256": "e932a9070e026d00a2a15516b618d688146add8c7b49d4a5d1ae50104e133f33"
+    },
+    {
+      "id": "popup-low-memory-restore-required",
+      "path": "artifacts/popup-low-memory-restore-required.png",
+      "kind": "image/png",
+      "sha256": "7539e0878ac15307f3ab96f67320aba52965baf83294819d7e3101bc5b9d2e5e"
+    },
+    {
+      "id": "popup-low-memory-full-history-bypass",
+      "path": "artifacts/popup-low-memory-full-history-bypass.png",
+      "kind": "image/png",
+      "sha256": "1c4f9492f55105e6b1313446e05a6c344b43ffc3f9d1cb2b25ac75ac601bae04"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "candidate-identity-foundation-evidence",
+      "gateId": "candidate-identity",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "built-extension"
+      },
+      "artifactIds": [
+        "dist-tree",
+        "built-manifest"
+      ],
+      "measurement": {
+        "commit": "57fa880cf004d7a3c5585f0cabe1b1f17ef269e3",
+        "distHash": "7a7942eb59f2043ebe6578a0d7dd59cd3b5a58337b4b9d28f83a4121430b51fb"
+      }
+    },
+    {
+      "id": "popup-render-foundation-evidence",
+      "gateId": "popup-render",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "actual-extension-popup"
+      },
+      "artifactIds": [
+        "popup-render",
+        "popup-light",
+        "popup-dark",
+        "popup-320-150",
+        "popup-400-125",
+        "troubleshooting",
+        "developer-qa"
+      ],
+      "measurement": {
+        "states": [
+          "loading",
+          "exact",
+          "compatible",
+          "unknown",
+          "unsupported",
+          "disabled",
+          "contentUnavailable"
+        ],
+        "widthsPx": [
+          320,
+          340,
+          368,
+          400
+        ],
+        "scalesPercent": [
+          100,
+          125,
+          150
+        ],
+        "keyboard": {
+          "accessibleNames": true,
+          "interactiveCount": 4,
+          "sampledFocus": [
+            "enabled",
+            "low-memory",
+            "troubleshooting-link",
+            "SUMMARY"
+          ],
+          "focusTraversal": true
+        },
+        "secondaryFocus": {
+          "troubleshootingToIndex": true,
+          "qaToTroubleshooting": true
+        },
+        "themeArtifacts": {
+          "light": "popup-light",
+          "dark": "popup-dark"
+        }
+      }
+    },
+    {
+      "id": "adapter-contract-foundation-evidence",
+      "gateId": "adapter-contract",
+      "evidenceClass": "REAL_DERIVED_CURRENT_CHATGPT",
+      "subject": {
+        "surface": "current-chatgpt"
+      },
+      "artifactIds": [
+        "chatgpt-contract",
+        "current-chatgpt-bootstrap",
+        "foundation-core"
+      ],
+      "measurement": {
+        "capabilities": [
+          {
+            "capabilityId": "turns.list",
+            "sourceCapabilityId": "conversation-turn-discovery",
+            "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+            "requiredSourceObservationIds": [
+              "ordered-turn-containers",
+              "role-owned-turns"
+            ],
+            "variantId": "conversation-turn-section-role-v1",
+            "status": "EXACT",
+            "requiredInvariants": [
+              "ordered turn container",
+              "exactly one role owner",
+              "user or assistant role"
+            ],
+            "observedInvariants": [
+              "ordered-turn-containers",
+              "role-owned-turns"
+            ],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": false
+          },
+          {
+            "capabilityId": "answer.read",
+            "sourceCapabilityId": "answer-document-static-block-extraction",
+            "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+            "requiredSourceObservationIds": [
+              "assistant-semantic-blocks"
+            ],
+            "variantId": "assistant-role-semantic-content-v1",
+            "status": "EXACT",
+            "requiredInvariants": [
+              "assistant role ownership",
+              "semantic p/pre/code descendants"
+            ],
+            "observedInvariants": [
+              "assistant-semantic-blocks"
+            ],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": false
+          },
+          {
+            "capabilityId": "answer.actionCluster",
+            "sourceCapabilityId": "answer-document-static-block-extraction",
+            "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+            "requiredSourceObservationIds": [],
+            "variantId": "unproven-v1",
+            "status": "UNKNOWN",
+            "requiredInvariants": [
+              "native copy button",
+              "same assistant turn",
+              "sibling cluster parent"
+            ],
+            "observedInvariants": [],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": true
+          },
+          {
+            "capabilityId": "composer.editor",
+            "sourceCapabilityId": "composer-discovery",
+            "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED_PLUS_LOGGED_OUT",
+            "requiredSourceObservationIds": [
+              "contenteditable-composer",
+              "mobile-textarea-composer"
+            ],
+            "variantId": "prompt-editor-current-variants-v1",
+            "status": "COMPATIBLE",
+            "requiredInvariants": [
+              "variant-specific prompt editor identity",
+              "contenteditable textbox or mobile textarea property"
+            ],
+            "observedInvariants": [
+              "contenteditable-composer",
+              "mobile-textarea-composer"
+            ],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": false
+          },
+          {
+            "capabilityId": "conversation.scrollRoot",
+            "sourceCapabilityId": "native-virtualization-baseline",
+            "sourceEvidenceClass": "NONE",
+            "requiredSourceObservationIds": [],
+            "variantId": "unproven-v1",
+            "status": "UNKNOWN",
+            "requiredInvariants": [
+              "single conversation scroll owner",
+              "stable restoration anchor"
+            ],
+            "observedInvariants": [],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": true
+          },
+          {
+            "capabilityId": "answer.math",
+            "sourceCapabilityId": "math-block-structure",
+            "sourceEvidenceClass": "NONE",
+            "requiredSourceObservationIds": [],
+            "variantId": "unproven-v1",
+            "status": "UNKNOWN",
+            "requiredInvariants": [
+              "raw TeX source",
+              "rendered text",
+              "inline/display distinction"
+            ],
+            "observedInvariants": [],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": true
+          },
+          {
+            "capabilityId": "lifecycle.streamingEditBranchTools",
+            "sourceCapabilityId": "streaming-edit-branch-tools-files-connectors-auth",
+            "sourceEvidenceClass": "NONE",
+            "requiredSourceObservationIds": [],
+            "variantId": "unproven-v1",
+            "status": "UNKNOWN",
+            "requiredInvariants": [
+              "streaming ownership",
+              "edit branch identity",
+              "tool/file/auth boundaries"
+            ],
+            "observedInvariants": [],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "answer-document-core-foundation-evidence",
+      "gateId": "answer-document-core",
+      "evidenceClass": "REAL_DERIVED_CURRENT_CHATGPT",
+      "subject": {
+        "surface": "answer-document"
+      },
+      "artifactIds": [
+        "foundation-core",
+        "chatgpt-contract",
+        "current-chatgpt-bootstrap"
+      ],
+      "measurement": {
+        "documentFields": [
+          "documentId",
+          "conversationId",
+          "turnId",
+          "sourceVersion",
+          "generationState",
+          "orderedBlocks"
+        ],
+        "blockKinds": [
+          "heading",
+          "paragraph",
+          "display_math",
+          "list",
+          "quote",
+          "table",
+          "code",
+          "opaque_interactive",
+          "unknown_block",
+          "text",
+          "inline_math",
+          "link",
+          "citation",
+          "image"
+        ],
+        "streamingIsProvisional": true,
+        "settledIsDurable": true,
+        "unknownLifecycleRejected": true,
+        "opaqueInteractive": true,
+        "singleAdapterProducer": true
+      }
+    },
+    {
+      "id": "copy-placement-foundation-evidence",
+      "gateId": "copy-placement",
+      "evidenceClass": "CURRENT_CHATGPT_READ_ONLY",
+      "subject": {
+        "surface": "assistant-action-cluster"
+      },
+      "artifactIds": [
+        "chatgpt-contract",
+        "current-chatgpt-bootstrap"
+      ],
+      "measurement": {
+        "actionInjected": false,
+        "capabilityStatus": "UNKNOWN",
+        "placementProven": false,
+        "exactAssistantTurn": false,
+        "clusterProven": false,
+        "siblingRelationship": false,
+        "visibleBaseline": false,
+        "failOpen": true
+      }
+    },
+    {
+      "id": "core-flow-regression-foundation-evidence",
+      "gateId": "core-flow-regression",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "local-real-browser"
+      },
+      "artifactIds": [
+        "foundation-flows",
+        "dist-tree"
+      ],
+      "measurement": {
+        "composer": true,
+        "send": true,
+        "streaming": true,
+        "editBranch": true,
+        "connector": true,
+        "toolFileAuth": true,
+        "typingImeHotPath": true
+      }
+    },
+    {
+      "id": "send-lifecycle-safety-foundation-evidence",
+      "gateId": "send-lifecycle-safety",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "local-real-browser"
+      },
+      "artifactIds": [
+        "foundation-flows",
+        "dist-tree"
+      ],
+      "measurement": {
+        "progressObserved": true,
+        "autoResend": false,
+        "consequentialFlowActive": true,
+        "userTurnCommitted": true,
+        "duplicateSend": false
+      }
+    },
+    {
+      "id": "low-memory-benefit-foundation-evidence",
+      "gateId": "low-memory-benefit",
+      "evidenceClass": "TARGET_CLASS_ENVIRONMENT",
+      "subject": {
+        "surface": "local-constrained-target-class-environment"
+      },
+      "artifactIds": [
+        "dist-tree",
+        "low-memory-pressure",
+        "low-memory-fixture",
+        "low-memory-page",
+        "low-memory-stress",
+        "low-memory-registration",
+        "foundation-flows",
+        "popup-low-memory-active",
+        "popup-low-memory-restore-required",
+        "popup-low-memory-full-history-bypass"
+      ],
+      "measurement": {
+        "A": {
+          "variant": "mica-absent-or-disabled",
+          "processMemoryMb": 524.234,
+          "processMemoryRangeMb": [
+            523.324,
+            525.348
+          ],
+          "heapMb": 101.31,
+          "heapRangeMb": [
+            101.31,
+            101.31
+          ],
+          "retainedContentMb": 100,
+          "mountedTurnCount": 12,
+          "mutationCount": 62,
+          "typingP95Ms": 0.01,
+          "typingRangeMs": [
+            0.01,
+            0.01
+          ],
+          "scrollP95Ms": 0.1,
+          "scrollRangeMs": [
+            0.01,
+            0.1
+          ],
+          "mappingNodes": 801,
+          "frameP95Ms": 16.8,
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "bootstrapLongTaskCount": 0,
+          "bootstrapLongTaskTotalMs": 0,
+          "bootstrapLongTaskMaxMs": 0,
+          "layoutCount": 1,
+          "recalcStyleCount": 1,
+          "fullExtensionRuntimeLoaded": false,
+          "runtimeVersion": null,
+          "registrationProof": null,
+          "windowingStatus": null,
+          "samples": 3
+        },
+        "B": {
+          "variant": "mica-installed-low-memory-off",
+          "processMemoryMb": 559.625,
+          "processMemoryRangeMb": [
+            552.789,
+            575.469
+          ],
+          "heapMb": 101.634,
+          "heapRangeMb": [
+            101.634,
+            101.634
+          ],
+          "retainedContentMb": 100,
+          "mountedTurnCount": 12,
+          "mutationCount": 62,
+          "typingP95Ms": 0.01,
+          "typingRangeMs": [
+            0.01,
+            0.01
+          ],
+          "scrollP95Ms": 0.1,
+          "scrollRangeMs": [
+            0.01,
+            0.1
+          ],
+          "mappingNodes": 801,
+          "frameP95Ms": 16.8,
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "bootstrapLongTaskCount": 0,
+          "bootstrapLongTaskTotalMs": 0,
+          "bootstrapLongTaskMaxMs": 0,
+          "layoutCount": 1,
+          "recalcStyleCount": 1,
+          "fullExtensionRuntimeLoaded": true,
+          "runtimeVersion": "0.3.0",
+          "registrationProof": {
+            "synced": {
+              "ok": true,
+              "registered": false,
+              "failOpen": false
+            },
+            "scripts": []
+          },
+          "windowingStatus": null,
+          "samples": 3
+        },
+        "C": {
+          "variant": "mica-installed-low-memory-on",
+          "processMemoryMb": 568.984,
+          "processMemoryRangeMb": [
+            557.184,
+            570.559
+          ],
+          "heapMb": 6.349,
+          "heapRangeMb": [
+            6.349,
+            6.349
+          ],
+          "retainedContentMb": 5,
+          "mountedTurnCount": 12,
+          "mutationCount": 62,
+          "typingP95Ms": 0.01,
+          "typingRangeMs": [
+            0.01,
+            0.01
+          ],
+          "scrollP95Ms": 0.01,
+          "scrollRangeMs": [
+            0.01,
+            0.1
+          ],
+          "mappingNodes": 41,
+          "frameP95Ms": 17.4,
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "bootstrapLongTaskCount": 0,
+          "bootstrapLongTaskTotalMs": 0,
+          "bootstrapLongTaskMaxMs": 0,
+          "layoutCount": 2,
+          "recalcStyleCount": 3,
+          "fullExtensionRuntimeLoaded": true,
+          "runtimeVersion": "0.3.0",
+          "registrationProof": {
+            "synced": {
+              "ok": true,
+              "registered": true,
+              "failOpen": false
+            },
+            "scripts": [
+              {
+                "allFrames": false,
+                "id": "mica-low-memory-main-v3",
+                "js": [
+                  "low-memory-core.js",
+                  "low-memory-page.js"
+                ],
+                "matchOriginAsFallback": false,
+                "matches": [
+                  "https://chat.openai.com/*",
+                  "https://chatgpt.com/*"
+                ],
+                "persistAcrossSessions": true,
+                "runAt": "document_start",
+                "world": "MAIN"
+              }
+            ]
+          },
+          "windowingStatus": {
+            "schemaVersion": 2,
+            "state": "active",
+            "reason": "windowed",
+            "source": "react-router-stream",
+            "active": true,
+            "keptTurns": 40,
+            "totalTurns": 800,
+            "removedTurns": 760,
+            "keptNodes": 41,
+            "totalNodes": 801,
+            "bytesBefore": 52598044,
+            "bytesAfter": 2629540,
+            "bytesRemoved": 49968504,
+            "recentTurnLimit": 40,
+            "actualTruncation": true,
+            "truncatedRepresentation": "client-history-window",
+            "serverMutation": false,
+            "reactManagedInteractiveNodesDetached": false,
+            "contentUpload": false,
+            "updatedAt": "2026-10-12T11:40:42.333Z"
+          },
+          "samples": 3
+        },
+        "recentTurnLimit": 40,
+        "threadProfiles": [
+          {
+            "name": "short",
+            "totalTurns": 24,
+            "modeApplied": false,
+            "retainedRecentTurns": 24,
+            "mountedBefore": 24,
+            "mountedAfter": 24,
+            "mappingNodesAfter": 25
+          },
+          {
+            "name": "medium",
+            "totalTurns": 72,
+            "modeApplied": false,
+            "retainedRecentTurns": 72,
+            "mountedBefore": 72,
+            "mountedAfter": 72,
+            "mappingNodesAfter": 73
+          },
+          {
+            "name": "long",
+            "totalTurns": 240,
+            "modeApplied": true,
+            "retainedRecentTurns": 40,
+            "mountedBefore": 240,
+            "mountedAfter": 42,
+            "mappingNodesAfter": 47
+          }
+        ],
+        "pressureFixture": {
+          "memoryLimitMb": 256,
+          "payloadMb": 100,
+          "turns": 800,
+          "workload": "current-chatgpt-derived-react-router-flat-graph-and-virtualized-turn-renderer",
+          "sourceArtifact": "current-chatgpt-surface/low-memory-data-plane-evidence.json"
+        },
+        "targetEnvironment": {
+          "class": "local-edge-v8-old-space-pressure",
+          "executionSurface": "local-isolated-edge",
+          "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+          "rendererOldSpaceLimitMb": 256,
+          "physicalMemoryGb": null,
+          "boundary": "local Chromium renderer constrained with a 256 MB V8 old-space limit; OS process memory is measured across the fresh browser process tree"
+        },
+        "actualTruncation": true,
+        "truncatedRepresentation": "client-history-window",
+        "reactManagedInteractiveNodesDetached": false,
+        "serverMutation": false,
+        "history": {
+          "scrollUpRestoresOlder": true,
+          "loadFullHistoryPass": true,
+          "reloadRestoresFullHistory": true,
+          "disableRestoresFullHistory": true,
+          "closeOrUninstallRestoresFullHistory": true,
+          "serverHistoryUnchanged": true
+        },
+        "actionSecurity": {
+          "pageStatusTelemetryTrusted": false,
+          "recoveryAuthorization": "extension_ui_or_trusted_user_gesture",
+          "forgedStatusAcceptedAsTelemetry": true,
+          "syntheticClickPrepareCalls": 0,
+          "syntheticClickReloads": 0,
+          "trustedPointerPrepareCalls": 1,
+          "trustedPointerReloads": 1,
+          "trustedKeyboardResumeCalls": 1,
+          "trustedKeyboardReloads": 1
+        },
+        "registration": {
+          "firstInstall": true,
+          "storageFailureFailOpen": true,
+          "siteWritableConfigAccepted": false,
+          "forgedPageEventIgnored": true
+        },
+        "stress": {
+          "passed": true,
+          "loops": 8,
+          "runs": 40,
+          "results": [
+            {
+              "loop": 1,
+              "script": "scripts/foundation-core-fixture-smoke.mjs",
+              "elapsedMs": 1149,
+              "passed": true
+            },
+            {
+              "loop": 1,
+              "script": "scripts/foundation-core-flow-fixture.mjs",
+              "elapsedMs": 1823,
+              "passed": true
+            },
+            {
+              "loop": 1,
+              "script": "scripts/low-memory-fixture-smoke.mjs",
+              "elapsedMs": 1085,
+              "passed": true
+            },
+            {
+              "loop": 1,
+              "script": "scripts/low-memory-page-fixture-smoke.mjs",
+              "elapsedMs": 1995,
+              "passed": true
+            },
+            {
+              "loop": 1,
+              "script": "scripts/popup-render-fixture.mjs",
+              "elapsedMs": 8005,
+              "passed": true
+            },
+            {
+              "loop": 2,
+              "script": "scripts/foundation-core-fixture-smoke.mjs",
+              "elapsedMs": 1060,
+              "passed": true
+            },
+            {
+              "loop": 2,
+              "script": "scripts/foundation-core-flow-fixture.mjs",
+              "elapsedMs": 1815,
+              "passed": true
+            },
+            {
+              "loop": 2,
+              "script": "scripts/low-memory-fixture-smoke.mjs",
+              "elapsedMs": 1058,
+              "passed": true
+            },
+            {
+              "loop": 2,
+              "script": "scripts/low-memory-page-fixture-smoke.mjs",
+              "elapsedMs": 1915,
+              "passed": true
+            },
+            {
+              "loop": 2,
+              "script": "scripts/popup-render-fixture.mjs",
+              "elapsedMs": 8299,
+              "passed": true
+            },
+            {
+              "loop": 3,
+              "script": "scripts/foundation-core-fixture-smoke.mjs",
+              "elapsedMs": 1112,
+              "passed": true
+            },
+            {
+              "loop": 3,
+              "script": "scripts/foundation-core-flow-fixture.mjs",
+              "elapsedMs": 1805,
+              "passed": true
+            },
+            {
+              "loop": 3,
+              "script": "scripts/low-memory-fixture-smoke.mjs",
+              "elapsedMs": 971,
+              "passed": true
+            },
+            {
+              "loop": 3,
+              "script": "scripts/low-memory-page-fixture-smoke.mjs",
+              "elapsedMs": 1976,
+              "passed": true
+            },
+            {
+              "loop": 3,
+              "script": "scripts/popup-render-fixture.mjs",
+              "elapsedMs": 8185,
+              "passed": true
+            },
+            {
+              "loop": 4,
+              "script": "scripts/foundation-core-fixture-smoke.mjs",
+              "elapsedMs": 1016,
+              "passed": true
+            },
+            {
+              "loop": 4,
+              "script": "scripts/foundation-core-flow-fixture.mjs",
+              "elapsedMs": 1876,
+              "passed": true
+            },
+            {
+              "loop": 4,
+              "script": "scripts/low-memory-fixture-smoke.mjs",
+              "elapsedMs": 1161,
+              "passed": true
+            },
+            {
+              "loop": 4,
+              "script": "scripts/low-memory-page-fixture-smoke.mjs",
+              "elapsedMs": 2049,
+              "passed": true
+            },
+            {
+              "loop": 4,
+              "script": "scripts/popup-render-fixture.mjs",
+              "elapsedMs": 8494,
+              "passed": true
+            },
+            {
+              "loop": 5,
+              "script": "scripts/foundation-core-fixture-smoke.mjs",
+              "elapsedMs": 1061,
+              "passed": true
+            },
+            {
+              "loop": 5,
+              "script": "scripts/foundation-core-flow-fixture.mjs",
+              "elapsedMs": 1781,
+              "passed": true
+            },
+            {
+              "loop": 5,
+              "script": "scripts/low-memory-fixture-smoke.mjs",
+              "elapsedMs": 1083,
+              "passed": true
+            },
+            {
+              "loop": 5,
+              "script": "scripts/low-memory-page-fixture-smoke.mjs",
+              "elapsedMs": 2047,
+              "passed": true
+            },
+            {
+              "loop": 5,
+              "script": "scripts/popup-render-fixture.mjs",
+              "elapsedMs": 8127,
+              "passed": true
+            },
+            {
+              "loop": 6,
+              "script": "scripts/foundation-core-fixture-smoke.mjs",
+              "elapsedMs": 1128,
+              "passed": true
+            },
+            {
+              "loop": 6,
+              "script": "scripts/foundation-core-flow-fixture.mjs",
+              "elapsedMs": 1822,
+              "passed": true
+            },
+            {
+              "loop": 6,
+              "script": "scripts/low-memory-fixture-smoke.mjs",
+              "elapsedMs": 1092,
+              "passed": true
+            },
+            {
+              "loop": 6,
+              "script": "scripts/low-memory-page-fixture-smoke.mjs",
+              "elapsedMs": 2074,
+              "passed": true
+            },
+            {
+              "loop": 6,
+              "script": "scripts/popup-render-fixture.mjs",
+              "elapsedMs": 8206,
+              "passed": true
+            },
+            {
+              "loop": 7,
+              "script": "scripts/foundation-core-fixture-smoke.mjs",
+              "elapsedMs": 1118,
+              "passed": true
+            },
+            {
+              "loop": 7,
+              "script": "scripts/foundation-core-flow-fixture.mjs",
+              "elapsedMs": 1818,
+              "passed": true
+            },
+            {
+              "loop": 7,
+              "script": "scripts/low-memory-fixture-smoke.mjs",
+              "elapsedMs": 1048,
+              "passed": true
+            },
+            {
+              "loop": 7,
+              "script": "scripts/low-memory-page-fixture-smoke.mjs",
+              "elapsedMs": 1981,
+              "passed": true
+            },
+            {
+              "loop": 7,
+              "script": "scripts/popup-render-fixture.mjs",
+              "elapsedMs": 8015,
+              "passed": true
+            },
+            {
+              "loop": 8,
+              "script": "scripts/foundation-core-fixture-smoke.mjs",
+              "elapsedMs": 1137,
+              "passed": true
+            },
+            {
+              "loop": 8,
+              "script": "scripts/foundation-core-flow-fixture.mjs",
+              "elapsedMs": 1864,
+              "passed": true
+            },
+            {
+              "loop": 8,
+              "script": "scripts/low-memory-fixture-smoke.mjs",
+              "elapsedMs": 1022,
+              "passed": true
+            },
+            {
+              "loop": 8,
+              "script": "scripts/low-memory-page-fixture-smoke.mjs",
+              "elapsedMs": 2062,
+              "passed": true
+            },
+            {
+              "loop": 8,
+              "script": "scripts/popup-render-fixture.mjs",
+              "elapsedMs": 8704,
+              "passed": true
+            }
+          ]
+        },
+        "coreFlows": {
+          "composer": true,
+          "send": true,
+          "streaming": true,
+          "editBranch": true,
+          "connector": true,
+          "toolFileAuth": true,
+          "typingImeHotPath": true
+        },
+        "unknownStructureBehavior": "FAIL_OPEN"
+      }
+    },
+    {
+      "id": "privacy-foundation-evidence",
+      "gateId": "privacy",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "diagnostic-bundle"
+      },
+      "artifactIds": [
+        "foundation-core",
+        "foundation-flows"
+      ],
+      "measurement": {
+        "conversationTextIncluded": false,
+        "attachmentContentIncluded": false,
+        "requestBodyIncluded": false,
+        "authTokenIncluded": false,
+        "rawDomIncluded": false,
+        "flowPrivacyMatches": true
+      }
+    },
+    {
+      "id": "packaging-version-foundation-evidence",
+      "gateId": "packaging-version",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "built-extension"
+      },
+      "artifactIds": [
+        "built-manifest",
+        "version-report"
+      ],
+      "measurement": {
+        "builtManifestArtifactId": "built-manifest",
+        "versionReportArtifactId": "version-report"
+      }
+    }
+  ]
+}
