@@ -1,6 +1,6 @@
 # Mica Product System V1
 
-Status: **FROZEN PLANNER INPUT / NOT AN IMPLEMENTATION CLAIM**  
+Status: **AMENDED PLANNER INPUT / PENDING FRESH GPT CRITIC R2**  
 Date: 2026-10-12  
 Repository: `YuukiAS/Mica-for-ChatGPT`
 
@@ -122,7 +122,11 @@ Per-answer Mica entry opens one compact menu:
 
 The normal page should not add three separate answer buttons.
 
-When current ChatGPT action-cluster placement is not proven, the page entry is hidden and the feature remains available from a safe alternative surface only if the target answer can be identified exactly.
+When current ChatGPT action-cluster placement is not proven, the page entry is hidden.
+
+The only safe per-answer fallback is a Mica browser/context action invoked **inside an EXACT-resolved assistant answer**. The adapter must resolve the clicked/selected node to one exact assistant turn before showing or enabling `Copy this answer` / `Export this answer`.
+
+The popup must not guess a target answer from viewport position, “latest answer”, broad ancestors, or focus history. If no exact answer target exists, per-answer actions are unavailable and the UI says so plainly.
 
 ### C. Highlighting
 
@@ -174,20 +178,31 @@ Mica                    [on]
 Ready on this page
 ```
 
-#### Primary capability rows
+#### Primary capability hierarchy
 
-Four calm rows, not a grid of cards:
+The normal popup is not a flat feature index.
+
+Primary daily work is:
 
 ```text
 Low memory          Auto · 34 older messages paused
-Copy & Export       Ready
-Highlights          6 on this conversation
-Reliability         No issues
+Reuse answers       Copy · Export · Highlights
 ```
 
-Each row opens only the settings/details needed for that capability.
+Reliability is a quiet page-health status, not a peer CTA when nothing is wrong:
 
-Do not place a standalone action button on every row unless the action is the row's primary user job.
+```text
+Page health          No issues
+```
+
+When a recovery-relevant event exists, Page health may become prominent and expose the one appropriate recovery action.
+
+Rules:
+
+- unreleased capabilities are hidden from the normal popup or explicitly marked unavailable; they must never display a false `Ready`;
+- `Reuse answers` opens the Copy/Export/Highlight settings and explains only currently available actions;
+- the popup must not imply that an unavailable injected answer control can still target an arbitrary answer;
+- no standalone action button is added merely because a row exists.
 
 #### Footer
 
@@ -311,6 +326,7 @@ The adapter exposes capabilities such as:
 conversation.identity
 turns.list
 turn.resolveAnswerBody
+turn.resolveFromNode
 answerActions.resolveCluster
 composer.resolve
 generation.resolveState
@@ -319,44 +335,97 @@ interactiveBlocks.classify
 virtualization.observe
 ```
 
-Every capability has:
+Every capability is evaluated independently and records:
 
 ```text
-EXACT
-COMPATIBLE
-UNKNOWN
+capabilityId
+variantId
+status = EXACT | COMPATIBLE | UNKNOWN
+requiredInvariants
+observedInvariants
+evidenceClass
+observedAt
+sourceArtifactHash
+contractHash
+invalidatedBy
 ```
 
-- `EXACT`: current structure matches a frozen verified contract.
-- `COMPATIBLE`: different structure but all invariants required by the feature are proven.
-- `UNKNOWN`: feature must fail-open.
+Evidence classes are ordered:
+
+```text
+SYNTHETIC
+LOCAL_REAL_BROWSER
+REAL_DERIVED_CURRENT_CHATGPT
+CURRENT_CHATGPT_READ_ONLY
+CURRENT_CHATGPT_BOUNDED_ACTION
+```
+
+Rules:
+
+- `EXACT` requires current real/real-derived ChatGPT evidence for the invariants that the capability depends on; synthetic evidence alone cannot produce release-authoritative `EXACT`.
+- `COMPATIBLE` means the current observed variant differs from the frozen shape but every invariant required by that capability is directly proven on the current surface.
+- `UNKNOWN` means the affected feature fails open.
+- one capability becoming `UNKNOWN` does not automatically invalidate unrelated capabilities whose invariants still pass.
+- a structural fingerprint mismatch, missing required invariant, incompatible variant, or newer refresh that contradicts the prior contract invalidates the prior capability acceptance immediately.
+- `observedAt` is recorded for auditability, but elapsed time alone does not manufacture compatibility or incompatibility.
+- visible text, DOM position, broad ancestor proximity, or “button N from the right” cannot be the sole identity proof.
+- property-backed controls are read from authoritative properties/AX semantics rather than `textContent`.
 
 No capability may manufacture certainty from text position or broad ancestor guesses.
 
 ### 4.3 Stable semantic answer model
 
-Copy, Highlighter, PDF and Notion share one intermediate model:
+Copy, Highlighter, PDF and Notion share one ordered, versioned intermediate model:
 
 ```text
 AnswerDocument
-  heading
-  paragraph
-  list
-  quote
-  table
-  code
-  inline_math
-  display_math
-  link
-  image
-  citation
-  interactive_block
-  unknown_block
+  documentId
+  conversationId
+  turnId
+  sourceVersion
+  generationState = STREAMING | SETTLED
+  orderedBlocks[]
 ```
 
-The ChatGPT adapter produces `AnswerDocument`.
+Each block has a stable local BlockID, order, source mapping and content identity. Supported block kinds include:
 
-Features must not independently scrape the answer DOM.
+```text
+heading
+paragraph
+list
+quote
+table
+code
+inline_math
+display_math
+link
+image
+citation
+opaque_interactive
+unknown_block
+```
+
+Text-bearing blocks expose ordered source spans. Math blocks preserve, where available:
+
+```text
+rawTeX
+renderedText
+sourceSpan
+displayMode
+```
+
+The model must preserve links/citations, code/table ordering, image references and unknown content without silently flattening interactive state into ordinary prose.
+
+Streaming rules:
+
+- a streaming answer produces provisional `sourceVersion` snapshots;
+- export/highlight persistence does not treat a provisional snapshot as immutable final content;
+- settled content creates the stable version used by export and durable highlight anchoring;
+- later edit/branch/remount changes create a new source version and trigger anchor reconciliation rather than silent reuse.
+
+Interactive/rich response blocks are opaque by default. Mica may copy/highlight only explicitly supported static text regions; it must not mutate or serialize hidden interactive state as though it were normal Markdown.
+
+The ChatGPT adapter is the only layer that produces `AnswerDocument`. Copy, Highlighter, PDF and Notion may not independently scrape ChatGPT DOM.
 
 ### 4.4 Feature modules
 
