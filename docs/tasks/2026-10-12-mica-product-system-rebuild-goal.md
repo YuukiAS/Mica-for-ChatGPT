@@ -418,7 +418,9 @@ Synthetic/local fixture 不能单独把 current ChatGPT capability 提升为 rel
 
 默认通过 Developer QA button 可启动。
 
-只有扩展 API 不足时，才允许调用 committed external helper。
+本次 rebuild 在 Developer QA 尚未存在前允许一次 bootstrap：使用已有受支持的只读 browser surface 或一个已自测的 bounded helper 获取 current ChatGPT evidence。不得接管用户日常浏览器 profile，不得循环发送真实请求。
+
+Developer QA 验证通过后，ordinary compatibility refresh 必须迁入 Mica；只有扩展 API/浏览器安全边界不足时，才允许调用 committed external helper。
 
 ### diff
 
