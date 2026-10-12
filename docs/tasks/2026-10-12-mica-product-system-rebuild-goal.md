@@ -41,17 +41,24 @@ Highlighter、PDF、Notion 是本 Goal 后半段的重要产品能力，但不�
 
 ## 1. Current authority
 
-执行前必须读取：
+当前 Planner 权威只有：
 
 ```text
 docs/product/MICA_PRODUCT_SYSTEM_V1.md
-docs/reviews/2026-10-12-mica-product-system-rebuild-critic.md
+docs/tasks/2026-10-12-mica-product-system-rebuild-goal.md
+docs/reviews/2026-10-12-mica-product-system-gpt-critic-prompt.md
+docs/reviews/2026-10-12-mica-product-system-critic-r1-disposition.md
 AGENTS.md
 README.md
 docs/ROADMAP.md
-docs/REAL_BUG_CONVERGENCE_WORKFLOW.md
-docs/TEST_ARCHITECTURE_V2.md
 ```
+
+规则：
+
+- `docs/tasks/2026-10-05-mica-product-recovery-current-gpt-ui.md` 已 superseded，只能作为历史证据。
+- `docs/reviews/2026-10-12-mica-product-system-rebuild-critic.md` 已 superseded，不是当前 Critic。
+- 不得假设 `docs/REAL_BUG_CONVERGENCE_WORKFLOW.md`、`docs/TEST_ARCHITECTURE_V2.md` 或旧开发分支中的其他文档存在于当前 main。Source audit 若发现这些旧材料，只按历史证据/可迁移规则分类，不把它们自动提升为当前 authority。
+- `AGENTS.md` 中与最终 2026-10-12 Goal 明确冲突的旧阶段性产品/验收规则，在 Critic PASS 后由 Codex 做一次 docs-only migration；privacy、credential、destructive action、external mutation、platform safety 等 durable boundary 不被覆盖。
 
 同时读取当前正式安装的 AI Skills / workflow rules，至少覆盖：
 
@@ -63,6 +70,8 @@ Research Authoring production/acceptance workflow
 ```
 
 只吸收可复用的交付纪律，不把 slide/student-assessment 领域规则复制进 Mica。
+
+法律/许可/第三方 provenance 不是本 Goal 的 Planner/Critic/release gate，不得因此阻塞开发。
 
 ---
 
@@ -207,28 +216,48 @@ Critic 结果不由 Codex 自己写入“PASS”；它是 Codex 执行之前的 
 
 ## 5. Freeze product architecture before code
 
-Critic PASS 后，把 `MICA_PRODUCT_SYSTEM_V1.md` materialize 成实现合同。
+Critic PASS 后，不再创建五份平行治理文档。
 
-至少创建/更新：
-
-```text
-docs/product/MICA_PRODUCT_CONTRACT.md
-docs/product/MICA_UI_SYSTEM.md
-docs/product/MICA_CHATGPT_COMPATIBILITY_CONTRACT.md
-docs/product/MICA_ACCEPTANCE_ARCHITECTURE.md
-docs/workflows/MICA_EXECUTION_FAILURE_HISTORY.md
-```
-
-这些文件必须明确区分：
+Durable prose authority 保持最小化：
 
 ```text
-NORMAL_PRODUCT_UI
-TROUBLESHOOTING
-DEVELOPER_QA
-EXTERNAL_FALLBACK_TOOLING
+MICA_PRODUCT_SYSTEM_V1.md
+this Goal
+AGENTS.md (仅做必要 migration)
 ```
 
-并明确所有 product-visible states。
+Machine-readable contracts、fixtures、evidence schema 可按实现需要创建，但不得形成第二套 Planner authority。
+
+在写 runtime/UI 前，Codex 必须先完成两个冻结动作：
+
+1. **current ChatGPT evidence freeze**  
+   为 adapter 的每个需要能力记录当前 variant、invariants、evidence class、contract hash 与 invalidation rule。
+
+2. **Frontend Design freeze**  
+   基于当前真实/真实派生 ChatGPT surface，冻结：
+   - normal popup hierarchy；
+   - control/component families；
+   - spacing/density；
+   - light/dark；
+   - focus/keyboard；
+   - 320–400px width；
+   - supported/unavailable/degraded states；
+   - one-answer Mica menu；
+   - selection affordance；
+   - recovery affordance；
+   - Troubleshooting；
+   - Developer QA。
+
+顺序必须是：
+
+```text
+current surface evidence
+-> product/UI freeze
+-> implementation
+-> actual rendered comparison
+```
+
+不能先猜 UI 再让用户找问题。
 
 ---
 
@@ -242,11 +271,10 @@ EXTERNAL_FALLBACK_TOOLING
 
 实现 `MICA_PRODUCT_SYSTEM_V1.md` 定义的信息架构：
 
-- Header
+- Header / compatibility state
 - Low memory
-- Copy & Export
-- Highlights
-- Reliability
+- Reuse answers（只显示已实现的 Copy/Export/Highlight 能力）
+- Page health（正常时低权重；异常时才提升）
 - Troubleshooting
 - version
 
@@ -298,7 +326,10 @@ Troubleshooting 只提供：
 - answer action cluster 最多一个 Mica entry；
 - selection 时才出现 highlighter affordance；
 - Reliability 只在异常时出现；
-- unknown placement -> do not inject。
+- unknown placement -> do not inject；
+- 如果 action-cluster placement 无法证明，但 `turn.resolveFromNode` 能 EXACT 解析用户右键/selection 所在的 assistant answer，可使用 Mica browser/context action 作为 per-answer fallback；
+- popup 不得用 viewport/last-answer/focus history 猜目标 answer；
+- 无法精确识别目标 answer 时，per-answer action 必须明确 unavailable。
 
 Producer 必须先完成真实 render self-review，P1/P2 未清零不得进入独立 review。
 
