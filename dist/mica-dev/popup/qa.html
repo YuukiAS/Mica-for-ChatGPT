@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="popup.css">
+    <title>Developer QA · Mica</title>
+  </head>
+  <body>
+    <main class="shell" data-view="qa">
+      <header class="view-header">
+        <a class="back-link" href="index.html" aria-label="Back to Mica">‹</a>
+        <div>
+          <p class="eyebrow">Development build</p>
+          <h1 id="view-title" tabindex="-1">Developer QA</h1>
+        </div>
+      </header>
+
+      <section class="qa-identity" aria-label="Candidate identity">
+        <div><span>Build</span><code id="qa-build">Loading…</code></div>
+        <div><span>Adapter</span><code id="qa-adapter">Loading…</code></div>
+        <div><span>Contract</span><code id="qa-contract">Loading…</code></div>
+      </section>
+
+      <section aria-labelledby="capability-heading">
+        <h2 id="capability-heading" class="section-heading">Capabilities</h2>
+        <div id="capability-rows" class="qa-capabilities"></div>
+        <p class="qa-help">Unknown capabilities stay off because their structure is not confirmed.</p>
+      </section>
+
+      <section class="action-stack" aria-label="Developer QA actions">
+        <button id="refresh-compatibility" class="button primary" type="button">Refresh compatibility</button>
+        <button id="run-focused-checks" class="button secondary" type="button">Run focused checks</button>
+        <button id="export-evidence" class="button secondary" type="button">Export sanitized evidence</button>
+        <p id="qa-operation-status" class="operation-status" role="status" aria-live="polite"></p>
+      </section>
+    </main>
+    <script src="qa.js"></script>
+  </body>
+</html>

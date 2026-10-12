@@ -1,14 +1,13 @@
+import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DEV_DIST_DIR_NAME, ICON_SIZES, MACHINE_VERSION, REQUIRED_EXTENSION_FILES, VERSION_NAME } from "./release-config.mjs";
+import { BUILD_LABEL, DEV_DIST_DIR_NAME, ICON_SIZES, MACHINE_VERSION, REQUIRED_EXTENSION_FILES, VERSION_NAME } from "./release-config.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = path.join(root, "dist", DEV_DIST_DIR_NAME);
 
-for (const relative of REQUIRED_EXTENSION_FILES) {
-  await assertFile(path.join(distDir, relative));
-}
+for (const relative of REQUIRED_EXTENSION_FILES) await assertFile(path.join(distDir, relative));
 
 const manifest = JSON.parse(await readFile(path.join(distDir, "manifest.json"), "utf8"));
 assert(manifest.manifest_version === 3, "manifest_version must be 3");
@@ -19,13 +18,7 @@ assert(manifest.action?.default_title === "Mica", "action.default_title missing"
 assert(manifest.permissions?.includes("storage"), "storage permission missing");
 assert(manifest.permissions?.includes("activeTab"), "activeTab permission missing");
 assert(!manifest.host_permissions?.some((host) => !/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(host)), "unexpected host permission");
-assert(manifest.content_scripts?.[0]?.js?.[0] === "known-interruptions.js", "known interruptions script must run before content.js");
-assert(manifest.content_scripts?.[0]?.js?.[1] === "connector-lifecycle-signal.js", "connector lifecycle signal script must run before dependent reliability scripts");
-assert(manifest.content_scripts?.[0]?.js?.[2] === "composer-diagnostics.js", "composer diagnostics script must run before content.js");
-assert(manifest.content_scripts?.[0]?.js?.[3] === "stale-composer-recovery.js", "stale composer recovery script must run before content.js");
-assert(manifest.content_scripts?.[0]?.js?.[4] === "connector-continuity.js", "connector continuity script must run before content.js");
-assert(manifest.content_scripts?.[0]?.js?.[5] === "send-residual-recovery.js", "send residual recovery script must run before content.js");
-assert(manifest.content_scripts?.[0]?.js?.[6] === "content.js", "content.js must remain a content script");
+assert(JSON.stringify(manifest.content_scripts?.[0]?.js) === JSON.stringify(["chatgpt-adapter.js", "answer-document.js", "content.js"]), "foundation content-script order drifted");
 
 for (const size of [16, 32, 48, 128]) {
   assert(manifest.icons?.[size] === `icons/icon${size}.png`, `manifest icon${size} missing`);
@@ -36,189 +29,84 @@ for (const size of ICON_SIZES) {
   assert(dimensions.width === size && dimensions.height === size, `icon${size}.png has wrong dimensions`);
 }
 
+const contractSource = await readFile(path.join(root, "contracts", "chatgpt", "current.json"));
+const contractHash = createHash("sha256").update(contractSource).digest("hex");
+const adapter = await readFile(path.join(distDir, "chatgpt-adapter.js"), "utf8");
+const answerDocument = await readFile(path.join(distDir, "answer-document.js"), "utf8");
 const content = await readFile(path.join(distDir, "content.js"), "utf8");
+const popup = await readFile(path.join(distDir, "popup", "popup.js"), "utf8");
+const troubleshooting = await readFile(path.join(distDir, "popup", "troubleshooting.js"), "utf8");
+const qa = await readFile(path.join(distDir, "popup", "qa.js"), "utf8");
+
+for (const text of [adapter, content]) assert(text.includes(contractHash), "built current ChatGPT contract hash drifted");
+for (const text of [adapter, answerDocument, content, popup, troubleshooting, qa]) {
+  assert(!/__MICA_(?:VERSION|VERSION_NAME|BUILD_LABEL|CHATGPT_CONTRACT_HASH|DEV_BUILD)__/.test(text), "unresolved build placeholder remains");
+  new Function(text);
+}
+
 for (const token of [
-  "MICA_DIAGNOSTICS_START",
-  "MICA_DIAGNOSTICS_STOP",
-  "MICA_DIAGNOSTICS_COPY_REPORT",
-  "MICA_DIAGNOSTICS_RESET",
-  "MICA_COMPOSER_GUIDED_START",
-  "MICA_COMPOSER_GUIDED_COPY_REPORT",
-  "Native virtualization",
-  "mountedTurns",
+  "MicaChatGPTAdapter",
+  "conversation-turn-section-role-v1",
+  "native-copy-button-parent-v1",
+  "prompt-textarea-contenteditable-v1",
+  "failOpen"
+]) assert(adapter.includes(token), `adapter missing ${token}`);
+
+for (const token of [
+  "MicaAnswerDocument",
+  "orderedBlocks",
+  "sourceVersion",
+  "STREAMING",
+  "SETTLED",
+  "opaque_interactive",
+  "unknown_block",
+  "inline_math",
+  "display_math"
+]) assert(answerDocument.includes(token), `AnswerDocument core missing ${token}`);
+
+for (const token of [
+  "MICA_GET_STATUS",
+  "MICA_SET_SETTINGS",
+  "MICA_QA_EXPORT",
+  "MICA_GET_ANSWER_DOCUMENT",
+  "mica-developer-qa.v1",
+  `const VERSION = "${MACHINE_VERSION}"`,
+  `const BUILD_LABEL = "${BUILD_LABEL}"`,
   "conversationTextIncluded: false",
-  "attachmentContentIncluded: false",
-  "autoDismissKnownInterruptions",
-  "longThreadOptimization",
-  "connectorContinuity",
-  "sendResidualRecovery",
-  "knownInterruptions",
-  "MicaConnectorLifecycleSignal",
-  "MicaStaleComposerRecovery",
-  "MicaConnectorContinuity",
-  "MicaSendResidualRecovery"
-]) {
-  assert(content.includes(token), `content.js missing ${token}`);
-}
-const reportBody = extractFunctionBody(content, "buildDiagnosticsReport");
-assert(!/innerText|textContent|innerHTML|outerHTML/.test(reportBody), "diagnostics report builder must not read conversation text/html");
-
-const interruptions = await readFile(path.join(distDir, "known-interruptions.js"), "utf8");
-for (const token of [
-  "chatgpt.rate_limit_history_ack.zh-CN.v1",
-  "MicaKnownInterruptions",
-  "WeakSet",
-  "访问对话记录",
-  "明白了"
-]) {
-  assert(interruptions.includes(token), `known-interruptions.js missing ${token}`);
-}
-
-const composerDiagnostics = await readFile(path.join(distDir, "composer-diagnostics.js"), "utf8");
-for (const token of [
-  "MicaComposerDiagnostics",
-  "composer-capture-diagnostics.v3",
-  "sendLifecycle",
-  "userTurnCommittedLatched",
-  "userTurnCommitSignalObserved",
-  "userTurnDeltaHistory",
-  "SEND_CLEARED_STABLE",
-  "SEND_STALE_PAYLOAD_REAPPEARED",
-  "SEND_NONMATCHING_TEXT_PRESENT",
-  "SEND_NOT_COMMITTED",
-  "INSUFFICIENT_SEND_EVIDENCE",
-  "staleTextRestoredAfterClear",
-  "staleTextAfterUserTurn",
-  "clearAnchor",
-  "mentionSignalSource",
-  "connectorContinuityActivated",
-  "sendResidualRecoveryAttemptCount",
-  "connectorLifecycleLatched",
-  "connectorContextLatched",
-  "chooserActiveNow",
-  "selectionWindowActive",
-  "send_candidate_created",
-  "send_candidate_promoted",
-  "send_candidate_discarded",
-  "CONNECTOR_SELECTION",
-  "overlayHandlerAttached",
-  "lastOverlayActionReceived",
-  "lastOverlayActionSessionId",
-  "lastOverlayActionResult",
-  "sendResidualRecoverySkippedReason",
-  "sendResidualRecoveryStaleProvenanceMatched",
-  "coalescedLowPriorityEvents",
-  "droppedLowPriorityEvents",
-  "isHighPriorityEvent",
-  "EXPECTED_NATIVE_LIKE_REMOUNT",
-  "REMOUNT_WITH_TEXT",
-  "promptTextIncluded: false",
-  "answerTextIncluded: false",
-  "requestDataIncluded: false",
   "rawDomIncluded: false"
-]) {
-  assert(composerDiagnostics.includes(token), `composer-diagnostics.js missing ${token}`);
-}
-assert(!/dispatchEvent\(|\.click\(|fetch\(|XMLHttpRequest|new\s+MutationObserver/.test(composerDiagnostics), "composer diagnostics must stay passive and local");
-const connectorLifecycleSignal = await readFile(path.join(distDir, "connector-lifecycle-signal.js"), "utf8");
-for (const token of [
-  "MicaConnectorLifecycleSignal",
-  "connectorLifecycleLatched",
-  "mica-connector-lifecycle-latched",
-  "chooserActiveNow",
-  "connectorContextLatched",
-  "selectionWindowActive",
-  "mention-trigger",
-  "findActiveMentionChooser",
-  "latchConnectorLifecycle",
-  "LATCH_TTL_MS"
-]) {
-  assert(connectorLifecycleSignal.includes(token), `connector-lifecycle-signal.js missing ${token}`);
-}
-assert(!/preventDefault\(|fetch\(|XMLHttpRequest|new\s+MutationObserver|document\.execCommand|\.click\(/.test(connectorLifecycleSignal), "connector lifecycle signal must stay observational and non-invasive");
-const staleRecovery = await readFile(path.join(distDir, "stale-composer-recovery.js"), "utf8");
-for (const token of [
-  "MicaStaleComposerRecovery",
-  "stale_recovery_full_clear_intent",
-  "stale_recovery_clear_confirmation_started",
-  "stale_recovery_clear_confirmation_check",
-  "stale_recovery_clear_confirmation_expired",
-  "stale_recovery_clear_confirmed",
-  "clearConfirmationSource",
-  "clearConfirmedTargetMatched",
-  "stale_recovery_rearmed",
-  "stale_recovery_armed",
-  "stale_recovery_waiting_for_settle",
-  "stale_recovery_match",
-  "stale_recovery_cancelled_new_input",
-  "stale_recovery_attempt",
-  "stale_recovery_success",
-  "stale_recovery_quiet_window_started",
-  "stale_recovery_quiet_window_reset",
-  "stale_recovery_failed",
-  "stale_recovery_expired",
-  "QUIET_WINDOW_MS",
-  "GUARD_DURATION_MS",
-  "MAX_ATTEMPTS"
-]) {
-  assert(staleRecovery.includes(token), `stale-composer-recovery.js missing ${token}`);
-}
-assert(!/fetch\(|XMLHttpRequest|new\s+MutationObserver|location\.reload|innerHTML\s*=|textContent\s*=/.test(staleRecovery), "stale recovery must stay bounded and avoid invasive DOM/network behavior");
+]) assert(content.includes(token), `content runtime missing ${token}`);
 
-const connectorContinuity = await readFile(path.join(distDir, "connector-continuity.js"), "utf8");
-for (const token of [
-  "MicaConnectorContinuity",
-  "connector_continuity_activation_candidate",
-  "connector_continuity_shell_shown",
-  "connector_continuity_shell_removed",
-  "createSanitizedComposerClone",
-  "micaConnectorContinuityClone",
-  "selectionWindowOnly",
-  "SHELL_HARD_CAP_MS",
-  "WATCH_WINDOW_MS",
-  "skippedReason",
-  "pointerEvents",
-  "MutationObserver",
-  "scheduleSnapshotRefresh",
-  "activePollingTimer: false",
-  "setEnabled"
-]) {
-  assert(connectorContinuity.includes(token), `connector-continuity.js missing ${token}`);
-}
-assert(!/preventDefault\(|fetch\(|XMLHttpRequest|document\.execCommand|\.click\(|setInterval\(|addEventListener\(\"(?:beforeinput|input|keydown|compositionstart|compositionupdate|compositionend)\"/.test(connectorContinuity), "connector continuity must stay visual-only, event-coalesced, and off the typing hot path");
+const reportBody = extractFunctionBody(content, "buildSanitizedQaReport");
+assert(!/innerText|textContent|innerHTML|outerHTML/.test(reportBody), "sanitized QA report must not read conversation text/HTML");
+assert(!/addEventListener\(["'](?:beforeinput|input|keydown|compositionstart|compositionupdate|compositionend)/.test(content), "foundation runtime added a typing hot-path listener");
 
-const sendResidualRecovery = await readFile(path.join(distDir, "send-residual-recovery.js"), "utf8");
-for (const token of [
-  "MicaSendResidualRecovery",
-  "send_residual_pre_send_captured",
-  "send_residual_commit_latched",
-  "send_residual_same_payload_reappeared",
-  "send_residual_recovery_attempt",
-  "send_residual_recovery_success",
-  "send_residual_cancelled_new_input",
-  "send_residual_armed",
-  "MAX_ATTEMPTS",
-  "HARD_LIFETIME_MS",
-  "NONMATCHING_GRACE_MS",
-  "MIN_PARTIAL_RESIDUAL_LENGTH",
-  "waiting_for_clear_or_remount",
-  "observedComposerClearPath",
-  "postSendRemountPath",
-  "recoveryEvidencePath",
-  "partial_substring",
-  "connector_body_subset",
-  "detectMentionSignal"
-]) {
-  assert(sendResidualRecovery.includes(token), `send-residual-recovery.js missing ${token}`);
+const normalHtml = await readFile(path.join(distDir, "popup", "index.html"), "utf8");
+for (const token of ["Mica", "Enable Mica", "Checking this page…", "Low memory", "Unavailable in this build", "Page health", "Troubleshooting", "Advanced"]) {
+  assert(normalHtml.includes(token), `normal popup missing ${token}`);
 }
-assert(!/preventDefault\(|fetch\(|XMLHttpRequest|new\s+MutationObserver|location\.reload|innerHTML\s*=/.test(sendResidualRecovery), "send residual recovery must stay bounded and avoid invasive DOM/network behavior");
-for (const forbidden of ["radix-_", "btn-primary", "[role=\"dialog\"] button", "location.reload", "fetch(", "XMLHttpRequest"]) {
-  assert(!interruptions.includes(forbidden), `known-interruptions.js contains forbidden dependency or behavior: ${forbidden}`);
+for (const forbidden of ["Start diagnostics", "Stop diagnostics", "Copy report", "mounted", "selector", "Surface Atlas"]) {
+  assert(!normalHtml.includes(forbidden), `normal popup exposes internal diagnostic copy: ${forbidden}`);
 }
 
-const popupHtml = await readFile(path.join(distDir, "popup", "index.html"), "utf8");
-for (const token of ["Start diagnostics", "Stop diagnostics", "Copy report", "Reset", "Long-thread optimization", "Stale clear recovery", "Connector continuity", "Send residual recovery", "Auto-dismiss known interruptions", "Run composer check"]) {
-  assert(popupHtml.includes(token), `popup missing ${token}`);
+const troubleshootingHtml = await readFile(path.join(distDir, "popup", "troubleshooting.html"), "utf8");
+for (const token of ["Troubleshooting", "Run self-check", "Export diagnostic bundle", "not conversation text", "Open Developer QA"]) {
+  assert(troubleshootingHtml.includes(token), `troubleshooting surface missing ${token}`);
+}
+const qaHtml = await readFile(path.join(distDir, "popup", "qa.html"), "utf8");
+for (const token of ["Developer QA", "Development build", "Refresh compatibility", "Run focused checks", "Export sanitized evidence"]) {
+  assert(qaHtml.includes(token), `Developer QA surface missing ${token}`);
+}
+
+for (const legacy of [
+  "known-interruptions.js",
+  "connector-lifecycle-signal.js",
+  "composer-diagnostics.js",
+  "stale-composer-recovery.js",
+  "connector-continuity.js",
+  "send-residual-recovery.js"
+]) {
+  assert(!manifest.content_scripts[0].js.includes(legacy), `legacy runtime entrypoint remains active: ${legacy}`);
+  await assertMissing(path.join(distDir, legacy));
 }
 
 console.log("Build validation passed");
@@ -228,13 +116,19 @@ async function assertFile(file) {
   assert(info.isFile(), `${file} is not a file`);
 }
 
+async function assertMissing(file) {
+  try {
+    await stat(file);
+    throw new Error(`${file} should not exist`);
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+}
+
 async function pngDimensions(file) {
   const buffer = await readFile(file);
   assert(buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])), `${file} is not a PNG`);
-  return {
-    width: buffer.readUInt32BE(16),
-    height: buffer.readUInt32BE(20)
-  };
+  return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
 }
 
 function extractFunctionBody(source, name) {
@@ -243,16 +137,13 @@ function extractFunctionBody(source, name) {
   const open = source.indexOf("{", start);
   let depth = 0;
   for (let index = open; index < source.length; index += 1) {
-    const char = source[index];
-    if (char === "{") depth += 1;
-    if (char === "}") depth -= 1;
+    if (source[index] === "{") depth += 1;
+    if (source[index] === "}") depth -= 1;
     if (depth === 0) return source.slice(open, index + 1);
   }
   throw new Error(`unterminated function ${name}`);
 }
 
 function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message);
-  }
+  if (!condition) throw new Error(message);
 }

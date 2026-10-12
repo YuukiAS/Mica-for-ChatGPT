@@ -12,7 +12,7 @@ Preflight result:
 
 ```text
 VALIDATOR_VERSION=1.0.0
-VALIDATOR_TREE_HASH=12d271041b37bd0aafc06aa4d78939b3586b368f511a558cee275aa626d26f03
+VALIDATOR_TREE_HASH=7e9f19d62a26d8cef856bf43a5a802e065a1c341118eb8ca475351af25a3195c
 FIXTURE_SET_HASH=62c99bce534468db957c6d3599d9d8dfd6afa82d48f3ccd267150558fd7c6507
 EVIDENCE_SCHEMA_VERSION=1
 KNOWN_GOOD_CONTROL=ACCEPTED (5/5)
@@ -40,6 +40,11 @@ connector/tool-file-auth/typing-IME regression coverage.
 This is a validator and evidence-contract PASS, not a Low Memory feature PASS.
 `LOW_MEMORY_TRUNCATION` remains unclaimed until implementation and target-class
 candidate evidence pass the same gate.
+
+The deterministic Copy serializer contract remains available as an optional
+focused gate and is exercised by the all-controls profile. It is not a
+Foundation, Milestone A or 0.3.0 release blocker; this preserves the frozen
+priority that Markdown Copy must not delay Low Memory, Highlighter or PDF.
 
 ## Impact audit and tests
 

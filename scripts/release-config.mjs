@@ -1,22 +1,23 @@
-export const MACHINE_VERSION = "0.1.7";
-export const VERSION_NAME = "0.1.7";
-export const BUILD_LABEL = "typing-hotpath-fix.1";
+export const MACHINE_VERSION = "0.2.0";
+export const VERSION_NAME = "0.2.0";
+export const BUILD_LABEL = "product-foundation.1";
+export const DEV_BUILD = true;
 export const RELEASE_TAG = `v${VERSION_NAME}`;
 export const DEV_DIST_DIR_NAME = "mica-dev";
 export const RELEASE_BASENAME = `mica-for-chatgpt-v${VERSION_NAME}`;
 
 export const REQUIRED_EXTENSION_FILES = [
   "manifest.json",
-  "known-interruptions.js",
-  "connector-lifecycle-signal.js",
-  "composer-diagnostics.js",
-  "stale-composer-recovery.js",
-  "connector-continuity.js",
-  "send-residual-recovery.js",
+  "chatgpt-adapter.js",
+  "answer-document.js",
   "content.js",
   "popup/index.html",
+  "popup/troubleshooting.html",
+  "popup/qa.html",
   "popup/popup.css",
   "popup/popup.js",
+  "popup/troubleshooting.js",
+  "popup/qa.js",
   "icons/icon16.png",
   "icons/icon32.png",
   "icons/icon48.png",

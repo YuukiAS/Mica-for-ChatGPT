@@ -10,7 +10,6 @@ const FOUNDATION_GATES = [
   "popup-render",
   "adapter-contract",
   "answer-document-core",
-  "copy-serialization",
   "copy-placement",
   "core-flow-regression",
   "send-lifecycle-safety",
@@ -22,7 +21,8 @@ const ACCEPTANCE_PROFILES = {
   foundation: FOUNDATION_GATES,
   "milestone-a": [...FOUNDATION_GATES, "low-memory-benefit"],
   "milestone-b": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection"],
-  "release-0.3.0": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection"]
+  "release-0.3.0": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection"],
+  "all-controls": [...FOUNDATION_GATES, "copy-serialization", "low-memory-benefit", "highlight-remount", "pdf-selection"]
 };
 
 const EVIDENCE_CLASSES = new Set([

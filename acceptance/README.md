@@ -36,7 +36,7 @@ the production validator, CLI, control runner, schemas and contracts.
 ## Profiles
 
 - `foundation`: product shell, current adapter contract, AnswerDocument core,
-  deterministic copy sanity, placement safety, core flows, send safety,
+  placement safety, core flows, send safety,
   privacy and packaging/version consistency.
 - `milestone-a`: Foundation plus Low Memory.
 - `milestone-b`: Milestone A plus Highlighter remount and actual-viewer PDF

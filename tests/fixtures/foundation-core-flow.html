@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head><meta charset="utf-8"><title>Mica Foundation core-flow fixture</title></head>
+  <body>
+    <main id="main">
+      <section data-testid="conversation-turn-1"><div data-message-author-role="user"><p>Initial question</p></div></section>
+      <section data-testid="conversation-turn-2">
+        <div data-message-author-role="assistant">
+          <div class="markdown"><p>Initial answer</p></div>
+          <div><button type="button" data-testid="copy-turn-action-button">Copy</button></div>
+        </div>
+      </section>
+    </main>
+    <form id="composer-form">
+      <div id="prompt-textarea" role="textbox" contenteditable="true"></div>
+      <button id="send" type="submit">Send</button>
+      <button id="connector" type="button" aria-expanded="false">Connectors</button>
+      <div id="connector-chooser" hidden><button id="connector-option" type="button">Drive</button></div>
+      <button id="file" type="button" data-testid="file-picker">File</button>
+      <button id="tool" type="button" data-testid="tool-control">Tool</button>
+      <button id="auth" type="button" data-testid="auth-control">Authorize</button>
+    </form>
+    <script>
+      (() => {
+        const counters = { sends: 0, connectorSelections: 0, fileClicks: 0, toolClicks: 0, authClicks: 0 };
+        let nextTurn = 3;
+        const main = document.getElementById("main");
+        const composer = document.getElementById("prompt-textarea");
+        document.getElementById("composer-form").addEventListener("submit", (event) => {
+          event.preventDefault();
+          counters.sends += 1;
+          const user = document.createElement("section");
+          user.dataset.testid = `conversation-turn-${nextTurn++}`;
+          user.innerHTML = `<div data-message-author-role="user"><p>${composer.textContent || "sent"}</p></div>`;
+          main.append(user);
+          composer.textContent = "";
+          const assistant = document.createElement("section");
+          assistant.dataset.testid = `conversation-turn-${nextTurn++}`;
+          assistant.dataset.streaming = "true";
+          assistant.innerHTML = '<div data-message-author-role="assistant"><div class="markdown"><p>Streaming answer</p></div></div>';
+          main.append(assistant);
+        });
+        document.getElementById("connector").addEventListener("click", () => {
+          const chooser = document.getElementById("connector-chooser");
+          chooser.hidden = false;
+          document.getElementById("connector").setAttribute("aria-expanded", "true");
+        });
+        document.getElementById("connector-option").addEventListener("click", () => { counters.connectorSelections += 1; });
+        document.getElementById("file").addEventListener("click", () => { counters.fileClicks += 1; });
+        document.getElementById("tool").addEventListener("click", () => { counters.toolClicks += 1; });
+        document.getElementById("auth").addEventListener("click", () => { counters.authClicks += 1; });
+        globalThis.foundationFlowFixture = {
+          counters,
+          completeStreaming() {
+            const turn = main.querySelector("[data-streaming='true']");
+            turn.dataset.streaming = "false";
+            turn.querySelector("p").textContent = "Settled answer";
+          },
+          editAnswer() { main.querySelector("[data-testid='conversation-turn-2'] p").textContent = "Edited initial answer"; },
+          branchAnswer() {
+            const branch = document.createElement("section");
+            branch.dataset.testid = `conversation-turn-${nextTurn++}`;
+            branch.innerHTML = '<div data-message-author-role="assistant"><div class="markdown"><p>Branch answer</p></div></div>';
+            main.append(branch);
+          }
+        };
+      })();
+    </script>
+  </body>
+</html>

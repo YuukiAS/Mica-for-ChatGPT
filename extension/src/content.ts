@@ -2,2203 +2,264 @@
   const VERSION = "__MICA_VERSION__";
   const VERSION_NAME = "__MICA_VERSION_NAME__";
   const BUILD_LABEL = "__MICA_BUILD_LABEL__";
-  const DEFAULT_SETTINGS = {
-    enabled: true,
-    showStatus: true,
-    longThreadOptimization: true,
-    staleClearRecovery: true,
-    sendResidualRecovery: true,
-    connectorContinuity: true,
-    autoDismissKnownInterruptions: true,
-    recentTurnKeepCount: 8,
-    nativeOnlyTurnThreshold: 14,
-    viewportBufferMultiple: 1.75
-  };
+  const CONTRACT_HASH = "__MICA_CHATGPT_CONTRACT_HASH__";
+  const DEFAULT_SETTINGS = Object.freeze({ enabled: true });
   const STORAGE_KEYS = Object.keys(DEFAULT_SETTINGS);
-  const STATUS = {
-    ACTIVE: "Active",
-    NATIVE_VIRTUALIZATION: "Native virtualization",
-    NATIVE_ONLY: "Native only",
-    DEGRADED: "Degraded",
-    DISABLED: "Disabled"
-  };
-  const TURN_SELECTOR = [
-    "[data-message-author-role]",
-    "[data-testid^='conversation-turn-']",
-    "[data-testid*='conversation-turn']"
-  ].join(",");
-  const ROLE_SELECTOR = "[data-message-author-role='user'], [data-message-author-role='assistant'], [data-message-author-role='tool']";
-  const COMPOSER_SELECTOR = [
-    "[data-testid*='composer']",
-    "textarea",
-    "[contenteditable]",
-    "[role='textbox']",
-    "form"
-  ].join(",");
-  const SPECIAL_SELECTOR = [
-    "textarea",
-    "input:not([type='hidden'])",
-    "select",
-    "form",
-    "[contenteditable]",
-    "[role='dialog']",
-    "iframe",
-    "[data-testid*='composer']",
-    "[data-testid*='tool']",
-    "[data-testid*='file']",
-    "[data-testid*='attachment']",
-    "[data-testid*='drive']",
-    "[data-testid*='oauth']",
-    "[data-testid*='auth']"
-  ].join(",");
-  const SUPPORTS_CONTENT_VISIBILITY = typeof CSS !== "undefined" && CSS.supports?.("content-visibility", "auto");
-  const FRAME_STALL_MS = 50;
-  const OVERLAY_MARGIN = 12;
-  const OVERLAY_EXPAND_MS = 2600;
-  const TOAST_MS = 2800;
-  const TOAST_MERGE_MS = 3000;
-  const COMPOSER_PROTECTION_MS = 5000;
-  const COMPOSER_PROTECTION_PADDING = 28;
-  const COMPOSER_SEND_ACTIVITY_MS = 8000;
-  const COMPOSER_EDIT_ACTIVITY_MS = 900;
-  const bootTime = Date.now();
-  const measuredHeights = new WeakMap();
-  const observedTurns = new Set();
-  const optimizedTurns = new Set();
-  const globalCounters = {
-    mutations: 0,
-    addedNodes: 0,
-    removedNodes: 0,
-    turnMounts: 0,
-    turnUnmounts: 0,
-    turnSamples: 0,
-    knownInterruptionDismissals: 0,
-    knownInterruptionDismissalsByRule: {},
-    lastKnownInterruptionRuleId: null,
-    knownInterruptionToasts: 0,
-    composerProtectionSkips: 0,
-    composerMutationBatchesIgnored: 0,
-    composerLifecycleMutationBatchesIgnored: 0,
-    composerEditScansSkipped: 0,
-    overlayPlacements: 0,
-    overlayStaticPlacements: 0,
-    nativeSafeModeEntries: 0,
-    nativeSafeMountedStatusProbes: 0,
-    nativeSafeMountedStatusUpdates: 0
-  };
-  const composerState = {
-    currentElement: null,
-    currentRoot: null,
-    currentRect: null,
-    currentAncestors: [],
-    lastKnownElement: null,
-    lastKnownRoot: null,
-    lastKnownRect: null,
-    lastKnownAncestors: [],
-    lastSeenAt: 0,
-    missingSince: 0,
-    maxMissingDurationMs: 0,
-    seenOnce: false,
-    mountCount: 0,
-    unmountCount: 0,
-    identityChanges: 0,
-    currentTextLength: 0,
-    visible: false,
-    editEvents: 0,
-    optimizationIntersectionCount: 0,
-    optimizationApplyDuringSendCount: 0,
-    optimizationRemoveDuringSendCount: 0,
-    lastOptimizationIntersection: null,
-    submitEvents: 0,
-    sendClickEvents: 0,
-    sendingUntil: 0,
-    editingUntil: 0
-  };
-  const turnWindow = {
-    previousKeys: new Set(),
-    currentKeys: new Set(),
-    lastMountedCount: 0,
-    lastSampleAt: 0
-  };
-  let diagnostics = createDiagnosticsState();
+  const adapter = globalThis.MicaChatGPTAdapter;
+  const answerDocument = globalThis.MicaAnswerDocument;
   let settings = { ...DEFAULT_SETTINGS };
-  let currentStatus = {
-    name: STATUS.NATIVE_ONLY,
-    reason: "Initializing",
-    mountedTurns: 0,
-    optimizedTurns: 0,
-    protectedTurns: 0,
-    updatedAt: new Date().toISOString(),
-    version: VERSION,
-    versionName: VERSION_NAME,
-    buildLabel: BUILD_LABEL,
-    label: "Mica · Native only · 0 mounted"
-  };
-  let badgeHost = null;
-  let badgeRoot = null;
-  let mutationObserver = null;
-  let mutationObserverPaused = false;
-  let mutationObserverResumeTimer = 0;
-  let resizeObserver = null;
-  let overlayPlacementScheduled = false;
+  let observer = null;
   let scheduled = false;
-  let lastUrl = location.href;
-  const runtimeState = {
-    nativeSafeMode: false,
-    nativeSafeReason: null,
-    documentMutationsObserved: false,
-    composerLifecycleListenersAttached: false
-  };
-  const overlayState = {
-    expanded: false,
-    expandedByUser: false,
-    initializedExpansionShown: false,
-    forceCompactForPlacement: false,
-    placement: "unplaced",
-    expandTimer: 0,
-    toastTimer: 0,
-    toastVisible: false,
-    toastCount: 0,
-    lastToastAt: 0
-  };
+  let lastStatus = loadingStatus();
 
-  if (!isSupportedPage()) {
-    return;
-  }
+  if (!adapter || !answerDocument || !isSupportedPage()) return;
 
   initialize();
 
   async function initialize() {
-    injectStyles();
     settings = { ...DEFAULT_SETTINGS, ...(await readSettings()) };
-    setupBadge();
-    setupComposerGuidedDiagnostics();
-    setupConnectorLifecycleSignal();
-    setupStaleComposerRecovery();
-    setupConnectorContinuity();
-    setupSendResidualRecovery();
-    setupObservers();
     setupMessages();
-    setupFixtureTestHooks();
-    applySettingsChange();
+    setupNavigationSignals();
+    if (settings.enabled) setupObserver();
+    refreshStatus();
+    exposeFixtureHook();
   }
 
   function isSupportedPage() {
-    const host = location.hostname;
-    return host === "chatgpt.com" || host === "chat.openai.com" || document.documentElement.dataset.micaFixture === "true";
+    return ["chatgpt.com", "chat.openai.com"].includes(location.hostname) || document.documentElement.dataset.micaFixture === "true";
   }
 
   function readSettings() {
     return new Promise((resolve) => {
       const storage = globalThis.chrome?.storage?.local;
-      if (!storage) {
-        resolve({});
-        return;
-      }
-      storage.get(STORAGE_KEYS, (items) => {
-        resolve(chrome.runtime?.lastError ? {} : sanitizeSettings(items || {}));
-      });
+      if (!storage) return resolve({});
+      storage.get(STORAGE_KEYS, (items) => resolve(chrome.runtime?.lastError ? {} : sanitizeSettings(items || {})));
     });
   }
 
   function writeSettings(next) {
     return new Promise((resolve) => {
       const storage = globalThis.chrome?.storage?.local;
-      if (!storage) {
-        settings = { ...settings, ...next };
-        resolve();
-        return;
-      }
+      if (!storage) return resolve();
       storage.set(next, () => resolve());
     });
   }
 
   function sanitizeSettings(value) {
-    const next = {};
-    if (typeof value.enabled === "boolean") next.enabled = value.enabled;
-    if (typeof value.showStatus === "boolean") next.showStatus = value.showStatus;
-    if (typeof value.longThreadOptimization === "boolean") next.longThreadOptimization = value.longThreadOptimization;
-    if (typeof value.staleClearRecovery === "boolean") next.staleClearRecovery = value.staleClearRecovery;
-    if (typeof value.sendResidualRecovery === "boolean") next.sendResidualRecovery = value.sendResidualRecovery;
-    if (typeof value.connectorContinuity === "boolean") next.connectorContinuity = value.connectorContinuity;
-    if (typeof value.autoDismissKnownInterruptions === "boolean") next.autoDismissKnownInterruptions = value.autoDismissKnownInterruptions;
-    if (Number.isFinite(value.recentTurnKeepCount)) next.recentTurnKeepCount = clamp(Math.round(value.recentTurnKeepCount), 4, 20);
-    if (Number.isFinite(value.nativeOnlyTurnThreshold)) next.nativeOnlyTurnThreshold = clamp(Math.round(value.nativeOnlyTurnThreshold), 6, 40);
-    if (Number.isFinite(value.viewportBufferMultiple)) next.viewportBufferMultiple = clamp(Number(value.viewportBufferMultiple), 1, 4);
-    return next;
+    return { enabled: typeof value.enabled === "boolean" ? value.enabled : DEFAULT_SETTINGS.enabled };
   }
 
-  function setupObservers() {
-    if (typeof ResizeObserver !== "undefined") {
-      resizeObserver = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          const target = entry.target;
-          if (!(target instanceof HTMLElement)) continue;
-          const height = Math.max(80, Math.ceil(entry.borderBoxSize?.[0]?.blockSize || target.getBoundingClientRect().height));
-          measuredHeights.set(target, height);
-          target.style.setProperty("--mica-intrinsic-height", `${height}px`);
-        }
-      });
-    }
-
-    if (typeof MutationObserver !== "undefined") {
-      mutationObserver = new MutationObserver((mutations) => {
-        recordMutations(mutations);
-        if (areOnlyComposerMutations(mutations)) {
-          globalCounters.composerMutationBatchesIgnored += 1;
-          updateComposerTextLengthOnly();
-          return;
-        }
-        if (isComposerLifecycleUnstable()) {
-          globalCounters.composerLifecycleMutationBatchesIgnored += 1;
-          updateComposerTextLengthOnly();
-          return;
-        }
-        processKnownInterruptions();
-        scheduleScan();
-      });
-    }
-    addEventListener("scroll", () => {
-      recordScrollSample();
-      if (settings.enabled && settings.longThreadOptimization && !runtimeState.nativeSafeMode && !isComposerLifecycleUnstable()) scheduleScan();
-    }, { passive: true, capture: true });
-    addEventListener("resize", () => {
-      if (settings.enabled && settings.longThreadOptimization && !runtimeState.nativeSafeMode && !isComposerLifecycleUnstable()) {
-        scheduleScan();
-        scheduleOverlayPlacement();
-      }
-    }, { passive: true });
-    setInterval(() => {
-      if (location.href !== lastUrl) {
-        lastUrl = location.href;
-        updateFeatureModulesEnabled();
-        if (!settings.enabled) {
-          clearOptimization();
-          enterNativeSafeMode("disabled");
-          setStatus(STATUS.DISABLED, "Disabled by user", []);
-          return;
-        }
-        if (!settings.longThreadOptimization) {
-          clearOptimization();
-          enterNativeSafeMode("long-thread optimization disabled");
-          refreshLongThreadDisabledStatus("url");
-          processKnownInterruptions();
-          return;
-        }
-        exitNativeSafeMode();
-        clearOptimization();
-        turnWindow.previousKeys = new Set();
-        scheduleScan();
-        return;
-      }
-      if (!settings.enabled) {
-        clearOptimization();
-        enterNativeSafeMode("disabled");
-        setStatusIfChanged(STATUS.DISABLED, "Disabled by user", []);
-        return;
-      }
-      if (!settings.longThreadOptimization) {
-        clearOptimization();
-        enterNativeSafeMode("long-thread optimization disabled");
-        refreshLongThreadDisabledStatus("interval");
-        processKnownInterruptions();
-        return;
-      }
-      if (runtimeState.nativeSafeMode) {
-        processKnownInterruptions();
-        refreshNativeSafeMountedStatus("interval");
-        return;
-      }
-      if (!isComposerLifecycleUnstable()) {
-        scheduleScan();
-        processKnownInterruptions();
-        if (shouldPollOverlayPlacement()) scheduleOverlayPlacement();
-      }
-    }, 1500);
+  function setupObserver() {
+    if (observer || typeof MutationObserver === "undefined") return;
+    observer = new MutationObserver(() => scheduleRefresh());
+    observer.observe(document.documentElement, { childList: true, subtree: true });
   }
 
-  function attachComposerLifecycleListeners() {
-    if (runtimeState.composerLifecycleListenersAttached) return;
-    document.addEventListener("submit", handleComposerSubmit, true);
-    document.addEventListener("beforeinput", handleComposerEditEvent, true);
-    document.addEventListener("input", handleComposerEditEvent, true);
-    document.addEventListener("cut", handleComposerEditEvent, true);
-    document.addEventListener("paste", handleComposerEditEvent, true);
-    document.addEventListener("keydown", handleComposerKeydown, true);
-    document.addEventListener("click", handleComposerClick, true);
-    runtimeState.composerLifecycleListenersAttached = true;
+  function teardownObserver() {
+    observer?.disconnect();
+    observer = null;
   }
 
-  function detachComposerLifecycleListeners() {
-    if (!runtimeState.composerLifecycleListenersAttached) return;
-    document.removeEventListener("submit", handleComposerSubmit, true);
-    document.removeEventListener("beforeinput", handleComposerEditEvent, true);
-    document.removeEventListener("input", handleComposerEditEvent, true);
-    document.removeEventListener("cut", handleComposerEditEvent, true);
-    document.removeEventListener("paste", handleComposerEditEvent, true);
-    document.removeEventListener("keydown", handleComposerKeydown, true);
-    document.removeEventListener("click", handleComposerClick, true);
-    runtimeState.composerLifecycleListenersAttached = false;
+  function setupNavigationSignals() {
+    addEventListener("popstate", scheduleRefresh, { passive: true });
+    addEventListener("hashchange", scheduleRefresh, { passive: true });
   }
 
-  function handleComposerSubmit(event) {
-    if (isComposerEventTarget(event.target)) {
-      recordComposerDiagnosticRuntimeCallback("lifecycle_callback", { event: "submit" });
-      composerState.submitEvents += 1;
-      markComposerSendActivity();
-    }
-  }
-
-  function handleComposerEditEvent(event) {
-    if (isComposerEventTarget(event.target)) {
-      recordComposerDiagnosticRuntimeCallback("lifecycle_callback", { event: event.type || "edit" });
-      markComposerEditActivity();
-    }
-  }
-
-  function handleComposerKeydown(event) {
-    if (isEditingKey(event) && isComposerEventTarget(event.target)) {
-      recordComposerDiagnosticRuntimeCallback("lifecycle_callback", { event: "keydown", key: event.key || "" });
-      markComposerEditActivity();
-    }
-  }
-
-  function handleComposerClick(event) {
-    const target = event.target instanceof Element ? event.target : null;
-    const button = target?.closest("button, [role='button']");
-    if (button instanceof HTMLElement && isComposerEventTarget(button) && isLikelySendButton(button)) {
-      recordComposerDiagnosticRuntimeCallback("lifecycle_callback", { event: "send_click" });
-      composerState.sendClickEvents += 1;
-      markComposerSendActivity();
-    }
-  }
-
-  function setupMessages() {
-    globalThis.chrome?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
-      if (!message || typeof message !== "object") return false;
-      if (message.type === "MICA_GET_STATUS") {
-        sendResponse({ status: currentStatus, settings, diagnostics: summarizeDiagnostics(), composerGuided: summarizeComposerGuidedDiagnostics() });
-        return true;
-      }
-      if (message.type === "MICA_SET_SETTINGS") {
-        const next = sanitizeSettings(message.settings || {});
-        settings = { ...settings, ...next };
-        writeSettings(next).then(() => {
-          applySettingsChange();
-          sendResponse({ status: currentStatus, settings, diagnostics: summarizeDiagnostics(), composerGuided: summarizeComposerGuidedDiagnostics() });
-        });
-        return true;
-      }
-      if (message.type === "MICA_DIAGNOSTICS_START") {
-        startDiagnostics();
-        sendResponse({ status: currentStatus, diagnostics: summarizeDiagnostics() });
-        return true;
-      }
-      if (message.type === "MICA_DIAGNOSTICS_STOP") {
-        stopDiagnostics();
-        sendResponse({ status: currentStatus, diagnostics: summarizeDiagnostics(), report: buildDiagnosticsReport() });
-        return true;
-      }
-      if (message.type === "MICA_DIAGNOSTICS_COPY_REPORT") {
-        const report = buildDiagnosticsReport();
-        sendResponse({ status: currentStatus, diagnostics: summarizeDiagnostics(), report, reportText: JSON.stringify(report, null, 2) });
-        return true;
-      }
-      if (message.type === "MICA_DIAGNOSTICS_RESET") {
-        resetDiagnostics();
-        sendResponse({ status: currentStatus, diagnostics: summarizeDiagnostics() });
-        return true;
-      }
-      if (message.type === "MICA_COMPOSER_GUIDED_START") {
-        sendResponse({ status: currentStatus, composerGuided: startComposerGuidedDiagnostics() });
-        return true;
-      }
-      if (message.type === "MICA_COMPOSER_GUIDED_NEXT") {
-        sendResponse({ status: currentStatus, composerGuided: nextComposerGuidedDiagnosticsStep() });
-        return true;
-      }
-      if (message.type === "MICA_COMPOSER_GUIDED_STOP") {
-        sendResponse({ status: currentStatus, composerGuided: stopComposerGuidedDiagnostics(), report: getComposerGuidedDiagnosticsReport() });
-        return true;
-      }
-      if (message.type === "MICA_COMPOSER_GUIDED_COPY_REPORT") {
-        const report = getComposerGuidedDiagnosticsReport();
-        sendResponse({
-          status: currentStatus,
-          composerGuided: summarizeComposerGuidedDiagnostics(),
-          report,
-          reportText: report ? JSON.stringify(report, null, 2) : ""
-        });
-        return true;
-      }
-      if (message.type === "MICA_COMPOSER_GUIDED_RESET") {
-        sendResponse({ status: currentStatus, composerGuided: resetComposerGuidedDiagnostics() });
-        return true;
-      }
-      return false;
-    });
-
-    globalThis.chrome?.storage?.onChanged?.addListener((changes, areaName) => {
-      if (areaName !== "local") return;
-      const next = {};
-      for (const key of STORAGE_KEYS) {
-        if (Object.prototype.hasOwnProperty.call(changes, key)) {
-          next[key] = changes[key].newValue;
-        }
-      }
-      settings = { ...settings, ...sanitizeSettings(next) };
-      applySettingsChange();
-      renderBadge();
-    });
-  }
-
-  function applySettingsChange() {
-    updateFeatureModulesEnabled();
-    if (!settings.enabled) {
-      clearOptimization();
-      enterNativeSafeMode("disabled");
-      setStatus(STATUS.DISABLED, "Disabled by user", []);
-      return;
-    }
-    if (!settings.longThreadOptimization) {
-      clearOptimization();
-      enterNativeSafeMode("long-thread optimization disabled");
-      refreshLongThreadDisabledStatus("settings");
-      processKnownInterruptions();
-      return;
-    }
-    exitNativeSafeMode();
-    scheduleScan("settings");
-    processKnownInterruptions();
-  }
-
-  function setupComposerGuidedDiagnostics() {
-    const api = globalThis.MicaComposerDiagnostics;
-    if (!api || typeof api.configure !== "function") return;
-    api.configure({
-      getRuntimeSnapshot: () => ({
-        extension: {
-          name: "Mica for ChatGPT",
-          version: VERSION,
-          versionName: VERSION_NAME,
-          buildLabel: BUILD_LABEL
-        },
-        page: {
-          origin: location.origin,
-          pathKind: getPathKind(),
-          uptimeMs: Date.now() - bootTime
-        },
-        status: {
-          name: currentStatus.name,
-          reason: currentStatus.reason,
-          mountedTurns: currentStatus.mountedTurns,
-          optimizedTurns: currentStatus.optimizedTurns
-        },
-        runtime: {
-          nativeSafeMode: runtimeState.nativeSafeMode,
-          nativeSafeReason: runtimeState.nativeSafeReason,
-          documentMutationObserverActive: runtimeState.documentMutationsObserved,
-          composerLifecycleListenersAttached: runtimeState.composerLifecycleListenersAttached,
-          micaEnabled: settings.enabled,
-          longThreadOptimizationEnabled: settings.enabled && settings.longThreadOptimization,
-          connectorContinuityEnabled: settings.enabled && settings.connectorContinuity,
-          sendResidualRecoveryEnabled: settings.enabled && settings.sendResidualRecovery,
-          nativeSafeModeEntries: globalCounters.nativeSafeModeEntries
-        },
-        settings: {
-          enabled: settings.enabled,
-          longThreadOptimization: settings.longThreadOptimization,
-          staleClearRecovery: settings.staleClearRecovery,
-          sendResidualRecovery: settings.sendResidualRecovery,
-          connectorContinuity: settings.connectorContinuity
-        }
-      }),
-      getStaleRecoverySnapshot: () => getStaleComposerRecoveryState(),
-      getConnectorLifecycleSnapshot: () => getConnectorLifecycleSignalState(),
-      getConnectorContinuitySnapshot: () => getConnectorContinuityState(),
-      getSendResidualRecoverySnapshot: () => getSendResidualRecoveryState(),
-      countMountedTurns: () => collectMountedTurnStatusProbe().length,
-      countUserTurns: () => collectMountedTurnStatusProbe().filter((turn) => hasTurnRole(turn, "user")).length
-    });
-  }
-
-  function setupStaleComposerRecovery() {
-    const api = globalThis.MicaStaleComposerRecovery;
-    if (!api || typeof api.configure !== "function") return;
-    api.configure({ enabled: settings.enabled && settings.staleClearRecovery });
-  }
-
-  function setupConnectorLifecycleSignal() {
-    const api = globalThis.MicaConnectorLifecycleSignal;
-    if (!api || typeof api.configure !== "function") return;
-    api.configure({ enabled: settings.enabled });
-  }
-
-  function setupConnectorContinuity() {
-    const api = globalThis.MicaConnectorContinuity;
-    if (!api || typeof api.configure !== "function") return;
-    api.configure({ enabled: settings.enabled && settings.connectorContinuity });
-  }
-
-  function setupSendResidualRecovery() {
-    const api = globalThis.MicaSendResidualRecovery;
-    if (!api || typeof api.configure !== "function") return;
-    api.configure({
-      enabled: settings.enabled && settings.sendResidualRecovery,
-      bridge: {
-        getConnectorLifecycleSnapshot: () => getConnectorLifecycleSignalState(),
-        countUserTurns: () => collectMountedTurnStatusProbe().filter((turn) => hasTurnRole(turn, "user")).length
-      }
-    });
-  }
-
-  function updateFeatureModulesEnabled() {
-    updateConnectorLifecycleSignalEnabled();
-    updateStaleComposerRecoveryEnabled();
-    updateConnectorContinuityEnabled();
-    updateSendResidualRecoveryEnabled();
-  }
-
-  function updateConnectorLifecycleSignalEnabled() {
-    const api = globalThis.MicaConnectorLifecycleSignal;
-    if (!api || typeof api.setEnabled !== "function") return;
-    api.setEnabled(settings.enabled);
-  }
-
-  function updateStaleComposerRecoveryEnabled() {
-    const api = globalThis.MicaStaleComposerRecovery;
-    if (!api || typeof api.setEnabled !== "function") return;
-    api.setEnabled(settings.enabled && settings.staleClearRecovery);
-  }
-
-  function updateConnectorContinuityEnabled() {
-    const api = globalThis.MicaConnectorContinuity;
-    if (!api || typeof api.setEnabled !== "function") return;
-    api.setEnabled(settings.enabled && settings.connectorContinuity);
-  }
-
-  function updateSendResidualRecoveryEnabled() {
-    const api = globalThis.MicaSendResidualRecovery;
-    if (!api || typeof api.setEnabled !== "function") return;
-    api.setEnabled(settings.enabled && settings.sendResidualRecovery);
-  }
-
-  function startComposerGuidedDiagnostics() {
-    const api = globalThis.MicaComposerDiagnostics;
-    return api?.start?.() || { available: false, running: false };
-  }
-
-  function nextComposerGuidedDiagnosticsStep() {
-    const api = globalThis.MicaComposerDiagnostics;
-    return api?.nextStep?.() || { available: false, running: false };
-  }
-
-  function stopComposerGuidedDiagnostics() {
-    const api = globalThis.MicaComposerDiagnostics;
-    return api?.stop?.() || { available: false, running: false };
-  }
-
-  function resetComposerGuidedDiagnostics() {
-    const api = globalThis.MicaComposerDiagnostics;
-    return api?.reset?.() || { available: false, running: false };
-  }
-
-  function summarizeComposerGuidedDiagnostics() {
-    const api = globalThis.MicaComposerDiagnostics;
-    return api?.summarize?.() || { available: false, running: false };
-  }
-
-  function getComposerGuidedDiagnosticsReport() {
-    const api = globalThis.MicaComposerDiagnostics;
-    return api?.getReport?.() || null;
-  }
-
-  function recordComposerDiagnosticRuntimeCallback(name, details = {}) {
-    const api = globalThis.MicaComposerDiagnostics;
-    if (!api || typeof api.recordRuntimeCallback !== "function" || api.isActive?.() !== true) return;
-    try {
-      api.recordRuntimeCallback(name, {
-        ...details,
-        nativeSafeMode: runtimeState.nativeSafeMode,
-        documentMutationObserverActive: runtimeState.documentMutationsObserved,
-        composerLifecycleListenersAttached: runtimeState.composerLifecycleListenersAttached,
-        micaEnabled: settings.enabled,
-          optimizedTurns: currentStatus.optimizedTurns || 0
-      });
-    } catch (_error) {
-      // Diagnostics must never affect ChatGPT or Mica runtime behavior.
-    }
-  }
-
-  function getStaleComposerRecoveryState() {
-    return globalThis.MicaStaleComposerRecovery?.getState?.() || null;
-  }
-
-  function getConnectorLifecycleSignalState() {
-    return globalThis.MicaConnectorLifecycleSignal?.getState?.() || null;
-  }
-
-  function getConnectorContinuityState() {
-    return globalThis.MicaConnectorContinuity?.getState?.() || null;
-  }
-
-  function getSendResidualRecoveryState() {
-    return globalThis.MicaSendResidualRecovery?.getState?.() || null;
-  }
-
-  function setupFixtureTestHooks() {
-    if (document.documentElement.dataset.micaFixture !== "true") return;
-    globalThis.__MICA_TEST_CONTROLS__ = {
-      setSettings(next) {
-        settings = { ...settings, ...sanitizeSettings(next || {}) };
-        applySettingsChange();
-        renderBadge();
-      },
-      getSettings() {
-        return { ...settings };
-      },
-      expandStatus() {
-        expandOverlay(true);
-      },
-      forceScan() {
-        scanAndApply();
-      },
-      getDiagnosticsReport() {
-        return buildDiagnosticsReport();
-      },
-      startComposerGuidedDiagnostics() {
-        return startComposerGuidedDiagnostics();
-      },
-      nextComposerGuidedDiagnosticsStep() {
-        return nextComposerGuidedDiagnosticsStep();
-      },
-      stopComposerGuidedDiagnostics() {
-        return stopComposerGuidedDiagnostics();
-      },
-      getComposerGuidedDiagnosticsReport() {
-        return getComposerGuidedDiagnosticsReport();
-      },
-      getComposerGuidedDiagnosticsState() {
-        return globalThis.MicaComposerDiagnostics?.getDebugState?.() || null;
-      },
-      getStaleComposerRecoveryState() {
-        return getStaleComposerRecoveryState();
-      },
-      resetStaleComposerRecoveryForTests() {
-        return globalThis.MicaStaleComposerRecovery?.resetForTests?.();
-      },
-      resetConnectorLifecycleSignalForTests() {
-        return globalThis.MicaConnectorLifecycleSignal?.resetForTests?.();
-      },
-      getConnectorLifecycleSignalState() {
-        return getConnectorLifecycleSignalState();
-      },
-      latchConnectorLifecycleForTests(source) {
-        return globalThis.MicaConnectorLifecycleSignal?.latchConnectorLifecycle?.(source || "structural-marker");
-      },
-      resetConnectorContinuityForTests() {
-        return globalThis.MicaConnectorContinuity?.resetForTests?.();
-      },
-      getConnectorContinuityState() {
-        return getConnectorContinuityState();
-      },
-      resetSendResidualRecoveryForTests() {
-        return globalThis.MicaSendResidualRecovery?.resetForTests?.();
-      },
-      getSendResidualRecoveryState() {
-        return getSendResidualRecoveryState();
-      },
-      forceStaleComposerRecoveryTimeoutForTests(expectedPhase) {
-        return globalThis.MicaStaleComposerRecovery?.forceExpireForTests?.(expectedPhase);
-      },
-      completeStaleComposerRecoveryTombstoneForTests() {
-        return globalThis.MicaStaleComposerRecovery?.completeTombstoneForTests?.();
-      },
-      refreshNativeSafeMountedStatus() {
-        return refreshNativeSafeMountedStatus("fixture");
-      }
-    };
-  }
-
-  function scheduleScan(reason = "auto") {
-    if (!settings.enabled || !settings.longThreadOptimization) return;
-    if (runtimeState.nativeSafeMode && reason !== "settings" && reason !== "url" && reason !== "manual") return;
+  function scheduleRefresh() {
     if (scheduled) return;
     scheduled = true;
-    nextFrame(() => {
+    setTimeout(() => {
       scheduled = false;
-      try {
-        scanAndApply();
-      } catch (error) {
-        clearOptimization();
-        setStatus(STATUS.DEGRADED, `Scan failed: ${error?.message || String(error)}`, []);
-      }
-    });
+      refreshStatus();
+    }, 120);
   }
 
-  function scanAndApply() {
+  function refreshStatus() {
     if (!settings.enabled) {
-      clearOptimization();
-      enterNativeSafeMode("disabled");
-      setStatus(STATUS.DISABLED, "Disabled by user", []);
-      return;
+      lastStatus = disabledStatus();
+      return lastStatus;
     }
-    if (!settings.longThreadOptimization) {
-      clearOptimization();
-      enterNativeSafeMode("long-thread optimization disabled");
-      refreshLongThreadDisabledStatus("scan");
-      return;
-    }
-    recordComposerDiagnosticRuntimeCallback("scan");
-    if (isComposerEditWindowActive()) {
-      globalCounters.composerEditScansSkipped += 1;
-      updateComposerTextLengthOnly();
-      return;
-    }
-    processKnownInterruptions();
-    if (!SUPPORTS_CONTENT_VISIBILITY) {
-      clearOptimization();
-      enterNativeSafeMode("content-visibility unsupported");
-      setStatus(STATUS.DEGRADED, "Browser lacks content-visibility support", []);
-      return;
-    }
-
-    const turns = collectConversationTurns();
-    updateTurnWindowStats(turns);
-    if (turns.length === 0) {
-      clearOptimization();
-      enterNativeSafeMode("no mounted turns");
-      const conversationPath = isConversationPath();
-      const hasTimedOut = Date.now() - bootTime > 5000;
-      const name = conversationPath && hasTimedOut ? STATUS.DEGRADED : STATUS.NATIVE_ONLY;
-      const reason = conversationPath && hasTimedOut ? "No safe conversation turn container found" : "No mounted conversation turns";
-      setStatus(name, reason, turns);
-      return;
-    }
-
-    if (!isSafeTurnSet(turns)) {
-      clearOptimization();
-      enterNativeSafeMode("ambiguous turn structure");
-      setStatus(STATUS.DEGRADED, "Mounted turn structure is ambiguous", turns);
-      return;
-    }
-
-    if (turns.length <= settings.nativeOnlyTurnThreshold) {
-      clearOptimization();
-      enterNativeSafeMode("small mounted turn window");
-      const nativeName = isNativeVirtualizationLikely(turns) ? STATUS.NATIVE_VIRTUALIZATION : STATUS.NATIVE_ONLY;
-      const reason = nativeName === STATUS.NATIVE_VIRTUALIZATION
-        ? "ChatGPT appears to keep only a small mounted conversation window"
-        : "Mounted turn count is small enough for native rendering";
-      setStatus(nativeName, reason, turns);
-      return;
-    }
-
-    exitNativeSafeMode();
-    attachComposerLifecycleListeners();
-    observeDocumentMutations();
-    updateComposerState();
-    if (isComposerLifecycleUnstable()) {
-      removeUnsafeComposerOptimizations();
-      const optimizedCount = countCurrentOptimizedTurns(turns);
-      const nativeName = optimizedCount > 0 ? STATUS.ACTIVE : STATUS.NATIVE_ONLY;
-      const reason = optimizedCount > 0
-        ? "Composer lifecycle is active; existing render containment preserved"
-        : "Composer lifecycle is active; render containment changes paused";
-      setStatus(nativeName, reason, turns, optimizedCount, 0);
-      return;
-    }
-
-    for (const turn of turns) {
-      observeTurn(turn);
-    }
-
-    const protectedIndexes = getProtectedIndexes(turns);
-    let optimizedCount = 0;
-    let protectedCount = 0;
-    for (let index = 0; index < turns.length; index += 1) {
-      const turn = turns[index];
-      const shouldProtect = protectedIndexes.has(index);
-      const shouldOptimize = !shouldProtect && isFarFromViewport(turn);
-      if (shouldOptimize) {
-        if (applyOptimization(turn)) {
-          optimizedCount += 1;
-        } else {
-          protectedCount += 1;
-        }
-      } else {
-        removeOptimization(turn);
-        if (shouldProtect) protectedCount += 1;
-      }
-    }
-    removeUnsafeComposerOptimizations();
-
-    if (optimizedCount > 0) {
-      setStatus(STATUS.ACTIVE, "Mica render containment applied to offscreen mounted turns", turns, optimizedCount, protectedCount);
-      return;
-    }
-
-    setStatus(STATUS.NATIVE_ONLY, "All mounted turns are protected or near the viewport", turns, optimizedCount, protectedCount);
+    const inspection = adapter.inspect(document);
+    lastStatus = statusFromInspection(inspection);
+    return lastStatus;
   }
 
-  function collectConversationTurns() {
-    const main = document.querySelector("main") || document.body;
-    const raw = Array.from(main.querySelectorAll(TURN_SELECTOR)).filter((node) => node instanceof HTMLElement);
-    const unique = new Set();
-
-    for (const node of raw) {
-      if (!(node instanceof HTMLElement) || node.closest("[data-mica-root='true']")) continue;
-      let turn = null;
-      const roleNode = node.matches("[data-message-author-role]") ? node : node.querySelector("[data-message-author-role]");
-      if (roleNode instanceof HTMLElement) {
-        turn =
-          roleNode.closest("[data-testid^='conversation-turn-']") ||
-          roleNode.closest("[data-testid*='conversation-turn']") ||
-          roleNode.closest("article") ||
-          roleNode;
-      }
-
-      if (!(turn instanceof HTMLElement)) continue;
-      if (!main.contains(turn)) continue;
-      if (turn.offsetParent === null && turn.getClientRects().length === 0) continue;
-      if (isComposerProtectedElement(turn)) continue;
-      unique.add(turn);
-    }
-
-    return Array.from(unique).sort((a, b) => {
-      if (a === b) return 0;
-      return a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
-    });
-  }
-
-  function collectMountedTurnStatusProbe() {
-    const main = document.querySelector("main") || document.body;
-    if (!main) return [];
-    const raw = Array.from(main.querySelectorAll(TURN_SELECTOR)).filter((node) => node instanceof HTMLElement);
-    const unique = new Set();
-
-    for (const node of raw) {
-      if (!(node instanceof HTMLElement) || node.closest("[data-mica-root='true']")) continue;
-      let turn = null;
-      const roleNode = node.matches("[data-message-author-role]") ? node : node.querySelector("[data-message-author-role]");
-      if (roleNode instanceof HTMLElement) {
-        turn =
-          roleNode.closest("[data-testid^='conversation-turn-']") ||
-          roleNode.closest("[data-testid*='conversation-turn']") ||
-          roleNode.closest("article") ||
-          roleNode;
-      }
-
-      if (!(turn instanceof HTMLElement)) continue;
-      if (!main.contains(turn)) continue;
-      if (turn.offsetParent === null && turn.getClientRects().length === 0) continue;
-      unique.add(turn);
-    }
-
-    return Array.from(unique).sort((a, b) => {
-      if (a === b) return 0;
-      return a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
-    });
-  }
-
-  function refreshNativeSafeMountedStatus(reason) {
-    if (!runtimeState.nativeSafeMode) return currentStatus;
-    if (!settings.longThreadOptimization) {
-      return refreshLongThreadDisabledStatus(reason);
-    }
-    globalCounters.nativeSafeMountedStatusProbes += 1;
-    const turns = collectMountedTurnStatusProbe();
-    updateTurnWindowStats(turns);
-
-    if (!settings.enabled) {
-      runtimeState.nativeSafeReason = "disabled";
-      setStatusIfChanged(STATUS.DISABLED, "Disabled by user", turns);
-      return currentStatus;
-    }
-    if (turns.length === 0) {
-      const conversationPath = isConversationPath();
-      const hasTimedOut = Date.now() - bootTime > 5000;
-      const name = conversationPath && hasTimedOut ? STATUS.DEGRADED : STATUS.NATIVE_ONLY;
-      const statusReason = conversationPath && hasTimedOut ? "No safe conversation turn container found" : "No mounted conversation turns";
-      runtimeState.nativeSafeReason = conversationPath && hasTimedOut ? "no safe conversation turn container found" : "no mounted turns";
-      setStatusIfChanged(name, statusReason, turns);
-      return currentStatus;
-    }
-    if (!isSafeTurnSet(turns)) {
-      runtimeState.nativeSafeReason = "ambiguous turn structure";
-      setStatusIfChanged(STATUS.DEGRADED, "Mounted turn structure is ambiguous", turns);
-      return currentStatus;
-    }
-    if (turns.length <= settings.nativeOnlyTurnThreshold) {
-      const nativeName = isNativeVirtualizationLikely(turns) ? STATUS.NATIVE_VIRTUALIZATION : STATUS.NATIVE_ONLY;
-      const statusReason = nativeName === STATUS.NATIVE_VIRTUALIZATION
-        ? "ChatGPT appears to keep only a small mounted conversation window"
-        : "Mounted turn count is small enough for native rendering";
-      runtimeState.nativeSafeReason = "small mounted turn window";
-      setStatusIfChanged(nativeName, statusReason, turns);
-      return currentStatus;
-    }
-
-    exitNativeSafeMode();
-    scheduleScan(`native-safe-mounted-probe:${reason || "unknown"}`);
-    return currentStatus;
-  }
-
-  function refreshLongThreadDisabledStatus(_reason) {
-    globalCounters.nativeSafeMountedStatusProbes += 1;
-    const turns = collectMountedTurnStatusProbe();
-    updateTurnWindowStats(turns);
-    runtimeState.nativeSafeReason = "long-thread optimization disabled";
-    setStatusIfChanged(STATUS.NATIVE_ONLY, "Long-thread optimization disabled", turns);
-    return currentStatus;
-  }
-
-  function setStatusIfChanged(name, reason, turns, optimizedCount = 0, protectedCount = 0) {
-    const mountedCount = turns.length;
-    if (
-      currentStatus.name === name &&
-      currentStatus.reason === reason &&
-      currentStatus.mountedTurns === mountedCount &&
-      currentStatus.optimizedTurns === optimizedCount &&
-      currentStatus.protectedTurns === protectedCount
-    ) {
-      return;
-    }
-    globalCounters.nativeSafeMountedStatusUpdates += 1;
-    setStatus(name, reason, turns, optimizedCount, protectedCount);
-  }
-
-  function hasTurnRole(turn, role) {
-    if (!(turn instanceof HTMLElement)) return false;
-    const selector = `[data-message-author-role='${role}']`;
-    return turn.matches(selector) || !!turn.querySelector(selector);
-  }
-
-  function isSafeTurnSet(turns) {
-    if (turns.length < 2) return true;
-    const roleCount = turns.filter((turn) => turn.querySelector(ROLE_SELECTOR) || turn.matches(ROLE_SELECTOR)).length;
-    const testIdCount = turns.filter((turn) => /conversation-turn/.test(turn.getAttribute("data-testid") || "")).length;
-    return roleCount >= 2 || (testIdCount >= Math.min(3, turns.length) && roleCount >= 1);
-  }
-
-  function getProtectedIndexes(turns) {
-    const protectedIndexes = new Set();
-    const recentStart = Math.max(0, turns.length - settings.recentTurnKeepCount);
-    const streaming = hasStreamingControl();
-
-    for (let index = 0; index < turns.length; index += 1) {
-      const turn = turns[index];
-      if (index >= recentStart) protectedIndexes.add(index);
-      if (isNearViewport(turn)) protectedIndexes.add(index);
-      if (turn.contains(document.activeElement)) protectedIndexes.add(index);
-      if (isSpecialTurn(turn)) protectedIndexes.add(index);
-      if (isComposerProtectedElement(turn)) protectedIndexes.add(index);
-      if (streaming && index >= turns.length - Math.max(4, settings.recentTurnKeepCount)) protectedIndexes.add(index);
-    }
-    return protectedIndexes;
-  }
-
-  function isNearViewport(element) {
-    const rect = element.getBoundingClientRect();
-    const viewport = window.innerHeight || document.documentElement.clientHeight || 900;
-    const buffer = viewport * settings.viewportBufferMultiple;
-    return rect.bottom >= -buffer && rect.top <= viewport + buffer;
-  }
-
-  function isFarFromViewport(element) {
-    return !isNearViewport(element);
-  }
-
-  function isSpecialTurn(turn) {
-    if (turn.querySelector(SPECIAL_SELECTOR)) return true;
-    const text = turn.innerText || "";
-    return /authorize|authorization|allow access|connect (google|drive|github|slack)|sign in to|log in to|授权|允许访问|登录到/i.test(text);
-  }
-
-  function hasStreamingControl() {
-    const text = document.body?.innerText || "";
-    if (/stop (generating|streaming)|停止生成|停止回答/i.test(text)) return true;
-    return !!document.querySelector("[aria-label*='Stop'], [data-testid*='stop']");
-  }
-
-  function observeTurn(turn) {
-    if (observedTurns.has(turn)) return;
-    observedTurns.add(turn);
-    const height = Math.max(80, Math.ceil(turn.getBoundingClientRect().height));
-    measuredHeights.set(turn, height);
-    turn.style.setProperty("--mica-intrinsic-height", `${height}px`);
-    resizeObserver?.observe(turn);
-  }
-
-  function disconnectTurnResizeObservers() {
-    if (!resizeObserver) return;
-    for (const turn of Array.from(observedTurns)) {
-      resizeObserver.unobserve(turn);
-    }
-    observedTurns.clear();
-  }
-
-  function applyOptimization(turn) {
-    recordComposerDiagnosticRuntimeCallback("turn_optimization_update", { action: "apply" });
-    if (isComposerProtectedElement(turn)) {
-      globalCounters.composerProtectionSkips += 1;
-      removeOptimization(turn);
-      return false;
-    }
-    const height = measuredHeights.get(turn) || Math.max(240, Math.ceil(turn.getBoundingClientRect().height));
-    turn.style.setProperty("--mica-intrinsic-height", `${height}px`);
-    turn.classList.add("mica-turn-optimized");
-    turn.dataset.micaOptimized = "true";
-    optimizedTurns.add(turn);
-    if (isComposerSendWindowActive()) composerState.optimizationApplyDuringSendCount += 1;
-    return true;
-  }
-
-  function removeOptimization(turn) {
-    recordComposerDiagnosticRuntimeCallback("turn_optimization_update", { action: "remove" });
-    const wasOptimized = optimizedTurns.has(turn);
-    turn.classList.remove("mica-turn-optimized");
-    delete turn.dataset.micaOptimized;
-    optimizedTurns.delete(turn);
-    if (wasOptimized && isComposerSendWindowActive()) composerState.optimizationRemoveDuringSendCount += 1;
-  }
-
-  function clearOptimization() {
-    for (const turn of Array.from(optimizedTurns)) {
-      removeOptimization(turn);
-    }
-  }
-
-  function updateComposerState() {
-    const now = Date.now();
-    const area = findComposerProtectionArea();
-
-    if (area) {
-      if (!composerState.seenOnce) {
-        composerState.mountCount += 1;
-      } else if (!composerState.currentElement) {
-        composerState.mountCount += 1;
-      } else if (composerState.currentElement !== area.element) {
-        composerState.identityChanges += 1;
-      }
-      if (composerState.missingSince > 0) {
-        composerState.maxMissingDurationMs = Math.max(composerState.maxMissingDurationMs, now - composerState.missingSince);
-      }
-      composerState.currentElement = area.element;
-      composerState.currentRoot = area.root;
-      composerState.currentRect = area.rect;
-      composerState.currentAncestors = getComposerAncestorChain(area.root);
-      composerState.lastKnownElement = area.element;
-      composerState.lastKnownRoot = area.root;
-      composerState.lastKnownRect = area.rect;
-      composerState.lastKnownAncestors = composerState.currentAncestors;
-      composerState.lastSeenAt = now;
-      composerState.missingSince = 0;
-      composerState.seenOnce = true;
-      composerState.currentTextLength = getComposerTextLength(area.element);
-      composerState.visible = true;
-      removeUnsafeComposerOptimizations();
-      return;
-    }
-
-    if (composerState.currentElement && composerState.missingSince === 0) {
-      composerState.unmountCount += 1;
-      composerState.missingSince = now;
-    }
-    if (composerState.missingSince > 0) {
-      composerState.maxMissingDurationMs = Math.max(composerState.maxMissingDurationMs, now - composerState.missingSince);
-    }
-    composerState.currentElement = null;
-    composerState.currentRoot = null;
-    composerState.currentRect = null;
-    composerState.currentAncestors = [];
-    composerState.currentTextLength = 0;
-    composerState.visible = false;
-  }
-
-  function findComposerProtectionArea() {
-    const candidates = getComposerProtectionCandidates();
-    if (candidates.length === 0) return null;
-    const active = document.activeElement instanceof HTMLElement
-      ? candidates.find((item) => item.root.contains(document.activeElement) || item.element.contains(document.activeElement))
-      : null;
-    const chosen = active || candidates.sort((a, b) => b.rect.bottom - a.rect.bottom)[0];
-    return { element: chosen.element, root: chosen.root, rect: chosen.rect };
-  }
-
-  function getComposerProtectionCandidates() {
-    const nodes = Array.from(document.querySelectorAll(COMPOSER_SELECTOR))
-      .filter((node) => node instanceof HTMLElement && isVisibleForOverlay(node) && isLikelyComposerNode(node));
-    const results = [];
-    const seenRoots = new Set();
-
-    for (const node of nodes) {
-      const root = chooseComposerContainer(node);
-      if (!root || seenRoots.has(root) || root.closest("[data-mica-root='true']")) continue;
-      const rect = rectFromDomRect(root.getBoundingClientRect());
-      if (!isComposerProtectionRect(rect)) continue;
-      const editable = root.querySelector(getEditableSelector());
-      seenRoots.add(root);
-      results.push({ element: editable instanceof HTMLElement ? editable : node, root, rect });
-    }
-    return results;
-  }
-
-  function isLikelyComposerNode(node) {
-    if (!(node instanceof HTMLElement) || node.closest("[data-mica-root='true']")) return false;
-    if (isEditableComposerNode(node)) return true;
-    const testId = node.getAttribute("data-testid") || "";
-    if (/composer/i.test(testId)) {
-      return !!node.querySelector(getEditableSelector());
-    }
-    if (node.matches("form")) {
-      return !!node.querySelector(getEditableSelector());
-    }
-    return false;
-  }
-
-  function isComposerProtectionRect(rect) {
-    return !!rect && rect.width >= 120 && rect.height >= 18 && rect.bottom > 0 && rect.top < (window.innerHeight || document.documentElement.clientHeight || 768);
-  }
-
-  function getComposerTextLength(element) {
-    if (!element) return 0;
-    if (element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement) return element.value.length;
-    return (element.innerText || element.textContent || "").length;
-  }
-
-  function isComposerProtectedElement(element) {
-    if (!(element instanceof HTMLElement) || element.closest("[data-mica-root='true']")) return false;
-    if (element.matches(COMPOSER_SELECTOR) || element.querySelector(COMPOSER_SELECTOR)) return true;
-
-    const protectedNodes = [
-      composerState.currentElement,
-      composerState.currentRoot,
-      isRecentComposerProtectionActive() ? composerState.lastKnownElement : null,
-      isRecentComposerProtectionActive() ? composerState.lastKnownRoot : null
-    ]
-      .concat(composerState.currentAncestors || [])
-      .concat(isRecentComposerProtectionActive() ? composerState.lastKnownAncestors || [] : [])
-      .filter((node) => node instanceof HTMLElement);
-
-    for (const node of protectedNodes) {
-      if (element === node || element.contains(node) || node.contains(element)) return true;
-    }
-
-    const rect = getRecentComposerProtectedRect();
-    if (!rect) return false;
-    return intersects(rectFromDomRect(element.getBoundingClientRect()), rect);
-  }
-
-  function getRecentComposerProtectedRect() {
-    const rect = composerState.currentRect || (isRecentComposerProtectionActive() ? composerState.lastKnownRect : null);
-    if (!rect) return null;
-    return expandRect(rect, COMPOSER_PROTECTION_PADDING);
-  }
-
-  function isRecentComposerProtectionActive() {
-    if (!composerState.lastSeenAt) return false;
-    return Date.now() - composerState.lastSeenAt <= COMPOSER_PROTECTION_MS;
-  }
-
-  function removeUnsafeComposerOptimizations() {
-    for (const turn of Array.from(optimizedTurns)) {
-      if (!isComposerProtectedElement(turn)) continue;
-      composerState.optimizationIntersectionCount += 1;
-      composerState.lastOptimizationIntersection = describeElementForDiagnostics(turn);
-      removeOptimization(turn);
-    }
-  }
-
-  function isComposerEventTarget(target) {
-    const element = getEventElement(target);
-    if (!element || element.closest("[data-mica-root='true']")) return false;
-    if (isEditableComposerNode(element) || element.isContentEditable) return true;
-    const editable = element.closest(getEditableSelector());
-    if (editable instanceof HTMLElement && isLikelyComposerNode(editable)) return true;
-    if (element.matches(COMPOSER_SELECTOR) || element.closest(COMPOSER_SELECTOR)) return true;
-    if (composerState.currentRoot && composerState.currentRoot.contains(element)) return true;
-    if (composerState.lastKnownRoot && isRecentComposerProtectionActive() && composerState.lastKnownRoot.contains(element)) return true;
-    return false;
-  }
-
-  function getEventElement(target) {
-    if (target instanceof HTMLElement) return target;
-    if (target instanceof Element) return target.closest("*");
-    if (target instanceof CharacterData) return target.parentElement;
-    return null;
-  }
-
-  function isEditableComposerNode(element) {
-    if (!(element instanceof HTMLElement)) return false;
-    if (element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement) return element.type !== "hidden";
-    if (element.isContentEditable || element.hasAttribute("contenteditable")) return true;
-    return element.getAttribute("role") === "textbox";
-  }
-
-  function getEditableSelector() {
-    return "textarea, input:not([type='hidden']), [contenteditable], [role='textbox']";
-  }
-
-  function getComposerAncestorChain(root) {
-    const chain = [];
-    let current = root;
-    for (let depth = 0; depth < 5 && current instanceof HTMLElement; depth += 1) {
-      if (current.matches("main, body, html")) break;
-      chain.push(current);
-      current = current.parentElement;
-    }
-    return chain;
-  }
-
-  function isLikelySendButton(button) {
-    const text = `${button.getAttribute("aria-label") || ""} ${button.textContent || ""}`;
-    const testId = button.getAttribute("data-testid") || "";
-    return /send|submit|发送|提交/i.test(text) || /send|submit/i.test(testId);
-  }
-
-  function markComposerSendActivity() {
-    composerState.sendingUntil = Math.max(composerState.sendingUntil, Date.now() + COMPOSER_SEND_ACTIVITY_MS);
-    pauseDocumentMutations(COMPOSER_SEND_ACTIVITY_MS);
-  }
-
-  function markComposerEditActivity() {
-    composerState.editEvents += 1;
-    composerState.editingUntil = Math.max(composerState.editingUntil, Date.now() + COMPOSER_EDIT_ACTIVITY_MS);
-    pauseDocumentMutations(COMPOSER_EDIT_ACTIVITY_MS);
-  }
-
-  function isComposerEditWindowActive() {
-    return Date.now() <= composerState.editingUntil;
-  }
-
-  function isComposerSendWindowActive() {
-    return Date.now() <= composerState.sendingUntil;
-  }
-
-  function isComposerLifecycleUnstable() {
-    return isComposerEditWindowActive() || isComposerSendWindowActive() || (!!composerState.seenOnce && !composerState.currentElement && isRecentComposerProtectionActive());
-  }
-
-  function isEditingKey(event) {
-    if (!event) return false;
-    return event.key === "Backspace" || event.key === "Delete" || event.key === "Enter" || event.key.length === 1;
-  }
-
-  function countCurrentOptimizedTurns(turns) {
-    return turns.reduce((count, turn) => count + (optimizedTurns.has(turn) ? 1 : 0), 0);
-  }
-
-  function observeDocumentMutations() {
-    if (!mutationObserver || mutationObserverPaused || runtimeState.nativeSafeMode || !document.body) return;
-    mutationObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
-    runtimeState.documentMutationsObserved = true;
-  }
-
-  function disconnectDocumentMutations() {
-    if (!mutationObserver) return;
-    mutationObserver.disconnect();
-    runtimeState.documentMutationsObserved = false;
-  }
-
-  function pauseDocumentMutations(durationMs) {
-    if (!mutationObserver || runtimeState.nativeSafeMode) return;
-    mutationObserverPaused = true;
-    disconnectDocumentMutations();
-    clearTimeout(mutationObserverResumeTimer);
-    mutationObserverResumeTimer = setTimeout(() => {
-      mutationObserverPaused = false;
-      if (runtimeState.nativeSafeMode) return;
-      observeDocumentMutations();
-      if (!isComposerLifecycleUnstable()) scheduleScan();
-    }, durationMs);
-  }
-
-  function enterNativeSafeMode(reason) {
-    if (!runtimeState.nativeSafeMode) {
-      globalCounters.nativeSafeModeEntries += 1;
-    }
-    runtimeState.nativeSafeMode = true;
-    runtimeState.nativeSafeReason = reason || null;
-    mutationObserverPaused = false;
-    clearTimeout(mutationObserverResumeTimer);
-    mutationObserverResumeTimer = 0;
-    disconnectDocumentMutations();
-    detachComposerLifecycleListeners();
-    disconnectTurnResizeObservers();
-    composerState.sendingUntil = 0;
-    composerState.editingUntil = 0;
-  }
-
-  function exitNativeSafeMode() {
-    if (!runtimeState.nativeSafeMode) return;
-    runtimeState.nativeSafeMode = false;
-    runtimeState.nativeSafeReason = null;
-  }
-
-  function updateTurnWindowStats(turns) {
-    const nextKeys = new Set(turns.map((turn, index) => getTurnKey(turn, index)));
-    if (turnWindow.lastSampleAt > 0) {
-      for (const key of nextKeys) {
-        if (!turnWindow.previousKeys.has(key)) globalCounters.turnMounts += 1;
-      }
-      for (const key of turnWindow.previousKeys) {
-        if (!nextKeys.has(key)) globalCounters.turnUnmounts += 1;
-      }
-    }
-    globalCounters.turnSamples += 1;
-    turnWindow.previousKeys = nextKeys;
-    turnWindow.currentKeys = nextKeys;
-    turnWindow.lastMountedCount = turns.length;
-    turnWindow.lastSampleAt = Date.now();
-  }
-
-  function getTurnKey(turn, index) {
-    const roleNode = turn.matches("[data-message-author-role]") ? turn : turn.querySelector("[data-message-author-role]");
-    const role = roleNode?.getAttribute("data-message-author-role") || "unknown";
-    const testId = turn.getAttribute("data-testid") || roleNode?.closest("[data-testid]")?.getAttribute("data-testid") || "";
-    const messageId = turn.getAttribute("data-message-id") || roleNode?.getAttribute("data-message-id") || "";
-    const id = turn.id || "";
-    if (testId || messageId || id) {
-      return `${role}:${testId}:${messageId}:${id}`;
-    }
-    const rect = turn.getBoundingClientRect();
-    return `${role}:${index}:${Math.round(rect.top / 20)}:${Math.round(rect.height / 20)}`;
-  }
-
-  function isNativeVirtualizationLikely(turns) {
-    if (!isConversationPath() && document.documentElement.dataset.micaFixture !== "true") return false;
-    if (globalCounters.turnUnmounts > 0 && turns.length <= settings.nativeOnlyTurnThreshold) return true;
-    const scrollElement = document.scrollingElement || document.documentElement;
-    const viewport = window.innerHeight || document.documentElement.clientHeight || 900;
-    return turns.length > 0 && turns.length <= 12 && scrollElement.scrollHeight > viewport * 4;
-  }
-
-  function isConversationPath() {
-    return /^\/(?:c|share)\//.test(location.pathname);
-  }
-
-  function setStatus(name, reason, turns, optimizedCount = 0, protectedCount = 0) {
-    recordComposerDiagnosticRuntimeCallback("status_update", { status: name, optimizedTurns: optimizedCount });
-    const mountedCount = turns.length;
-    const previousName = currentStatus.name;
-    currentStatus = {
-      name,
-      reason,
-      mountedTurns: mountedCount,
-      optimizedTurns: optimizedCount,
-      protectedTurns: protectedCount,
-      updatedAt: new Date().toISOString(),
+  function statusFromInspection(inspection) {
+    const state = inspection.status === "CONTENT_UNAVAILABLE" ? "unsupported" : String(inspection.status || "UNKNOWN").toLowerCase();
+    return {
+      state,
+      enabled: true,
+      headline: headlineForState(state),
+      message: inspection.reason,
       version: VERSION,
       versionName: VERSION_NAME,
       buildLabel: BUILD_LABEL,
-      label: formatStatusLabel(name, mountedCount, optimizedCount)
+      compatibility: sanitizeInspection(inspection),
+      answerDocument: {
+        modelVersion: answerDocument.modelVersion,
+        supportedBlockKinds: [...answerDocument.blockKinds],
+        singleProducer: "MicaChatGPTAdapter"
+      },
+      updatedAt: new Date().toISOString()
     };
-    globalThis.__MICA_LONG_THREAD_STATUS__ = currentStatus;
-    if (globalThis.window) {
-      globalThis.window.__MICA_LONG_THREAD_STATUS__ = currentStatus;
-    }
-    document.documentElement.dataset.micaStatus = name;
-    document.documentElement.dataset.micaMountedTurns = String(mountedCount);
-    document.documentElement.dataset.micaOptimizedTurns = String(optimizedCount);
-    delete document.documentElement.dataset.micaTurns;
-    maybeExpandForStatus(previousName, name);
-    renderBadge();
   }
 
-  function formatStatusLabel(name, mountedCount, optimizedCount) {
-    if (name === STATUS.DISABLED) return "Mica · Disabled";
-    if (name === STATUS.ACTIVE) return `Mica · Active · ${mountedCount} mounted · ${optimizedCount} optimized`;
-    return `Mica · ${name} · ${mountedCount} mounted`;
+  function sanitizeInspection(inspection) {
+    return {
+      status: inspection.status,
+      reason: inspection.reason,
+      contractId: inspection.contractId,
+      contractHash: inspection.contractHash,
+      contractVersion: inspection.contractVersion,
+      observedAt: inspection.observedAt,
+      turnCount: inspection.turns.length,
+      assistantTurnCount: inspection.turns.filter((turn) => turn.role === "assistant").length,
+      composerPresent: !!inspection.composer,
+      capabilities: inspection.capabilities.map((capability) => ({
+        capabilityId: capability.capabilityId,
+        variantId: capability.variantId,
+        status: capability.status,
+        observedInvariants: [...capability.observedInvariants],
+        invalidatedBy: [...capability.invalidatedBy],
+        failOpen: capability.failOpen,
+        contractHash: capability.contractHash
+      }))
+    };
   }
 
-  function recordMutations(mutations) {
-    globalCounters.mutations += mutations.length;
-    for (const mutation of mutations) {
-      globalCounters.addedNodes += mutation.addedNodes?.length || 0;
-      globalCounters.removedNodes += mutation.removedNodes?.length || 0;
-    }
+  function headlineForState(state) {
+    if (state === "exact") return "Supported";
+    if (state === "compatible") return "Supported with limits";
+    if (state === "content_unavailable") return "No conversation open";
+    if (state === "unsupported") return "Unsupported page";
+    return "Compatibility unknown";
   }
 
-  function areOnlyComposerMutations(mutations) {
-    if (!mutations || mutations.length === 0) return false;
-    return mutations.every((mutation) => isComposerMutation(mutation));
+  function loadingStatus() {
+    return {
+      state: "loading",
+      enabled: true,
+      headline: "Checking this page",
+      message: "Mica is checking the current ChatGPT structure.",
+      version: VERSION,
+      versionName: VERSION_NAME,
+      buildLabel: BUILD_LABEL,
+      updatedAt: new Date().toISOString()
+    };
   }
 
-  function isComposerMutation(mutation) {
-    if (!mutation) return false;
-    if (isComposerMutationNode(mutation.target)) return true;
-    for (const node of Array.from(mutation.addedNodes || [])) {
-      if (isComposerMutationNode(node)) return true;
-    }
-    for (const node of Array.from(mutation.removedNodes || [])) {
-      if (isComposerMutationNode(node)) return true;
-    }
-    return false;
+  function disabledStatus() {
+    return {
+      state: "disabled",
+      enabled: false,
+      headline: "Mica is off",
+      message: "Turn Mica on to check and improve this page.",
+      version: VERSION,
+      versionName: VERSION_NAME,
+      buildLabel: BUILD_LABEL,
+      compatibility: {
+        status: "DISABLED",
+        contractId: adapter.contractId,
+        contractHash: adapter.contractHash,
+        contractVersion: adapter.contractVersion,
+        capabilities: []
+      },
+      updatedAt: new Date().toISOString()
+    };
   }
 
-  function isComposerMutationNode(node) {
-    const element = getMutationElement(node);
-    if (!(element instanceof HTMLElement)) return false;
-    if (element.closest("[data-mica-root='true']")) return false;
-    if (element.matches(COMPOSER_SELECTOR) || element.closest(COMPOSER_SELECTOR)) return true;
-    if (node instanceof HTMLElement && node.querySelector?.(COMPOSER_SELECTOR)) return true;
-    if (composerState.currentRoot && (element === composerState.currentRoot || composerState.currentRoot.contains(element) || element.contains(composerState.currentRoot))) return true;
-    if (composerState.lastKnownRoot && isRecentComposerProtectionActive() && (element === composerState.lastKnownRoot || composerState.lastKnownRoot.contains(element) || element.contains(composerState.lastKnownRoot))) return true;
-    return false;
-  }
-
-  function getMutationElement(node) {
-    if (node instanceof HTMLElement) return node;
-    if (node instanceof Element) return node.closest("*");
-    if (node instanceof CharacterData) return node.parentElement;
-    return null;
-  }
-
-  function updateComposerTextLengthOnly() {
-    if (!diagnostics.running) return;
-    const element = composerState.currentElement;
-    if (element instanceof HTMLElement && element.isConnected) {
-      composerState.currentTextLength = getComposerTextLength(element);
-    }
-  }
-
-  function processKnownInterruptions() {
-    if (!settings.enabled) return;
-    recordComposerDiagnosticRuntimeCallback("known_interruption_check");
-    const api = globalThis.MicaKnownInterruptions;
-    if (!api || typeof api.scan !== "function") return;
-    api.scan({
-      enabled: settings.enabled && settings.autoDismissKnownInterruptions,
-      onDismiss: ({ ruleId }) => {
-        globalCounters.knownInterruptionDismissals += 1;
-        globalCounters.lastKnownInterruptionRuleId = ruleId;
-        globalCounters.knownInterruptionDismissalsByRule[ruleId] = (globalCounters.knownInterruptionDismissalsByRule[ruleId] || 0) + 1;
-        showKnownInterruptionToast();
+  function setupMessages() {
+    const runtime = globalThis.chrome?.runtime;
+    if (!runtime?.onMessage) return;
+    runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message?.type === "MICA_GET_STATUS") {
+        sendResponse({ status: refreshStatus(), settings: { ...settings } });
+        return false;
       }
+      if (message?.type === "MICA_SET_SETTINGS") {
+        void applySettings(message.settings).then(() => sendResponse({ status: refreshStatus(), settings: { ...settings } }));
+        return true;
+      }
+      if (message?.type === "MICA_QA_EXPORT") {
+        sendResponse({ report: buildSanitizedQaReport() });
+        return false;
+      }
+      if (message?.type === "MICA_GET_ANSWER_DOCUMENT") {
+        sendResponse({ answerDocument: getAnswerDocument(message.turnId, message.generationState) });
+        return false;
+      }
+      return false;
     });
   }
 
-  function createDiagnosticsState() {
+  async function applySettings(value) {
+    const next = sanitizeSettings(value || {});
+    settings = { ...settings, ...next };
+    await writeSettings(settings);
+    if (settings.enabled) setupObserver();
+    else teardownObserver();
+  }
+
+  function getAnswerDocument(turnId, generationState) {
+    if (!settings.enabled) return null;
+    const turn = adapter.listTurns(document).find((candidate) => candidate.turnId === turnId && candidate.role === "assistant");
+    if (!turn) return null;
+    return answerDocument.fromAssistantTurn(turn, {
+      conversationId: `conversation-${hashText(location.pathname)}`,
+      generationState: generationState === "STREAMING" ? "STREAMING" : "SETTLED"
+    });
+  }
+
+  function buildSanitizedQaReport() {
+    const status = refreshStatus();
     return {
-      running: false,
-      startedAt: null,
-      stoppedAt: null,
-      baseline: null,
-      longTaskObserver: null,
-      longTasks: {
-        count: 0,
-        totalDurationMs: 0,
-        maxDurationMs: 0
-      },
-      frames: {
-        count: 0,
-        stallCount: 0,
-        maxFrameGapMs: 0,
-        lastFrameAt: 0,
-        rafId: 0
-      },
-      scroll: {
-        samples: 0,
-        lastAt: 0
-      }
-    };
-  }
-
-  function startDiagnostics() {
-    stopDiagnostics();
-    diagnostics = createDiagnosticsState();
-    diagnostics.running = true;
-    diagnostics.startedAt = Date.now();
-    diagnostics.baseline = snapshotCounters();
-    startLongTaskObserver();
-    if (typeof requestAnimationFrame === "function") {
-      diagnostics.frames.rafId = requestAnimationFrame(sampleFrame);
-    }
-  }
-
-  function stopDiagnostics() {
-    if (diagnostics.longTaskObserver) {
-      diagnostics.longTaskObserver.disconnect();
-      diagnostics.longTaskObserver = null;
-    }
-    if (diagnostics.frames.rafId && typeof cancelAnimationFrame === "function") {
-      cancelAnimationFrame(diagnostics.frames.rafId);
-      diagnostics.frames.rafId = 0;
-    }
-    if (diagnostics.running) {
-      diagnostics.running = false;
-      diagnostics.stoppedAt = Date.now();
-    }
-  }
-
-  function resetDiagnostics() {
-    stopDiagnostics();
-    diagnostics = createDiagnosticsState();
-  }
-
-  function startLongTaskObserver() {
-    if (typeof PerformanceObserver === "undefined") return;
-    const supported = PerformanceObserver.supportedEntryTypes || [];
-    if (!supported.includes("longtask")) return;
-    try {
-      diagnostics.longTaskObserver = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          const duration = Math.round(entry.duration * 10) / 10;
-          diagnostics.longTasks.count += 1;
-          diagnostics.longTasks.totalDurationMs += duration;
-          diagnostics.longTasks.maxDurationMs = Math.max(diagnostics.longTasks.maxDurationMs, duration);
-        }
-      });
-      diagnostics.longTaskObserver.observe({ entryTypes: ["longtask"] });
-    } catch (_error) {
-      diagnostics.longTaskObserver = null;
-    }
-  }
-
-  function sampleFrame(timestamp) {
-    if (!diagnostics.running) return;
-    if (diagnostics.frames.lastFrameAt > 0) {
-      const gap = timestamp - diagnostics.frames.lastFrameAt;
-      diagnostics.frames.count += 1;
-      diagnostics.frames.maxFrameGapMs = Math.max(diagnostics.frames.maxFrameGapMs, Math.round(gap * 10) / 10);
-      if (gap >= FRAME_STALL_MS) diagnostics.frames.stallCount += 1;
-    }
-    diagnostics.frames.lastFrameAt = timestamp;
-    diagnostics.frames.rafId = typeof requestAnimationFrame === "function" ? requestAnimationFrame(sampleFrame) : 0;
-  }
-
-  function recordScrollSample() {
-    if (!diagnostics.running) return;
-    diagnostics.scroll.samples += 1;
-    diagnostics.scroll.lastAt = Date.now();
-  }
-
-  function snapshotCounters() {
-    return {
-      mutations: globalCounters.mutations,
-      addedNodes: globalCounters.addedNodes,
-      removedNodes: globalCounters.removedNodes,
-      turnMounts: globalCounters.turnMounts,
-      turnUnmounts: globalCounters.turnUnmounts,
-      turnSamples: globalCounters.turnSamples,
-      knownInterruptionDismissals: globalCounters.knownInterruptionDismissals,
-      knownInterruptionDismissalsByRule: { ...globalCounters.knownInterruptionDismissalsByRule },
-      lastKnownInterruptionRuleId: globalCounters.lastKnownInterruptionRuleId,
-      knownInterruptionToasts: globalCounters.knownInterruptionToasts,
-      composerProtectionSkips: globalCounters.composerProtectionSkips,
-      composerMutationBatchesIgnored: globalCounters.composerMutationBatchesIgnored,
-      composerLifecycleMutationBatchesIgnored: globalCounters.composerLifecycleMutationBatchesIgnored,
-      composerEditScansSkipped: globalCounters.composerEditScansSkipped,
-      overlayPlacements: globalCounters.overlayPlacements,
-      overlayStaticPlacements: globalCounters.overlayStaticPlacements,
-      nativeSafeModeEntries: globalCounters.nativeSafeModeEntries,
-      nativeSafeMountedStatusProbes: globalCounters.nativeSafeMountedStatusProbes,
-      nativeSafeMountedStatusUpdates: globalCounters.nativeSafeMountedStatusUpdates,
-      composer: snapshotComposerState(),
-      domNodes: countDomNodes()
-    };
-  }
-
-  function summarizeDiagnostics() {
-    const durationMs = getDiagnosticsDuration();
-    return {
-      running: diagnostics.running,
-      durationMs,
-      longTaskCount: diagnostics.longTasks.count,
-      frameStallCount: diagnostics.frames.stallCount,
-      maxFrameGapMs: diagnostics.frames.maxFrameGapMs
-    };
-  }
-
-  function buildDiagnosticsReport() {
-    if (runtimeState.nativeSafeMode) {
-      refreshNativeSafeMountedStatus("diagnostics-report");
-    }
-    const turns = runtimeState.nativeSafeMode ? collectMountedTurnStatusProbe() : collectConversationTurns();
-    const durationMs = getDiagnosticsDuration();
-    const baseline = diagnostics.baseline || snapshotCounters();
-    const current = snapshotCounters();
-    const durationSeconds = durationMs > 0 ? durationMs / 1000 : 0;
-    const mutationDelta = Math.max(0, current.mutations - baseline.mutations);
-    const mountDelta = Math.max(0, current.turnMounts - baseline.turnMounts);
-    const unmountDelta = Math.max(0, current.turnUnmounts - baseline.turnUnmounts);
-    const interruptionDismissalDelta = Math.max(0, current.knownInterruptionDismissals - baseline.knownInterruptionDismissals);
-    const frameCount = diagnostics.frames.count;
-
-    return {
-      schemaVersion: 1,
+      schema: "mica-developer-qa.v1",
       generatedAt: new Date().toISOString(),
-      privacy: {
-        localOnly: true,
-        telemetryUploaded: false,
-        conversationTextIncluded: false,
-        attachmentContentIncluded: false
-      },
-      extension: {
-        name: "Mica for ChatGPT",
+      candidate: {
         version: VERSION,
         versionName: VERSION_NAME,
-        buildLabel: BUILD_LABEL
+        buildLabel: BUILD_LABEL,
+        contractHash: CONTRACT_HASH
       },
       page: {
-        origin: location.origin,
-        pathKind: getPathKind(),
-        uptimeMs: Date.now() - bootTime
-      },
-      status: {
-        name: currentStatus.name,
-        reason: currentStatus.reason,
-        mountedTurns: currentStatus.mountedTurns,
-        optimizedTurns: currentStatus.optimizedTurns
+        supportedHost: ["chatgpt.com", "chat.openai.com"].includes(location.hostname),
+        state: status.state,
+        compatibility: status.compatibility || null
       },
       runtime: {
-        nativeSafeMode: runtimeState.nativeSafeMode,
-        nativeSafeReason: runtimeState.nativeSafeReason,
-        documentMutationObserverActive: runtimeState.documentMutationsObserved,
-        composerLifecycleListenersAttached: runtimeState.composerLifecycleListenersAttached,
-        micaEnabled: settings.enabled,
-        longThreadOptimizationEnabled: settings.enabled && settings.longThreadOptimization,
-        connectorContinuityEnabled: settings.enabled && settings.connectorContinuity,
-        sendResidualRecoveryEnabled: settings.enabled && settings.sendResidualRecovery,
-        nativeSafeModeEntries: current.nativeSafeModeEntries,
-        nativeSafeMountedStatusProbes: current.nativeSafeMountedStatusProbes,
-        nativeSafeMountedStatusUpdates: current.nativeSafeMountedStatusUpdates
+        enabled: settings.enabled,
+        adapterProducer: "MicaChatGPTAdapter",
+        answerDocumentModelVersion: answerDocument.modelVersion,
+        observerActive: !!observer
       },
-      staleRecovery: getStaleComposerRecoveryState(),
-      diagnostics: {
-        running: diagnostics.running,
-        startedAt: diagnostics.startedAt ? new Date(diagnostics.startedAt).toISOString() : null,
-        stoppedAt: diagnostics.stoppedAt ? new Date(diagnostics.stoppedAt).toISOString() : null,
-        durationMs
-      },
-      mountedTurns: {
-        current: turns.length,
-        lastObserved: turnWindow.lastMountedCount
-      },
-      turnChurn: {
-        mounts: mountDelta,
-        unmounts: unmountDelta,
-        mountRatePerMinute: ratePerMinute(mountDelta, durationSeconds),
-        unmountRatePerMinute: ratePerMinute(unmountDelta, durationSeconds)
-      },
-      dom: {
-        nodes: current.domNodes,
-        nodeDelta: current.domNodes - baseline.domNodes
-      },
-      mutations: {
-        count: mutationDelta,
-        addedNodes: Math.max(0, current.addedNodes - baseline.addedNodes),
-        removedNodes: Math.max(0, current.removedNodes - baseline.removedNodes),
-        ratePerSecond: durationSeconds > 0 ? round(mutationDelta / durationSeconds) : 0
-      },
-      longTasks: {
-        supported: isLongTaskSupported(),
-        count: diagnostics.longTasks.count,
-        totalDurationMs: round(diagnostics.longTasks.totalDurationMs),
-        maxDurationMs: round(diagnostics.longTasks.maxDurationMs)
-      },
-      frames: {
-        sampledFrames: frameCount,
-        stallThresholdMs: FRAME_STALL_MS,
-        stallCount: diagnostics.frames.stallCount,
-        maxFrameGapMs: diagnostics.frames.maxFrameGapMs,
-        jankRatio: frameCount > 0 ? round(diagnostics.frames.stallCount / frameCount) : null,
-        scrollSamples: diagnostics.scroll.samples
-      },
-      memory: getMemorySnapshot(),
-      knownInterruptions: {
-        dismissals: interruptionDismissalDelta,
-        dismissalsByRule: diffRuleCounts(current.knownInterruptionDismissalsByRule, baseline.knownInterruptionDismissalsByRule),
-        lastMatchedRuleId: current.lastKnownInterruptionRuleId
-      },
-      overlay: {
-        placement: overlayState.placement,
-        mode: getOverlayMode(),
-        toastVisible: overlayState.toastVisible,
-        toastCount: overlayState.toastCount,
-        toastEvents: current.knownInterruptionToasts,
-        placements: Math.max(0, current.overlayPlacements - (baseline.overlayPlacements || 0)),
-        staticPlacements: Math.max(0, current.overlayStaticPlacements - (baseline.overlayStaticPlacements || 0))
-      },
-      composer: {
-        exists: current.composer.exists,
-        visible: current.composer.visible,
-        textLength: current.composer.textLength,
-        mountCount: current.composer.mountCount,
-        unmountCount: current.composer.unmountCount,
-        identityChanges: current.composer.identityChanges,
-        maxMissingDurationMs: current.composer.maxMissingDurationMs,
-        editEvents: Math.max(0, current.composer.editEvents - (baseline.composer?.editEvents || 0)),
-        submitEvents: current.composer.submitEvents,
-        sendClickEvents: current.composer.sendClickEvents,
-        optimizationIntersections: current.composer.optimizationIntersectionCount,
-        lastOptimizationIntersection: current.composer.lastOptimizationIntersection,
-        optimizationChangesPaused: isComposerLifecycleUnstable(),
-        mutationObserverPaused,
-        protectionSkips: Math.max(0, current.composerProtectionSkips - (baseline.composerProtectionSkips || 0)),
-        mutationBatchesIgnored: Math.max(0, current.composerMutationBatchesIgnored - (baseline.composerMutationBatchesIgnored || 0)),
-        lifecycleMutationBatchesIgnored: Math.max(0, current.composerLifecycleMutationBatchesIgnored - (baseline.composerLifecycleMutationBatchesIgnored || 0)),
-        editScansSkipped: Math.max(0, current.composerEditScansSkipped - (baseline.composerEditScansSkipped || 0)),
-        optimizationApplyDuringSend: Math.max(0, current.composer.optimizationApplyDuringSendCount - (baseline.composer?.optimizationApplyDuringSendCount || 0)),
-        optimizationRemoveDuringSend: Math.max(0, current.composer.optimizationRemoveDuringSendCount - (baseline.composer?.optimizationRemoveDuringSendCount || 0))
-      },
-      mountedTurnComplexity: measureMountedTurnComplexity(turns)
-    };
-  }
-
-  function getDiagnosticsDuration() {
-    if (!diagnostics.startedAt) return 0;
-    const end = diagnostics.running ? Date.now() : diagnostics.stoppedAt || Date.now();
-    return Math.max(0, end - diagnostics.startedAt);
-  }
-
-  function getPathKind() {
-    if (/^\/c\//.test(location.pathname)) return "conversation";
-    if (/^\/share\//.test(location.pathname)) return "shared-conversation";
-    if (document.documentElement.dataset.micaFixture === "true") return "fixture";
-    return "other";
-  }
-
-  function countDomNodes() {
-    return document.getElementsByTagName("*").length;
-  }
-
-  function isLongTaskSupported() {
-    return typeof PerformanceObserver !== "undefined" && (PerformanceObserver.supportedEntryTypes || []).includes("longtask");
-  }
-
-  function getMemorySnapshot() {
-    const memory = performance?.memory;
-    if (!memory) {
-      return { supported: false };
-    }
-    return {
-      supported: true,
-      usedJSHeapSize: memory.usedJSHeapSize,
-      totalJSHeapSize: memory.totalJSHeapSize,
-      jsHeapSizeLimit: memory.jsHeapSizeLimit
-    };
-  }
-
-  function measureMountedTurnComplexity(turns) {
-    const counts = turns.map((turn) => turn.getElementsByTagName("*").length).sort((a, b) => a - b);
-    if (counts.length === 0) {
-      return { count: 0, descendantElements: { min: 0, median: 0, max: 0 } };
-    }
-    return {
-      count: counts.length,
-      descendantElements: {
-        min: counts[0],
-        median: counts[Math.floor(counts.length / 2)],
-        max: counts[counts.length - 1]
+      privacy: {
+        conversationTextIncluded: false,
+        attachmentContentIncluded: false,
+        requestBodyIncluded: false,
+        authTokenIncluded: false,
+        rawDomIncluded: false
       }
     };
   }
 
-  function ratePerMinute(count, durationSeconds) {
-    return durationSeconds > 0 ? round((count / durationSeconds) * 60) : 0;
-  }
-
-  function snapshotComposerState() {
-    if (!runtimeState.nativeSafeMode) {
-      updateComposerState();
-    }
-    return {
-      exists: !!composerState.currentElement,
-      visible: composerState.visible,
-      textLength: composerState.currentTextLength,
-      mountCount: composerState.mountCount,
-      unmountCount: composerState.unmountCount,
-      identityChanges: composerState.identityChanges,
-      maxMissingDurationMs: Math.round(composerState.maxMissingDurationMs),
-      editEvents: composerState.editEvents,
-      submitEvents: composerState.submitEvents,
-      sendClickEvents: composerState.sendClickEvents,
-      optimizationIntersectionCount: composerState.optimizationIntersectionCount,
-      lastOptimizationIntersection: composerState.lastOptimizationIntersection,
-      optimizationApplyDuringSendCount: composerState.optimizationApplyDuringSendCount,
-      optimizationRemoveDuringSendCount: composerState.optimizationRemoveDuringSendCount
-    };
-  }
-
-  function describeElementForDiagnostics(element) {
-    if (!(element instanceof HTMLElement)) return null;
-    return {
-      tagName: element.tagName.toLowerCase(),
-      testId: element.getAttribute("data-testid") || null,
-      role: element.getAttribute("role") || null,
-      messageRole: element.getAttribute("data-message-author-role") || element.querySelector("[data-message-author-role]")?.getAttribute("data-message-author-role") || null
-    };
-  }
-
-  function diffRuleCounts(current, baseline) {
-    const result = {};
-    for (const [ruleId, count] of Object.entries(current || {})) {
-      const delta = count - (baseline?.[ruleId] || 0);
-      if (delta > 0) result[ruleId] = delta;
-    }
-    return result;
-  }
-
-  function round(value) {
-    return Math.round(value * 100) / 100;
-  }
-
-  function nextFrame(callback) {
-    if (typeof requestAnimationFrame === "function") {
-      requestAnimationFrame(callback);
-      return;
-    }
-    setTimeout(callback, 16);
-  }
-
-  function injectStyles() {
-    if (document.getElementById("mica-long-thread-style")) return;
-    const style = document.createElement("style");
-    style.id = "mica-long-thread-style";
-    style.textContent = `
-.mica-turn-optimized {
-  content-visibility: auto !important;
-  contain: layout paint style !important;
-  contain-intrinsic-size: auto var(--mica-intrinsic-height, 640px) !important;
-}
-`;
-    document.documentElement.appendChild(style);
-  }
-
-  function setupBadge() {
-    if (badgeHost) return;
-    badgeHost = document.createElement("div");
-    badgeHost.dataset.micaRoot = "true";
-    badgeHost.style.position = "fixed";
-    badgeHost.style.left = "0";
-    badgeHost.style.top = "0";
-    badgeHost.style.zIndex = "2147483646";
-    badgeHost.style.pointerEvents = "none";
-    badgeRoot = badgeHost.attachShadow({ mode: "open" });
-    document.documentElement.appendChild(badgeHost);
-    renderBadge();
-  }
-
-  function renderBadge() {
-    if (!badgeRoot) return;
-    const statusVisible = !!settings.showStatus;
-    const expanded = statusVisible && shouldShowExpandedStatus();
-    const toastVisible = overlayState.toastVisible;
-    badgeHost.hidden = !statusVisible && !toastVisible;
-    badgeRoot.innerHTML = `
-<style>
-  :host { all: initial; }
-  .mica-overlay {
-    display: grid;
-    justify-items: end;
-    gap: 8px;
-    max-width: min(360px, calc(100vw - ${OVERLAY_MARGIN * 2}px));
-    pointer-events: none;
-  }
-  .mica-status {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    border: 1px solid rgba(23, 23, 23, 0.18);
-    background: rgba(255, 255, 255, 0.94);
-    color: #171717;
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.12);
-    font: 12px/1.25 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    pointer-events: auto;
-    transition: opacity 140ms ease, transform 140ms ease, width 140ms ease;
-  }
-  .mica-status.compact {
-    width: 26px;
-    height: 26px;
-    padding: 0;
-    border-radius: 999px;
-    opacity: 0.58;
-  }
-  .mica-status.expanded {
-    min-height: 32px;
-    max-width: min(360px, calc(100vw - ${OVERLAY_MARGIN * 2}px));
-    padding: 6px 9px;
-    border-radius: 8px;
-    opacity: 0.96;
-  }
-  .mica-status:hover,
-  .mica-status:focus-visible {
-    opacity: 1;
-  }
-  .mica-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    background: ${statusColor(currentStatus.name)};
-    flex: 0 0 auto;
-    box-shadow: 0 0 0 3px ${statusGlowColor(currentStatus.name)};
-  }
-  .mica-label {
-    min-width: 0;
-    overflow-wrap: anywhere;
-    white-space: normal;
-  }
-  .compact .mica-label {
-    display: none;
-  }
-  button {
-    appearance: none;
-    border: 0;
-    cursor: pointer;
-    font: inherit;
-  }
-  .mica-toast {
-    max-width: min(320px, calc(100vw - ${OVERLAY_MARGIN * 2}px));
-    padding: 8px 10px;
-    border: 1px solid rgba(23, 23, 23, 0.14);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.96);
-    color: #171717;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
-    font: 12px/1.35 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    pointer-events: none;
-  }
-  .mica-hidden {
-    display: none;
-  }
-  @media (prefers-color-scheme: dark) {
-    .mica-status,
-    .mica-toast {
-      border-color: rgba(255, 255, 255, 0.18);
-      background: rgba(32, 33, 35, 0.94);
-      color: #f7f7f8;
-    }
-  }
-</style>
-<div id="mica-overlay" class="mica-overlay" data-placement="${escapeHtml(overlayState.placement)}">
-  <div class="mica-toast${toastVisible ? "" : " mica-hidden"}" role="status" aria-live="polite">${escapeHtml(getToastText())}</div>
-  <button class="mica-status ${expanded ? "expanded" : "compact"}${statusVisible ? "" : " mica-hidden"}" type="button" title="${escapeHtml(getCompactTooltip())}" aria-label="Mica status">
-    <span class="mica-dot" aria-hidden="true"></span>
-    <span class="mica-label">${escapeHtml(formatExpandedStatusLabel(currentStatus.name, currentStatus.mountedTurns, currentStatus.optimizedTurns))}</span>
-  </button>
-</div>`;
-    badgeRoot.querySelector(".mica-status")?.addEventListener("click", () => {
-      expandOverlay(true);
-    });
-    scheduleOverlayPlacement();
-  }
-
-  function maybeExpandForStatus(previousName, nextName) {
-    if (!settings.showStatus) return;
-    if (!overlayState.initializedExpansionShown) {
-      overlayState.initializedExpansionShown = true;
-    }
-  }
-
-  function expandOverlay(byUser) {
-    overlayState.expanded = true;
-    overlayState.expandedByUser = !!byUser;
-    overlayState.forceCompactForPlacement = false;
-    clearTimeout(overlayState.expandTimer);
-    overlayState.expandTimer = setTimeout(() => {
-      overlayState.expanded = false;
-      overlayState.expandedByUser = false;
-      overlayState.forceCompactForPlacement = false;
-      renderBadge();
-    }, OVERLAY_EXPAND_MS);
-    renderBadge();
-  }
-
-  function shouldShowExpandedStatus() {
-    if (overlayState.forceCompactForPlacement) return false;
-    if (!overlayState.expanded) return false;
-    return overlayState.expandedByUser;
-  }
-
-  function showKnownInterruptionToast() {
-    const now = Date.now();
-    const shouldMerge = overlayState.toastVisible && now - overlayState.lastToastAt <= TOAST_MERGE_MS;
-    overlayState.toastCount = shouldMerge ? overlayState.toastCount + 1 : 1;
-    overlayState.lastToastAt = now;
-    overlayState.toastVisible = true;
-    globalCounters.knownInterruptionToasts += 1;
-    clearTimeout(overlayState.toastTimer);
-    overlayState.toastTimer = setTimeout(() => {
-      overlayState.toastVisible = false;
-      overlayState.toastCount = 0;
-      renderBadge();
-    }, TOAST_MS);
-    renderBadge();
-  }
-
-  function getToastText() {
-    if (overlayState.toastCount > 1) {
-      return `Mica 已自动关闭 ${overlayState.toastCount} 个已知提示`;
-    }
-    return "Mica 已自动关闭一个已知提示";
-  }
-
-  function getOverlayMode() {
-    if (shouldShowExpandedStatus()) return "expanded";
-    return "compact";
-  }
-
-  function formatExpandedStatusLabel(name, mountedCount, optimizedCount) {
-    if (name === STATUS.DISABLED) return "Disabled";
-    if (name === STATUS.ACTIVE) return `Active · ${mountedCount} mounted · ${optimizedCount} optimized`;
-    return `${name} · ${mountedCount} mounted`;
-  }
-
-  function getCompactTooltip() {
-    return `Mica: ${formatExpandedStatusLabel(currentStatus.name, currentStatus.mountedTurns, currentStatus.optimizedTurns)}. Click for details.`;
-  }
-
-  function scheduleOverlayPlacement() {
-    if (!badgeHost || badgeHost.hidden || overlayPlacementScheduled) return;
-    overlayPlacementScheduled = true;
-    nextFrame(() => {
-      overlayPlacementScheduled = false;
-      placeOverlay();
+  function exposeFixtureHook() {
+    if (document.documentElement.dataset.micaFixture !== "true") return;
+    globalThis.__MICA_FOUNDATION_TEST__ = Object.freeze({
+      refreshStatus,
+      buildSanitizedQaReport,
+      getAnswerDocument,
+      applySettings,
+      adapter,
+      answerDocument
     });
   }
 
-  function placeOverlay() {
-    if (!badgeRoot || !badgeHost || badgeHost.hidden) return;
-    const overlay = badgeRoot.getElementById("mica-overlay");
-    if (!overlay) return;
-    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1024;
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 768;
-    const size = measureOverlay(overlay);
-    const candidate = getStaticOverlayPlacement(size, viewportWidth, viewportHeight);
-    const placement = clampPlacement(candidate, size, viewportWidth, viewportHeight);
-    applyOverlayPlacement(candidate.name, placement, size, null);
-    globalCounters.overlayStaticPlacements += 1;
-  }
-
-  function shouldPollOverlayPlacement() {
-    return overlayState.toastVisible || shouldShowExpandedStatus() || currentStatus.name === STATUS.DEGRADED;
-  }
-
-  function getStaticOverlayPlacement(size, viewportWidth, viewportHeight) {
-    return {
-      name: "bottom-right-static",
-      x: viewportWidth - size.width - OVERLAY_MARGIN,
-      y: viewportHeight - size.height - OVERLAY_MARGIN
-    };
-  }
-
-  function applyOverlayPlacement(name, placement, size, composerRect) {
-    badgeHost.style.transform = `translate(${placement.x}px, ${placement.y}px)`;
-    overlayState.placement = name;
-    globalCounters.overlayPlacements += 1;
-    const placedRect = {
-      left: placement.x,
-      top: placement.y,
-      right: placement.x + size.width,
-      bottom: placement.y + size.height,
-      width: size.width,
-      height: size.height
-    };
-    globalThis.__MICA_OVERLAY_DEBUG__ = {
-      placement: placement.name,
-      mode: getOverlayMode(),
-      toastVisible: overlayState.toastVisible,
-      toastCount: overlayState.toastCount,
-      rect: placedRect,
-      composerRect,
-      intersectsComposer: false
-    };
-  }
-
-  function measureOverlay(overlay) {
-    const rect = overlay.getBoundingClientRect();
-    return {
-      width: Math.max(26, Math.ceil(rect.width)),
-      height: Math.max(26, Math.ceil(rect.height))
-    };
-  }
-
-  function clampPlacement(candidate, size, viewportWidth, viewportHeight) {
-    return {
-      x: clamp(candidate.x, OVERLAY_MARGIN, Math.max(OVERLAY_MARGIN, viewportWidth - size.width - OVERLAY_MARGIN)),
-      y: clamp(candidate.y, OVERLAY_MARGIN, Math.max(OVERLAY_MARGIN, viewportHeight - size.height - OVERLAY_MARGIN))
-    };
-  }
-
-  function chooseComposerContainer(node) {
-    const testIdComposer = node.closest("[data-testid*='composer']");
-    if (testIdComposer instanceof HTMLElement) return testIdComposer;
-    const form = node.closest("form");
-    if (form instanceof HTMLElement) return form;
-    let current = node;
-    for (let depth = 0; depth < 4 && current?.parentElement; depth += 1) {
-      const parent = current.parentElement;
-      const rect = parent.getBoundingClientRect();
-      if (rect.width >= node.getBoundingClientRect().width && rect.height <= Math.max(360, node.getBoundingClientRect().height + 160)) {
-        current = parent;
-      }
+  function hashText(value) {
+    let hash = 2166136261;
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
     }
-    return current;
-  }
-
-  function expandRect(rect, padding) {
-    return {
-      left: rect.left - padding,
-      top: rect.top - padding,
-      right: rect.right + padding,
-      bottom: rect.bottom + padding,
-      width: rect.width + padding * 2,
-      height: rect.height + padding * 2
-    };
-  }
-
-  function rectFromDomRect(rect) {
-    return {
-      left: rect.left,
-      top: rect.top,
-      right: rect.right,
-      bottom: rect.bottom,
-      width: rect.width,
-      height: rect.height
-    };
-  }
-
-  function intersects(a, b) {
-    return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
-  }
-
-  function isVisibleForOverlay(element) {
-    if (element.closest("[data-mica-root='true']")) return false;
-    if (element.hidden || element.getAttribute("aria-hidden") === "true") return false;
-    const style = getComputedStyle(element);
-    if (style.display === "none" || style.visibility === "hidden") return false;
-    const rect = element.getBoundingClientRect();
-    return rect.width > 0 && rect.height > 0;
-  }
-
-  function statusColor(name) {
-    if (name === STATUS.ACTIVE) return "#16803c";
-    if (name === STATUS.NATIVE_VIRTUALIZATION) return "#0f766e";
-    if (name === STATUS.NATIVE_ONLY) return "#2563eb";
-    if (name === STATUS.DEGRADED) return "#b45309";
-    return "#737373";
-  }
-
-  function statusGlowColor(name) {
-    if (name === STATUS.ACTIVE) return "rgba(22, 128, 60, 0.16)";
-    if (name === STATUS.NATIVE_VIRTUALIZATION) return "rgba(15, 118, 110, 0.16)";
-    if (name === STATUS.NATIVE_ONLY) return "rgba(37, 99, 235, 0.16)";
-    if (name === STATUS.DEGRADED) return "rgba(180, 83, 9, 0.18)";
-    return "rgba(115, 115, 115, 0.16)";
-  }
-
-  function escapeHtml(value) {
-    return String(value)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;");
-  }
-
-  function clamp(value, min, max) {
-    return Math.min(max, Math.max(min, value));
+    return (hash >>> 0).toString(16).padStart(8, "0");
   }
 })();

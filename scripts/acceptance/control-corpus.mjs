@@ -264,7 +264,7 @@ async function createGoodBundle(repoRoot) {
   const manifest = {
     schemaVersion: 1,
     bundleKind: "control",
-    acceptanceProfile: "release-0.3.0",
+    acceptanceProfile: "all-controls",
     candidate: { commit, version: "0.0.0", buildLabel: "acceptance-control", distArtifactId: "dist", distHash },
     validator: { version: VALIDATOR_VERSION, treeHash: await computeValidatorTreeHash(repoRoot) },
     chatgptContractArtifactId: "chatgpt-contract",

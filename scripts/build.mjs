@@ -1,13 +1,17 @@
+import { createHash } from "node:crypto";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { BUILD_LABEL, DEV_DIST_DIR_NAME, MACHINE_VERSION, VERSION_NAME } from "./release-config.mjs";
+import { BUILD_LABEL, DEV_BUILD, DEV_DIST_DIR_NAME, MACHINE_VERSION, VERSION_NAME } from "./release-config.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = path.join(root, "dist", DEV_DIST_DIR_NAME);
 const srcDir = path.join(root, "extension", "src");
 const popupDir = path.join(root, "extension", "popup");
 const iconsDir = path.join(root, "extension", "icons");
+const contractPath = path.join(root, "contracts", "chatgpt", "current.json");
+const contractSource = await readFile(contractPath);
+const contractHash = createHash("sha256").update(contractSource).digest("hex");
 
 const manifest = {
   manifest_version: 3,
@@ -15,7 +19,7 @@ const manifest = {
   short_name: "Mica",
   version: MACHINE_VERSION,
   version_name: VERSION_NAME,
-  description: "Local diagnostics and low-risk render fallback for long ChatGPT threads.",
+  description: "Local controls for a calmer, more capable ChatGPT workspace.",
   icons: {
     16: "icons/icon16.png",
     32: "icons/icon32.png",
@@ -38,12 +42,8 @@ const manifest = {
     {
       matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
       js: [
-        "known-interruptions.js",
-        "connector-lifecycle-signal.js",
-        "composer-diagnostics.js",
-        "stale-composer-recovery.js",
-        "connector-continuity.js",
-        "send-residual-recovery.js",
+        "chatgpt-adapter.js",
+        "answer-document.js",
         "content.js"
       ],
       run_at: "document_idle"
@@ -57,29 +57,29 @@ await mkdir(path.join(outDir, "popup"), { recursive: true });
 const replacements = {
   __MICA_VERSION__: MACHINE_VERSION,
   __MICA_VERSION_NAME__: VERSION_NAME,
-  __MICA_BUILD_LABEL__: BUILD_LABEL
+  __MICA_BUILD_LABEL__: BUILD_LABEL,
+  __MICA_CHATGPT_CONTRACT_HASH__: contractHash,
+  __MICA_DEV_BUILD__: String(DEV_BUILD)
 };
 const render = (source) => Object.entries(replacements).reduce((value, [key, replacement]) => value.replaceAll(key, replacement), source);
 
 const content = render(await readFile(path.join(srcDir, "content.ts"), "utf8"));
-const knownInterruptions = render(await readFile(path.join(srcDir, "reliability", "known-interruptions.ts"), "utf8"));
-const connectorLifecycleSignal = render(await readFile(path.join(srcDir, "reliability", "connector-lifecycle-signal.ts"), "utf8"));
-const composerDiagnostics = render(await readFile(path.join(srcDir, "reliability", "composer-diagnostics.ts"), "utf8"));
-const staleComposerRecovery = render(await readFile(path.join(srcDir, "reliability", "stale-composer-recovery.ts"), "utf8"));
-const connectorContinuity = render(await readFile(path.join(srcDir, "reliability", "connector-continuity.ts"), "utf8"));
-const sendResidualRecovery = render(await readFile(path.join(srcDir, "reliability", "send-residual-recovery.ts"), "utf8"));
+const chatgptAdapter = render(await readFile(path.join(srcDir, "core", "chatgpt-adapter.ts"), "utf8"));
+const answerDocument = render(await readFile(path.join(srcDir, "core", "answer-document.ts"), "utf8"));
 const popup = render(await readFile(path.join(popupDir, "popup.ts"), "utf8"));
+const troubleshooting = render(await readFile(path.join(popupDir, "troubleshooting.ts"), "utf8"));
+const qa = render(await readFile(path.join(popupDir, "qa.ts"), "utf8"));
 
 await writeFile(path.join(outDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-await writeFile(path.join(outDir, "known-interruptions.js"), knownInterruptions);
-await writeFile(path.join(outDir, "connector-lifecycle-signal.js"), connectorLifecycleSignal);
-await writeFile(path.join(outDir, "composer-diagnostics.js"), composerDiagnostics);
-await writeFile(path.join(outDir, "stale-composer-recovery.js"), staleComposerRecovery);
-await writeFile(path.join(outDir, "connector-continuity.js"), connectorContinuity);
-await writeFile(path.join(outDir, "send-residual-recovery.js"), sendResidualRecovery);
+await writeFile(path.join(outDir, "chatgpt-adapter.js"), chatgptAdapter);
+await writeFile(path.join(outDir, "answer-document.js"), answerDocument);
 await writeFile(path.join(outDir, "content.js"), content);
 await writeFile(path.join(outDir, "popup", "popup.js"), popup);
+await writeFile(path.join(outDir, "popup", "troubleshooting.js"), troubleshooting);
+await writeFile(path.join(outDir, "popup", "qa.js"), qa);
 await cp(path.join(popupDir, "index.html"), path.join(outDir, "popup", "index.html"));
+await cp(path.join(popupDir, "troubleshooting.html"), path.join(outDir, "popup", "troubleshooting.html"));
+await cp(path.join(popupDir, "qa.html"), path.join(outDir, "popup", "qa.html"));
 await cp(path.join(popupDir, "popup.css"), path.join(outDir, "popup", "popup.css"));
 await cp(iconsDir, path.join(outDir, "icons"), { recursive: true });
 

@@ -7,100 +7,54 @@
     <title>Mica</title>
   </head>
   <body>
-    <main>
-      <header>
-        <strong>Mica</strong>
-        <span id="version">v0.1</span>
+    <main class="shell" data-view="popup">
+      <header class="brand-header">
+        <div class="brand-lockup">
+          <span class="strata-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+          <h1>Mica</h1>
+        </div>
+        <label class="switch-control">
+          <span class="sr-only">Enable Mica</span>
+          <input id="enabled" type="checkbox" checked>
+          <span class="switch-track" aria-hidden="true"></span>
+        </label>
       </header>
 
-      <section class="status">
-        <span id="dot"></span>
+      <section class="compatibility-line" aria-labelledby="compatibility-title" aria-live="polite" data-state="loading">
+        <span class="status-rail" aria-hidden="true"><i></i><i></i><i></i></span>
         <div>
-          <div id="state">Native only</div>
-          <p id="reason">Open a ChatGPT conversation.</p>
+          <h2 id="compatibility-title">Checking this page…</h2>
+          <p id="compatibility-detail" hidden></p>
         </div>
       </section>
 
-      <label class="row">
-        <span>Enabled</span>
-        <input id="enabled" type="checkbox" checked>
-      </label>
-
-      <label class="row">
-        <span>Status dot</span>
-        <input id="showStatus" type="checkbox" checked>
-      </label>
-
-      <section class="features" aria-label="Features">
-        <div class="section-title">Features</div>
-        <label class="row row-with-detail">
-          <span>
-            <strong>Long-thread optimization</strong>
-            <small>Apply render containment to safe offscreen turns.</small>
-          </span>
-          <input id="longThreadOptimization" type="checkbox" checked>
-        </label>
-
-        <label class="row row-with-detail">
-          <span>
-            <strong>Stale clear recovery</strong>
-            <small>Keep explicitly cleared composer text cleared after native remounts.</small>
-          </span>
-          <input id="staleClearRecovery" type="checkbox" checked>
-        </label>
-
-        <label class="row row-with-detail">
-          <span>
-            <strong>Connector continuity</strong>
-            <small>Keep the composer area visually stable during connector remounts.</small>
-          </span>
-          <input id="connectorContinuity" type="checkbox" checked>
-        </label>
-
-        <label class="row row-with-detail">
-          <span>
-            <strong>Send residual recovery</strong>
-            <small>Clear matching stale connector-send payloads after commit.</small>
-          </span>
-          <input id="sendResidualRecovery" type="checkbox" checked>
-        </label>
-      </section>
-
-      <label class="row row-with-detail">
-        <span>
-          <strong>Auto-dismiss known interruptions</strong>
-          <small>Dismiss safe, known ChatGPT notices automatically.</small>
-        </span>
-        <input id="autoDismissKnownInterruptions" type="checkbox" checked>
-      </label>
-
-      <label class="field">
-        <span>Recent turns kept native</span>
-        <input id="recentTurnKeepCount" type="number" min="4" max="20" step="1" value="8">
-      </label>
-
-      <section class="diagnostics" aria-label="Diagnostics">
-        <div class="section-title">Diagnostics</div>
-        <div class="button-grid">
-          <button id="startDiagnostics" type="button">Start diagnostics</button>
-          <button id="stopDiagnostics" type="button">Stop diagnostics</button>
-          <button id="copyReport" type="button">Copy report</button>
-          <button id="resetDiagnostics" type="button">Reset</button>
+      <section class="capability-list" aria-label="Mica features">
+        <div class="capability-row">
+          <div>
+            <h2>Low memory</h2>
+            <p>Will pause older messages locally without deleting history.</p>
+          </div>
+          <span class="capability-value muted">Unavailable in this build</span>
         </div>
-        <p id="diagnosticsStatus">Idle</p>
-      </section>
-
-      <section class="diagnostics" aria-label="Composer check">
-        <div class="section-title">Composer check</div>
-        <div class="button-grid">
-          <button id="runComposerCheck" type="button">Run composer check</button>
-          <button id="stopComposerCheck" type="button">Stop check</button>
-          <button id="copyComposerReport" type="button">Copy report</button>
+        <div class="capability-row compact">
+          <div><h2>Page health</h2></div>
+          <span id="page-health" class="capability-value">Checking…</span>
         </div>
-        <p id="composerCheckStatus">Idle</p>
       </section>
 
-      <footer id="counts">0 mounted</footer>
+      <nav class="link-list" aria-label="Support">
+        <a id="troubleshooting-link" class="text-link-row" href="troubleshooting.html">
+          <span>Troubleshooting</span><span aria-hidden="true">›</span>
+        </a>
+      </nav>
+
+      <footer class="product-footer">
+        <span id="version">Mica</span>
+        <details id="advanced">
+          <summary>Advanced</summary>
+          <a id="developer-qa-link" href="qa.html" hidden>Open Developer QA</a>
+        </details>
+      </footer>
     </main>
     <script src="popup.js"></script>
   </body>

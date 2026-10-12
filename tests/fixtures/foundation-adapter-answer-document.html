@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en" data-mica-fixture="true">
+  <head>
+    <meta charset="utf-8">
+    <title>Mica foundation adapter fixture</title>
+  </head>
+  <body>
+    <main id="main">
+      <section data-testid="conversation-turn-1">
+        <div data-message-author-role="user"><p>Fixture question</p></div>
+      </section>
+      <section data-testid="conversation-turn-2">
+        <div data-message-author-role="assistant">
+          <div class="markdown" data-message-content>
+            <h2>Structured answer</h2>
+            <p>
+              Prose before
+              <span class="katex" data-tex="x+1">
+                <math><semantics><annotation encoding="application/x-tex">x+1</annotation></semantics></math>
+                <span class="katex-html">x + 1</span>
+              </span>
+              prose after <a href="https://example.test/reference">reference</a>
+              <a data-citation="1" href="https://example.test/citation">[1]</a>.
+            </p>
+            <div class="katex-display" data-tex="E=mc^2">
+              <math><semantics><annotation encoding="application/x-tex">E=mc^2</annotation></semantics></math>
+              <span class="katex-html">E = mc²</span>
+            </div>
+            <ul><li>First item</li><li>Second item</li></ul>
+            <blockquote>Quoted evidence</blockquote>
+            <table><thead><tr><th>Key</th><th>Value</th></tr></thead><tbody><tr><td>A</td><td>1</td></tr></tbody></table>
+            <pre><code class="language-js">const value = 1;</code></pre>
+            <p>Image <img alt="diagram" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="></p>
+            <div data-mica-opaque-interactive><button type="button" aria-label="Run analysis">Run</button></div>
+            <aside data-mica-unknown-block>Future block</aside>
+          </div>
+          <div class="native-actions"><button type="button" data-testid="copy-turn-action-button">Copy</button></div>
+        </div>
+      </section>
+    </main>
+    <form><div id="prompt-textarea" role="textbox" contenteditable="true"></div></form>
+  </body>
+</html>

@@ -1,231 +1,83 @@
-const DEFAULT_SETTINGS = {
-  enabled: true,
-  showStatus: true,
-  longThreadOptimization: true,
-  staleClearRecovery: true,
-  connectorContinuity: true,
-  sendResidualRecovery: true,
-  autoDismissKnownInterruptions: true,
-  recentTurnKeepCount: 8
+const DEV_BUILD = __MICA_DEV_BUILD__;
+const enabled = document.getElementById("enabled");
+const compatibility = document.querySelector(".compatibility-line");
+const compatibilityTitle = document.getElementById("compatibility-title");
+const compatibilityDetail = document.getElementById("compatibility-detail");
+const pageHealth = document.getElementById("page-health");
+const version = document.getElementById("version");
+const developerQaLink = document.getElementById("developer-qa-link");
+
+const COPY = {
+  loading: ["Checking this page…", ""],
+  exact: ["Ready on this page", ""],
+  compatible: ["Ready with limited support", "Some actions stay off until compatibility is confirmed."],
+  unknown: ["Using ChatGPT normally", "Mica couldn’t safely recognize this page."],
+  unsupported: ["Open a ChatGPT conversation", ""],
+  disabled: ["Mica is off", "ChatGPT is unchanged."],
+  contentUnavailable: ["Couldn’t reach this page", "Reload the page, then try again."]
 };
 
-const statusColors = {
-  Active: "#16803c",
-  "Native virtualization": "#0f766e",
-  "Native only": "#2563eb",
-  Degraded: "#b45309",
-  Disabled: "#737373"
-};
+initialize();
 
-const elements = {
-  dot: document.getElementById("dot"),
-  state: document.getElementById("state"),
-  reason: document.getElementById("reason"),
-  counts: document.getElementById("counts"),
-  version: document.getElementById("version"),
-  enabled: document.getElementById("enabled"),
-  showStatus: document.getElementById("showStatus"),
-  longThreadOptimization: document.getElementById("longThreadOptimization"),
-  staleClearRecovery: document.getElementById("staleClearRecovery"),
-  connectorContinuity: document.getElementById("connectorContinuity"),
-  sendResidualRecovery: document.getElementById("sendResidualRecovery"),
-  autoDismissKnownInterruptions: document.getElementById("autoDismissKnownInterruptions"),
-  recentTurnKeepCount: document.getElementById("recentTurnKeepCount"),
-  startDiagnostics: document.getElementById("startDiagnostics"),
-  stopDiagnostics: document.getElementById("stopDiagnostics"),
-  copyReport: document.getElementById("copyReport"),
-  resetDiagnostics: document.getElementById("resetDiagnostics"),
-  diagnosticsStatus: document.getElementById("diagnosticsStatus"),
-  runComposerCheck: document.getElementById("runComposerCheck"),
-  stopComposerCheck: document.getElementById("stopComposerCheck"),
-  copyComposerReport: document.getElementById("copyComposerReport"),
-  composerCheckStatus: document.getElementById("composerCheckStatus")
-};
-
-load();
-
-elements.enabled.addEventListener("change", save);
-elements.showStatus.addEventListener("change", save);
-elements.longThreadOptimization.addEventListener("change", save);
-elements.staleClearRecovery.addEventListener("change", save);
-elements.connectorContinuity.addEventListener("change", save);
-elements.sendResidualRecovery.addEventListener("change", save);
-elements.autoDismissKnownInterruptions.addEventListener("change", save);
-elements.recentTurnKeepCount.addEventListener("change", save);
-elements.startDiagnostics.addEventListener("click", () => diagnosticsAction("MICA_DIAGNOSTICS_START"));
-elements.stopDiagnostics.addEventListener("click", () => diagnosticsAction("MICA_DIAGNOSTICS_STOP"));
-elements.copyReport.addEventListener("click", copyReport);
-elements.resetDiagnostics.addEventListener("click", () => diagnosticsAction("MICA_DIAGNOSTICS_RESET"));
-elements.runComposerCheck.addEventListener("click", () => composerCheckAction("MICA_COMPOSER_GUIDED_START"));
-elements.stopComposerCheck.addEventListener("click", () => composerCheckAction("MICA_COMPOSER_GUIDED_STOP"));
-elements.copyComposerReport.addEventListener("click", copyComposerReport);
-
-async function load() {
+async function initialize() {
   const manifest = chrome.runtime.getManifest();
-  elements.version.textContent = `v${manifest.version_name || manifest.version}`;
-  const settings = await getStorage(DEFAULT_SETTINGS);
-  elements.enabled.checked = settings.enabled;
-  elements.showStatus.checked = settings.showStatus;
-  elements.longThreadOptimization.checked = settings.longThreadOptimization;
-  elements.staleClearRecovery.checked = settings.staleClearRecovery;
-  elements.connectorContinuity.checked = settings.connectorContinuity;
-  elements.sendResidualRecovery.checked = settings.sendResidualRecovery;
-  elements.autoDismissKnownInterruptions.checked = settings.autoDismissKnownInterruptions;
-  elements.recentTurnKeepCount.value = String(settings.recentTurnKeepCount);
-
-  const response = await requestStatus();
-  if (response?.settings) {
-    elements.enabled.checked = response.settings.enabled;
-    elements.showStatus.checked = response.settings.showStatus;
-    elements.longThreadOptimization.checked = response.settings.longThreadOptimization;
-    elements.staleClearRecovery.checked = response.settings.staleClearRecovery;
-    elements.connectorContinuity.checked = response.settings.connectorContinuity;
-    elements.sendResidualRecovery.checked = response.settings.sendResidualRecovery;
-    elements.autoDismissKnownInterruptions.checked = response.settings.autoDismissKnownInterruptions;
-    elements.recentTurnKeepCount.value = String(response.settings.recentTurnKeepCount);
-  }
-  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
+  version.textContent = `v${manifest.version_name || manifest.version}`;
+  developerQaLink.hidden = !DEV_BUILD;
+  const stored = await getStorage({ enabled: true });
+  enabled.checked = stored.enabled;
+  enabled.addEventListener("change", onEnabledChange);
+  const response = await sendToActiveTab({ type: "MICA_GET_STATUS" });
+  if (response?.settings) enabled.checked = response.settings.enabled;
+  render(response?.status || unavailableStatus());
 }
 
-async function save() {
-  const next = {
-    enabled: elements.enabled.checked,
-    showStatus: elements.showStatus.checked,
-    longThreadOptimization: elements.longThreadOptimization.checked,
-    staleClearRecovery: elements.staleClearRecovery.checked,
-    connectorContinuity: elements.connectorContinuity.checked,
-    sendResidualRecovery: elements.sendResidualRecovery.checked,
-    autoDismissKnownInterruptions: elements.autoDismissKnownInterruptions.checked,
-    recentTurnKeepCount: clamp(Number(elements.recentTurnKeepCount.value), 4, 20)
-  };
-  elements.recentTurnKeepCount.value = String(next.recentTurnKeepCount);
+async function onEnabledChange() {
+  enabled.disabled = true;
+  const next = { enabled: enabled.checked };
   await setStorage(next);
   const response = await sendToActiveTab({ type: "MICA_SET_SETTINGS", settings: next });
-  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
+  render(response?.status || (next.enabled ? unavailableStatus() : { state: "disabled" }));
+  enabled.disabled = false;
 }
 
-async function requestStatus() {
-  return sendToActiveTab({ type: "MICA_GET_STATUS" });
+function render(status) {
+  const rawState = status?.state || "contentUnavailable";
+  const state = rawState === "content_unavailable" ? "contentUnavailable" : rawState;
+  const [title, detail] = COPY[state] || COPY.unknown;
+  compatibility.dataset.state = state;
+  compatibilityTitle.textContent = title;
+  compatibilityDetail.textContent = detail;
+  compatibilityDetail.hidden = !detail;
+  pageHealth.textContent = state === "exact" ? "No issues" : pageHealthForState(state);
 }
 
-async function diagnosticsAction(type) {
-  const response = await sendToActiveTab({ type });
-  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
+function pageHealthForState(state) {
+  if (state === "disabled") return "Mica is off";
+  if (state === "loading") return "Checking…";
+  if (state === "compatible") return "Limited support";
+  if (state === "unsupported") return "Open ChatGPT";
+  if (state === "contentUnavailable") return "Page unavailable";
+  return "Compatibility unknown";
 }
 
-async function copyReport() {
-  const response = await sendToActiveTab({ type: "MICA_DIAGNOSTICS_COPY_REPORT" });
-  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
-  if (!response?.reportText) {
-    elements.diagnosticsStatus.textContent = "No diagnostics report available.";
-    return;
-  }
-  try {
-    await navigator.clipboard.writeText(response.reportText);
-    elements.diagnosticsStatus.textContent = "Report copied to clipboard.";
-  } catch (_error) {
-    elements.diagnosticsStatus.textContent = "Clipboard copy failed.";
-  }
-}
-
-async function composerCheckAction(type) {
-  const response = await sendToActiveTab({ type });
-  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
-}
-
-async function copyComposerReport() {
-  const response = await sendToActiveTab({ type: "MICA_COMPOSER_GUIDED_COPY_REPORT" });
-  renderStatus(response?.status, response?.diagnostics, response?.composerGuided);
-  if (!response?.reportText) {
-    elements.composerCheckStatus.textContent = "No composer report available.";
-    return;
-  }
-  try {
-    await navigator.clipboard.writeText(response.reportText);
-    elements.composerCheckStatus.textContent = "Composer report copied.";
-  } catch (_error) {
-    elements.composerCheckStatus.textContent = "Clipboard copy failed.";
-  }
+function unavailableStatus() {
+  return { state: "contentUnavailable" };
 }
 
 async function sendToActiveTab(message) {
   const tab = await getActiveTab();
   if (!tab?.id) return null;
-  return new Promise((resolve) => {
-    chrome.tabs.sendMessage(tab.id, message, (response) => {
-      resolve(chrome.runtime.lastError ? null : response);
-    });
-  });
+  return new Promise((resolve) => chrome.tabs.sendMessage(tab.id, message, (response) => resolve(chrome.runtime.lastError ? null : response)));
 }
 
-async function getActiveTab() {
-  return new Promise((resolve) => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => resolve(tabs[0]));
-  });
+function getActiveTab() {
+  return new Promise((resolve) => chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => resolve(tabs[0])));
 }
 
-async function getStorage(defaults) {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(defaults, (items) => resolve(items || defaults));
-  });
+function getStorage(defaults) {
+  return new Promise((resolve) => chrome.storage.local.get(defaults, (items) => resolve(items || defaults)));
 }
 
-async function setStorage(value) {
-  return new Promise((resolve) => {
-    chrome.storage.local.set(value, () => resolve());
-  });
-}
-
-function renderStatus(status, diagnostics, composerGuided = null) {
-  const name = status?.name || "Native only";
-  elements.state.textContent = name;
-  elements.reason.textContent = status?.reason || "Open a ChatGPT conversation.";
-  elements.counts.textContent = formatCounts(status);
-  elements.dot.style.background = statusColors[name] || statusColors["Native only"];
-  renderDiagnostics(diagnostics);
-  renderComposerCheck(composerGuided);
-}
-
-function formatCounts(status) {
-  const mounted = status?.mountedTurns || 0;
-  const optimized = status?.optimizedTurns || 0;
-  if (status?.name === "Active") {
-    return `${mounted} mounted · ${optimized} optimized`;
-  }
-  return `${mounted} mounted`;
-}
-
-function renderDiagnostics(diagnostics) {
-  const running = !!diagnostics?.running;
-  elements.startDiagnostics.disabled = running;
-  elements.stopDiagnostics.disabled = !running;
-  elements.diagnosticsStatus.textContent = running
-    ? `Running · ${Math.round((diagnostics.durationMs || 0) / 1000)}s · ${diagnostics.longTaskCount || 0} long tasks`
-    : `Idle · ${diagnostics?.longTaskCount || 0} long tasks · ${diagnostics?.frameStallCount || 0} stalls`;
-}
-
-function renderComposerCheck(composerGuided) {
-  const running = !!composerGuided?.running;
-  const available = composerGuided?.available !== false;
-  elements.runComposerCheck.disabled = running || !available;
-  elements.stopComposerCheck.disabled = !running;
-  elements.copyComposerReport.disabled = !available || (!running && !composerGuided?.lastReport);
-  if (!available) {
-    elements.composerCheckStatus.textContent = "Open a supported ChatGPT page.";
-    return;
-  }
-  if (running) {
-    elements.composerCheckStatus.textContent = `Recording · ${composerGuided.sampleCount || 0} samples · ${composerGuided.eventCount || 0} events`;
-    return;
-  }
-  const summary = composerGuided?.lastReport?.summary;
-  const send = composerGuided?.lastReport?.sendLifecycle;
-  elements.composerCheckStatus.textContent = summary
-    ? `Captured · stale clear ${summary.staleTextRestoredAfterClear ? "yes" : "no"} · send ${send?.classification || "not observed"}`
-    : "Idle";
-}
-
-function clamp(value, min, max) {
-  if (!Number.isFinite(value)) return DEFAULT_SETTINGS.recentTurnKeepCount;
-  return Math.min(max, Math.max(min, Math.round(value)));
+function setStorage(value) {
+  return new Promise((resolve) => chrome.storage.local.set(value, resolve));
 }

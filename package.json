@@ -1,8 +1,8 @@
 {
   "name": "mica-for-chatgpt",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "private": true,
-  "description": "Local Chromium extension for ChatGPT long-thread render recovery.",
+  "description": "Local Chromium extension for a calmer, more capable ChatGPT workspace.",
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -10,14 +10,18 @@
     "test:fixture": "node scripts/fixture-smoke.mjs",
     "test:interruptions": "node scripts/known-interruptions-fixture-smoke.mjs",
     "test:overlay": "node scripts/overlay-fixture-smoke.mjs",
+    "test:foundation-core": "node scripts/foundation-core-fixture-smoke.mjs",
+    "test:foundation-flows": "node scripts/foundation-core-flow-fixture.mjs",
+    "test:popup-render": "node scripts/popup-render-fixture.mjs",
     "test:build": "node scripts/validate-build.mjs",
-    "test": "npm run build && npm run test:fixture && npm run test:interruptions && npm run test:overlay && npm run test:build",
-    "test:e2e": "npm run build && node scripts/run-e2e.mjs",
-    "test:e2e:stress": "npm run build && node scripts/run-e2e.mjs --stress",
+    "test": "node scripts/build.mjs && node scripts/foundation-core-fixture-smoke.mjs && node scripts/foundation-core-flow-fixture.mjs && node scripts/popup-render-fixture.mjs && node scripts/validate-build.mjs",
+    "test:e2e": "node scripts/build.mjs && node scripts/foundation-core-fixture-smoke.mjs && node scripts/foundation-core-flow-fixture.mjs && node scripts/popup-render-fixture.mjs",
+    "test:e2e:stress": "node scripts/foundation-stress.mjs",
     "acceptance:preflight": "node scripts/acceptance/cli.mjs preflight",
     "acceptance:focused": "node scripts/acceptance/cli.mjs focused",
     "acceptance:candidate": "node scripts/acceptance/cli.mjs candidate",
-    "package:release": "npm run build && node scripts/package-release.mjs && node scripts/validate-release.mjs"
+    "acceptance:foundation:materialize": "node scripts/acceptance/materialize-foundation-candidate.mjs",
+    "package:release": "node scripts/build.mjs && node scripts/package-release.mjs && node scripts/validate-release.mjs"
   },
   "engines": {
     "node": ">=18"

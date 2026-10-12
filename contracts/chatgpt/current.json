@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "contractId": "chatgpt-current-2026-10-12-v1",
+  "observedAt": "2026-10-12",
+  "sourceEvidence": "docs/investigations/2026-10-12-current-chatgpt-surface-bootstrap.md",
+  "surface": "public-shared-conversation",
+  "capabilities": [
+    {
+      "capabilityId": "turns.list",
+      "variantId": "conversation-turn-section-role-v1",
+      "status": "EXACT",
+      "requiredInvariants": ["ordered turn container", "exactly one role owner", "user or assistant role"],
+      "selectors": ["section[data-testid^='conversation-turn-']", "[data-message-author-role]"]
+    },
+    {
+      "capabilityId": "answer.read",
+      "variantId": "assistant-role-semantic-content-v1",
+      "status": "EXACT",
+      "requiredInvariants": ["assistant role ownership", "semantic p/pre/code descendants"],
+      "selectors": ["[data-message-author-role='assistant']"]
+    },
+    {
+      "capabilityId": "answer.actionCluster",
+      "variantId": "native-copy-button-parent-v1",
+      "status": "EXACT",
+      "requiredInvariants": ["native copy button", "same assistant turn", "sibling cluster parent"],
+      "selectors": ["[data-testid='copy-turn-action-button']"]
+    },
+    {
+      "capabilityId": "composer.editor",
+      "variantId": "prompt-textarea-contenteditable-v1",
+      "status": "EXACT",
+      "requiredInvariants": ["prompt-textarea identity", "textbox role", "contenteditable property"],
+      "selectors": ["#prompt-textarea[role='textbox'][contenteditable='true']", "textarea#mobile-composer-prompt"]
+    },
+    {
+      "capabilityId": "conversation.scrollRoot",
+      "variantId": "unproven-v1",
+      "status": "UNKNOWN",
+      "requiredInvariants": ["single conversation scroll owner", "stable restoration anchor"],
+      "failOpen": true
+    },
+    {
+      "capabilityId": "answer.math",
+      "variantId": "unproven-v1",
+      "status": "UNKNOWN",
+      "requiredInvariants": ["raw TeX source", "rendered text", "inline/display distinction"],
+      "failOpen": true
+    },
+    {
+      "capabilityId": "lifecycle.streamingEditBranchTools",
+      "variantId": "unproven-v1",
+      "status": "UNKNOWN",
+      "requiredInvariants": ["streaming ownership", "edit branch identity", "tool/file/auth boundaries"],
+      "failOpen": true
+    }
+  ],
+  "invalidationRules": [
+    "missing role ownership",
+    "multiple role owners in one turn",
+    "copy action outside the assistant turn",
+    "composer identity or property mismatch",
+    "newer current-surface evidence contradicts an invariant"
+  ]
+}

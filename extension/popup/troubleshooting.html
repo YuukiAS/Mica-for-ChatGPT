@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="popup.css">
+    <title>Troubleshooting · Mica</title>
+  </head>
+  <body>
+    <main class="shell" data-view="troubleshooting">
+      <header class="view-header">
+        <a class="back-link" href="index.html" aria-label="Back to Mica">‹</a>
+        <div><p class="eyebrow">Mica</p><h1 id="view-title" tabindex="-1">Troubleshooting</h1></div>
+      </header>
+
+      <section class="summary-list" aria-live="polite">
+        <div class="summary-row"><span>Compatibility</span><strong id="compatibility-summary">Checking…</strong></div>
+        <div class="summary-row"><span>Low memory</span><strong>Unavailable in this build</strong></div>
+        <div class="summary-row"><span>Latest recovery</span><strong>No recovery actions</strong></div>
+      </section>
+
+      <section class="action-stack" aria-label="Troubleshooting actions">
+        <button id="self-check" class="button primary" type="button">Run self-check</button>
+        <button id="export-bundle" class="button secondary" type="button">Export diagnostic bundle</button>
+        <p id="operation-status" class="operation-status" role="status" aria-live="polite"></p>
+      </section>
+
+      <p class="privacy-note">Includes structural status and build identity, not conversation text.</p>
+      <a id="troubleshooting-qa-link" class="text-link-row dev-link" href="qa.html" hidden>
+        <span>Open Developer QA</span><span aria-hidden="true">›</span>
+      </a>
+    </main>
+    <script src="troubleshooting.js"></script>
+  </body>
+</html>
