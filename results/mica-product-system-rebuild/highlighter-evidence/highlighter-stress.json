@@ -6,49 +6,49 @@
     {
       "loop": 1,
       "script": "scripts/highlighter-fixture-smoke.mjs",
-      "elapsedMs": 1411,
+      "elapsedMs": 1439,
       "passed": true
     },
     {
       "loop": 2,
       "script": "scripts/highlighter-fixture-smoke.mjs",
-      "elapsedMs": 1383,
+      "elapsedMs": 1464,
       "passed": true
     },
     {
       "loop": 3,
       "script": "scripts/highlighter-fixture-smoke.mjs",
-      "elapsedMs": 1371,
+      "elapsedMs": 1462,
       "passed": true
     },
     {
       "loop": 4,
       "script": "scripts/highlighter-fixture-smoke.mjs",
-      "elapsedMs": 1384,
+      "elapsedMs": 1473,
       "passed": true
     },
     {
       "loop": 5,
       "script": "scripts/highlighter-fixture-smoke.mjs",
-      "elapsedMs": 1330,
+      "elapsedMs": 1462,
       "passed": true
     },
     {
       "loop": 6,
       "script": "scripts/highlighter-fixture-smoke.mjs",
-      "elapsedMs": 1378,
+      "elapsedMs": 1436,
       "passed": true
     },
     {
       "loop": 7,
       "script": "scripts/highlighter-fixture-smoke.mjs",
-      "elapsedMs": 1382,
+      "elapsedMs": 1411,
       "passed": true
     },
     {
       "loop": 8,
       "script": "scripts/highlighter-fixture-smoke.mjs",
-      "elapsedMs": 1418,
+      "elapsedMs": 1574,
       "passed": true
     }
   ]

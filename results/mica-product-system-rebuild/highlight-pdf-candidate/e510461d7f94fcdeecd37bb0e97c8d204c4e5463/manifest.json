@@ -1,0 +1,1256 @@
+{
+  "schemaVersion": 1,
+  "bundleKind": "candidate",
+  "acceptanceProfile": "milestone-b",
+  "candidate": {
+    "commit": "e510461d7f94fcdeecd37bb0e97c8d204c4e5463",
+    "version": "0.3.0",
+    "buildLabel": "highlight-pdf.1",
+    "distArtifactId": "dist-tree",
+    "distHash": "b43b5197b431c41a4bc30e887109011acfabda5e55905a1d778d927427c5a189"
+  },
+  "validator": {
+    "version": "1.5.0",
+    "treeHash": "8421d70fd043f6b40a9e39ae310ce2fe149bb0a5d312aea15a02b72cbdb8806d"
+  },
+  "chatgptContractArtifactId": "chatgpt-contract",
+  "chatgptContractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+  "fixtureSetHash": "1f8a9fe58057a1ccdccf38159f0b3040936a010532bc75bee415a817d0ffed9d",
+  "evidenceSchemaVersion": 1,
+  "evidenceRootHash": "05a6850b123ca5aa004aa00c8c7ecd77746ca2f91cfd2f124cfe411353f1a667",
+  "reportContext": {
+    "candidateCommit": "e510461d7f94fcdeecd37bb0e97c8d204c4e5463",
+    "distHash": "b43b5197b431c41a4bc30e887109011acfabda5e55905a1d778d927427c5a189"
+  },
+  "requiredGates": [
+    "candidate-identity",
+    "popup-render",
+    "adapter-contract",
+    "answer-document-core",
+    "copy-placement",
+    "core-flow-regression",
+    "send-lifecycle-safety",
+    "low-memory-benefit",
+    "highlight-remount",
+    "pdf-selection",
+    "privacy",
+    "packaging-version"
+  ],
+  "artifacts": [
+    {
+      "id": "dist-tree",
+      "path": "artifacts/dist-tree.json",
+      "kind": "application/json",
+      "sha256": "b43b5197b431c41a4bc30e887109011acfabda5e55905a1d778d927427c5a189"
+    },
+    {
+      "id": "built-manifest",
+      "path": "artifacts/built-manifest.json",
+      "kind": "application/json",
+      "sha256": "98c96509510e139333b0f7a33af8efec17cd3536e48e1da407d37d33aba4c1c3"
+    },
+    {
+      "id": "version-report",
+      "path": "artifacts/version-report.json",
+      "kind": "application/json",
+      "sha256": "2c631fb9df49b00af11d6239ad8ed6c26ba935fe1b094f8be8abf071f9c7c1aa"
+    },
+    {
+      "id": "chatgpt-contract",
+      "path": "artifacts/chatgpt-contract.json",
+      "kind": "application/json",
+      "sha256": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538"
+    },
+    {
+      "id": "current-chatgpt-bootstrap",
+      "path": "artifacts/current-chatgpt-bootstrap.json",
+      "kind": "application/json",
+      "sha256": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe"
+    },
+    {
+      "id": "foundation-core",
+      "path": "artifacts/foundation-core.json",
+      "kind": "application/json",
+      "sha256": "d477fa012a1b6247db9154ef536c72d7ca6f65a481e32b9fb43959ccc946595e"
+    },
+    {
+      "id": "foundation-flows",
+      "path": "artifacts/foundation-flows.json",
+      "kind": "application/json",
+      "sha256": "2192e1d9084d8b6e741ac677d2cf25b1fe4e5e133ad23e61ec2bd2d8c2360ae4"
+    },
+    {
+      "id": "popup-render",
+      "path": "artifacts/popup-render.json",
+      "kind": "application/json",
+      "sha256": "fd894b8211006c91465efa9db1001b7ebf286fe8de8a0ac9ca08290101cbd44f"
+    },
+    {
+      "id": "popup-light",
+      "path": "artifacts/popup-light.png",
+      "kind": "image/png",
+      "sha256": "f6807a9192612de97b3880ae8629b53c5696b6061d5ea176c40f237483dc0398"
+    },
+    {
+      "id": "popup-dark",
+      "path": "artifacts/popup-dark.png",
+      "kind": "image/png",
+      "sha256": "db240942edc18f0eac71d5f51fed1ca6fbf89870a42865cae390c35edafb2dc5"
+    },
+    {
+      "id": "popup-320-150",
+      "path": "artifacts/popup-320-150.png",
+      "kind": "image/png",
+      "sha256": "08d4eb62b8d39068b46a25dccef5f9ae91f2ab67387a43d58923532c19b18d43"
+    },
+    {
+      "id": "popup-400-125",
+      "path": "artifacts/popup-400-125.png",
+      "kind": "image/png",
+      "sha256": "1744b55fb4f501b90b470afadd8d916ab3037a93994960831a4dcf3d73d0f238"
+    },
+    {
+      "id": "troubleshooting",
+      "path": "artifacts/troubleshooting.png",
+      "kind": "image/png",
+      "sha256": "f7eafe89ce8751aefe853daa0daabe96f709df55f451e9ec1597a9dc1b34b728"
+    },
+    {
+      "id": "developer-qa",
+      "path": "artifacts/developer-qa.png",
+      "kind": "image/png",
+      "sha256": "bcf745376f8f882e7316a6b35e7466a074098a07548c3c55c7f8e4e8f5abab3c"
+    },
+    {
+      "id": "low-memory-pressure",
+      "path": "artifacts/low-memory-pressure.json",
+      "kind": "application/json",
+      "sha256": "666ef6baac91687e5278f3bfeb42bb8a59a2f964fb1da8883c8c6159ee4aa48c"
+    },
+    {
+      "id": "low-memory-fixture",
+      "path": "artifacts/low-memory-fixture.json",
+      "kind": "application/json",
+      "sha256": "13964e3744d0c13934d7514723ef4e151a758b3b174c9e880b09372bef030a0b"
+    },
+    {
+      "id": "low-memory-page",
+      "path": "artifacts/low-memory-page.json",
+      "kind": "application/json",
+      "sha256": "a783327b5f2fbc22dc1e7e1462bb2e83aa6c51b27170520b24137d4bf4bcda45"
+    },
+    {
+      "id": "low-memory-stress",
+      "path": "artifacts/low-memory-stress.json",
+      "kind": "application/json",
+      "sha256": "ab90b49b69d2355a0739ecb89e31b3b8ae96d2923a6b2f5eb678a5a717f0840a"
+    },
+    {
+      "id": "low-memory-registration",
+      "path": "artifacts/low-memory-registration.json",
+      "kind": "application/json",
+      "sha256": "57a2d2d06292f25d56f8a0ff3148b7fb9cf42f2177c4770556c989d0598c36f8"
+    },
+    {
+      "id": "popup-low-memory-active",
+      "path": "artifacts/popup-low-memory-active.png",
+      "kind": "image/png",
+      "sha256": "e932a9070e026d00a2a15516b618d688146add8c7b49d4a5d1ae50104e133f33"
+    },
+    {
+      "id": "popup-low-memory-restore-required",
+      "path": "artifacts/popup-low-memory-restore-required.png",
+      "kind": "image/png",
+      "sha256": "7539e0878ac15307f3ab96f67320aba52965baf83294819d7e3101bc5b9d2e5e"
+    },
+    {
+      "id": "popup-low-memory-full-history-bypass",
+      "path": "artifacts/popup-low-memory-full-history-bypass.png",
+      "kind": "image/png",
+      "sha256": "1c4f9492f55105e6b1313446e05a6c344b43ffc3f9d1cb2b25ac75ac601bae04"
+    },
+    {
+      "id": "highlighter-fixture",
+      "path": "artifacts/highlighter-fixture.json",
+      "kind": "application/json",
+      "sha256": "e5b47377ef9e1e8440b3a54a2650feb4ca5ceec50f8c9afcdc02ded71d3ff39c"
+    },
+    {
+      "id": "highlighter-stress",
+      "path": "artifacts/highlighter-stress.json",
+      "kind": "application/json",
+      "sha256": "67b4b9f761c0009e539c1e4149fbc5d28ed8a07e31144e87d83c4530d9da8d0e"
+    },
+    {
+      "id": "highlighter-selection-light",
+      "path": "artifacts/highlighter-selection-light.png",
+      "kind": "image/png",
+      "sha256": "da9960230983fc10f1357f720458b2e25e3c7ebe83089234bbc9f93bc19aa512"
+    },
+    {
+      "id": "highlighter-active-light",
+      "path": "artifacts/highlighter-active-light.png",
+      "kind": "image/png",
+      "sha256": "d67d22875accaa9871c5ce99cf8d6f68469e0e228edc2f83a31b7492a6ca3d00"
+    },
+    {
+      "id": "highlighter-edit-dark",
+      "path": "artifacts/highlighter-edit-dark.png",
+      "kind": "image/png",
+      "sha256": "f6a170a09cf163d98583ba60f21ba49f8392c4628835b4f0f535b40b099cdfd6"
+    },
+    {
+      "id": "pdf",
+      "path": "artifacts/mica-answer-export-sample.pdf",
+      "kind": "application/pdf",
+      "sha256": "fe6d7732790e7f6d698c2f19fdaf6e16fa2bc5f0e86fc341f355c46074d9d7e2"
+    },
+    {
+      "id": "pdf-fixture",
+      "path": "artifacts/pdf-export-fixture.json",
+      "kind": "application/json",
+      "sha256": "b9e334d313e822b8f33f6bcfdc1e5adbbcdfa5dbd02b78bf28f579e968cb119f"
+    },
+    {
+      "id": "pdf-background",
+      "path": "artifacts/pdf-background.json",
+      "kind": "application/json",
+      "sha256": "5b694c96a6bed82ef53204ef11b90bd028462b1676db75176d7089ec318b1750"
+    },
+    {
+      "id": "pdf-render-1",
+      "path": "artifacts/pdf-render-1.png",
+      "kind": "image/png",
+      "sha256": "425d1af2ab3392ad4afae3a3dead1e817496fd0dc6a7e7d99ed149567cad2b1f"
+    },
+    {
+      "id": "pdf-render-2",
+      "path": "artifacts/pdf-render-2.png",
+      "kind": "image/png",
+      "sha256": "5c6573cb50eddf4a03193ff589a7ee3fe1394b6099d9c40836d3403a8db6dbc6"
+    },
+    {
+      "id": "pdf-preview",
+      "path": "artifacts/pdf-export-preview.png",
+      "kind": "image/png",
+      "sha256": "93edcfd02aaf41026b80158621f14733d1332accd95d89ed091deaa9ee326881"
+    },
+    {
+      "id": "pdf-pointer-selection",
+      "path": "artifacts/pdfjs-pointer-selection.png",
+      "kind": "image/png",
+      "sha256": "0e35d37cd05b06a7afbab901d4aafc3202852c0f6e30f36aa4f4c554b86faa4f"
+    },
+    {
+      "id": "pdf-display-math-selection",
+      "path": "artifacts/pdfjs-display-math-selection.png",
+      "kind": "image/png",
+      "sha256": "0d05ddc69ed3db85ee1cdcbe2f7d727170a2391b0adaeb203b04c6fc6c8f2f3d"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "candidate-identity-foundation-evidence",
+      "gateId": "candidate-identity",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "built-extension"
+      },
+      "artifactIds": [
+        "dist-tree",
+        "built-manifest"
+      ],
+      "measurement": {
+        "commit": "e510461d7f94fcdeecd37bb0e97c8d204c4e5463",
+        "distHash": "b43b5197b431c41a4bc30e887109011acfabda5e55905a1d778d927427c5a189"
+      }
+    },
+    {
+      "id": "popup-render-foundation-evidence",
+      "gateId": "popup-render",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "actual-extension-popup"
+      },
+      "artifactIds": [
+        "popup-render",
+        "popup-light",
+        "popup-dark",
+        "popup-320-150",
+        "popup-400-125",
+        "troubleshooting",
+        "developer-qa"
+      ],
+      "measurement": {
+        "states": [
+          "loading",
+          "exact",
+          "compatible",
+          "unknown",
+          "unsupported",
+          "disabled",
+          "contentUnavailable"
+        ],
+        "widthsPx": [
+          320,
+          340,
+          368,
+          400
+        ],
+        "scalesPercent": [
+          100,
+          125,
+          150
+        ],
+        "keyboard": {
+          "accessibleNames": true,
+          "interactiveCount": 4,
+          "sampledFocus": [
+            "enabled",
+            "low-memory",
+            "troubleshooting-link",
+            "SUMMARY"
+          ],
+          "focusTraversal": true
+        },
+        "secondaryFocus": {
+          "troubleshootingToIndex": true,
+          "qaToTroubleshooting": true
+        },
+        "themeArtifacts": {
+          "light": "popup-light",
+          "dark": "popup-dark"
+        }
+      }
+    },
+    {
+      "id": "adapter-contract-foundation-evidence",
+      "gateId": "adapter-contract",
+      "evidenceClass": "REAL_DERIVED_CURRENT_CHATGPT",
+      "subject": {
+        "surface": "current-chatgpt"
+      },
+      "artifactIds": [
+        "chatgpt-contract",
+        "current-chatgpt-bootstrap",
+        "foundation-core"
+      ],
+      "measurement": {
+        "capabilities": [
+          {
+            "capabilityId": "turns.list",
+            "sourceCapabilityId": "conversation-turn-discovery",
+            "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+            "requiredSourceObservationIds": [
+              "ordered-turn-containers",
+              "role-owned-turns"
+            ],
+            "variantId": "conversation-turn-section-role-v1",
+            "status": "EXACT",
+            "requiredInvariants": [
+              "ordered turn container",
+              "exactly one role owner",
+              "user or assistant role"
+            ],
+            "observedInvariants": [
+              "ordered-turn-containers",
+              "role-owned-turns"
+            ],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": false
+          },
+          {
+            "capabilityId": "answer.read",
+            "sourceCapabilityId": "answer-document-static-block-extraction",
+            "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+            "requiredSourceObservationIds": [
+              "assistant-semantic-blocks"
+            ],
+            "variantId": "assistant-role-semantic-content-v1",
+            "status": "EXACT",
+            "requiredInvariants": [
+              "assistant role ownership",
+              "semantic p/pre/code descendants"
+            ],
+            "observedInvariants": [
+              "assistant-semantic-blocks"
+            ],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": false
+          },
+          {
+            "capabilityId": "answer.actionCluster",
+            "sourceCapabilityId": "answer-document-static-block-extraction",
+            "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED",
+            "requiredSourceObservationIds": [],
+            "variantId": "unproven-v1",
+            "status": "UNKNOWN",
+            "requiredInvariants": [
+              "native copy button",
+              "same assistant turn",
+              "sibling cluster parent"
+            ],
+            "observedInvariants": [],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": true
+          },
+          {
+            "capabilityId": "composer.editor",
+            "sourceCapabilityId": "composer-discovery",
+            "sourceEvidenceClass": "REAL_CHATGPT_PUBLIC_SHARED_PLUS_LOGGED_OUT",
+            "requiredSourceObservationIds": [
+              "contenteditable-composer",
+              "mobile-textarea-composer"
+            ],
+            "variantId": "prompt-editor-current-variants-v1",
+            "status": "COMPATIBLE",
+            "requiredInvariants": [
+              "variant-specific prompt editor identity",
+              "contenteditable textbox or mobile textarea property"
+            ],
+            "observedInvariants": [
+              "contenteditable-composer",
+              "mobile-textarea-composer"
+            ],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": false
+          },
+          {
+            "capabilityId": "conversation.scrollRoot",
+            "sourceCapabilityId": "native-virtualization-baseline",
+            "sourceEvidenceClass": "NONE",
+            "requiredSourceObservationIds": [],
+            "variantId": "unproven-v1",
+            "status": "UNKNOWN",
+            "requiredInvariants": [
+              "single conversation scroll owner",
+              "stable restoration anchor"
+            ],
+            "observedInvariants": [],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": true
+          },
+          {
+            "capabilityId": "answer.math",
+            "sourceCapabilityId": "math-block-structure",
+            "sourceEvidenceClass": "NONE",
+            "requiredSourceObservationIds": [],
+            "variantId": "unproven-v1",
+            "status": "UNKNOWN",
+            "requiredInvariants": [
+              "raw TeX source",
+              "rendered text",
+              "inline/display distinction"
+            ],
+            "observedInvariants": [],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": true
+          },
+          {
+            "capabilityId": "lifecycle.streamingEditBranchTools",
+            "sourceCapabilityId": "streaming-edit-branch-tools-files-connectors-auth",
+            "sourceEvidenceClass": "NONE",
+            "requiredSourceObservationIds": [],
+            "variantId": "unproven-v1",
+            "status": "UNKNOWN",
+            "requiredInvariants": [
+              "streaming ownership",
+              "edit branch identity",
+              "tool/file/auth boundaries"
+            ],
+            "observedInvariants": [],
+            "contractHash": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+            "sourceArtifactHash": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+            "invalidatedBy": [],
+            "failOpen": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "answer-document-core-foundation-evidence",
+      "gateId": "answer-document-core",
+      "evidenceClass": "REAL_DERIVED_CURRENT_CHATGPT",
+      "subject": {
+        "surface": "answer-document"
+      },
+      "artifactIds": [
+        "foundation-core",
+        "chatgpt-contract",
+        "current-chatgpt-bootstrap"
+      ],
+      "measurement": {
+        "documentFields": [
+          "documentId",
+          "conversationId",
+          "turnId",
+          "sourceVersion",
+          "generationState",
+          "orderedBlocks"
+        ],
+        "blockKinds": [
+          "heading",
+          "paragraph",
+          "display_math",
+          "list",
+          "quote",
+          "table",
+          "code",
+          "opaque_interactive",
+          "unknown_block",
+          "text",
+          "inline_math",
+          "link",
+          "citation",
+          "image"
+        ],
+        "streamingIsProvisional": true,
+        "settledIsDurable": true,
+        "unknownLifecycleRejected": true,
+        "opaqueInteractive": true,
+        "singleAdapterProducer": true
+      }
+    },
+    {
+      "id": "copy-placement-foundation-evidence",
+      "gateId": "copy-placement",
+      "evidenceClass": "CURRENT_CHATGPT_READ_ONLY",
+      "subject": {
+        "surface": "assistant-action-cluster"
+      },
+      "artifactIds": [
+        "chatgpt-contract",
+        "current-chatgpt-bootstrap"
+      ],
+      "measurement": {
+        "actionInjected": false,
+        "capabilityStatus": "UNKNOWN",
+        "placementProven": false,
+        "exactAssistantTurn": false,
+        "clusterProven": false,
+        "siblingRelationship": false,
+        "visibleBaseline": false,
+        "failOpen": true
+      }
+    },
+    {
+      "id": "core-flow-regression-foundation-evidence",
+      "gateId": "core-flow-regression",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "local-real-browser"
+      },
+      "artifactIds": [
+        "foundation-flows",
+        "dist-tree"
+      ],
+      "measurement": {
+        "composer": true,
+        "send": true,
+        "streaming": true,
+        "editBranch": true,
+        "connector": true,
+        "toolFileAuth": true,
+        "typingImeHotPath": true
+      }
+    },
+    {
+      "id": "send-lifecycle-safety-foundation-evidence",
+      "gateId": "send-lifecycle-safety",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "local-real-browser"
+      },
+      "artifactIds": [
+        "foundation-flows",
+        "dist-tree"
+      ],
+      "measurement": {
+        "progressObserved": true,
+        "autoResend": false,
+        "consequentialFlowActive": true,
+        "userTurnCommitted": true,
+        "duplicateSend": false
+      }
+    },
+    {
+      "id": "low-memory-benefit-foundation-evidence",
+      "gateId": "low-memory-benefit",
+      "evidenceClass": "TARGET_CLASS_ENVIRONMENT",
+      "subject": {
+        "surface": "local-constrained-target-class-environment"
+      },
+      "artifactIds": [
+        "dist-tree",
+        "low-memory-pressure",
+        "low-memory-fixture",
+        "low-memory-page",
+        "low-memory-stress",
+        "low-memory-registration",
+        "foundation-flows",
+        "popup-low-memory-active",
+        "popup-low-memory-restore-required",
+        "popup-low-memory-full-history-bypass"
+      ],
+      "measurement": {
+        "A": {
+          "variant": "mica-absent-or-disabled",
+          "processMemoryMb": 567.422,
+          "processMemoryRangeMb": [
+            561.91,
+            568.637
+          ],
+          "heapMb": 101.31,
+          "heapRangeMb": [
+            101.31,
+            101.31
+          ],
+          "retainedContentMb": 100,
+          "mountedTurnCount": 12,
+          "mutationCount": 62,
+          "typingP95Ms": 0.01,
+          "typingRangeMs": [
+            0.01,
+            0.01
+          ],
+          "scrollP95Ms": 0.1,
+          "scrollRangeMs": [
+            0.01,
+            0.1
+          ],
+          "mappingNodes": 801,
+          "frameP95Ms": 16.9,
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "bootstrapLongTaskCount": 0,
+          "bootstrapLongTaskTotalMs": 0,
+          "bootstrapLongTaskMaxMs": 0,
+          "layoutCount": 1,
+          "recalcStyleCount": 1,
+          "fullExtensionRuntimeLoaded": false,
+          "runtimeVersion": null,
+          "registrationProof": null,
+          "windowingStatus": null,
+          "samples": 3
+        },
+        "B": {
+          "variant": "mica-installed-low-memory-off",
+          "processMemoryMb": 643.117,
+          "processMemoryRangeMb": [
+            636.355,
+            645.18
+          ],
+          "heapMb": 101.685,
+          "heapRangeMb": [
+            101.685,
+            101.685
+          ],
+          "retainedContentMb": 100,
+          "mountedTurnCount": 12,
+          "mutationCount": 62,
+          "typingP95Ms": 0.01,
+          "typingRangeMs": [
+            0.01,
+            0.01
+          ],
+          "scrollP95Ms": 0.1,
+          "scrollRangeMs": [
+            0.01,
+            0.1
+          ],
+          "mappingNodes": 801,
+          "frameP95Ms": 16.8,
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "bootstrapLongTaskCount": 0,
+          "bootstrapLongTaskTotalMs": 0,
+          "bootstrapLongTaskMaxMs": 0,
+          "layoutCount": 1,
+          "recalcStyleCount": 2,
+          "fullExtensionRuntimeLoaded": true,
+          "runtimeVersion": "0.3.0",
+          "registrationProof": {
+            "synced": {
+              "ok": true,
+              "registered": false,
+              "failOpen": false
+            },
+            "scripts": []
+          },
+          "windowingStatus": null,
+          "samples": 3
+        },
+        "C": {
+          "variant": "mica-installed-low-memory-on",
+          "processMemoryMb": 626.672,
+          "processMemoryRangeMb": [
+            615.02,
+            627.035
+          ],
+          "heapMb": 6.402,
+          "heapRangeMb": [
+            6.402,
+            6.402
+          ],
+          "retainedContentMb": 5,
+          "mountedTurnCount": 12,
+          "mutationCount": 62,
+          "typingP95Ms": 0.01,
+          "typingRangeMs": [
+            0.01,
+            0.01
+          ],
+          "scrollP95Ms": 0.1,
+          "scrollRangeMs": [
+            0.01,
+            0.1
+          ],
+          "mappingNodes": 41,
+          "frameP95Ms": 16.9,
+          "longTaskCount": 0,
+          "longTaskTotalMs": 0,
+          "longTaskMaxMs": 0,
+          "bootstrapLongTaskCount": 0,
+          "bootstrapLongTaskTotalMs": 0,
+          "bootstrapLongTaskMaxMs": 0,
+          "layoutCount": 2,
+          "recalcStyleCount": 3,
+          "fullExtensionRuntimeLoaded": true,
+          "runtimeVersion": "0.3.0",
+          "registrationProof": {
+            "synced": {
+              "ok": true,
+              "registered": true,
+              "failOpen": false
+            },
+            "scripts": [
+              {
+                "allFrames": false,
+                "id": "mica-low-memory-main-v3",
+                "js": [
+                  "low-memory-core.js",
+                  "low-memory-page.js"
+                ],
+                "matchOriginAsFallback": false,
+                "matches": [
+                  "https://chat.openai.com/*",
+                  "https://chatgpt.com/*"
+                ],
+                "persistAcrossSessions": true,
+                "runAt": "document_start",
+                "world": "MAIN"
+              }
+            ]
+          },
+          "windowingStatus": {
+            "schemaVersion": 2,
+            "state": "active",
+            "reason": "windowed",
+            "source": "react-router-stream",
+            "active": true,
+            "keptTurns": 40,
+            "totalTurns": 800,
+            "removedTurns": 760,
+            "keptNodes": 41,
+            "totalNodes": 801,
+            "bytesBefore": 52598044,
+            "bytesAfter": 2629540,
+            "bytesRemoved": 49968504,
+            "recentTurnLimit": 40,
+            "actualTruncation": true,
+            "truncatedRepresentation": "client-history-window",
+            "serverMutation": false,
+            "reactManagedInteractiveNodesDetached": false,
+            "contentUpload": false,
+            "updatedAt": "2026-10-12T14:01:36.020Z"
+          },
+          "samples": 3
+        },
+        "recentTurnLimit": 40,
+        "threadProfiles": [
+          {
+            "name": "short",
+            "totalTurns": 24,
+            "modeApplied": false,
+            "retainedRecentTurns": 24,
+            "mountedBefore": 24,
+            "mountedAfter": 24,
+            "mappingNodesAfter": 25
+          },
+          {
+            "name": "medium",
+            "totalTurns": 72,
+            "modeApplied": false,
+            "retainedRecentTurns": 72,
+            "mountedBefore": 72,
+            "mountedAfter": 72,
+            "mappingNodesAfter": 73
+          },
+          {
+            "name": "long",
+            "totalTurns": 240,
+            "modeApplied": true,
+            "retainedRecentTurns": 40,
+            "mountedBefore": 240,
+            "mountedAfter": 42,
+            "mappingNodesAfter": 47
+          }
+        ],
+        "pressureFixture": {
+          "memoryLimitMb": 256,
+          "payloadMb": 100,
+          "turns": 800,
+          "workload": "current-chatgpt-derived-react-router-flat-graph-and-virtualized-turn-renderer",
+          "sourceArtifact": "current-chatgpt-surface/low-memory-data-plane-evidence.json"
+        },
+        "targetEnvironment": {
+          "class": "local-edge-v8-old-space-pressure",
+          "executionSurface": "local-isolated-edge",
+          "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+          "rendererOldSpaceLimitMb": 256,
+          "physicalMemoryGb": null,
+          "boundary": "local Chromium renderer constrained with a 256 MB V8 old-space limit; OS process memory is measured across the fresh browser process tree"
+        },
+        "actualTruncation": true,
+        "truncatedRepresentation": "client-history-window",
+        "reactManagedInteractiveNodesDetached": false,
+        "serverMutation": false,
+        "history": {
+          "scrollUpRestoresOlder": true,
+          "loadFullHistoryPass": true,
+          "reloadRestoresFullHistory": true,
+          "disableRestoresFullHistory": true,
+          "closeOrUninstallRestoresFullHistory": true,
+          "serverHistoryUnchanged": true
+        },
+        "actionSecurity": {
+          "pageStatusTelemetryTrusted": false,
+          "recoveryAuthorization": "extension_ui_or_trusted_user_gesture",
+          "forgedStatusAcceptedAsTelemetry": true,
+          "syntheticClickPrepareCalls": 0,
+          "syntheticClickReloads": 0,
+          "trustedPointerPrepareCalls": 1,
+          "trustedPointerReloads": 1,
+          "trustedKeyboardResumeCalls": 1,
+          "trustedKeyboardReloads": 1
+        },
+        "registration": {
+          "firstInstall": true,
+          "storageFailureFailOpen": true,
+          "siteWritableConfigAccepted": false,
+          "forgedPageEventIgnored": true
+        },
+        "stress": {
+          "passed": true,
+          "loops": 8,
+          "runs": 40,
+          "results": [
+            {
+              "loop": 1,
+              "script": "scripts/foundation-core-fixture-smoke.mjs",
+              "elapsedMs": 1117,
+              "passed": true
+            },
+            {
+              "loop": 1,
+              "script": "scripts/foundation-core-flow-fixture.mjs",
+              "elapsedMs": 1799,
+              "passed": true
+            },
+            {
+              "loop": 1,
+              "script": "scripts/low-memory-fixture-smoke.mjs",
+              "elapsedMs": 1038,
+              "passed": true
+            },
+            {
+              "loop": 1,
+              "script": "scripts/low-memory-page-fixture-smoke.mjs",
+              "elapsedMs": 2152,
+              "passed": true
+            },
+            {
+              "loop": 1,
+              "script": "scripts/popup-render-fixture.mjs",
+              "elapsedMs": 8405,
+              "passed": true
+            },
+            {
+              "loop": 2,
+              "script": "scripts/foundation-core-fixture-smoke.mjs",
+              "elapsedMs": 1082,
+              "passed": true
+            },
+            {
+              "loop": 2,
+              "script": "scripts/foundation-core-flow-fixture.mjs",
+              "elapsedMs": 1823,
+              "passed": true
+            },
+            {
+              "loop": 2,
+              "script": "scripts/low-memory-fixture-smoke.mjs",
+              "elapsedMs": 1072,
+              "passed": true
+            },
+            {
+              "loop": 2,
+              "script": "scripts/low-memory-page-fixture-smoke.mjs",
+              "elapsedMs": 2106,
+              "passed": true
+            },
+            {
+              "loop": 2,
+              "script": "scripts/popup-render-fixture.mjs",
+              "elapsedMs": 8111,
+              "passed": true
+            },
+            {
+              "loop": 3,
+              "script": "scripts/foundation-core-fixture-smoke.mjs",
+              "elapsedMs": 1143,
+              "passed": true
+            },
+            {
+              "loop": 3,
+              "script": "scripts/foundation-core-flow-fixture.mjs",
+              "elapsedMs": 1863,
+              "passed": true
+            },
+            {
+              "loop": 3,
+              "script": "scripts/low-memory-fixture-smoke.mjs",
+              "elapsedMs": 1072,
+              "passed": true
+            },
+            {
+              "loop": 3,
+              "script": "scripts/low-memory-page-fixture-smoke.mjs",
+              "elapsedMs": 2118,
+              "passed": true
+            },
+            {
+              "loop": 3,
+              "script": "scripts/popup-render-fixture.mjs",
+              "elapsedMs": 8322,
+              "passed": true
+            },
+            {
+              "loop": 4,
+              "script": "scripts/foundation-core-fixture-smoke.mjs",
+              "elapsedMs": 1108,
+              "passed": true
+            },
+            {
+              "loop": 4,
+              "script": "scripts/foundation-core-flow-fixture.mjs",
+              "elapsedMs": 1860,
+              "passed": true
+            },
+            {
+              "loop": 4,
+              "script": "scripts/low-memory-fixture-smoke.mjs",
+              "elapsedMs": 1081,
+              "passed": true
+            },
+            {
+              "loop": 4,
+              "script": "scripts/low-memory-page-fixture-smoke.mjs",
+              "elapsedMs": 2081,
+              "passed": true
+            },
+            {
+              "loop": 4,
+              "script": "scripts/popup-render-fixture.mjs",
+              "elapsedMs": 8417,
+              "passed": true
+            },
+            {
+              "loop": 5,
+              "script": "scripts/foundation-core-fixture-smoke.mjs",
+              "elapsedMs": 1143,
+              "passed": true
+            },
+            {
+              "loop": 5,
+              "script": "scripts/foundation-core-flow-fixture.mjs",
+              "elapsedMs": 1892,
+              "passed": true
+            },
+            {
+              "loop": 5,
+              "script": "scripts/low-memory-fixture-smoke.mjs",
+              "elapsedMs": 1125,
+              "passed": true
+            },
+            {
+              "loop": 5,
+              "script": "scripts/low-memory-page-fixture-smoke.mjs",
+              "elapsedMs": 2174,
+              "passed": true
+            },
+            {
+              "loop": 5,
+              "script": "scripts/popup-render-fixture.mjs",
+              "elapsedMs": 8607,
+              "passed": true
+            },
+            {
+              "loop": 6,
+              "script": "scripts/foundation-core-fixture-smoke.mjs",
+              "elapsedMs": 1164,
+              "passed": true
+            },
+            {
+              "loop": 6,
+              "script": "scripts/foundation-core-flow-fixture.mjs",
+              "elapsedMs": 1859,
+              "passed": true
+            },
+            {
+              "loop": 6,
+              "script": "scripts/low-memory-fixture-smoke.mjs",
+              "elapsedMs": 1005,
+              "passed": true
+            },
+            {
+              "loop": 6,
+              "script": "scripts/low-memory-page-fixture-smoke.mjs",
+              "elapsedMs": 1990,
+              "passed": true
+            },
+            {
+              "loop": 6,
+              "script": "scripts/popup-render-fixture.mjs",
+              "elapsedMs": 8397,
+              "passed": true
+            },
+            {
+              "loop": 7,
+              "script": "scripts/foundation-core-fixture-smoke.mjs",
+              "elapsedMs": 1144,
+              "passed": true
+            },
+            {
+              "loop": 7,
+              "script": "scripts/foundation-core-flow-fixture.mjs",
+              "elapsedMs": 1883,
+              "passed": true
+            },
+            {
+              "loop": 7,
+              "script": "scripts/low-memory-fixture-smoke.mjs",
+              "elapsedMs": 1040,
+              "passed": true
+            },
+            {
+              "loop": 7,
+              "script": "scripts/low-memory-page-fixture-smoke.mjs",
+              "elapsedMs": 2132,
+              "passed": true
+            },
+            {
+              "loop": 7,
+              "script": "scripts/popup-render-fixture.mjs",
+              "elapsedMs": 8475,
+              "passed": true
+            },
+            {
+              "loop": 8,
+              "script": "scripts/foundation-core-fixture-smoke.mjs",
+              "elapsedMs": 1056,
+              "passed": true
+            },
+            {
+              "loop": 8,
+              "script": "scripts/foundation-core-flow-fixture.mjs",
+              "elapsedMs": 1852,
+              "passed": true
+            },
+            {
+              "loop": 8,
+              "script": "scripts/low-memory-fixture-smoke.mjs",
+              "elapsedMs": 1055,
+              "passed": true
+            },
+            {
+              "loop": 8,
+              "script": "scripts/low-memory-page-fixture-smoke.mjs",
+              "elapsedMs": 2080,
+              "passed": true
+            },
+            {
+              "loop": 8,
+              "script": "scripts/popup-render-fixture.mjs",
+              "elapsedMs": 8232,
+              "passed": true
+            }
+          ]
+        },
+        "coreFlows": {
+          "composer": true,
+          "send": true,
+          "streaming": true,
+          "editBranch": true,
+          "connector": true,
+          "toolFileAuth": true,
+          "typingImeHotPath": true
+        },
+        "unknownStructureBehavior": "FAIL_OPEN"
+      }
+    },
+    {
+      "id": "highlight-remount-foundation-evidence",
+      "gateId": "highlight-remount",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "local-real-browser"
+      },
+      "artifactIds": [
+        "dist-tree",
+        "highlighter-fixture",
+        "highlighter-stress",
+        "highlighter-selection-light",
+        "highlighter-active-light",
+        "highlighter-edit-dark"
+      ],
+      "measurement": {
+        "passed": true,
+        "selectionSequence": [
+          "prose",
+          "inline_math",
+          "prose"
+        ],
+        "mathTeX": [
+          "x+1"
+        ],
+        "rawLatexSources": [
+          "a+b",
+          "c=d"
+        ],
+        "restoredAfterRefresh": true,
+        "restoredAfterRemount": true,
+        "restoredAfterMathReformat": true,
+        "attachedToWrongText": false,
+        "ambiguousAnchorStayedUnresolved": true,
+        "deletedSourceStayedUnresolved": true,
+        "branchMismatchStayedUnresolved": true,
+        "invalidSelectionsFailOpen": true,
+        "keyboardAccessible": true,
+        "colorOwnership": true,
+        "deleteOwnership": true,
+        "localStorageOnly": true,
+        "noGlobalRangePatch": true,
+        "noGlobalSelectionPatch": true,
+        "noPermanentToolbar": true,
+        "stress": {
+          "passed": true,
+          "loops": 8,
+          "runs": 8
+        },
+        "screenshotArtifacts": {
+          "selectionLight": "highlighter-selection-light",
+          "activeLight": "highlighter-active-light",
+          "editDark": "highlighter-edit-dark"
+        }
+      }
+    },
+    {
+      "id": "pdf-selection-foundation-evidence",
+      "gateId": "pdf-selection",
+      "evidenceClass": "ACTUAL_PDF_VIEWER",
+      "subject": {
+        "surface": "actual-pdf-viewer"
+      },
+      "artifactIds": [
+        "pdf",
+        "pdf-fixture",
+        "pdf-background",
+        "highlighter-fixture",
+        "pdf-render-1",
+        "pdf-render-2",
+        "pdf-preview",
+        "pdf-pointer-selection",
+        "pdf-display-math-selection"
+      ],
+      "measurement": {
+        "textExtracted": true,
+        "pointerSelection": true,
+        "trustedPointerEvents": true,
+        "pointerSequence": [
+          "prose",
+          "inline_math",
+          "prose"
+        ],
+        "displayMathSelectable": true,
+        "mathCopyResult": true,
+        "mathSearchable": true,
+        "independentExtraction": true,
+        "localExportBoundary": true,
+        "trustedToolbarHandoff": true,
+        "highlightPreserved": true,
+        "crossPageHighlight": true,
+        "actualViewerEngine": "PDF.js 5.6.205",
+        "pageCount": 2,
+        "pdfArtifactId": "pdf",
+        "visualArtifacts": {
+          "renderPage1": "pdf-render-1",
+          "renderPage2": "pdf-render-2",
+          "preview": "pdf-preview",
+          "pointerSelection": "pdf-pointer-selection",
+          "displayMathSelection": "pdf-display-math-selection"
+        }
+      }
+    },
+    {
+      "id": "privacy-foundation-evidence",
+      "gateId": "privacy",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "diagnostic-bundle"
+      },
+      "artifactIds": [
+        "foundation-core",
+        "foundation-flows"
+      ],
+      "measurement": {
+        "conversationTextIncluded": false,
+        "attachmentContentIncluded": false,
+        "requestBodyIncluded": false,
+        "authTokenIncluded": false,
+        "rawDomIncluded": false,
+        "flowPrivacyMatches": true
+      }
+    },
+    {
+      "id": "packaging-version-foundation-evidence",
+      "gateId": "packaging-version",
+      "evidenceClass": "LOCAL_REAL_BROWSER",
+      "subject": {
+        "surface": "built-extension"
+      },
+      "artifactIds": [
+        "built-manifest",
+        "version-report"
+      ],
+      "measurement": {
+        "builtManifestArtifactId": "built-manifest",
+        "versionReportArtifactId": "version-report"
+      }
+    }
+  ]
+}

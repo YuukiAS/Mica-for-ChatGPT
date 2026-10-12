@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "trustedSourceOpened": true,
+  "unsupportedSourceRejected": true,
+  "oneTimeConsumption": true,
+  "forgedConsumerRejected": true,
+  "failedOpenPayloadCleaned": true,
+  "persistentConversationStorage": false,
+  "serverUpload": false
+}

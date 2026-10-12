@@ -25,7 +25,7 @@
       "serverMutation": false,
       "reactManagedInteractiveNodesDetached": false,
       "contentUpload": false,
-      "updatedAt": "2026-10-12T13:24:02.548Z"
+      "updatedAt": "2026-10-12T13:59:52.515Z"
     },
     "siteLocalConfigPresent": false
   },
@@ -95,7 +95,7 @@
       "serverMutation": false,
       "reactManagedInteractiveNodesDetached": false,
       "contentUpload": false,
-      "updatedAt": "2026-10-12T13:24:02.843Z"
+      "updatedAt": "2026-10-12T13:59:52.813Z"
     },
     "buttonLabel": "Resume Low Memory",
     "userAction": "trusted_keyboard",
@@ -131,7 +131,7 @@
       "serverMutation": false,
       "reactManagedInteractiveNodesDetached": false,
       "contentUpload": false,
-      "updatedAt": "2026-10-12T13:24:03.087Z"
+      "updatedAt": "2026-10-12T13:59:53.055Z"
     },
     "controlRetained": true,
     "buttonLabel": "Restore full history",
@@ -171,7 +171,7 @@
       "serverMutation": false,
       "reactManagedInteractiveNodesDetached": false,
       "contentUpload": false,
-      "updatedAt": "2026-10-12T13:24:03.351Z"
+      "updatedAt": "2026-10-12T13:59:53.318Z"
     }
   },
   "history": {

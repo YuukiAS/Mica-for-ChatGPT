@@ -85,7 +85,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-27c84965",
+        "id": "highlight-e18504e3",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -114,8 +114,8 @@
         },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-12T13:24:24.955Z",
-        "updatedAt": "2026-10-12T13:24:24.955Z"
+        "createdAt": "2026-10-12T13:57:46.191Z",
+        "updatedAt": "2026-10-12T13:57:46.191Z"
       }
     ]
   },
@@ -131,7 +131,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-27c84965",
+        "id": "highlight-e18504e3",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -160,8 +160,8 @@
         },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-12T13:24:24.955Z",
-        "updatedAt": "2026-10-12T13:24:24.955Z"
+        "createdAt": "2026-10-12T13:57:46.191Z",
+        "updatedAt": "2026-10-12T13:57:46.191Z"
       }
     ]
   },
@@ -177,7 +177,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-27c84965",
+        "id": "highlight-e18504e3",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -206,8 +206,8 @@
         },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-12T13:24:24.955Z",
-        "updatedAt": "2026-10-12T13:24:24.955Z"
+        "createdAt": "2026-10-12T13:57:46.191Z",
+        "updatedAt": "2026-10-12T13:57:46.191Z"
       }
     ]
   },
@@ -223,7 +223,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-27c84965",
+        "id": "highlight-e18504e3",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -252,8 +252,8 @@
         },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-12T13:24:24.955Z",
-        "updatedAt": "2026-10-12T13:24:24.955Z"
+        "createdAt": "2026-10-12T13:57:46.191Z",
+        "updatedAt": "2026-10-12T13:57:46.191Z"
       }
     ]
   },
@@ -269,7 +269,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-27c84965",
+        "id": "highlight-e18504e3",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -298,8 +298,8 @@
         },
         "status": "unresolved",
         "unresolvedReason": "ambiguous_anchor",
-        "createdAt": "2026-10-12T13:24:24.955Z",
-        "updatedAt": "2026-10-12T13:24:25.027Z"
+        "createdAt": "2026-10-12T13:57:46.191Z",
+        "updatedAt": "2026-10-12T13:57:46.281Z"
       }
     ]
   },
@@ -315,7 +315,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-27c84965",
+        "id": "highlight-e18504e3",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -344,8 +344,8 @@
         },
         "status": "unresolved",
         "unresolvedReason": "source_missing",
-        "createdAt": "2026-10-12T13:24:24.955Z",
-        "updatedAt": "2026-10-12T13:24:25.031Z"
+        "createdAt": "2026-10-12T13:57:46.191Z",
+        "updatedAt": "2026-10-12T13:57:46.287Z"
       }
     ]
   },
@@ -361,7 +361,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-27c84965",
+        "id": "highlight-e18504e3",
         "color": "mint",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -390,8 +390,8 @@
         },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-12T13:24:24.955Z",
-        "updatedAt": "2026-10-12T13:24:25.136Z"
+        "createdAt": "2026-10-12T13:57:46.191Z",
+        "updatedAt": "2026-10-12T13:57:46.454Z"
       }
     ]
   },
@@ -412,6 +412,14 @@
     "candidateCount": 0,
     "range": null
   },
+  "pdfExportHandoff": {
+    "trustedToolbarActionReachedBackground": true,
+    "schemaVersion": 1,
+    "blockCount": 2,
+    "resolvedHighlights": 1,
+    "localOnly": true,
+    "containsCrossMathText": true
+  },
   "rawLatexSources": [
     "a+b",
     "c=d"
@@ -419,7 +427,7 @@
   "screenshots": {
     "selectionLight": {
       "path": "results/mica-product-system-rebuild/highlighter-evidence/highlighter-selection-light.png",
-      "sha256": "96fd37449e386c58803415decf78cadcc8be4dcf4bc46625064f7fe6cad6f13a"
+      "sha256": "da9960230983fc10f1357f720458b2e25e3c7ebe83089234bbc9f93bc19aa512"
     },
     "activeLight": {
       "path": "results/mica-product-system-rebuild/highlighter-evidence/highlighter-active-light.png",
@@ -427,7 +435,7 @@
     },
     "editDark": {
       "path": "results/mica-product-system-rebuild/highlighter-evidence/highlighter-edit-dark.png",
-      "sha256": "c561993433dd5c91325939783f5f28e26789c392be3a9a3ae379f53f84d32654"
+      "sha256": "f6a170a09cf163d98583ba60f21ba49f8392c4628835b4f0f535b40b099cdfd6"
     }
   },
   "invariants": {
@@ -442,6 +450,7 @@
     "ambiguityFailOpen": true,
     "sourceDeletionFailOpen": true,
     "colorOwnership": true,
-    "deleteOwnership": true
+    "deleteOwnership": true,
+    "pdfExportHandoff": true
   }
 }

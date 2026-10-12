@@ -1,0 +1,71 @@
+{
+  "passed": true,
+  "model": {
+    "documentId": "answer-4aa01ad9",
+    "sourceVersion": "settled-276a1ab5",
+    "blockCount": 29,
+    "resolvedHighlights": 2,
+    "unresolvedHighlights": 0,
+    "mathFallback": "visible-tex-source",
+    "baselineMathTeX": [
+      "x+1"
+    ],
+    "crossPageQuoteLength": 3350
+  },
+  "pdf": {
+    "path": "output/pdf/mica-answer-export-sample.pdf",
+    "sha256": "fe6d7732790e7f6d698c2f19fdaf6e16fa2bc5f0e86fc341f355c46074d9d7e2",
+    "bytes": 72123,
+    "pageCount": 2,
+    "pdfInfo": {
+      "Tagged": "yes",
+      "JavaScript": "no",
+      "Pages": "2",
+      "Page size": "594.96 x 841.92 pts (A4)",
+      "PDF version": "1.4"
+    },
+    "renderedPages": [
+      "results/mica-product-system-rebuild/pdf-evidence/pdf-render-1.png",
+      "results/mica-product-system-rebuild/pdf-evidence/pdf-render-2.png"
+    ]
+  },
+  "pdfJs": {
+    "version": "5.6.205",
+    "pageCount": 2,
+    "textExtracted": true,
+    "searchable": true,
+    "pointerSelection": true,
+    "pointerSelectionText": "Before x+1 after",
+    "trustedPointerEvents": true,
+    "pointerSequence": [
+      "prose",
+      "inline_math",
+      "prose"
+    ],
+    "programmaticCrossNodeSelection": "Before x+1 after",
+    "displayMathSelection": "E=mc^2",
+    "mathCopyResult": true,
+    "textLayerSpanCount": 60
+  },
+  "independentExtraction": {
+    "engine": "pdfplumber",
+    "textExtracted": true,
+    "searchable": true,
+    "crossMathText": "Before x+1 after",
+    "displayMathText": "E=mc^2"
+  },
+  "highlights": {
+    "preservedInPrintModel": true,
+    "crossMath": true,
+    "crossPage": true,
+    "visualStates": [
+      "yellow-cross-math",
+      "mint-cross-page"
+    ]
+  },
+  "artifacts": {
+    "preview": "results/mica-product-system-rebuild/pdf-evidence/pdf-export-preview.png",
+    "pointerSelection": "results/mica-product-system-rebuild/pdf-evidence/pdfjs-pointer-selection.png",
+    "displayMathSelection": "results/mica-product-system-rebuild/pdf-evidence/pdfjs-display-math-selection.png"
+  }
+}

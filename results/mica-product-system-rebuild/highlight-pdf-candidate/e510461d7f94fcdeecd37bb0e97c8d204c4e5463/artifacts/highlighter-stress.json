@@ -1,0 +1,55 @@
+{
+  "passed": true,
+  "loops": 8,
+  "runs": 8,
+  "results": [
+    {
+      "loop": 1,
+      "script": "scripts/highlighter-fixture-smoke.mjs",
+      "elapsedMs": 1439,
+      "passed": true
+    },
+    {
+      "loop": 2,
+      "script": "scripts/highlighter-fixture-smoke.mjs",
+      "elapsedMs": 1464,
+      "passed": true
+    },
+    {
+      "loop": 3,
+      "script": "scripts/highlighter-fixture-smoke.mjs",
+      "elapsedMs": 1462,
+      "passed": true
+    },
+    {
+      "loop": 4,
+      "script": "scripts/highlighter-fixture-smoke.mjs",
+      "elapsedMs": 1473,
+      "passed": true
+    },
+    {
+      "loop": 5,
+      "script": "scripts/highlighter-fixture-smoke.mjs",
+      "elapsedMs": 1462,
+      "passed": true
+    },
+    {
+      "loop": 6,
+      "script": "scripts/highlighter-fixture-smoke.mjs",
+      "elapsedMs": 1436,
+      "passed": true
+    },
+    {
+      "loop": 7,
+      "script": "scripts/highlighter-fixture-smoke.mjs",
+      "elapsedMs": 1411,
+      "passed": true
+    },
+    {
+      "loop": 8,
+      "script": "scripts/highlighter-fixture-smoke.mjs",
+      "elapsedMs": 1574,
+      "passed": true
+    }
+  ]
+}

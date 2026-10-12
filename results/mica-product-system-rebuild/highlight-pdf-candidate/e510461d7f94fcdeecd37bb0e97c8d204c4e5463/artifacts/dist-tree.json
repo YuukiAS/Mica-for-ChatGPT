@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "path": "answer-document.js",
+      "sha256": "27c6315e8dab8a2e44d8b9e01bdbf1df3229d2a2ce2dd3b79ac02571fb1019d0"
+    },
+    {
+      "path": "chatgpt-adapter.js",
+      "sha256": "5fdf5d1aac8aac67c49ac59a16e6e7f776dbc4577852dbcda2b807034682c91e"
+    },
+    {
+      "path": "content.js",
+      "sha256": "e33dc0f07a0b39e90a2f4c364dba4dda20a52887d6fd14819e49486e4fa1e739"
+    },
+    {
+      "path": "highlight-engine.js",
+      "sha256": "01c952722f1fc4afe934cfdc1df2b5ffb784b7b3cd61c6bf3b773bfc6ebb9fb4"
+    },
+    {
+      "path": "icons/icon128.png",
+      "sha256": "a3170791f4b1b371d3bac9916c66e6baad0d1d6b444b9c7c021f173cf1d64a83"
+    },
+    {
+      "path": "icons/icon16.png",
+      "sha256": "69ca20dd42eefd513adc8ae25a1f1d6bcaf764fecb5ac8d37a6e43f848aeff2d"
+    },
+    {
+      "path": "icons/icon32.png",
+      "sha256": "aac5ea0ac47d6bd08e95b58d75a75817db4f3c8f9926683b7c42b2cfdfd6087e"
+    },
+    {
+      "path": "icons/icon48.png",
+      "sha256": "4190beb19d6e36199f44b893993a880a3e2e0e74894946a4f7b66dccb973bcae"
+    },
+    {
+      "path": "icons/icon512.png",
+      "sha256": "9e8f9ff9e10f20157a8dde785dade1287a58a354f848232241255485a2f777b2"
+    },
+    {
+      "path": "low-memory-background.js",
+      "sha256": "911239ee2f39049dc16e2b27f4e750f92e425456e1e100044869f602898e27a6"
+    },
+    {
+      "path": "low-memory-config.js",
+      "sha256": "98b1c17c73fc06cc8cb2fe6d325962cebf7bf7650b5c9f500708264f99592857"
+    },
+    {
+      "path": "low-memory-core.js",
+      "sha256": "c4d39acf8db0fc61ab8691393357034d0dc391d94134f608b20a1499124ce941"
+    },
+    {
+      "path": "low-memory-page.js",
+      "sha256": "36bf18b97aab8d5a0ac3e06f4505ec0a5f2578e0ec9958d98de18245984d78bd"
+    },
+    {
+      "path": "manifest.json",
+      "sha256": "98c96509510e139333b0f7a33af8efec17cd3536e48e1da407d37d33aba4c1c3"
+    },
+    {
+      "path": "pdf-export-model.js",
+      "sha256": "e3a534ba52ef278c03ab318a29b08692732b421098fb96dbd5de34ad979b390a"
+    },
+    {
+      "path": "pdf/pdf-export-page.js",
+      "sha256": "63b0048b498397c795aa06d04394e28404050709fbaf055c69223b76c30f352b"
+    },
+    {
+      "path": "pdf/pdf-export.css",
+      "sha256": "152cc402c373f4dc4b9f885a195da2decc592a16dfa39de7a75f152fd1a931bc"
+    },
+    {
+      "path": "pdf/pdf-export.html",
+      "sha256": "dc8310fe60e6ec3a316d755bfd723ca5c64f1a2a758e80bdb5b0939b82fd1271"
+    },
+    {
+      "path": "popup/index.html",
+      "sha256": "fa9ae2bda6771dd640c914005d1f67c1d6f08418df7a1b60918ee63a4a195a3a"
+    },
+    {
+      "path": "popup/popup.css",
+      "sha256": "8646c829cc21278082d62e65cbe29a94f6a193c722db6caba89ad270848e9ae8"
+    },
+    {
+      "path": "popup/popup.js",
+      "sha256": "be234e93ecad43ca150a39b326ac0d8f421524f88da43a80027329d81d065c69"
+    },
+    {
+      "path": "popup/qa.html",
+      "sha256": "2217f26069064a2d3a255e1a28fcc0404334e312d368f1a8aead5fe19622de65"
+    },
+    {
+      "path": "popup/qa.js",
+      "sha256": "1b1881fc9902a21302066a2b80189751992fc08ea4e9de7c6ca6ab42c58c1f13"
+    },
+    {
+      "path": "popup/troubleshooting.html",
+      "sha256": "e8c212d6f7819e95743866faf02aa75457258ccf620bb78471c11efc841e668c"
+    },
+    {
+      "path": "popup/troubleshooting.js",
+      "sha256": "aa4f393d1ed31da342fa84c7ad6c005d616432c0cd1df82946227cab64219d5f"
+    }
+  ]
+}
