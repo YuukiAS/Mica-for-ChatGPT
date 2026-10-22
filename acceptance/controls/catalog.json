@@ -62,6 +62,7 @@
     {"id": "forged-target-surface-backend-rehash", "expected": "REJECT"},
     {"id": "forged-answer-action-backend-rehash", "expected": "REJECT"},
     {"id": "forged-highlight-record-sanitization-rehash", "expected": "REJECT"},
+    {"id": "forged-answer-scope-clear-rehash", "expected": "REJECT"},
     {"id": "forged-local-import-budget-rehash", "expected": "REJECT"},
     {"id": "forged-chatgpt-ui-isolation-rehash", "expected": "REJECT"},
     {"id": "packaging-version-mismatch", "expected": "REJECT"},

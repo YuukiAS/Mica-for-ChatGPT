@@ -1,6 +1,6 @@
 {
   "name": "mica-for-chatgpt",
-  "version": "0.5.11",
+  "version": "0.5.12",
   "private": true,
   "description": "Local Chromium extension for a calmer, more capable ChatGPT workspace.",
   "type": "module",

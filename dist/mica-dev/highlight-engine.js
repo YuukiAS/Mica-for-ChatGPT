@@ -144,6 +144,26 @@
     });
   }
 
+  function removeRecordsForExactAnswer(value, scope = {}) {
+    const records = sanitizeRecords(value);
+    const exactScope = exactAnswerScope(scope);
+    if (!exactScope) {
+      return { records, removedCount: 0, reason: "exact_answer_scope_required" };
+    }
+    const remaining = records.filter((record) => record.anchor.conversationId !== exactScope.conversationId || record.anchor.turnId !== exactScope.turnId);
+    const removedCount = records.length - remaining.length;
+    return {
+      records: remaining,
+      removedCount,
+      reason: removedCount > 0 ? "answer_highlights_removed" : "answer_highlights_empty"
+    };
+  }
+
+  function exactAnswerScope(scope = {}) {
+    if (!validIdentity(scope.conversationId, 512) || !validIdentity(scope.turnId, 512)) return null;
+    return { conversationId: scope.conversationId, turnId: scope.turnId };
+  }
+
   function validRecord(record) {
     const anchor = record?.anchor;
     return record?.schemaVersion === MODEL_VERSION
@@ -246,6 +266,8 @@
     exportJson,
     importJson,
     mergeRecords,
-    recordsForScope
+    recordsForScope,
+    removeRecordsForExactAnswer,
+    exactAnswerScope
   });
 })();

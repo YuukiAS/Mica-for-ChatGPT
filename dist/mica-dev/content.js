@@ -1,7 +1,7 @@
 (() => {
-  const VERSION = "0.5.11";
-  const VERSION_NAME = "0.5.11";
-  const BUILD_LABEL = "functional-convergence.12";
+  const VERSION = "0.5.12";
+  const VERSION_NAME = "0.5.12";
+  const BUILD_LABEL = "functional-convergence.13";
   const CONTRACT_HASH = "6a5aacc436288b2dfbabd7ec6725114acc34fc3d910faaa9db812c5c5f679d9b";
   const DEFAULT_SETTINGS = Object.freeze({ enabled: true, lowMemory: true, highlighter: true, copyExport: true, reliability: true, hideSuggestedWork: false, lowMemoryKeepCount: 40, lowMemoryThreshold: 80 });
   const RECOVERY_AUTH = Object.freeze({ popup: Symbol("popup"), settings: Symbol("settings"), trustedGesture: Symbol("trusted-gesture") });
@@ -649,14 +649,19 @@
     pendingHighlight = recordId ? { recordId } : pendingHighlight;
     highlightToolbar.toggleAttribute("data-editing", !!recordId);
     const deleteButton = highlightToolbar.shadowRoot.querySelector("[data-action='delete']");
+    const clearAnswerButton = highlightToolbar.shadowRoot.querySelector("[data-action='clear-answer']");
     deleteButton.hidden = !recordId;
+    const answerScope = pendingHighlightAnswerScope();
+    clearAnswerButton.hidden = !answerScope || highlightEngine.recordsForScope(highlightRecords, answerScope).length === 0;
     for (const button of highlightToolbar.shadowRoot.querySelectorAll("[data-color]")) {
       button.toggleAttribute("data-default", button.dataset.color === highlightInteraction.defaultColor);
     }
     if (!highlightToolbar.isConnected) document.documentElement.append(highlightToolbar);
-    const toolbarWidth = Math.min(highlightToolbar.getBoundingClientRect().width || 520, innerWidth - 24);
+    const toolbarBounds = highlightToolbar.getBoundingClientRect();
+    const toolbarWidth = Math.min(toolbarBounds.width || 520, innerWidth - 24);
+    const toolbarHeight = toolbarBounds.height || 40;
     highlightToolbar.style.left = `${Math.max(12, Math.min(innerWidth - toolbarWidth - 12, rect.left + rect.width / 2 - toolbarWidth / 2))}px`;
-    highlightToolbar.style.top = `${rect.top >= 104 ? rect.top - 92 : rect.bottom + 8}px`;
+    highlightToolbar.style.top = `${rect.top >= toolbarHeight + 20 ? rect.top - toolbarHeight - 8 : rect.bottom + 8}px`;
     if (focusToolbar) highlightToolbar.shadowRoot.querySelector("button:not([hidden])")?.focus();
   }
 
@@ -682,12 +687,14 @@
       <button type="button" data-action="notion" aria-label="Copy answer for Notion">Copy for Notion</button>
       <button type="button" data-action="pdf" aria-label="Export answer as PDF">Export PDF</button>
       <button type="button" data-action="delete" aria-label="Delete highlight">Delete</button>
+      <button type="button" data-action="clear-answer" aria-label="Clear highlights from this answer">Clear answer highlights</button>
     </div>`;
     shadow.addEventListener("click", async (event) => {
       if (!event.isTrusted) return;
       const button = event.target instanceof Element ? event.target.closest("button") : null;
       if (!button) return;
       if (button.dataset.action === "delete" && pendingHighlight?.recordId) await deleteHighlight(pendingHighlight.recordId);
+      else if (button.dataset.action === "clear-answer") await clearHighlightsForAnswer(pendingHighlightAnswerScope());
       else if (button.dataset.action === "pdf") await exportPendingAnswer();
       else if (button.dataset.action === "markdown") await copyPendingAnswer("markdown");
       else if (button.dataset.action === "notion") await copyPendingAnswer("notion");
@@ -736,6 +743,29 @@
     const next = highlightRecords.filter((record) => record.id !== recordId);
     if (next.length === highlightRecords.length) return false;
     highlightRecords = next;
+    await persistHighlightRecords();
+    reconcileHighlights();
+    return true;
+  }
+
+  function pendingHighlightAnswerScope() {
+    const documentModel = pendingHighlight?.documentModel;
+    if (documentModel?.durable) {
+      return highlightEngine?.exactAnswerScope?.({ conversationId: documentModel.conversationId, turnId: documentModel.turnId }) || null;
+    }
+    const record = pendingHighlight?.recordId
+      ? highlightRecords.find((item) => item.id === pendingHighlight.recordId)
+      : null;
+    return record
+      ? highlightEngine?.exactAnswerScope?.({ conversationId: record.anchor.conversationId, turnId: record.anchor.turnId }) || null
+      : null;
+  }
+
+  async function clearHighlightsForAnswer(scope) {
+    if (!highlightEngine?.removeRecordsForExactAnswer) return false;
+    const cleared = highlightEngine.removeRecordsForExactAnswer(highlightRecords, scope);
+    if (cleared.removedCount === 0) return false;
+    highlightRecords = cleared.records;
     await persistHighlightRecords();
     reconcileHighlights();
     return true;
@@ -1109,6 +1139,7 @@
       getHighlightRecords: () => structuredClone(highlightRecords),
       updateHighlightColor,
       deleteHighlight,
+      clearHighlightsForAnswer,
       exportPendingAnswer,
       copyPendingAnswer,
       getRecoveryStatus: () => recoveryController?.snapshot?.() || null,

@@ -1,6 +1,6 @@
-export const MACHINE_VERSION = "0.5.11";
-export const VERSION_NAME = "0.5.11";
-export const BUILD_LABEL = "functional-convergence.12";
+export const MACHINE_VERSION = "0.5.12";
+export const VERSION_NAME = "0.5.12";
+export const BUILD_LABEL = "functional-convergence.13";
 export const DEV_BUILD = true;
 export const RELEASE_TAG = `v${VERSION_NAME}`;
 export const DEV_DIST_DIR_NAME = "mica-dev";

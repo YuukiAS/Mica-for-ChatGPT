@@ -229,6 +229,11 @@ export async function runControlCorpus(repoRoot) {
       evidence(context.manifest, "highlight-record-integrity").measurement.unknownTopLevelFieldsStripped = false;
       refreshRoot(context.manifest);
     }],
+    ["forged-answer-scope-clear-rehash", async (context) => {
+      await mutateJsonArtifact(context, "highlight-record-integrity", (value) => { value.answerScopedClearIsolated = false; });
+      evidence(context.manifest, "highlight-record-integrity").measurement.answerScopedClearIsolated = false;
+      refreshRoot(context.manifest);
+    }],
     ["forged-local-import-budget-rehash", async (context) => {
       await mutateJsonArtifact(context, "local-import-integrity", (value) => { value.highlightFileBudgetEnforced = false; });
       evidence(context.manifest, "local-import-integrity").measurement.highlightFileBudgetEnforced = false;
@@ -771,6 +776,10 @@ function controlHighlightRecordIntegrity() {
     unknownAnchorFieldsStripped: true,
     unknownAnnotationFieldsStripped: true,
     mutationHelpersResanitize: true,
+    exactAnswerScopedClear: true,
+    answerScopeRequiresConversationAndTurn: true,
+    answerScopedClearIsolated: true,
+    answerScopedClearResanitizes: true,
     oversizedIdentityRejected: true,
     oversizedSourceOffsetsRejected: true,
     chatgptImportExportRoundTrip: true,

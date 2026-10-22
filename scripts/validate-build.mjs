@@ -156,7 +156,9 @@ for (const token of [
   "exportJson",
   "importJson",
   "mergeRecords",
-  "recordsForScope"
+  "recordsForScope",
+  "removeRecordsForExactAnswer",
+  "exactAnswerScope"
 ]) assert(highlightEngine.includes(token), `HighlightEngine missing ${token}`);
 assert(!highlightEngine.includes("...candidate"), "HighlightEngine import must reconstruct allowlisted fields");
 for (const token of ["MicaGeneralWebHighlightModel", "micaGeneralWebHighlightsV1", "quote_ambiguous", "root_mismatch", "annotationLimits", "withAnnotation", "recordsForPage", "mergeRecords"]) assert(generalWebModel.includes(token), `general web model missing ${token}`);
@@ -192,7 +194,7 @@ for (const token of [
   "rawDomIncluded: false"
 ]) assert(content.includes(token), `content runtime missing ${token}`);
 for (const token of ["collectConversationBundle", "conversationExportStatus", "completenessProof", "MicaConversationExport"]) assert(content.includes(token), `conversation export runtime missing ${token}`);
-for (const token of ["data-mica-ui", "highlight-toolbar", "Copy Markdown", "Copy for Notion", "event.isTrusted", "CSS.highlights", "handleHighlightShortcutKeydown", "applyDefaultHighlightShortcut", "permanentToolbar: false"]) {
+for (const token of ["data-mica-ui", "highlight-toolbar", "Copy Markdown", "Copy for Notion", "Clear answer highlights", "clearHighlightsForAnswer", "event.isTrusted", "CSS.highlights", "handleHighlightShortcutKeydown", "applyDefaultHighlightShortcut", "permanentToolbar: false"]) {
   assert(content.includes(token), `Highlighter runtime missing ${token}`);
 }
 for (const token of ["MicaPdfExport", "buildConversationModel", "unsupported_answer_structure", "semantic-mathml-with-visible-tex-fallback", "cellInlines", "sanitizeMarks", "safeHref", "sanitizeMathMlTree", "MAX_MATHML_NODES", "mathRendering", "pageSize", "includeHighlights", "localOnly: true"]) assert(pdfExportModel.includes(token), `PDF export model missing ${token}`);

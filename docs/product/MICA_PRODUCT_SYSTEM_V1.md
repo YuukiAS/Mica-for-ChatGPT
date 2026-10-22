@@ -663,6 +663,8 @@ Required cases:
 
 If one unique target cannot be proven, the highlight record remains stored but is not automatically attached to a different location. The UI may mark it unresolved; it must never silently restore to the wrong phrase.
 
+Destructive highlight actions must use the same identity boundary. Deleting one highlight is record-ID scoped. Clearing one answer requires an exact conversation identity and turn identity; a partial scope must fail closed, and records for other turns or conversations must remain untouched.
+
 Do not depend on one absolute DOM path.
 
 ### 7.3 PDF

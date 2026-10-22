@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "updatedAt": "2026-10-22",
   "candidate": {
-    "version": "0.5.11",
-    "buildLabel": "functional-convergence.12",
+    "version": "0.5.12",
+    "buildLabel": "functional-convergence.13",
     "branch": "codex/mica-functional-convergence",
     "releaseReady": false,
     "browserExecutionAllowedThisRun": false
@@ -182,7 +182,7 @@
       "realAcceptance": "Current candidate on target low-memory device",
       "status": "IMPLEMENTED_UNVERIFIED",
       "result": "Data-plane code is retained; background settings migration was updated.",
-      "gap": "The current 0.5.11 runtime was not exercised in a browser."
+      "gap": "The current 0.5.12 runtime was not exercised in a browser."
     },
     {
       "id": "MFC-200",
@@ -191,12 +191,12 @@
       "existingImplementation": true,
       "module": "extension/src/features/highlighter",
       "iterationAction": "retain",
-      "successBehavior": "Selection-owned toolbar creates four-color anchors and ambiguous matches remain unresolved.",
-      "automatedVerification": ["existing highlighter fixture evidence", "highlight-interaction-policy-fixture", "static build validation"],
+      "successBehavior": "Selection-owned toolbar creates four-color anchors, deletes one record or clears one exact answer scope, and ambiguous matches remain unresolved.",
+      "automatedVerification": ["existing highlighter fixture evidence", "highlight-interaction-policy-fixture", "highlight-record-integrity-fixture", "static build validation"],
       "realAcceptance": "Current ChatGPT answer selection and remount",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "CSS Custom Highlight architecture is retained, shares copy/export actions, and consumes the settings-backed interaction policy for selection and shortcut paths.",
-      "gap": "The new interaction wiring and prior AnswerDocument changes were not browser-tested."
+      "result": "CSS Custom Highlight architecture is retained, shares copy/export actions, consumes the settings-backed interaction policy, and now exposes a trusted toolbar action that clears only records matching the current conversation and turn.",
+      "gap": "The new interaction wiring, answer-scoped clear button and prior AnswerDocument changes were not browser-tested."
     },
     {
       "id": "MFC-201",
@@ -205,12 +205,12 @@
       "existingImplementation": false,
       "module": "highlight engine and options",
       "iterationAction": "new",
-      "successBehavior": "Versioned JSON import/export sanitizes, bounds and merges records without uploading data.",
+      "successBehavior": "Versioned JSON import/export sanitizes, bounds and merges records without uploading data; answer-scoped deletion requires exact conversation and turn identity.",
       "automatedVerification": ["highlight-record-integrity-fixture", "convergence-core-fixture", "static build validation", "acceptance preflight"],
       "realAcceptance": "Settings page file picker and download",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "ChatGPT and general-web records now expose the same bounded note/tag annotation interface. Legacy records migrate to an empty annotation; imports and mutation helpers reconstruct allowlisted fields, reject oversized identities and source offsets, and exclude unknown top-level, anchor and annotation payloads from later export.",
-      "gap": "The annotation interface is backend-only in this candidate, and rendered Options file interactions were not browser-tested."
+      "result": "ChatGPT and general-web records now expose the same bounded note/tag annotation interface. Legacy records migrate to an empty annotation; imports and mutation helpers reconstruct allowlisted fields, reject oversized identities and source offsets, and exclude unknown top-level, anchor and annotation payloads from later export. ChatGPT answer-scoped clear fails closed unless both conversationId and turnId are present, removes all versions of that answer, preserves other scopes, and resanitizes retained records.",
+      "gap": "The annotation interface is backend-only in this candidate; the answer-scoped toolbar action and rendered Options file interactions were not browser-tested."
     },
     {
       "id": "MFC-202",
@@ -443,11 +443,11 @@
       "existingImplementation": true,
       "module": "scripts/release-config.mjs and dist/mica-dev",
       "iterationAction": "repair",
-      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.11.",
+      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.12.",
       "automatedVerification": ["npm run build", "npm run test:build"],
-      "realAcceptance": "Extension manager shows 0.5.11 after reload",
+      "realAcceptance": "Extension manager shows 0.5.12 after reload",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Runtime version is 0.5.11 with build label functional-convergence.12.",
+      "result": "Runtime version is 0.5.12 with build label functional-convergence.13.",
       "gap": "Extension manager display was not opened."
     },
     {
@@ -489,7 +489,7 @@
       "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "recovery-action-policy-fixture", "target-surface-backend-fixture", "highlight-record-integrity-fixture", "local-import-integrity-fixture", "chatgpt-ui-compatibility-fixture", "acceptance preflight", "build validator"],
       "realAcceptance": "Full acceptance candidate run",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Validator 1.15.0 binds answer-action, export-fidelity, semantic-MathML, highlight-record, local-import and ChatGPT UI compatibility invariants. The control corpus accepts 13 known-good controls and rejects 50 known-bad controls, including a rehashed false capability-isolation claim.",
+      "result": "Validator 1.16.0 binds answer-action, export-fidelity, semantic-MathML, highlight-record, exact answer-scope clear, local-import and ChatGPT UI compatibility invariants. The control corpus accepts 13 known-good controls and rejects 51 known-bad controls, including rehashed false answer-scope isolation and capability-isolation claims.",
       "gap": "A complete browser-bound candidate bundle was not materialized or run in this no-browser iteration."
     }
   ]

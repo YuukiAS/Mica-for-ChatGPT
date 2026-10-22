@@ -94,6 +94,34 @@ assert.equal(chatgpt.importJson(chatgptExport).records.length, 1);
 assert.equal(chatgpt.sanitizeRecords([{ ...chatgptRecord, id: `highlight-${"a".repeat(129)}` }]).length, 0);
 assert.equal(chatgpt.sanitizeRecords([{ ...chatgptRecord, anchor: { ...chatgptRecord.anchor, sourceSpan: { start: 0, end: 10_000_001 } } }]).length, 0);
 
+const answerScopeRecords = [
+  { ...poisonedChatgpt, id: "highlight-11111111" },
+  { ...chatgptRecord, id: "highlight-22222222", anchor: { ...chatgptRecord.anchor, documentId: "document-integrity-edited", sourceVersion: "source-integrity-edited" } },
+  { ...chatgptRecord, id: "highlight-33333333", anchor: { ...chatgptRecord.anchor, turnId: "turn-other" } },
+  { ...chatgptRecord, id: "highlight-44444444", anchor: { ...chatgptRecord.anchor, conversationId: "conversation-other" } }
+];
+const clearedAnswer = chatgpt.removeRecordsForExactAnswer(answerScopeRecords, {
+  conversationId: answerDocument.conversationId,
+  turnId: answerDocument.turnId,
+  ignoredField: "not-retained"
+});
+assert.deepEqual(JSON.parse(JSON.stringify(chatgpt.exactAnswerScope({
+  conversationId: answerDocument.conversationId,
+  turnId: answerDocument.turnId,
+  ignoredField: "not-retained"
+}))), { conversationId: answerDocument.conversationId, turnId: answerDocument.turnId });
+assert.equal(chatgpt.exactAnswerScope({ conversationId: answerDocument.conversationId }), null);
+assert.equal(chatgpt.exactAnswerScope({ conversationId: answerDocument.conversationId, turnId: "turn\nunsafe" }), null);
+assert.equal(clearedAnswer.removedCount, 2);
+assert.equal(clearedAnswer.reason, "answer_highlights_removed");
+assert.deepEqual(JSON.parse(JSON.stringify(clearedAnswer.records.map((record) => record.id))), ["highlight-33333333", "highlight-44444444"]);
+assert.equal(JSON.stringify(clearedAnswer.records).includes("chatgpt-top-level-secret"), false);
+const partialScopeClear = chatgpt.removeRecordsForExactAnswer(answerScopeRecords, { conversationId: answerDocument.conversationId });
+assert.equal(partialScopeClear.removedCount, 0);
+assert.equal(partialScopeClear.reason, "exact_answer_scope_required");
+assert.equal(partialScopeClear.records.length, 4);
+assert.equal(JSON.stringify(partialScopeClear.records).includes("chatgpt-top-level-secret"), false);
+
 const pageText = "Intro alpha target omega.";
 const webRecord = web.createRecord({
   pageKey: "https://example.com/article?tracking=1",
@@ -154,6 +182,10 @@ const output = {
   unknownAnchorFieldsStripped: true,
   unknownAnnotationFieldsStripped: true,
   mutationHelpersResanitize: true,
+  exactAnswerScopedClear: true,
+  answerScopeRequiresConversationAndTurn: true,
+  answerScopedClearIsolated: true,
+  answerScopedClearResanitizes: true,
   oversizedIdentityRejected: true,
   oversizedSourceOffsetsRejected: true,
   chatgptImportExportRoundTrip: true,
