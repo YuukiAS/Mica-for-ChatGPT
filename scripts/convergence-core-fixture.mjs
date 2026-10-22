@@ -96,7 +96,7 @@ assert.equal((notion.html.match(/data-mica-equation="inline"/g) || []).length, 5
 assert.match(notion.html, /data-equation-expression="I_g\(\\eta\)"/);
 assert.ok(notion.plainText.indexOf("$\\varepsilon_i$") < notion.plainText.indexOf("$M_\\beta$"));
 assert.equal(serializer.serializeConversation([answer], {}).reason, "conversation_completeness_unproven");
-assert.equal(serializer.serializeConversation([answer], { completeSelection: true }).answerCount, 1);
+assert.equal(serializer.serializeConversation([answer], { completeSelection: true }).reason, "conversation_completeness_unproven", "caller boolean must not bypass conversation proof");
 const notionImport = serializer.serializeNotionImport(answer);
 assert.equal(notionImport.ok, true);
 assert.match(notionImport.fileName, /^mica-answer-fixture\.md$/);

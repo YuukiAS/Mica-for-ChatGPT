@@ -1,6 +1,6 @@
-export const MACHINE_VERSION = "0.5.1";
-export const VERSION_NAME = "0.5.1";
-export const BUILD_LABEL = "functional-convergence.2";
+export const MACHINE_VERSION = "0.5.2";
+export const VERSION_NAME = "0.5.2";
+export const BUILD_LABEL = "functional-convergence.3";
 export const DEV_BUILD = true;
 export const RELEASE_TAG = `v${VERSION_NAME}`;
 export const DEV_DIST_DIR_NAME = "mica-dev";
@@ -10,6 +10,7 @@ export const REQUIRED_EXTENSION_FILES = [
   "manifest.json",
   "chatgpt-adapter.js",
   "answer-document.js",
+  "conversation-export.js",
   "settings-model.js",
   "answer-serializer.js",
   "highlight-engine.js",

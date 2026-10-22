@@ -54,6 +54,7 @@ const manifest = {
         "settings-model.js",
         "chatgpt-adapter.js",
         "answer-document.js",
+        "conversation-export.js",
         "answer-serializer.js",
         "highlight-engine.js",
         "pdf-export-model.js",
@@ -83,6 +84,7 @@ const render = (source) => Object.entries(replacements).reduce((value, [key, rep
 const content = render(await readFile(path.join(srcDir, "content.ts"), "utf8"));
 const chatgptAdapter = render(await readFile(path.join(srcDir, "core", "chatgpt-adapter.ts"), "utf8"));
 const answerDocument = render(await readFile(path.join(srcDir, "core", "answer-document.ts"), "utf8"));
+const conversationExport = render(await readFile(path.join(srcDir, "features", "export", "conversation-export.ts"), "utf8"));
 const settingsModel = render(await readFile(path.join(srcDir, "settings", "settings-model.ts"), "utf8"));
 const answerSerializer = render(await readFile(path.join(srcDir, "features", "export", "answer-serializer.ts"), "utf8"));
 const highlightEngine = render(await readFile(path.join(srcDir, "features", "highlighter", "highlight-engine.ts"), "utf8"));
@@ -106,6 +108,7 @@ const pdfExportPage = render(await readFile(path.join(root, "extension", "pdf", 
 await writeFile(path.join(outDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 await writeFile(path.join(outDir, "chatgpt-adapter.js"), chatgptAdapter);
 await writeFile(path.join(outDir, "answer-document.js"), answerDocument);
+await writeFile(path.join(outDir, "conversation-export.js"), conversationExport);
 await writeFile(path.join(outDir, "settings-model.js"), settingsModel);
 await writeFile(path.join(outDir, "answer-serializer.js"), answerSerializer);
 await writeFile(path.join(outDir, "highlight-engine.js"), highlightEngine);

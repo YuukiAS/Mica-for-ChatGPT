@@ -132,6 +132,14 @@
       active: stateName === "active" && meta.actualTruncation === true,
       keptTurns: meta.retainedRecentTurns || meta.visibleKept || 0,
       totalTurns: meta.visibleTotal || 0,
+      completenessProof: Number.isInteger(meta.visibleTotal) && meta.visibleTotal > 0 && /^[a-f0-9]{8}$/.test(meta.visibleRoleSequenceHash || "") ? {
+        schemaVersion: 1,
+        expectedTurnCount: meta.visibleTotal,
+        roleSequenceHash: meta.visibleRoleSequenceHash,
+        source: "validated-conversation-graph",
+        conversationId: `conversation-${hashText(location.pathname)}`,
+        capturedAt: new Date().toISOString()
+      } : null,
       removedTurns: Math.max(0, (meta.visibleTotal || 0) - (meta.visibleKept || 0)),
       keptNodes: meta.keptNodes || 0,
       totalNodes: meta.totalNodes || 0,
@@ -153,6 +161,15 @@
     const detail = JSON.stringify(next);
     document.documentElement?.setAttribute("data-mica-low-memory-page-status", detail);
     globalThis.dispatchEvent(new CustomEvent(STATUS_EVENT, { detail }));
+  }
+
+  function hashText(value) {
+    let hash = 2166136261;
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(16).padStart(8, "0");
   }
 
   if (document.documentElement?.dataset?.micaFixture === "true") {

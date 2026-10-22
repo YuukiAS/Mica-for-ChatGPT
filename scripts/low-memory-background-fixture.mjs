@@ -15,6 +15,7 @@ assert(firstInstall.beforeDelay === false && firstInstall.registered === true &&
 assert(storageFailure.registered === false && storageFailure.unregisterCalls >= 1, "storage failure did not fail open by removing the interceptor");
 assert(disabled.registered === false && disabled.unregisterCalls >= 1, "disabled setting left the interceptor registered");
 assert(workerRestartRecovery.unregisteredBeforeReload && workerRestartRecovery.stayedUnregisteredAfterRestart && workerRestartRecovery.registeredAfterComplete && workerRestartRecovery.mode === "full_history_bypass", "full-history reload was not durable across service-worker restart");
+assert(workerRestartRecovery.completenessProofPreserved, "conversation completeness proof was not durable across service-worker restart");
 
 const output = { passed: true, firstInstall, storageFailure, disabled, workerRestartRecovery, controlChannel: "chrome.scripting.registerContentScripts", siteWritableConfigAccepted: false };
 const evidenceDir = path.join(root, "results", "mica-product-system-rebuild", "low-memory-evidence");
@@ -62,18 +63,29 @@ async function runWorkerRestartRecovery() {
   const shared = { registered: false, session: {}, registerCalls: 0, unregisterCalls: 0 };
   const first = createBackgroundInstance(shared);
   await new Promise((resolve) => setTimeout(resolve, 30));
-  await new Promise((resolve) => first.chrome.runtime.onMessage.listeners[0]({ type: "MICA_LOW_MEMORY_PREPARE_FULL_HISTORY" }, { tab: { id: 7, url: "https://chatgpt.com/c/fixture" } }, resolve));
+  const completenessProof = {
+    schemaVersion: 1,
+    expectedTurnCount: 84,
+    roleSequenceHash: "1234abcd",
+    source: "validated-conversation-graph",
+    conversationId: "conversation-12345678",
+    capturedAt: new Date().toISOString()
+  };
+  await new Promise((resolve) => first.chrome.runtime.onMessage.listeners[0]({ type: "MICA_LOW_MEMORY_PREPARE_FULL_HISTORY", completenessProof }, { tab: { id: 7, url: "https://chatgpt.com/c/fixture" } }, resolve));
   const unregisteredBeforeReload = !shared.registered;
   const second = createBackgroundInstance(shared);
   await new Promise((resolve) => setTimeout(resolve, 30));
   const stayedUnregisteredAfterRestart = !shared.registered;
   second.chrome.tabs.onUpdated.listeners[0](7, { status: "complete" });
   await new Promise((resolve) => setTimeout(resolve, 40));
+  const tabMode = await new Promise((resolve) => second.chrome.runtime.onMessage.listeners[0]({ type: "MICA_LOW_MEMORY_GET_TAB_MODE" }, { tab: { id: 7, url: "https://chatgpt.com/c/fixture" } }, resolve));
   return {
     unregisteredBeforeReload,
     stayedUnregisteredAfterRestart,
     registeredAfterComplete: shared.registered,
     mode: shared.session["mica.lowMemory.tabModes.v3"]?.["7"] || null,
+    completenessProofPreserved: tabMode?.completenessProof?.conversationId === completenessProof.conversationId
+      && tabMode?.completenessProof?.expectedTurnCount === completenessProof.expectedTurnCount,
     registerCalls: shared.registerCalls,
     unregisterCalls: shared.unregisterCalls
   };

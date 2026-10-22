@@ -97,6 +97,10 @@ h2 { font-size: 13px; line-height: 1.35; font-weight: 650; }
 .capability-control { display: grid; justify-items: end; gap: 2px; }
 .inline-action { min-height: 32px; padding: 5px 9px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--accent-ink); cursor: pointer; font-weight: 600; }
 .inline-action:disabled { cursor: wait; opacity: .62; }
+.conversation-export-row { align-items: flex-start; }
+.conversation-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 164px; justify-items: stretch; }
+.conversation-actions .inline-action { min-width: 0; padding-inline: 7px; font-size: 11px; }
+.conversation-actions .capability-value { grid-column: 1 / -1; max-width: none; text-align: center; }
 
 .compatibility-line { gap: 12px; min-height: 70px; padding: 14px 0; border-bottom: 1px solid var(--border); }
 .compatibility-line p { max-width: 285px; margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.4; }
@@ -164,6 +168,7 @@ h2 { font-size: 13px; line-height: 1.35; font-weight: 650; }
   .shell { padding: 12px; }
   .capability-row { align-items: flex-start; flex-direction: column; gap: 5px; }
   .capability-value { max-width: none; text-align: left; }
+  .conversation-actions { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

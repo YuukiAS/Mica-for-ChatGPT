@@ -47,6 +47,17 @@
           <div><h2>History window</h2></div>
           <button id="load-full-history" class="inline-action" type="button">Load full history</button>
         </div>
+        <div id="conversation-export-row" class="capability-row conversation-export-row">
+          <div>
+            <h2>Complete conversation</h2>
+            <p id="conversation-export-detail">Checking whether every turn is available.</p>
+          </div>
+          <div class="conversation-actions">
+            <button id="copy-conversation" class="inline-action" type="button" disabled>Copy Markdown</button>
+            <button id="export-conversation-pdf" class="inline-action" type="button" disabled>Export PDF</button>
+            <span id="conversation-export-state" class="capability-value" aria-live="polite">Checking…</span>
+          </div>
+        </div>
         <div class="capability-row compact">
           <div><h2>Page health</h2></div>
           <span id="page-health" class="capability-value">Checking…</span>

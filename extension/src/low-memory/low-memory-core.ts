@@ -187,8 +187,9 @@
       if (!Array.isArray(children) || children.some((child) => typeof child !== "string" || !adapter.getNode(child))) return { ok: false, reason: "graph_invalid" };
       if (index + 1 < path.length && !children.includes(path[index + 1])) return { ok: false, reason: "graph_invalid" };
     }
-    const visibleTotal = path.reduce((total, id) => total + (isVisible(adapter.getNode(id), adapter) ? 1 : 0), 0);
-    const baseMeta = { totalNodes, visibleTotal, recentTurnLimit: keepCount };
+    const visibleRoles = path.filter((id) => isVisible(adapter.getNode(id), adapter)).map((id) => adapter.getRole(adapter.getNode(id)));
+    const visibleTotal = visibleRoles.length;
+    const baseMeta = { totalNodes, visibleTotal, visibleRoleSequenceHash: hashText(visibleRoles.join("|")), recentTurnLimit: keepCount };
     if (visibleTotal < threshold) return { ok: true, apply: false, rootId, meta: { ...baseMeta, visibleKept: visibleTotal, keptNodes: totalNodes } };
 
     let visibleSeen = 0;
@@ -426,6 +427,15 @@
 
   function byteLength(value) {
     return new TextEncoder().encode(value).byteLength;
+  }
+
+  function hashText(value) {
+    let hash = 2166136261;
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(16).padStart(8, "0");
   }
 
   function clamp(value, min, max) {

@@ -1,6 +1,6 @@
 # Mica 功能收敛 V1
 
-Mica `0.5.1` 是一次后端功能收敛候选，不是正式发布。它在 `codex/mica-product-system-rebuild` 的 Foundation、Low Memory、Highlighter 和 PDF 基础上，新增统一设置模型、AnswerDocument 驱动的 Markdown/Notion 序列化、高亮记录迁移、有边界的断流恢复状态机，以及按站点授权的普通网页高亮运行时。当前用户明确禁止启动浏览器和操作真实 ChatGPT，因此本轮只把纯 Node、静态构建与存储合同能够证明的部分标为已验证；真实页面交互、PDF 查看器和 Notion 原生公式均保留明确缺口。
+Mica `0.5.2` 是一次后端功能收敛候选，不是正式发布。它在 `codex/mica-product-system-rebuild` 的 Foundation、Low Memory、Highlighter 和 PDF 基础上，新增统一设置模型、AnswerDocument 驱动的 Markdown/Notion 序列化、完整会话导出、高亮记录迁移、有边界的断流恢复状态机，以及按站点授权的普通网页高亮运行时。当前用户明确禁止启动浏览器和操作真实 ChatGPT，因此本轮只把纯 Node、静态构建、存储合同和验收器控制集能够证明的部分标为已验证；真实页面交互、PDF 查看器和 Notion 原生公式均保留明确缺口。
 
 配套机器矩阵位于 [`MICA_FUNCTIONAL_CONVERGENCE_V1.json`](MICA_FUNCTIONAL_CONVERGENCE_V1.json)。它是当前功能状态的唯一机器可读来源，README 和 ROADMAP 只做面向读者的摘要。
 
@@ -22,6 +22,11 @@ ChatGPTAdapter
      -> Highlighter anchors
      -> Markdown / Notion serializer
      -> PDF export model
+
+Low Memory validated graph
+  -> 不含正文的完整性证明
+     -> ConversationExportCoordinator
+        -> 完整会话 Markdown / PDF
 
 SettingsModel（schemaVersion 5）
   -> popup / options / content / service worker
@@ -50,6 +55,12 @@ Notion 有两条清楚区分的路径：
 - Import file 生成确定性的 GFM Markdown 文件，用作一次导入的保底路径。它不冒充直接粘贴已通过，也不声称导入后一定是原生公式。
 
 要求中的中文五公式样本已经进入纯 Node 回归，并检查五个行内公式的数量和顺序。
+
+### 完整会话导出
+
+完整会话导出不再接受调用方传入的 `completeSelection=true`。Low Memory 在裁剪客户端历史前，从已经通过全图校验的当前分支生成可见 turn 数量和角色顺序哈希；用户选择加载完整历史时，这份不含正文的证明会按 tab 保存在 `chrome.storage.session`，并在 reload 后继续使用。
+
+导出协调器随后核对 conversation 身份、精确 turn 数量、角色顺序、唯一且连续的 turn 身份，以及每个用户/助手文档的 settled 与 durable 状态。任何局部窗口、过期会话、重复 ID、角色顺序变化、streaming 回答或空文档都会 fail closed。验证通过后，Markdown 保留用户与助手交替顺序；整段 PDF 复用单回答模型，并把逻辑高亮偏移到合并后的全文坐标。弹窗提供 `Copy Markdown` 和 `Export PDF` 两个入口，但真实 clipboard、full-history reload 和 PDF viewer 本轮没有打开，因此该能力仍是 `IMPLEMENTED_UNVERIFIED`。
 
 ### 高亮记录
 
@@ -91,11 +102,13 @@ Notion 有两条清楚区分的路径：
 | MFC-200 | Issue #9、Milestone B | ChatGPT 正文与公式高亮 | `IMPLEMENTED_UNVERIFIED` | 既有 fixture 证据 | 当前构建浏览器回归 |
 | MFC-202 | Issue #9、本轮 §5 | 普通网页高亮 | `IMPLEMENTED_UNVERIFIED` | 锚点与动态注册 fixture | 可选站点权限 + 文章页 |
 | MFC-220 | Milestone B、本轮 §6 | 回答 PDF 与高亮继承 | `IMPLEMENTED_UNVERIFIED` | 既有 fixture 证据 | 当前构建 PDF viewer |
+| MFC-221 | 本轮 §6.1 | 完整会话 Markdown/PDF 导出 | `IMPLEMENTED_UNVERIFIED` | completeness fixture + 后台存储 + validator gate | full-history reload、clipboard、PDF viewer |
 | MFC-300 | 本轮 §8/§11 | 版本化设置和安全上限 | `IMPLEMENTED_VERIFIED` | convergence core | 设置页渲染 |
 | MFC-400 | Issue #4、本轮 §8 | 60 秒无进展状态机 | `IMPLEMENTED_VERIFIED` | convergence core | 真实断流流程 |
 | MFC-401 | Issue #4、本轮 §8 | 有界自动刷新和跨刷新去重 | `IMPLEMENTED_UNVERIFIED` | 状态/存储合同 | 真实 ChatGPT 回合 |
 | MFC-410 | Issues #5/#6 | 输入框与连接器旧故障收敛 | `BLOCKED_BY_REAL_EXTERNAL_DEPENDENCY` | 历史证据存在 | 失败页精确 DOM/AX 合同 |
 | MFC-420 | 历史任务 | Hide suggested work | `MISSING` | 仅设置项 | 精确且稳定的目标结构 |
+| MFC-620 | 本轮 §13 | 验收器拒绝伪完整性结论 | `IMPLEMENTED_VERIFIED` | validator 1.6.0 preflight | 完整浏览器候选 run |
 
 完整字段、模块归属、成功行为和未解决差距见 JSON 矩阵。
 
@@ -106,26 +119,28 @@ Notion 有两条清楚区分的路径：
 ```bash
 npm run build
 node scripts/convergence-core-fixture.mjs
+node scripts/conversation-export-fixture.mjs
 node scripts/recovery-controller-fixture.mjs
 node scripts/general-web-core-fixture.mjs
 node scripts/general-web-background-fixture.mjs
 node scripts/low-memory-background-fixture.mjs
 npm run test:build
+npm run acceptance:preflight
 ```
 
-`convergence-core-fixture.mjs` 覆盖设置迁移和安全上限、Markdown/Notion 序列化、五公式样本、对话完整性门槛、高亮记录导入导出，以及可靠性 15 类关键状态。它不替代真实 ChatGPT、系统剪贴板、Notion、PDF viewer 或实际设置页渲染。
+`convergence-core-fixture.mjs` 覆盖设置迁移和安全上限、Markdown/Notion 序列化、五公式样本、高亮记录导入导出，以及可靠性 15 类关键状态。`conversation-export-fixture.mjs` 另行覆盖完整性证明、turn/role 身份绑定、整段 Markdown/PDF、高亮偏移，以及对 partial、stale、streaming 和伪造输入的拒绝。Acceptance validator `1.6.0` 已加入 `functional-convergence` profile；预检接受 7 个 known-good，并拒绝全部 41 个 known-bad。它们都不替代真实 ChatGPT、系统剪贴板、Notion、PDF viewer 或实际设置页渲染。
 
 ## 明确保留的差距
 
 以下工作没有被虚假标成完成：
 
 - 普通网页高亮的实际权限提示、文章页渲染与交互验收；
-- 整段 conversation 的完整选择和 PDF 产品入口；
+- 整段 conversation 的 full-history reload、系统剪贴板和 PDF viewer 验收；
 - Notion 一次粘贴后的原生可编辑公式；
 - 原生 Stop、assistant retry 和确认未提交后的自动 resend；
 - 历史 Composer / Connector 修复在当前真实页面上的精确收敛；
 - Hide suggested work 的当前 ChatGPT 结构合同；
-- 当前 `0.5.1` 的浏览器、真实 ChatGPT、PDF viewer 和 Notion 验收；
-- 将新增门槛正式并入现有 acceptance validator。
+- 当前 `0.5.2` 的浏览器、真实 ChatGPT、PDF viewer 和 Notion 验收；
+- `functional-convergence` profile 的完整浏览器候选物化与 candidate run。
 
-这些缺口不会阻止源码和开发构建继续存在，但会阻止把 `0.5.1` 称为发布候选或声称全功能验收通过。
+这些缺口不会阻止源码和开发构建继续存在，但会阻止把 `0.5.2` 称为发布候选或声称全功能验收通过。

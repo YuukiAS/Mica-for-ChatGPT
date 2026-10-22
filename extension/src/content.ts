@@ -9,6 +9,7 @@
   const answerDocument = globalThis.MicaAnswerDocument;
   const settingsModel = globalThis.MicaSettingsModel;
   const answerSerializer = globalThis.MicaAnswerSerializer;
+  const conversationExport = globalThis.MicaConversationExport;
   const highlightEngine = globalThis.MicaHighlightEngine;
   const pdfExport = globalThis.MicaPdfExport;
   const recoveryController = globalThis.MicaRecoveryController;
@@ -35,7 +36,11 @@
     settings = await readSettings();
     const tabMode = await globalThis.MicaLowMemoryConfig?.getTabMode?.();
     if (tabMode?.mode === "full_history_bypass") {
-      lowMemoryStatus = { ...defaultLowMemoryStatus("user_requested_full_history"), state: "full_history_bypass" };
+      lowMemoryStatus = {
+        ...defaultLowMemoryStatus("user_requested_full_history"),
+        state: "full_history_bypass",
+        completenessProof: sanitizeCompletenessProof(tabMode.completenessProof)
+      };
     }
     setupMessages();
     setupStorageSignals();
@@ -180,6 +185,7 @@
         singleProducer: "MicaChatGPTAdapter"
       },
       lowMemory: { ...lowMemoryStatus, enabled: settings.enabled && settings.lowMemory },
+      conversationExport: conversationExportStatus(inspection),
       updatedAt: new Date().toISOString()
     };
   }
@@ -245,6 +251,7 @@
         capabilities: []
       },
       lowMemory: { ...lowMemoryStatus, enabled: false },
+      conversationExport: { ready: false, reason: "copy_export_disabled" },
       updatedAt: new Date().toISOString()
     };
   }
@@ -272,6 +279,14 @@
       if (message?.type === "MICA_SERIALIZE_ANSWER") {
         sendResponse(serializeAnswer(message.turnId, message.format));
         return false;
+      }
+      if (message?.type === "MICA_SERIALIZE_CONVERSATION") {
+        sendResponse(serializeConversation());
+        return false;
+      }
+      if (message?.type === "MICA_EXPORT_CONVERSATION_PDF") {
+        void exportConversationPdf().then(sendResponse);
+        return true;
       }
       if (message?.type === "MICA_LOAD_FULL_HISTORY") {
         void requestFullHistory("popup", RECOVERY_AUTH.popup).then(sendResponse);
@@ -351,6 +366,7 @@
       bytesRemoved: clampNumber(value.bytesRemoved, 0, Number.MAX_SAFE_INTEGER, 0),
       recentTurnLimit: clampNumber(value.recentTurnLimit, 8, 120, settings.lowMemoryKeepCount || 40),
       actualTruncation: value.actualTruncation === true,
+      completenessProof: sanitizeCompletenessProof(value.completenessProof),
       telemetryTrust: "page_untrusted",
       recoveryAuthorization: "extension_ui_or_trusted_user_gesture",
       truncatedRepresentation: value.truncatedRepresentation === "client-history-window" ? value.truncatedRepresentation : "client-history-window",
@@ -365,7 +381,7 @@
     return {
       state: "standby", reason, source: "none", active: false, keptTurns: 0, totalTurns: 0,
       removedTurns: 0, keptNodes: 0, totalNodes: 0, bytesBefore: 0, bytesAfter: 0,
-      bytesRemoved: 0, recentTurnLimit: 40, actualTruncation: false,
+      bytesRemoved: 0, recentTurnLimit: 40, actualTruncation: false, completenessProof: null,
       telemetryTrust: "page_untrusted", recoveryAuthorization: "extension_ui_or_trusted_user_gesture",
       truncatedRepresentation: "client-history-window", serverMutation: false,
       reactManagedInteractiveNodesDetached: false, contentUpload: false, updatedAt: new Date().toISOString()
@@ -439,7 +455,7 @@
     if (!Object.values(RECOVERY_AUTH).includes(authorization)) return { ok: false, reason: "trusted_action_required" };
     if (!lowMemoryStatus.active && lowMemoryStatus.state !== "restore_required") return { ok: false, reason: "not_windowed" };
     if (!safeToReload()) return { ok: false, reason: "active_draft_or_stream" };
-    const prepared = await globalThis.MicaLowMemoryConfig?.prepareFullHistory?.();
+    const prepared = await globalThis.MicaLowMemoryConfig?.prepareFullHistory?.(lowMemoryStatus.completenessProof);
     if (!prepared?.ok) return { ok: false, reason: prepared?.reason || "runtime_unavailable" };
     lowMemoryStatus = { ...lowMemoryStatus, state: "restoring", active: false, reason };
     reconcileHistoryControl();
@@ -845,6 +861,78 @@
     });
   }
 
+  function conversationExportStatus(inspection = adapter.inspect(document)) {
+    if (!conversationExport) return { ready: false, reason: "conversation_export_unavailable" };
+    const status = conversationExport.readiness({
+      enabled: settings.enabled && settings.copyExport,
+      lowMemoryActive: lowMemoryStatus.active,
+      conversationId: currentConversationId(),
+      completenessProof: lowMemoryStatus.completenessProof,
+      inspection
+    });
+    if (!status.ready) return status;
+    const lastAssistant = [...inspection.turns].reverse().find((turn) => turn.role === "assistant");
+    if (!lastAssistant || adapter.generationStateForTurn(lastAssistant) !== "SETTLED") return { ...status, ready: false, reason: "assistant_not_settled" };
+    if (inspection.turns.some((turn) => !(turn.contentRoot instanceof HTMLElement))) return { ...status, ready: false, reason: "turn_content_unavailable" };
+    return status;
+  }
+
+  function collectConversationBundle() {
+    if (!conversationExport || !answerSerializer) return { ok: false, reason: "conversation_export_unavailable", localOnly: true };
+    const inspection = adapter.inspect(document);
+    const conversationId = currentConversationId();
+    return conversationExport.collect({
+      inspection,
+      conversationId,
+      completenessProof: lowMemoryStatus.completenessProof,
+      createDocument: (turn) => turn.role === "assistant"
+        ? answerDocument.fromAssistantTurn(turn, { conversationId, generationState: adapter.generationStateForTurn(turn) })
+        : answerDocument.fromUserTurn(turn, { conversationId })
+    });
+  }
+
+  function serializeConversation() {
+    if (!settings.enabled || !settings.copyExport || !answerSerializer) return { ok: false, reason: "copy_export_disabled", localOnly: true };
+    const collected = collectConversationBundle();
+    if (!collected.ok) return collected;
+    return answerSerializer.serializeConversation(collected.bundle, {
+      flavor: productSettings?.export?.markdownFlavor,
+      inlineMathDelimiter: productSettings?.export?.inlineMathDelimiter,
+      displayMathDelimiter: productSettings?.export?.displayMathDelimiter
+    });
+  }
+
+  async function exportConversationPdf() {
+    if (!settings.enabled || !settings.copyExport || !pdfExport?.buildConversationModel) return { ok: false, reason: "pdf_unavailable", localOnly: true };
+    const collected = collectConversationBundle();
+    if (!collected.ok) return collected;
+    const built = pdfExport.buildConversationModel(collected.bundle, highlightRecords);
+    if (!built.ok) return built;
+    const token = globalThis.crypto?.randomUUID?.();
+    if (!token) return { ok: false, reason: "secure_token_unavailable", localOnly: true };
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: "MICA_OPEN_PDF_EXPORT", token, model: built.model }, (response) => resolve(chrome.runtime.lastError
+        ? { ok: false, reason: "pdf_handoff_failed", localOnly: true }
+        : response || { ok: false, reason: "pdf_handoff_failed", localOnly: true }));
+    });
+  }
+
+  function sanitizeCompletenessProof(value) {
+    if (value?.schemaVersion !== 1 || value.source !== "validated-conversation-graph") return null;
+    if (!Number.isInteger(value.expectedTurnCount) || value.expectedTurnCount < 1 || value.expectedTurnCount > 20000) return null;
+    if (!/^[a-f0-9]{8}$/.test(value.roleSequenceHash || "")) return null;
+    const suppliedConversationId = typeof value.conversationId === "string" ? value.conversationId : null;
+    if (!/^conversation-[a-f0-9]{8}$/.test(suppliedConversationId || "")) return null;
+    return {
+      schemaVersion: 1,
+      expectedTurnCount: value.expectedTurnCount,
+      roleSequenceHash: value.roleSequenceHash,
+      source: value.source,
+      conversationId: suppliedConversationId,
+      capturedAt: typeof value.capturedAt === "string" && Number.isFinite(Date.parse(value.capturedAt)) ? value.capturedAt : new Date().toISOString()
+    };
+  }
+
   function buildSanitizedQaReport() {
     const status = refreshStatus();
     return {
@@ -887,6 +975,13 @@
       buildSanitizedQaReport,
       getAnswerDocument,
       serializeAnswer,
+      collectConversationBundle,
+      serializeConversation,
+      getConversationExportStatus: () => conversationExportStatus(),
+      buildConversationPdfModel: () => {
+        const collected = collectConversationBundle();
+        return collected.ok ? pdfExport?.buildConversationModel?.(collected.bundle, highlightRecords) || null : collected;
+      },
       applySettings,
       requestFullHistory,
       getLowMemoryStatus: () => ({ ...lowMemoryStatus }),

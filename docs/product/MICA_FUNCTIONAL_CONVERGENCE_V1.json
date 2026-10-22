@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "updatedAt": "2026-10-22",
   "candidate": {
-    "version": "0.5.1",
-    "buildLabel": "functional-convergence.2",
+    "version": "0.5.2",
+    "buildLabel": "functional-convergence.3",
     "branch": "codex/mica-functional-convergence",
     "releaseReady": false,
     "browserExecutionAllowedThisRun": false
@@ -154,7 +154,7 @@
       "realAcceptance": "Current candidate on target low-memory device",
       "status": "IMPLEMENTED_UNVERIFIED",
       "result": "Data-plane code is retained; background settings migration was updated.",
-      "gap": "The current 0.5.1 runtime was not exercised in a browser."
+      "gap": "The current 0.5.2 runtime was not exercised in a browser."
     },
     {
       "id": "MFC-200",
@@ -217,14 +217,14 @@
       "source": ["goal section 6.1"],
       "userProblem": "Export a complete selected conversation without disguising a partial client window as complete.",
       "existingImplementation": false,
-      "module": "answer serializer and future conversation export coordinator",
+      "module": "conversation export coordinator, answer serializer, PDF model, Low Memory completeness proof and popup",
       "iterationAction": "new",
       "successBehavior": "Conversation export proceeds only after completeness is proven.",
-      "automatedVerification": ["convergence-core-fixture completeness rejection"],
+      "automatedVerification": ["conversation-export-fixture", "low-memory-background-fixture", "acceptance preflight", "static build validation"],
       "realAcceptance": "Full-history selection and exported document review",
-      "status": "MISSING",
-      "result": "The backend rejects unproven completeness, but no collection/product entry path exists.",
-      "gap": "A safe complete-range coordinator is still required."
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "result": "A validated conversation-graph proof survives the full-history reload, then binds exact turn count, role order, conversation identity and settled AnswerDocuments before Markdown or PDF export. The popup exposes both actions and partial Low Memory windows are rejected.",
+      "gap": "The full-history reload, popup clipboard path and resulting PDF still require one browser-bound acceptance pass."
     },
     {
       "id": "MFC-300",
@@ -359,11 +359,11 @@
       "existingImplementation": true,
       "module": "extension/popup",
       "iterationAction": "repair",
-      "successBehavior": "Popup keeps normal status surfaces and opens the unified settings page.",
+      "successBehavior": "Popup keeps normal status surfaces, exposes proof-gated complete-conversation export and opens the unified settings page.",
       "automatedVerification": ["static build validation"],
       "realAcceptance": "Popup rendering at required widths, zoom and themes",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "Settings entry is wired without restoring the old diagnostic matrix.",
+      "result": "Settings and proof-gated complete-conversation Markdown/PDF actions are wired without restoring the old diagnostic matrix.",
       "gap": "No rendered popup test was run in this browser-free iteration."
     },
     {
@@ -373,11 +373,11 @@
       "existingImplementation": true,
       "module": "scripts/release-config.mjs and dist/mica-dev",
       "iterationAction": "repair",
-      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.1.",
+      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.2.",
       "automatedVerification": ["npm run build", "npm run test:build"],
-      "realAcceptance": "Extension manager shows 0.5.1 after reload",
+      "realAcceptance": "Extension manager shows 0.5.2 after reload",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Runtime version is 0.5.1 with build label functional-convergence.2.",
+      "result": "Runtime version is 0.5.2 with build label functional-convergence.3.",
       "gap": "Extension manager display was not opened."
     },
     {
@@ -413,14 +413,14 @@
       "source": ["goal section 13", "Acceptance Harness"],
       "userProblem": "Make existing candidate validation reject false full-function claims.",
       "existingImplementation": true,
-      "module": "acceptance and scripts/convergence-core-fixture.mjs",
+      "module": "acceptance validator, controls and functional-convergence profile",
       "iterationAction": "repair",
       "successBehavior": "Known-bad controls remain rejected and convergence requirements become formal candidate gates.",
-      "automatedVerification": ["convergence-core-fixture", "build validator"],
+      "automatedVerification": ["conversation-export-fixture", "acceptance preflight", "build validator"],
       "realAcceptance": "Full acceptance candidate run",
-      "status": "MISSING",
-      "result": "A focused pure regression was added, but the formal acceptance schema was not expanded.",
-      "gap": "Full harness integration and browser-bound controls remain."
+      "status": "IMPLEMENTED_VERIFIED",
+      "result": "Validator 1.6.0 adds a functional-convergence profile and a conversation-export-completeness gate bound to fixture evidence. Seven known-good controls pass and all 41 known-bad controls, including rehashed forged completeness, are rejected.",
+      "gap": "A complete browser-bound candidate bundle was not materialized or run in this no-browser iteration."
     }
   ]
 }

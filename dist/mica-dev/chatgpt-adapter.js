@@ -49,13 +49,15 @@
         continue;
       }
       const turnId = element.getAttribute("data-testid") || `mica-turn-${turns.length + 1}`;
+      const contentRoot = findContentRoot(roleNode);
       turns.push({
         turnId,
         order: turns.length,
         role,
         element,
         roleElement: roleNode,
-        answerRoot: role === "assistant" ? findAnswerRoot(roleNode) : null,
+        contentRoot,
+        answerRoot: role === "assistant" ? contentRoot : null,
         variantId: isFixture(doc) ? "fixture-turn-section-role-v1" : "conversation-turn-section-role-v1"
       });
       seen.add(element);
@@ -63,9 +65,9 @@
     return { turns, invalid, candidateCount: candidates.length };
   }
 
-  function findAnswerRoot(roleNode) {
+  function findContentRoot(roleNode) {
     if (!(roleNode instanceof HTMLElement)) return null;
-    return roleNode.querySelector(":scope > .markdown, :scope > [data-message-content], :scope > .prose") || roleNode;
+    return roleNode.querySelector(":scope > .markdown, :scope > [data-message-content], :scope > .prose, :scope > .whitespace-pre-wrap") || roleNode;
   }
 
   function findComposer(doc = document) {

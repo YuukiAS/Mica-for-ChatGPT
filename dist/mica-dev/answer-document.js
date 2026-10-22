@@ -29,6 +29,7 @@
     const sourceVersion = `${generationState.toLowerCase()}-${hashText(stableStringify(orderedBlocks.map(blockIdentity)))}`;
     return {
       modelVersion: MODEL_VERSION,
+      role: "assistant",
       documentId,
       conversationId,
       turnId: turn.turnId,
@@ -36,6 +37,29 @@
       generationState,
       orderedBlocks,
       durable: generationState === "SETTLED",
+      producedBy: "MicaChatGPTAdapter",
+      contractHash: globalThis.MicaChatGPTAdapter?.contractHash || null
+    };
+  }
+
+  function fromUserTurn(turn, options = {}) {
+    const root = turn?.contentRoot || turn?.roleElement;
+    if (!turn || turn.role !== "user" || !(root instanceof HTMLElement)) return null;
+    const conversationId = options.conversationId || conversationIdentity(root.ownerDocument);
+    const documentId = `user-${hashText(`${conversationId}:${turn.turnId}`)}`;
+    const state = { cursor: 0, documentId };
+    const orderedBlocks = parseBlocks(root, state);
+    const sourceVersion = `settled-${hashText(stableStringify(orderedBlocks.map(blockIdentity)))}`;
+    return {
+      modelVersion: MODEL_VERSION,
+      role: "user",
+      documentId,
+      conversationId,
+      turnId: turn.turnId,
+      sourceVersion,
+      generationState: "SETTLED",
+      orderedBlocks,
+      durable: true,
       producedBy: "MicaChatGPTAdapter",
       contractHash: globalThis.MicaChatGPTAdapter?.contractHash || null
     };
@@ -468,6 +492,7 @@
     modelVersion: MODEL_VERSION,
     blockKinds: BLOCK_KINDS,
     fromAssistantTurn,
+    fromUserTurn,
     captureHighlightSelection,
     resolveHighlightAnchor,
     extractRawMathSources

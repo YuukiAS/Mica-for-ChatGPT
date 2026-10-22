@@ -13,7 +13,7 @@
   globalThis.MicaLowMemoryConfig = Object.freeze({
     syncRegistration: () => send("MICA_LOW_MEMORY_SYNC"),
     getTabMode: () => send("MICA_LOW_MEMORY_GET_TAB_MODE"),
-    prepareFullHistory: () => send("MICA_LOW_MEMORY_PREPARE_FULL_HISTORY"),
+    prepareFullHistory: (completenessProof = null) => send("MICA_LOW_MEMORY_PREPARE_FULL_HISTORY", { completenessProof }),
     resumeWindowing: () => send("MICA_LOW_MEMORY_RESUME_WINDOWING")
   });
 })();

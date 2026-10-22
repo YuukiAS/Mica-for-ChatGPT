@@ -34,6 +34,69 @@
     };
   }
 
+  function buildConversationModel(bundle, records = []) {
+    const checked = globalThis.MicaConversationExport?.validateBundle?.(bundle);
+    if (!checked?.ok) return failure(checked?.reason || "conversation_completeness_unproven");
+    const state = { text: "", blocks: [], highlights: [], unresolved: 0, order: 0 };
+    const counts = { user: 0, assistant: 0 };
+    for (const entry of checked.bundle.entries) {
+      const built = buildModel(entry.document, entry.role === "assistant" ? records : []);
+      if (!built.ok) return failure(`conversation_turn_failed:${built.reason}`);
+      counts[entry.role] += 1;
+      if (state.text) state.text += "\n\n";
+      const label = entry.role === "user" ? `User ${counts.user}` : `Assistant ${counts.assistant}`;
+      const headingStart = state.text.length;
+      state.text += label;
+      state.blocks.push({
+        blockId: `conversation-role-${entry.order}`,
+        kind: "heading",
+        order: state.order++,
+        level: 2,
+        units: [{ text: label, kind: "text", start: headingStart, end: state.text.length, rawTeX: null, href: null }]
+      });
+      state.text += "\n";
+      const offset = state.text.length;
+      state.text += built.model.plainText;
+      for (const block of built.model.blocks) state.blocks.push(shiftBlock(block, offset, state.order++));
+      for (const highlight of built.model.highlights) state.highlights.push({ ...highlight, start: highlight.start + offset, end: highlight.end + offset });
+      state.unresolved += built.model.unresolvedHighlightCount;
+      if (state.text.length > MAX_TEXT_LENGTH) return failure("conversation_too_large");
+    }
+    return {
+      ok: true,
+      model: {
+        schemaVersion: MODEL_VERSION,
+        title: "ChatGPT conversation",
+        documentId: checked.bundle.bundleId,
+        conversationId: checked.bundle.conversationId,
+        turnId: null,
+        sourceVersion: checked.bundle.completionProof.turnSequenceHash,
+        createdAt: new Date().toISOString(),
+        blocks: state.blocks,
+        plainText: state.text,
+        highlights: state.highlights,
+        unresolvedHighlightCount: state.unresolved,
+        mathFallback: "visible-tex-source",
+        turnCount: checked.bundle.entries.length,
+        answerCount: counts.assistant,
+        completionProof: { ...checked.bundle.completionProof },
+        localOnly: true
+      }
+    };
+  }
+
+  function shiftBlock(block, offset, order) {
+    const shifted = { ...block, order };
+    if (Array.isArray(block.units)) shifted.units = block.units.map((unit) => shiftUnit(unit, offset));
+    if (Array.isArray(block.items)) shifted.items = block.items.map((item) => item.map((unit) => shiftUnit(unit, offset)));
+    if (Array.isArray(block.rows)) shifted.rows = block.rows.map((row) => row.map((cell) => cell.map((unit) => shiftUnit(unit, offset))));
+    return shifted;
+  }
+
+  function shiftUnit(unit, offset) {
+    return { ...unit, start: unit.start + offset, end: unit.end + offset };
+  }
+
   function serializeBlock(block, state) {
     if (state.text) appendSeparator(state, "\n");
     const base = { blockId: block.blockId, kind: block.kind, order: block.order };
@@ -135,5 +198,5 @@
     return { ok: false, reason };
   }
 
-  globalThis.MicaPdfExport = Object.freeze({ modelVersion: MODEL_VERSION, buildModel });
+  globalThis.MicaPdfExport = Object.freeze({ modelVersion: MODEL_VERSION, buildModel, buildConversationModel });
 })();

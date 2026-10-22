@@ -29,6 +29,7 @@
     "stayedUnregisteredAfterRestart": true,
     "registeredAfterComplete": true,
     "mode": "full_history_bypass",
+    "completenessProofPreserved": true,
     "registerCalls": 2,
     "unregisterCalls": 1
   },

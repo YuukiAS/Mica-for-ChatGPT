@@ -67,17 +67,32 @@
     };
   }
 
-  function serializeConversation(documents, options = {}) {
-    if (!options.completeSelection) return failure("conversation_completeness_unproven");
-    if (!Array.isArray(documents) || documents.length === 0) return failure("conversation_empty");
+  function serializeConversation(bundle, options = {}) {
+    const checked = globalThis.MicaConversationExport?.validateBundle?.(bundle);
+    if (!checked?.ok) return failure(checked?.reason || "conversation_completeness_unproven");
     const serialized = [];
-    for (const documentModel of documents) {
-      const output = serializeMarkdown(documentModel, options);
-      if (!output.ok) return failure(`conversation_answer_failed:${output.reason}`);
-      serialized.push(output);
+    const counts = { user: 0, assistant: 0 };
+    for (const entry of checked.bundle.entries) {
+      const output = serializeMarkdown(entry.document, options);
+      if (!output.ok) return failure(`conversation_turn_failed:${output.reason}`);
+      counts[entry.role] += 1;
+      serialized.push({ ...output, role: entry.role, label: entry.role === "user" ? `User ${counts.user}` : `Assistant ${counts.assistant}` });
     }
-    const markdown = serialized.map((item, index) => `## Assistant answer ${index + 1}\n\n${item.markdown}`).join("\n\n---\n\n");
-    return { ok: true, schemaVersion: MODEL_VERSION, format: "conversation-markdown", markdown, plainText: markdown, answerCount: serialized.length, warnings: unique(serialized.flatMap((item) => item.warnings)), localOnly: true };
+    const markdown = serialized.map((item) => `## ${item.label}\n\n${item.markdown}`).join("\n\n---\n\n");
+    if (markdown.length > MAX_DOCUMENT_CHARS) return failure("conversation_too_large");
+    return {
+      ok: true,
+      schemaVersion: MODEL_VERSION,
+      format: "conversation-markdown",
+      bundleId: checked.bundle.bundleId,
+      markdown,
+      plainText: markdown,
+      turnCount: serialized.length,
+      answerCount: counts.assistant,
+      completionProof: { ...checked.bundle.completionProof },
+      warnings: unique(serialized.flatMap((item) => item.warnings)),
+      localOnly: true
+    };
   }
 
   function blockToMarkdown(block, config, warnings) {

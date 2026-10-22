@@ -18,6 +18,7 @@ const ALL_GATES = [
   "adapter-contract",
   "answer-document-core",
   "copy-serialization",
+  "conversation-export-completeness",
   "copy-placement",
   "core-flow-regression",
   "send-lifecycle-safety",
@@ -33,6 +34,7 @@ export async function runControlCorpus(repoRoot) {
   const scenarios = new Map([
     ["complete-measured-bundle", async () => {}],
     ["known-good-current-popup", async (context) => { context.requestedGateIds = ["popup-render"]; }],
+    ["known-good-conversation-export-completeness", async (context) => { context.requestedGateIds = ["conversation-export-completeness"]; }],
     ["known-good-adapter-contract", async (context) => { context.requestedGateIds = ["adapter-contract"]; }],
     ["known-good-low-memory-fixture", async (context) => { context.requestedGateIds = ["low-memory-benefit"]; }],
     ["known-good-highlighter-fixture", async (context) => { context.requestedGateIds = ["highlight-remount"]; }],
@@ -175,6 +177,11 @@ export async function runControlCorpus(repoRoot) {
     ["stale-chatgpt-contract", async ({ manifest }) => { evidence(manifest, "adapter-contract").measurement.capabilities[0].invalidatedBy = ["newer incompatible surface"]; refreshRoot(manifest); }],
     ["control-bundle-presented-as-candidate", async (context) => { context.expectedBundleKind = "candidate"; }],
     ["copy-serialization-output-mismatch", async ({ manifest }) => { evidence(manifest, "copy-serialization").measurement.cases[0].actualArtifactId = "copy-rich-actual"; refreshRoot(manifest); }],
+    ["forged-conversation-completeness-rehash", async (context) => {
+      await mutateJsonArtifact(context, "conversation-export", (value) => { value.forgedCompletenessRejected = false; });
+      evidence(context.manifest, "conversation-export-completeness").measurement.forgedCompletenessRejected = false;
+      refreshRoot(context.manifest);
+    }],
     ["packaging-version-mismatch", async ({ bundleDir, manifest }) => {
       await writeFile(path.join(bundleDir, "artifacts", "version-report.json"), JSON.stringify({
         sourceVersion: "9.9.9",
@@ -265,6 +272,7 @@ async function createGoodBundle(repoRoot) {
     ["copy-rich-actual", "artifacts/copy-rich-actual.html", "text/html", "<p>rich html output</p>"],
     ["copy-mixed-expected", "artifacts/copy-mixed-expected.txt", "text/plain", "math code table output"],
     ["copy-mixed-actual", "artifacts/copy-mixed-actual.txt", "text/plain", "math code table output"],
+    ["conversation-export", "artifacts/conversation-export.json", "application/json", JSON.stringify(controlConversationExport())],
     ["built-manifest", "artifacts/built-manifest.json", "application/json", JSON.stringify({ version: "0.0.0" })],
     ["version-report", "artifacts/version-report.json", "application/json", JSON.stringify({
       sourceVersion: "0.0.0",
@@ -413,6 +421,7 @@ async function createGoodBundle(repoRoot) {
         { id: "mixed-math-code-table", expectedArtifactId: "copy-mixed-expected", actualArtifactId: "copy-mixed-actual" }
       ]
     }),
+    record("conversation-export-completeness", { surface: "conversation-export-coordinator" }, ["conversation-export"], controlConversationExport()),
     record("copy-placement", { surface: "assistant-action-cluster" }, ["chatgpt-contract", "current-chatgpt-bootstrap"], {
       actionInjected: false,
       capabilityStatus: "UNKNOWN",
@@ -552,6 +561,20 @@ function controlHistory() {
     disableRestoresFullHistory: true,
     closeOrUninstallRestoresFullHistory: true,
     serverHistoryUnchanged: true
+  };
+}
+
+function controlConversationExport() {
+  return {
+    passed: true,
+    exactCompletenessProof: true,
+    roleAndTurnIdentityBound: true,
+    markdownConversation: true,
+    pdfConversation: true,
+    highlightsShifted: true,
+    lowMemoryRequiresFullHistory: true,
+    forgedCompletenessRejected: true,
+    streamingAssistantRejected: true
   };
 }
 

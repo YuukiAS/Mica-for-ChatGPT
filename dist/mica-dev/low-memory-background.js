@@ -613,6 +613,7 @@
 const SCRIPT_ID = "mica-low-memory-main-v3";
 const MATCHES = ["https://chatgpt.com/*", "https://chat.openai.com/*"];
 const MODE_KEY = "mica.lowMemory.tabModes.v3";
+const COMPLETENESS_KEY = "mica.lowMemory.completeness.v1";
 const DEFAULTS = Object.freeze({ enabled: true, lowMemory: true });
 const SETTINGS_KEY = globalThis.MicaSettingsModel?.storageKey || "micaSettings";
 const RECOVERY_PREFIX = "mica.recovery.v1.";
@@ -633,6 +634,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   pendingFullHistory.delete(tabId);
   void clearTabMode(tabId);
+  void clearCompletenessProof(tabId);
   void chrome.storage.session.remove(`${RECOVERY_PREFIX}${tabId}`);
 });
 
@@ -646,11 +648,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
   if (message?.type === "MICA_LOW_MEMORY_GET_TAB_MODE") {
-    void getTabMode(sender.tab?.id).then((mode) => sendResponse({ ok: true, mode }));
+    void getTabMode(sender.tab?.id).then((state) => sendResponse({ ok: true, ...state }));
     return true;
   }
   if (message?.type === "MICA_LOW_MEMORY_PREPARE_FULL_HISTORY") {
-    void prepareFullHistory(sender.tab).then(sendResponse);
+    void prepareFullHistory(sender.tab, message.completenessProof).then(sendResponse);
     return true;
   }
   if (message?.type === "MICA_LOW_MEMORY_RESUME_WINDOWING") {
@@ -744,10 +746,13 @@ async function syncRegistrationNow() {
   }
 }
 
-async function prepareFullHistory(tab) {
+async function prepareFullHistory(tab, completenessProof) {
   if (!isSupportedTab(tab)) return { ok: false, reason: "unsupported_tab" };
   try {
     await setTabMode(tab.id, "preparing_full_history");
+    const proof = sanitizeCompletenessProof(completenessProof);
+    if (proof) await setCompletenessProof(tab.id, proof);
+    else await clearCompletenessProof(tab.id);
     pendingFullHistory.add(tab.id);
     const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [SCRIPT_ID] });
     if (existing.length) await chrome.scripting.unregisterContentScripts({ ids: [SCRIPT_ID] });
@@ -755,6 +760,7 @@ async function prepareFullHistory(tab) {
   } catch (error) {
     pendingFullHistory.delete(tab.id);
     await clearTabMode(tab.id);
+    await clearCompletenessProof(tab.id);
     return { ok: false, reason: `registration_failed:${String(error?.message || error || "unknown")}` };
   }
 }
@@ -762,6 +768,7 @@ async function prepareFullHistory(tab) {
 async function resumeWindowing(tab) {
   if (!isSupportedTab(tab)) return { ok: false, reason: "unsupported_tab" };
   await clearTabMode(tab.id);
+  await clearCompletenessProof(tab.id);
   const synced = await syncRegistration();
   return synced.ok && synced.registered
     ? { ok: true, mode: "windowing", reloadRequired: true }
@@ -798,10 +805,12 @@ async function migrateSettings() {
 }
 
 async function getTabMode(tabId) {
-  if (!Number.isInteger(tabId)) return "native";
+  if (!Number.isInteger(tabId)) return { mode: "native", completenessProof: null };
   const modes = await readModes();
   const mode = modes[String(tabId)] || "windowing";
-  return mode === "preparing_full_history" ? "full_history_bypass" : mode;
+  const effectiveMode = mode === "preparing_full_history" ? "full_history_bypass" : mode;
+  const proof = effectiveMode === "full_history_bypass" ? await getCompletenessProof(tabId) : null;
+  return { mode: effectiveMode, completenessProof: proof };
 }
 
 async function finishFullHistoryReload(tabId) {
@@ -817,6 +826,7 @@ async function clearCompletedTabMode(tabId) {
   const modes = await readModes();
   if (modes[String(tabId)] === "preparing_full_history") return;
   await clearTabMode(tabId);
+  await clearCompletenessProof(tabId);
 }
 
 async function setTabMode(tabId, mode) {
@@ -840,6 +850,58 @@ function readModes() {
       resolve(value && typeof value === "object" && !Array.isArray(value) ? { ...value } : {});
     });
   });
+}
+
+async function getCompletenessProof(tabId) {
+  if (!Number.isInteger(tabId)) return null;
+  const proofs = await readCompletenessProofs();
+  const proof = sanitizeCompletenessProof(proofs[String(tabId)]);
+  if (!proof || proof.expiresAt <= Date.now()) {
+    if (proofs[String(tabId)]) await clearCompletenessProof(tabId);
+    return null;
+  }
+  return proof;
+}
+
+async function setCompletenessProof(tabId, value) {
+  if (!Number.isInteger(tabId)) return;
+  const proof = sanitizeCompletenessProof(value);
+  if (!proof) return clearCompletenessProof(tabId);
+  const proofs = await readCompletenessProofs();
+  proofs[String(tabId)] = { ...proof, expiresAt: Date.now() + 2 * 60 * 60 * 1000 };
+  await chrome.storage.session.set({ [COMPLETENESS_KEY]: proofs });
+}
+
+async function clearCompletenessProof(tabId) {
+  if (!Number.isInteger(tabId)) return;
+  const proofs = await readCompletenessProofs();
+  delete proofs[String(tabId)];
+  await chrome.storage.session.set({ [COMPLETENESS_KEY]: proofs });
+}
+
+function readCompletenessProofs() {
+  return new Promise((resolve) => {
+    chrome.storage.session.get({ [COMPLETENESS_KEY]: {} }, (items) => {
+      if (chrome.runtime.lastError) return resolve({});
+      const value = items?.[COMPLETENESS_KEY];
+      resolve(value && typeof value === "object" && !Array.isArray(value) ? { ...value } : {});
+    });
+  });
+}
+
+function sanitizeCompletenessProof(value) {
+  if (value?.schemaVersion !== 1 || !Number.isInteger(value.expectedTurnCount) || value.expectedTurnCount < 1 || value.expectedTurnCount > 20000) return null;
+  if (!/^[a-f0-9]{8}$/.test(value.roleSequenceHash || "") || value.source !== "validated-conversation-graph") return null;
+  if (typeof value.conversationId !== "string" || !/^conversation-[a-f0-9]{8}$/.test(value.conversationId)) return null;
+  return {
+    schemaVersion: 1,
+    expectedTurnCount: value.expectedTurnCount,
+    roleSequenceHash: value.roleSequenceHash,
+    source: value.source,
+    conversationId: value.conversationId,
+    capturedAt: typeof value.capturedAt === "string" && Number.isFinite(Date.parse(value.capturedAt)) ? value.capturedAt : new Date().toISOString(),
+    expiresAt: Number.isFinite(Number(value.expiresAt)) ? Number(value.expiresAt) : Date.now() + 2 * 60 * 60 * 1000
+  };
 }
 
 function isSupportedTab(tab) {

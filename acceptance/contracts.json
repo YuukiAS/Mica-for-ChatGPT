@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "validatorVersion": "1.5.0",
+  "validatorVersion": "1.6.0",
   "evidenceSchemaVersion": 1,
   "controlsUseProductionValidators": true,
   "gates": [
@@ -28,6 +28,11 @@
       "id": "copy-serialization",
       "validatorKind": "copy-serialization",
       "candidateEvidenceClasses": ["SYNTHETIC_FIXTURE", "LOCAL_REAL_BROWSER"]
+    },
+    {
+      "id": "conversation-export-completeness",
+      "validatorKind": "conversation-export-completeness",
+      "candidateEvidenceClasses": ["SYNTHETIC_FIXTURE", "LOCAL_REAL_BROWSER", "CURRENT_CHATGPT_READ_ONLY"]
     },
     {
       "id": "copy-placement",

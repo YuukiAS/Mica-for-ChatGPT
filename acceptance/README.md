@@ -42,6 +42,10 @@ the production validator, CLI, control runner, schemas and contracts.
 - `milestone-b`: Milestone A plus Highlighter remount and actual-viewer PDF
   selection.
 - `release-0.3.0`: the full Milestone B set. Low Memory cannot be omitted.
+- `functional-convergence`: the full Milestone B set plus the complete-conversation
+  export gate. The gate binds a versioned fixture to exact completeness proof,
+  turn/role identity, settled-only documents, Markdown/PDF assembly and
+  rejection of forged or partial inputs.
 
 The profile-to-gate mapping is enforced by the validator, so shortening a
 bundle's `requiredGates` cannot manufacture a PASS.

@@ -6,6 +6,10 @@ const lowMemoryState = document.getElementById("low-memory-state");
 const lowMemoryDetail = document.getElementById("low-memory-detail");
 const historyActionRow = document.getElementById("history-action-row");
 const loadFullHistory = document.getElementById("load-full-history");
+const conversationExportDetail = document.getElementById("conversation-export-detail");
+const conversationExportState = document.getElementById("conversation-export-state");
+const copyConversation = document.getElementById("copy-conversation");
+const exportConversationPdf = document.getElementById("export-conversation-pdf");
 const compatibility = document.querySelector(".compatibility-line");
 const compatibilityTitle = document.getElementById("compatibility-title");
 const compatibilityDetail = document.getElementById("compatibility-detail");
@@ -36,6 +40,8 @@ async function initialize() {
   enabled.addEventListener("change", onEnabledChange);
   lowMemory.addEventListener("change", onLowMemoryChange);
   loadFullHistory.addEventListener("click", onLoadFullHistory);
+  copyConversation.addEventListener("click", onCopyConversation);
+  exportConversationPdf.addEventListener("click", onExportConversationPdf);
   settingsLink.addEventListener("click", openSettings);
   const response = await sendToActiveTab({ type: "MICA_GET_STATUS" });
   if (response?.settings) enabled.checked = response.settings.enabled;
@@ -96,6 +102,69 @@ function render(status) {
   compatibilityDetail.hidden = !detail;
   pageHealth.textContent = state === "exact" ? "No issues" : pageHealthForState(state);
   renderLowMemory(status?.lowMemory);
+  renderConversationExport(status?.conversationExport);
+}
+
+function renderConversationExport(status) {
+  const ready = status?.ready === true;
+  copyConversation.disabled = !ready;
+  exportConversationPdf.disabled = !ready;
+  if (ready) {
+    conversationExportState.textContent = `${status.turnCount} turns ready`;
+    conversationExportDetail.textContent = "Every turn is present and settled. Export stays on this device.";
+    return;
+  }
+  const reason = status?.reason || "conversation_export_unavailable";
+  const copy = {
+    copy_export_disabled: ["Off", "Enable Mica and Copy & Export in Settings."],
+    load_full_history_required: ["Load full history", "Use Load full history first so Mica can prove the complete range."],
+    turn_count_mismatch: ["History incomplete", "Not every proven turn is currently mounted."],
+    turn_role_sequence_mismatch: ["History changed", "The mounted turn order no longer matches the completeness proof."],
+    conversation_identity_mismatch: ["Conversation changed", "Reload this conversation before exporting."],
+    assistant_not_settled: ["Answer in progress", "Wait for the current answer to finish."],
+    turn_content_unavailable: ["Content unavailable", "At least one turn cannot be read safely."],
+    conversation_completeness_unproven: ["Completeness unproven", "Mica will not guess whether the visible turns are complete."],
+    turn_contract_not_exact: ["Structure unsupported", "Mica cannot safely identify every turn on this page."]
+  }[reason] || ["Unavailable", "Complete conversation export is not available on this page."];
+  conversationExportState.textContent = copy[0];
+  conversationExportDetail.textContent = copy[1];
+}
+
+async function onCopyConversation() {
+  copyConversation.disabled = true;
+  conversationExportState.textContent = "Preparing…";
+  const response = await sendToActiveTab({ type: "MICA_SERIALIZE_CONVERSATION" });
+  if (!response?.ok || typeof response.markdown !== "string") {
+    conversationExportState.textContent = exportFailureLabel(response?.reason);
+    copyConversation.disabled = false;
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(response.markdown);
+    conversationExportState.textContent = `${response.turnCount} turns copied`;
+    copyConversation.disabled = false;
+  } catch (_error) {
+    conversationExportState.textContent = "Clipboard unavailable";
+    copyConversation.disabled = false;
+  }
+}
+
+async function onExportConversationPdf() {
+  exportConversationPdf.disabled = true;
+  conversationExportState.textContent = "Preparing PDF…";
+  const response = await sendToActiveTab({ type: "MICA_EXPORT_CONVERSATION_PDF" });
+  if (!response?.ok) {
+    conversationExportState.textContent = exportFailureLabel(response?.reason);
+    exportConversationPdf.disabled = false;
+  }
+}
+
+function exportFailureLabel(reason) {
+  if (reason === "assistant_not_settled") return "Answer in progress";
+  if (reason === "turn_count_mismatch") return "History incomplete";
+  if (reason === "unsupported_answer_structure" || String(reason || "").includes("unsupported_answer_structure")) return "Unsupported content";
+  if (reason === "conversation_too_large") return "Conversation too large";
+  return "Export unavailable";
 }
 
 function renderLowMemory(status) {

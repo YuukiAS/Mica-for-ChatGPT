@@ -42,7 +42,7 @@ assert(JSON.stringify([...manifest.optional_host_permissions].sort()) === JSON.s
 assert(manifest.background?.service_worker === "low-memory-background.js", "Low Memory registration service worker missing");
 assert(manifest.options_ui?.page === "options/index.html" && manifest.options_ui?.open_in_tab === true, "settings page registration missing");
 assert(JSON.stringify(manifest.content_scripts?.[0]?.js) === JSON.stringify(["low-memory-config.js"]) && manifest.content_scripts?.[0]?.run_at === "document_start", "Low Memory config bridge order drifted");
-assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["settings-model.js", "chatgpt-adapter.js", "answer-document.js", "answer-serializer.js", "highlight-engine.js", "pdf-export-model.js", "recovery-state-machine.js", "recovery-controller.js", "content.js"]), "functional convergence content-script order drifted");
+assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["settings-model.js", "chatgpt-adapter.js", "answer-document.js", "conversation-export.js", "answer-serializer.js", "highlight-engine.js", "pdf-export-model.js", "recovery-state-machine.js", "recovery-controller.js", "content.js"]), "functional convergence content-script order drifted");
 assert(!manifest.content_scripts.some((entry) => entry.world === "MAIN"), "Low Memory MAIN scripts must be extension-controlled dynamic registrations");
 
 for (const size of [16, 32, 48, 128]) {
@@ -58,6 +58,7 @@ const contractSource = await readFile(path.join(root, "contracts", "chatgpt", "c
 const contractHash = createHash("sha256").update(contractSource).digest("hex");
 const adapter = await readFile(path.join(distDir, "chatgpt-adapter.js"), "utf8");
 const answerDocument = await readFile(path.join(distDir, "answer-document.js"), "utf8");
+const conversationExport = await readFile(path.join(distDir, "conversation-export.js"), "utf8");
 const settingsModel = await readFile(path.join(distDir, "settings-model.js"), "utf8");
 const answerSerializer = await readFile(path.join(distDir, "answer-serializer.js"), "utf8");
 const highlightEngine = await readFile(path.join(distDir, "highlight-engine.js"), "utf8");
@@ -78,7 +79,7 @@ const qa = await readFile(path.join(distDir, "popup", "qa.js"), "utf8");
 const pdfExportPage = await readFile(path.join(distDir, "pdf", "pdf-export-page.js"), "utf8");
 
 for (const text of [adapter, content]) assert(text.includes(contractHash), "built current ChatGPT contract hash drifted");
-for (const text of [adapter, answerDocument, settingsModel, answerSerializer, highlightEngine, generalWebModel, generalWebHighlighter, pdfExportModel, recoveryStateMachine, recoveryController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, options, troubleshooting, qa, pdfExportPage]) {
+for (const text of [adapter, answerDocument, conversationExport, settingsModel, answerSerializer, highlightEngine, generalWebModel, generalWebHighlighter, pdfExportModel, recoveryStateMachine, recoveryController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, options, troubleshooting, qa, pdfExportPage]) {
   assert(!/__MICA_(?:VERSION|VERSION_NAME|BUILD_LABEL|CHATGPT_CONTRACT_HASH|DEV_BUILD)__/.test(text), "unresolved build placeholder remains");
   new Function(text);
 }
@@ -103,6 +104,7 @@ for (const token of [
   "display_math"
 ]) assert(answerDocument.includes(token), `AnswerDocument core missing ${token}`);
 for (const token of ["MicaSettingsModel", "noProgressTimeoutSeconds", "maxAutoReloadsPerTurn", "consequentialActionAutoReplay", "micaSettings"]) assert(settingsModel.includes(token), `settings model missing ${token}`);
+for (const token of ["MicaConversationExport", "validateBundle", "completeSelection", "roleSequenceHash", "turnSequenceHash", "conversation_completeness_unproven", "assistant_not_settled"]) assert(conversationExport.includes(token), `conversation export coordinator missing ${token}`);
 for (const token of ["generalWebOrigins", "normalizeWebOrigin", "toMatchPattern", "chatgpt.com"]) assert(settingsModel.includes(token), `settings origin model missing ${token}`);
 for (const token of ["MicaAnswerSerializer", "serializeMarkdown", "serializeNotion", "serializeNotionImport", "conversation_completeness_unproven", "notion_native_equations_require_real_target_validation"]) assert(answerSerializer.includes(token), `answer serializer missing ${token}`);
 for (const token of ["MicaRecoveryStateMachine", "A_COMMITTED", "B_NOT_COMMITTED", "C_UNKNOWN", "reload_limit_reached", "consequential_or_unknown_action"]) assert(recoveryStateMachine.includes(token), `recovery state machine missing ${token}`);
@@ -137,6 +139,8 @@ for (const token of [
   "MICA_SET_SETTINGS",
   "MICA_QA_EXPORT",
   "MICA_GET_ANSWER_DOCUMENT",
+  "MICA_SERIALIZE_CONVERSATION",
+  "MICA_EXPORT_CONVERSATION_PDF",
   "MICA_LOAD_FULL_HISTORY",
   "mica-developer-qa.v1",
   `const VERSION = "${MACHINE_VERSION}"`,
@@ -144,17 +148,18 @@ for (const token of [
   "conversationTextIncluded: false",
   "rawDomIncluded: false"
 ]) assert(content.includes(token), `content runtime missing ${token}`);
+for (const token of ["collectConversationBundle", "conversationExportStatus", "completenessProof", "MicaConversationExport"]) assert(content.includes(token), `conversation export runtime missing ${token}`);
 for (const token of ["data-mica-ui", "highlight-toolbar", "Copy Markdown", "Copy for Notion", "event.isTrusted", "CSS.highlights", "permanentToolbar: false"]) {
   assert(content.includes(token), `Highlighter runtime missing ${token}`);
 }
-for (const token of ["MicaPdfExport", "unsupported_answer_structure", "visible-tex-source", "localOnly: true"]) assert(pdfExportModel.includes(token), `PDF export model missing ${token}`);
+for (const token of ["MicaPdfExport", "buildConversationModel", "unsupported_answer_structure", "visible-tex-source", "localOnly: true"]) assert(pdfExportModel.includes(token), `PDF export model missing ${token}`);
 for (const token of ["MICA_OPEN_PDF_EXPORT", "MICA_GET_PDF_EXPORT", "MAX_PDF_EXPORT_BYTES", "chrome.tabs.create"]) assert(lowMemoryBackground.includes(token), `PDF background flow missing ${token}`);
 for (const token of ["Print / Save as PDF", "MicaPdfExportPage", "dataset.micaPdfKind", "window.print"]) assert(`${await readFile(path.join(distDir, "pdf", "pdf-export.html"), "utf8")}\n${pdfExportPage}`.includes(token), `PDF export page missing ${token}`);
 
-for (const token of ["windowTurboStreamChunk", "windowJsonPayload", "client-history-window", "reactManagedInteractiveNodesDetached"]) {
+for (const token of ["windowTurboStreamChunk", "windowJsonPayload", "client-history-window", "reactManagedInteractiveNodesDetached", "visibleRoleSequenceHash"]) {
   assert(lowMemoryCore.includes(token), `Low Memory core missing ${token}`);
 }
-for (const token of ["__reactRouterContext", "streamController", "conversation-json", "serverMutation: false"]) {
+for (const token of ["__reactRouterContext", "streamController", "conversation-json", "serverMutation: false", "completenessProof", "validated-conversation-graph"]) {
   assert(lowMemoryPage.includes(token), `Low Memory page interceptor missing ${token}`);
 }
 for (const token of ["MICA_LOW_MEMORY_SYNC", "MICA_LOW_MEMORY_GET_TAB_MODE", "MICA_LOW_MEMORY_PREPARE_FULL_HISTORY", "MICA_LOW_MEMORY_RESUME_WINDOWING"]) {
@@ -163,7 +168,7 @@ for (const token of ["MICA_LOW_MEMORY_SYNC", "MICA_LOW_MEMORY_GET_TAB_MODE", "MI
 for (const token of ["event.isTrusted", "trusted_action_required", "page_untrusted", "extension_ui_or_trusted_user_gesture"]) {
   assert(content.includes(token), `Low Memory recovery trust boundary missing ${token}`);
 }
-for (const token of ["chrome.scripting.registerContentScripts", "world: \"MAIN\"", "persistAcrossSessions: true", "full_history_bypass"]) {
+for (const token of ["chrome.scripting.registerContentScripts", "world: \"MAIN\"", "persistAcrossSessions: true", "full_history_bypass", "mica.lowMemory.completeness.v1", "validated-conversation-graph"]) {
   assert(lowMemoryBackground.includes(token), `Low Memory background controller missing ${token}`);
 }
 for (const token of ["MicaGeneralWebBackground", "mica-general-web-highlighter-v1", "MICA_GENERAL_WEB_SYNC", "world: \"ISOLATED\"", "chrome.permissions", "onRemoved", "general-web-highlighter.js"]) {
@@ -172,7 +177,7 @@ for (const token of ["MicaGeneralWebBackground", "mica-general-web-highlighter-v
 
 const reportBody = extractFunctionBody(content, "buildSanitizedQaReport");
 assert(!/innerText|textContent|innerHTML|outerHTML/.test(reportBody), "sanitized QA report must not read conversation text/HTML");
-for (const text of [settingsModel, answerSerializer, highlightEngine, pdfExportModel, recoveryStateMachine, recoveryController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground]) {
+for (const text of [settingsModel, conversationExport, answerSerializer, highlightEngine, pdfExportModel, recoveryStateMachine, recoveryController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground]) {
   assert(!/addEventListener\(["'](?:beforeinput|input|keydown|compositionstart|compositionupdate|compositionend)/.test(text), "runtime added a typing hot-path listener");
 }
 assert(!/addEventListener\(["'](?:beforeinput|input|compositionstart|compositionupdate|compositionend)/.test(generalWebHighlighter), "general web runtime added a synchronous typing listener");
@@ -193,7 +198,7 @@ for (const token of ["!event.shiftKey", "isEditableTarget", "requestAnimationFra
 assert(!/Range\.prototype|Selection\.prototype/.test(`${answerDocument}\n${highlightEngine}\n${content}`), "Highlighter must not patch global Range/Selection prototypes");
 
 const normalHtml = await readFile(path.join(distDir, "popup", "index.html"), "utf8");
-for (const token of ["Mica", "Enable Mica", "Checking this page…", "Low memory", "Keeps 40 recent turns active", "Load full history", "Page health", "Settings", "Troubleshooting", "Advanced"]) {
+for (const token of ["Mica", "Enable Mica", "Checking this page…", "Low memory", "Keeps 40 recent turns active", "Load full history", "Complete conversation", "Copy Markdown", "Export PDF", "Page health", "Settings", "Troubleshooting", "Advanced"]) {
   assert(normalHtml.includes(token), `normal popup missing ${token}`);
 }
 

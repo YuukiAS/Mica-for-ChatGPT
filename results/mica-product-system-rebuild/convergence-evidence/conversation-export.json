@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "exactCompletenessProof": true,
+  "roleAndTurnIdentityBound": true,
+  "markdownConversation": true,
+  "pdfConversation": true,
+  "highlightsShifted": true,
+  "lowMemoryRequiresFullHistory": true,
+  "forgedCompletenessRejected": true,
+  "streamingAssistantRejected": true
+}

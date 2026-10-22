@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-export const VALIDATOR_VERSION = "1.5.0";
+export const VALIDATOR_VERSION = "1.6.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 const PLACEMENT_PROOF_OBSERVATION_IDS = [
   "copy-inside-assistant-turn",
@@ -28,7 +28,8 @@ const ACCEPTANCE_PROFILES = {
   "milestone-a": [...FOUNDATION_GATES, "low-memory-benefit"],
   "milestone-b": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection"],
   "release-0.3.0": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection"],
-  "all-controls": [...FOUNDATION_GATES, "copy-serialization", "low-memory-benefit", "highlight-remount", "pdf-selection"]
+  "functional-convergence": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection", "conversation-export-completeness"],
+  "all-controls": [...FOUNDATION_GATES, "copy-serialization", "conversation-export-completeness", "low-memory-benefit", "highlight-remount", "pdf-selection"]
 };
 
 const EVIDENCE_CLASSES = new Set([
@@ -318,6 +319,26 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
       } else if (expected.sha256 !== actual.sha256) {
         fail(`serialization case ${item.id} output differs from expected artifact`);
       }
+    }
+    return;
+  }
+
+  if (kind === "conversation-export-completeness") {
+    const measured = await readBoundJson("conversation-export");
+    if (record.subject?.surface !== "conversation-export-coordinator") fail("wrong conversation export surface target");
+    if (!sameJson(m, measured)) fail("conversation export measurement differs from the bound fixture evidence");
+    for (const field of [
+      "passed",
+      "exactCompletenessProof",
+      "roleAndTurnIdentityBound",
+      "markdownConversation",
+      "pdfConversation",
+      "highlightsShifted",
+      "lowMemoryRequiresFullHistory",
+      "forgedCompletenessRejected",
+      "streamingAssistantRejected"
+    ]) {
+      if (m[field] !== true) fail(`conversation export invariant ${field} failed`);
     }
     return;
   }
@@ -647,7 +668,7 @@ export function computeEvidenceRootHash(artifacts, evidence) {
 }
 
 export async function computeValidatorTreeHash(repoRoot) {
-  return hashFileSet(repoRoot, ["scripts/acceptance", "acceptance/schema", "acceptance/contracts.json"]);
+  return hashFileSet(repoRoot, ["scripts/acceptance", "scripts/conversation-export-fixture.mjs", "acceptance/schema", "acceptance/contracts.json"]);
 }
 
 export async function computeFixtureSetHash(repoRoot) {

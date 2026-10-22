@@ -22,14 +22,16 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../
 const commit = valueAfter(process.argv.slice(2), "--commit");
 const profile = valueAfter(process.argv.slice(2), "--profile") || "foundation";
 if (!/^[0-9a-f]{40}$/.test(commit || "")) throw new Error("--commit must be a full lowercase SHA-1");
-if (!["foundation", "milestone-a", "milestone-b", "release-0.3.0"].includes(profile)) throw new Error("--profile must be foundation, milestone-a, milestone-b, or release-0.3.0");
+if (!["foundation", "milestone-a", "milestone-b", "release-0.3.0", "functional-convergence"].includes(profile)) throw new Error("--profile must be foundation, milestone-a, milestone-b, release-0.3.0, or functional-convergence");
 
 const bundleKind = profile === "foundation" ? "foundation-candidate"
   : profile === "milestone-a" ? "low-memory-candidate"
     : profile === "milestone-b" ? "highlight-pdf-candidate"
-      : "release-candidate";
+      : profile === "functional-convergence" ? "functional-convergence-candidate"
+        : "release-candidate";
 const includesLowMemory = profile !== "foundation";
-const includesHighlightPdf = profile === "milestone-b" || profile === "release-0.3.0";
+const includesHighlightPdf = profile === "milestone-b" || profile === "release-0.3.0" || profile === "functional-convergence";
+const includesFunctionalConvergence = profile === "functional-convergence";
 const bundleDir = path.join(repoRoot, "results", "mica-product-system-rebuild", bundleKind, commit);
 await mkdir(path.join(bundleDir, "artifacts"), { recursive: true });
 const distDir = path.join(repoRoot, "dist", DEV_DIST_DIR_NAME);
@@ -38,6 +40,7 @@ const popupDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "
 const lowMemoryDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "low-memory-evidence");
 const highlighterDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "highlighter-evidence");
 const pdfDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "pdf-evidence");
+const convergenceDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "convergence-evidence");
 
 const distTree = [];
 for (const file of await walkFiles(distDir)) {
@@ -99,6 +102,9 @@ if (includesHighlightPdf) {
     [path.join(pdfDir, "pdfjs-display-math-selection.png"), "pdfjs-display-math-selection.png"]
   );
 }
+if (includesFunctionalConvergence) {
+  copies.push([path.join(convergenceDir, "conversation-export.json"), "conversation-export.json"]);
+}
 for (const [source, destination] of copies) await cp(source, path.join(bundleDir, "artifacts", destination));
 
 const artifactDefinitions = [
@@ -146,6 +152,9 @@ if (includesHighlightPdf) {
     ["pdf-display-math-selection", "pdfjs-display-math-selection.png", "image/png"]
   );
 }
+if (includesFunctionalConvergence) {
+  artifactDefinitions.push(["conversation-export", "conversation-export.json", "application/json"]);
+}
 const artifacts = [];
 for (const [id, filename, kind] of artifactDefinitions) {
   const relative = `artifacts/${filename}`;
@@ -166,6 +175,7 @@ const highlighterFixture = includesHighlightPdf ? JSON.parse(await readFile(path
 const highlighterStress = includesHighlightPdf ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "highlighter-stress.json"), "utf8")) : null;
 const pdfFixture = includesHighlightPdf ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "pdf-export-fixture.json"), "utf8")) : null;
 const pdfBackground = includesHighlightPdf ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "pdf-background.json"), "utf8")) : null;
+const conversationExport = includesFunctionalConvergence ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "conversation-export.json"), "utf8")) : null;
 const contractHash = artifactHash("chatgpt-contract");
 const bootstrapHash = artifactHash("current-chatgpt-bootstrap");
 const distHash = artifactHash("dist-tree");
@@ -189,6 +199,7 @@ const requiredGates = [
 ];
 if (includesLowMemory) requiredGates.splice(requiredGates.indexOf("privacy"), 0, "low-memory-benefit");
 if (includesHighlightPdf) requiredGates.splice(requiredGates.indexOf("privacy"), 0, "highlight-remount", "pdf-selection");
+if (includesFunctionalConvergence) requiredGates.splice(requiredGates.indexOf("privacy"), 0, "conversation-export-completeness");
 
 const evidence = [
   record("candidate-identity", "LOCAL_REAL_BROWSER", { surface: "built-extension" }, ["dist-tree", "built-manifest"], { commit, distHash }),
@@ -311,6 +322,11 @@ if (includesHighlightPdf) {
   evidence.splice(evidence.findIndex((item) => item.gateId === "privacy"), 0,
     record("highlight-remount", "LOCAL_REAL_BROWSER", { surface: "local-real-browser" }, ["dist-tree", "highlighter-fixture", "highlighter-stress", "highlighter-selection-light", "highlighter-active-light", "highlighter-edit-dark"], deriveHighlighterMeasurement(highlighterFixture, highlighterStress)),
     record("pdf-selection", "ACTUAL_PDF_VIEWER", { surface: "actual-pdf-viewer" }, ["pdf", "pdf-fixture", "pdf-background", "highlighter-fixture", "pdf-render-1", "pdf-render-2", "pdf-preview", "pdf-pointer-selection", "pdf-display-math-selection"], derivePdfMeasurement(pdfFixture, pdfBackground, highlighterFixture))
+  );
+}
+if (includesFunctionalConvergence) {
+  evidence.splice(evidence.findIndex((item) => item.gateId === "privacy"), 0,
+    record("conversation-export-completeness", "SYNTHETIC_FIXTURE", { surface: "conversation-export-coordinator" }, ["conversation-export"], conversationExport)
   );
 }
 
