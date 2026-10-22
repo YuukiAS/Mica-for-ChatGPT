@@ -73,6 +73,20 @@
       "gap": "none"
     },
     {
+      "id": "MFC-013",
+      "source": ["goal section 12", "MICA_PRODUCT_SYSTEM_V1 section 5"],
+      "userProblem": "Detect ChatGPT surface drift per capability without opening a browser from repository tooling or invalidating unrelated backends.",
+      "existingImplementation": false,
+      "module": "scripts/chatgpt-ui.mjs and scripts/chatgpt-ui-compatibility.mjs",
+      "iterationAction": "new",
+      "successBehavior": "verify checks the committed repository baseline, refresh ingests one explicit privacy-safe Developer QA export, and diff reports isolated capability changes without automatically mutating the contract or promoting unknown evidence.",
+      "automatedVerification": ["chatgpt-ui-compatibility-fixture", "chatgpt-ui:verify", "chatgpt-ui:diff", "acceptance preflight"],
+      "realAcceptance": "One current Developer QA export followed by refresh and diff",
+      "status": "IMPLEMENTED_VERIFIED",
+      "result": "The three formal commands now run as offline Node tooling. Input is size-bounded and allowlisted; privacy or contract-hash mismatches fail closed; free-form evidence text is fingerprinted; supported-capability drift remains isolated; new or formerly unknown capabilities cannot self-promote from an exported report.",
+      "gap": "No current authenticated Developer QA report was ingested because this iteration prohibited browser and real ChatGPT interaction. Repository-baseline PASS is not current-site acceptance."
+    },
+    {
       "id": "MFC-020",
       "source": ["goal section 7.1", "recovery branch Markdown Copy"],
       "userProblem": "Copy one answer as stable Markdown with structure, code and raw LaTeX.",
@@ -472,10 +486,10 @@
       "module": "acceptance validator, controls and functional-convergence profile",
       "iterationAction": "repair",
       "successBehavior": "Known-bad controls remain rejected and convergence requirements become formal candidate gates.",
-      "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "recovery-action-policy-fixture", "target-surface-backend-fixture", "highlight-record-integrity-fixture", "local-import-integrity-fixture", "acceptance preflight", "build validator"],
+      "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "recovery-action-policy-fixture", "target-surface-backend-fixture", "highlight-record-integrity-fixture", "local-import-integrity-fixture", "chatgpt-ui-compatibility-fixture", "acceptance preflight", "build validator"],
       "realAcceptance": "Full acceptance candidate run",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Validator 1.14.0 binds answer-action, export-fidelity, semantic-MathML, highlight-record and local-import integrity invariants. The control corpus rejects rehashed false field-sanitization and import-budget claims in addition to existing target-surface, table, semantic-rendering and safety controls.",
+      "result": "Validator 1.15.0 binds answer-action, export-fidelity, semantic-MathML, highlight-record, local-import and ChatGPT UI compatibility invariants. The control corpus accepts 13 known-good controls and rejects 50 known-bad controls, including a rehashed false capability-isolation claim.",
       "gap": "A complete browser-bound candidate bundle was not materialized or run in this no-browser iteration."
     }
   ]

@@ -471,19 +471,24 @@ Repository commands:
 
 ```text
 npm run chatgpt-ui:verify
-npm run chatgpt-ui:refresh
+npm run chatgpt-ui:refresh -- --input <mica-developer-qa.v1.json> [--output <repo-relative.json>]
 npm run chatgpt-ui:diff
+npm run chatgpt-ui:diff -- --input <qa-or-normalized-observation.json>
 ```
+
+These commands are offline repository tooling. They do not open a browser, navigate ChatGPT, send messages, or update `contracts/chatgpt/current.json`. Developer QA remains the primary capture surface; `refresh` only ingests an explicit exported report and writes an allowlisted observation. Its output is input for review and diffing, not automatic release authority or live acceptance.
 
 ### 5.1 verify
 
-Checks whether the currently observed supported ChatGPT surface satisfies a known contract.
+Checks the committed contract and committed bootstrap evidence for schema, privacy, source-observation, and fail-open consistency. A successful result verifies the repository baseline only; it does not assert that the current live ChatGPT UI still matches.
 
 It should be read-only by default.
 
 ### 5.2 refresh
 
-Captures only the surfaces Mica actually depends on:
+In the implemented CLI fallback, requires an explicit `mica-developer-qa.v1` export. It verifies the current contract hash and privacy flags, rejects duplicate or unbounded capabilities, fingerprints free-form invariant/reason strings, and retains only capability-level metadata. It never captures a page itself.
+
+Developer QA captures only the surfaces Mica actually depends on:
 
 - assistant turn boundary;
 - assistant action cluster/native Copy neighborhood;
@@ -507,7 +512,7 @@ Do not capture:
 
 ### 5.3 diff
 
-Produces a small capability-oriented report:
+Without `--input`, compares the committed bootstrap evidence with the current contract. With `--input`, accepts either a Developer QA export or a normalized refresh observation and produces a small capability-oriented report:
 
 ```text
 answerActions: unchanged
@@ -517,6 +522,8 @@ interactiveBlocks: new unknown class
 ```
 
 The goal is to tell the developer what adapter capability changed, not produce a huge DOM archive.
+
+The report classifies capabilities independently. A changed supported capability becomes `CONTRACT_CHANGED` and fails open without invalidating unrelated matches. A previously unknown or entirely new capability remains `UNKNOWN` even if an untrusted exported report claims `EXACT`; contract promotion still requires the repository's normal evidence and review process.
 
 ### 5.4 Multiple simultaneous UI variants
 

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-export const VALIDATOR_VERSION = "1.14.0";
+export const VALIDATOR_VERSION = "1.15.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 const PLACEMENT_PROOF_OBSERVATION_IDS = [
   "copy-inside-assistant-turn",
@@ -28,8 +28,8 @@ const ACCEPTANCE_PROFILES = {
   "milestone-a": [...FOUNDATION_GATES, "low-memory-benefit"],
   "milestone-b": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection"],
   "release-0.3.0": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection"],
-  "functional-convergence": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "target-surface-backend", "highlight-record-integrity", "local-import-integrity"],
-  "all-controls": [...FOUNDATION_GATES, "copy-serialization", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "target-surface-backend", "highlight-record-integrity", "local-import-integrity", "low-memory-benefit", "highlight-remount", "pdf-selection"]
+  "functional-convergence": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "target-surface-backend", "highlight-record-integrity", "local-import-integrity", "chatgpt-ui-compatibility"],
+  "all-controls": [...FOUNDATION_GATES, "copy-serialization", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "target-surface-backend", "highlight-record-integrity", "local-import-integrity", "chatgpt-ui-compatibility", "low-memory-benefit", "highlight-remount", "pdf-selection"]
 };
 
 const EVIDENCE_CLASSES = new Set([
@@ -525,6 +525,37 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
     return;
   }
 
+  if (kind === "chatgpt-ui-compatibility") {
+    const measured = await readBoundJson("chatgpt-ui-compatibility");
+    if (record.subject?.surface !== "chatgpt-ui-compatibility") fail("wrong ChatGPT UI compatibility target");
+    if (!sameJson(m, measured)) fail("ChatGPT UI compatibility measurement differs from the bound fixture evidence");
+    for (const field of [
+      "passed",
+      "repositoryVerifyPasses",
+      "committedBootstrapDiffPasses",
+      "formalVerifyCommand",
+      "formalRefreshCommand",
+      "formalDiffCommand",
+      "refreshRequiresExplicitInput",
+      "inputSizeBounded",
+      "privacyViolationsRejected",
+      "contractHashMismatchRejected",
+      "duplicateCapabilitiesRejected",
+      "missingOrUnsupportedExactRejected",
+      "supportedCapabilityDriftDetected",
+      "capabilityDriftIsolated",
+      "unknownNewCapabilityFailsOpen",
+      "compatibleNewVariantReportedWithoutPromotion",
+      "normalizedReportAllowlisted"
+    ]) {
+      if (m[field] !== true) fail(`ChatGPT UI compatibility invariant ${field} failed`);
+    }
+    if (m.browserOpened !== false || m.contractAutoUpdated !== false || m.liveAcceptanceSatisfied !== false) {
+      fail("ChatGPT UI compatibility evidence overclaimed its offline boundary");
+    }
+    return;
+  }
+
   if (kind === "copy-placement") {
     const contract = await readBoundJson("chatgpt-contract");
     const bootstrap = await readBoundJson("current-chatgpt-bootstrap");
@@ -858,6 +889,9 @@ export async function computeValidatorTreeHash(repoRoot) {
     "scripts/target-surface-backend-fixture.mjs",
     "scripts/highlight-record-integrity-fixture.mjs",
     "scripts/local-import-integrity-fixture.mjs",
+    "scripts/chatgpt-ui-compatibility.mjs",
+    "scripts/chatgpt-ui-compatibility-fixture.mjs",
+    "scripts/chatgpt-ui.mjs",
     "scripts/target-surface-adapter-fixture.mjs",
     "scripts/suggested-work-controller-fixture.mjs",
     "scripts/recovery-control-adapter-fixture.mjs",

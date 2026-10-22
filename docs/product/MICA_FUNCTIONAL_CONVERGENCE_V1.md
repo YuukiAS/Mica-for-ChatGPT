@@ -131,6 +131,7 @@ Developer QA 报告新增有界目标结构采集。它只在用户导出报告�
 | 编号 | 来源 | 用户结果 | 当前状态 | 自动证据 | 真实验收 |
 | --- | --- | --- | --- | --- | --- |
 | MFC-010 | 冻结产品系统 | 所有回答能力共享一个解析入口 | `IMPLEMENTED_UNVERIFIED` | build/static | 真实 ChatGPT contract |
+| MFC-013 | 本轮 §12、产品系统 §5 | 离线核查兼容性并隔离单项结构漂移 | `IMPLEMENTED_VERIFIED` | compatibility fixture + validator 1.15.0 | 当前 Developer QA 导出仍待实站运行 |
 | MFC-020 | 本轮 §4/§7 | 稳定回答可复制为 Markdown | `IMPLEMENTED_VERIFIED` | convergence core | 实际剪贴板仍需浏览器 |
 | MFC-021 | Issue #10、本轮 §7 | Notion rich clipboard 保留公式语义 | `IMPLEMENTED_UNVERIFIED` | MIME/结构模型 | 真实 Notion paste |
 | MFC-022 | Issue #10、本轮 §7 | 确定性 Notion 导入文件 | `IMPLEMENTED_VERIFIED` | convergence core | 真实导入结果 |
@@ -151,7 +152,7 @@ Developer QA 报告新增有界目标结构采集。它只在用户导出报告�
 | MFC-405 | 本轮 §4/§8 | Reliability 只通过 adapter 观察页面结构 | `IMPLEMENTED_VERIFIED` | adapter recovery + controller + static selector gate | lifecycle/tool 真实合同仍为 PARTIAL |
 | MFC-410 | Issues #5/#6 | 输入框与连接器旧故障收敛 | `BLOCKED_BY_REAL_EXTERNAL_DEPENDENCY` | 历史证据存在 | 失败页精确 DOM/AX 合同 |
 | MFC-420 | 历史任务 | Hide suggested work | `IMPLEMENTED_UNVERIFIED` | adapter fixture + 可逆控制器 + 静态门禁 | 当前真实目标结构与页面效果 |
-| MFC-620 | 本轮 §13 | 验收器拒绝伪完整性结论 | `IMPLEMENTED_VERIFIED` | validator 1.14.0 preflight | 完整浏览器候选 run |
+| MFC-620 | 本轮 §13 | 验收器拒绝伪完整性结论 | `IMPLEMENTED_VERIFIED` | validator 1.15.0 preflight | 完整浏览器候选 run |
 
 完整字段、模块归属、成功行为和未解决差距见 JSON 矩阵。
 
@@ -164,6 +165,9 @@ npm run build
 node scripts/highlight-interaction-policy-fixture.mjs
 node scripts/highlight-record-integrity-fixture.mjs
 node scripts/local-import-integrity-fixture.mjs
+node scripts/chatgpt-ui-compatibility-fixture.mjs
+npm run chatgpt-ui:verify
+npm run chatgpt-ui:diff
 node scripts/chatgpt-adapter-recovery-fixture.mjs
 node scripts/target-surface-backend-fixture.mjs
 node scripts/answer-actions-controller-fixture.mjs
@@ -180,7 +184,7 @@ npm run test:build
 npm run acceptance:preflight
 ```
 
-`highlight-interaction-policy-fixture.mjs` 覆盖快捷键规范化、危险组合拒绝、三种交互模式、默认颜色路由以及 repeat/IME 保护。`highlight-record-integrity-fixture.mjs` 另行覆盖 ChatGPT 与普通网页 annotation 合同、旧记录迁移、备注和标签预算、未知字段剥离、超大身份拒绝及两类 round trip。`local-import-integrity-fixture.mjs` 验证超限文件不会调用 `File.text()`、未来设置 schema 被拒绝、组合备份 envelope 与源记录预算生效、旧单类文件保持兼容、混装旧记录被拒绝，并固定同 ID 冲突规则。`chatgpt-adapter-recovery-fixture.mjs` 覆盖 property-backed composer、敏感/有副作用上下文、无正文进展签名、工具安全分流和 reload fail-closed；controller fixture 另用会抛错的伪 selector 证明 controller 没有绕过 adapter。`target-surface-backend-fixture.mjs` 汇总 adapter、恢复控件、suggested-work 和 answer actions 四组 fixture，覆盖唯一合同、歧义 fail-open、动作前重验证、composer 空值、可信手势、toggle、remount、原状态恢复、无轮询及无正文诊断。`answer-actions-controller-fixture.mjs` 还单独验证菜单动作、默认排序、streaming、重复 Copy 和未知 live contract。`convergence-core-fixture.mjs` 覆盖设置迁移和安全上限、Markdown/Notion 序列化、五公式样本、高亮记录导入导出，以及可靠性关键状态。`conversation-export-fixture.mjs` 另行覆盖完整性证明、turn/role 身份绑定、整段 Markdown/PDF、高亮偏移、A4/Letter、PDF 高亮开关、表格单元格内的 marks/链接/公式、安全 MathML 提取、模型二次过滤、命名空间 DOM 重建、局部公式高亮降级和危险链接过滤。controller、ledger 与 Worker fixture 再验证实际执行边界、重启去重、并发写入、50 条历史上限和存储失败时默认失败。Acceptance validator `1.14.0` 将 answer-action、导出保真、MathML 语义链、高亮记录和本地导入完整性并入 `functional-convergence` 门禁；预检必须接受全部 known-good，并拒绝包括伪造表格、MathML 保真、字段清洗和导入预算结果在内的全部 known-bad。它们都不替代真实 ChatGPT、系统剪贴板、Notion、PDF viewer 或实际设置页渲染。
+`highlight-interaction-policy-fixture.mjs` 覆盖快捷键规范化、危险组合拒绝、三种交互模式、默认颜色路由以及 repeat/IME 保护。`highlight-record-integrity-fixture.mjs` 另行覆盖 ChatGPT 与普通网页 annotation 合同、旧记录迁移、备注和标签预算、未知字段剥离、超大身份拒绝及两类 round trip。`local-import-integrity-fixture.mjs` 验证超限文件不会调用 `File.text()`、未来设置 schema 被拒绝、组合备份 envelope 与源记录预算生效、旧单类文件保持兼容、混装旧记录被拒绝，并固定同 ID 冲突规则。`chatgpt-ui-compatibility-fixture.mjs` 验证三条正式命令、输入大小与隐私边界、契约哈希绑定、单能力漂移隔离和未知能力默认停用；它还证明 CLI 不会打开浏览器、自动改写契约或把离线报告当成实站验收。`chatgpt-adapter-recovery-fixture.mjs` 覆盖 property-backed composer、敏感/有副作用上下文、无正文进展签名、工具安全分流和 reload fail-closed；controller fixture 另用会抛错的伪 selector 证明 controller 没有绕过 adapter。`target-surface-backend-fixture.mjs` 汇总 adapter、恢复控件、suggested-work 和 answer actions 四组 fixture，覆盖唯一合同、歧义 fail-open、动作前重验证、composer 空值、可信手势、toggle、remount、原状态恢复、无轮询及无正文诊断。`answer-actions-controller-fixture.mjs` 还单独验证菜单动作、默认排序、streaming、重复 Copy 和未知 live contract。`convergence-core-fixture.mjs` 覆盖设置迁移和安全上限、Markdown/Notion 序列化、五公式样本、高亮记录导入导出，以及可靠性关键状态。`conversation-export-fixture.mjs` 另行覆盖完整性证明、turn/role 身份绑定、整段 Markdown/PDF、高亮偏移、A4/Letter、PDF 高亮开关、表格单元格内的 marks/链接/公式、安全 MathML 提取、模型二次过滤、命名空间 DOM 重建、局部公式高亮降级和危险链接过滤。controller、ledger 与 Worker fixture 再验证实际执行边界、重启去重、并发写入、50 条历史上限和存储失败时默认失败。Acceptance validator `1.15.0` 将上述兼容性结果也纳入 `functional-convergence` 门禁；预检接受 13 个 known-good，并拒绝 50 个 known-bad，其中包含重算哈希后的伪能力隔离结论。所有离线证据都不替代真实 ChatGPT、系统剪贴板、Notion、PDF viewer 或实际设置页渲染。
 
 ## 明确保留的差距
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "validatorVersion": "1.14.0",
+  "validatorVersion": "1.15.0",
   "evidenceSchemaVersion": 1,
   "controlsUseProductionValidators": true,
   "gates": [
@@ -58,6 +58,11 @@
       "id": "local-import-integrity",
       "validatorKind": "local-import-integrity",
       "candidateEvidenceClasses": ["SYNTHETIC_FIXTURE", "LOCAL_REAL_BROWSER"]
+    },
+    {
+      "id": "chatgpt-ui-compatibility",
+      "validatorKind": "chatgpt-ui-compatibility",
+      "candidateEvidenceClasses": ["SYNTHETIC_FIXTURE", "CURRENT_CHATGPT_READ_ONLY"]
     },
     {
       "id": "copy-placement",
