@@ -76,6 +76,28 @@
       "status": "UNKNOWN",
       "requiredInvariants": ["streaming ownership", "edit branch identity", "tool/file/auth boundaries"],
       "failOpen": true
+    },
+    {
+      "capabilityId": "recovery.nativeControls",
+      "sourceCapabilityId": "native-stop-retry-resend-controls",
+      "sourceEvidenceClass": "NONE",
+      "requiredSourceObservationIds": [],
+      "variantId": "unproven-v1",
+      "status": "UNKNOWN",
+      "requiredInvariants": ["current recovery identity", "current subject identity", "unique native control identity", "fresh pre-action revalidation"],
+      "selectors": [],
+      "failOpen": true
+    },
+    {
+      "capabilityId": "interface.suggestedWork",
+      "sourceCapabilityId": "composer-associated-suggested-work",
+      "sourceEvidenceClass": "NONE",
+      "requiredSourceObservationIds": [],
+      "variantId": "unproven-v1",
+      "status": "UNKNOWN",
+      "requiredInvariants": ["unique suggested-work surface", "bounded composer relationship", "no editor descendants", "reversible local hiding"],
+      "selectors": [],
+      "failOpen": true
     }
   ],
   "invalidationRules": [

@@ -21,6 +21,7 @@ const ALL_GATES = [
   "conversation-export-completeness",
   "recovery-deduplication",
   "recovery-action-safety",
+  "target-surface-backend",
   "copy-placement",
   "core-flow-regression",
   "send-lifecycle-safety",
@@ -39,6 +40,7 @@ export async function runControlCorpus(repoRoot) {
     ["known-good-conversation-export-completeness", async (context) => { context.requestedGateIds = ["conversation-export-completeness"]; }],
     ["known-good-recovery-deduplication", async (context) => { context.requestedGateIds = ["recovery-deduplication"]; }],
     ["known-good-recovery-action-safety", async (context) => { context.requestedGateIds = ["recovery-action-safety"]; }],
+    ["known-good-target-surface-backend", async (context) => { context.requestedGateIds = ["target-surface-backend"]; }],
     ["known-good-adapter-contract", async (context) => { context.requestedGateIds = ["adapter-contract"]; }],
     ["known-good-low-memory-fixture", async (context) => { context.requestedGateIds = ["low-memory-benefit"]; }],
     ["known-good-highlighter-fixture", async (context) => { context.requestedGateIds = ["highlight-remount"]; }],
@@ -196,6 +198,11 @@ export async function runControlCorpus(repoRoot) {
       evidence(context.manifest, "recovery-action-safety").measurement.wrongTurnEvidenceRejected = false;
       refreshRoot(context.manifest);
     }],
+    ["forged-target-surface-backend-rehash", async (context) => {
+      await mutateJsonArtifact(context, "target-surface-backend", (value) => { value.unknownLiveContractFailsOpen = false; });
+      evidence(context.manifest, "target-surface-backend").measurement.unknownLiveContractFailsOpen = false;
+      refreshRoot(context.manifest);
+    }],
     ["packaging-version-mismatch", async ({ bundleDir, manifest }) => {
       await writeFile(path.join(bundleDir, "artifacts", "version-report.json"), JSON.stringify({
         sourceVersion: "9.9.9",
@@ -289,6 +296,7 @@ async function createGoodBundle(repoRoot) {
     ["conversation-export", "artifacts/conversation-export.json", "application/json", JSON.stringify(controlConversationExport())],
     ["recovery-ledger", "artifacts/recovery-ledger.json", "application/json", JSON.stringify(controlRecoveryLedger())],
     ["recovery-actions", "artifacts/recovery-actions.json", "application/json", JSON.stringify(controlRecoveryActions())],
+    ["target-surface-backend", "artifacts/target-surface-backend.json", "application/json", JSON.stringify(controlTargetSurfaceBackend())],
     ["built-manifest", "artifacts/built-manifest.json", "application/json", JSON.stringify({ version: "0.0.0" })],
     ["version-report", "artifacts/version-report.json", "application/json", JSON.stringify({
       sourceVersion: "0.0.0",
@@ -440,6 +448,7 @@ async function createGoodBundle(repoRoot) {
     record("conversation-export-completeness", { surface: "conversation-export-coordinator" }, ["conversation-export"], controlConversationExport()),
     record("recovery-deduplication", { surface: "recovery-service-worker-ledger" }, ["recovery-ledger"], controlRecoveryLedger()),
     record("recovery-action-safety", { surface: "recovery-action-policy" }, ["recovery-actions"], controlRecoveryActions()),
+    record("target-surface-backend", { surface: "target-surface-backend" }, ["target-surface-backend"], controlTargetSurfaceBackend()),
     record("copy-placement", { surface: "assistant-action-cluster" }, ["chatgpt-contract", "current-chatgpt-bootstrap"], {
       actionInjected: false,
       capabilityStatus: "UNKNOWN",
@@ -645,6 +654,35 @@ function controlRecoveryActions() {
     wrongScopeEvidenceRejected: true,
     contentExcludedFromClaim: true,
     realControlAdapterIncluded: false
+  };
+}
+
+function controlTargetSurfaceBackend() {
+  return {
+    schemaVersion: 1,
+    subject: "target-surface-backend",
+    passed: true,
+    suggestedWorkExactFixtureContract: true,
+    ambiguousSuggestedWorkFailsOpen: true,
+    recoveryControlSubjectBound: true,
+    recoveryControlRevalidatedBeforeClick: true,
+    confirmedResendRequiresEmptyComposer: true,
+    targetDiagnosticsExcludeVisibleText: true,
+    pageWritableFixtureMarkerRejected: true,
+    toggleOnHidesExactSurface: true,
+    toggleOffRestoresOriginalState: true,
+    unrelatedCardsPreserved: true,
+    remountReconciled: true,
+    noPollingOrOwnObserver: true,
+    exactEvidenceSubmittedOnce: true,
+    subjectAndControlBoundExecution: true,
+    changedControlRejected: true,
+    consequentialStateRejected: true,
+    retryFallbackSupported: true,
+    confirmedUnsentResendSupported: true,
+    unknownLiveContractFailsOpen: true,
+    realSuggestedWorkContractIncluded: false,
+    realRecoveryControlContractIncluded: false
   };
 }
 

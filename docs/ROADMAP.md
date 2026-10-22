@@ -1,6 +1,6 @@
 # Mica Roadmap
 
-Mica 以 2026-10-12 的冻结产品系统为基础继续推进。Foundation、Low Memory、Highlighter 和 PDF 的既有成果仍是架构底座；`0.5.5` 功能收敛阶段新增统一设置、Markdown/Notion 数据路径、完整会话导出、高级 Reliability 后端、按站点授权的普通网页高亮，以及 ChatGPT/普通网页共用的高亮交互策略。各项状态以 [`product/MICA_FUNCTIONAL_CONVERGENCE_V1.md`](product/MICA_FUNCTIONAL_CONVERGENCE_V1.md) 为准，历史候选证据不自动等于当前构建已完成真实验收。
+Mica 以 2026-10-12 的冻结产品系统为基础继续推进。Foundation、Low Memory、Highlighter 和 PDF 的既有成果仍是架构底座；`0.5.6` 功能收敛阶段新增统一设置、Markdown/Notion 数据路径、完整会话导出、高级 Reliability 后端、按站点授权的普通网页高亮、共用高亮交互策略，以及受当前站点合同约束的恢复控件和建议工作控制器。各项状态以 [`product/MICA_FUNCTIONAL_CONVERGENCE_V1.md`](product/MICA_FUNCTIONAL_CONVERGENCE_V1.md) 为准，历史候选证据不自动等于当前构建已完成真实验收。
 
 ## Foundation（内部关口）
 
@@ -39,7 +39,7 @@ ChatGPT 原生 virtualization 只是基线。`content-visibility`、DOM 数量�
 
 ## 功能收敛阶段 — Copy / Settings / Reliability
 
-当前 `0.5.5` 后端候选已经加入：
+当前 `0.5.6` 后端候选已经加入：
 
 - 版本化设置 schema 和统一 Options 页面；
 - AnswerDocument 驱动的 Markdown、Notion rich clipboard 和 Notion import file；
@@ -49,6 +49,9 @@ ChatGPT 原生 virtualization 只是基线。`content-visibility`、DOM 数量�
 - 普通网页 exact-origin 可选权限、动态注册、语义锚点、四种颜色及本地备份；
 - 约 60 秒无真实进展的状态机、最多两次恢复刷新、跨刷新草稿快照，以及由 Service Worker 管理的动作 claim 和隐私历史 ledger；
 - 原生 Stop、assistant retry、确认未提交 resend 的精确证据授权、次数限制、settle/backoff 和 fail-closed 执行边界；
+- 连接内容运行时的恢复控件适配器：只接收 `EXACT` 证据，提交一次授权，并在动作前重新核对 recovery subject 与 control identity；
+- `Hide suggested work` 的可逆控制器：只处理唯一 `EXACT` 表面，设置关闭、结构歧义和 remount 时恢复原状态，不创建第二个 observer 或轮询；
+- Developer QA 的有界目标结构报告，只输出结构 token、关系、语义类别和指纹，不输出建议或对话正文；
 - 由 ChatGPTAdapter 统一提供 composer、assistant 进展、工具安全与 reload 安全观察，controller 不再直接查询页面结构；
 - 对已提交、未提交、未知提交状态以及只读/有副作用工具的安全分流。
 
@@ -59,9 +62,9 @@ ChatGPT 原生 virtualization 只是基线。`content-visibility`、DOM 数量�
 - 普通网页权限提示、文章页绘制、编辑和跨刷新恢复的实际浏览器验收；
 - 完整 conversation 的 full-history reload、剪贴板和 PDF 产品路径浏览器验收；
 - Notion 一次粘贴后的原生可编辑公式；
-- 真实 ChatGPT 原生 Stop、assistant retry 和确认未提交 resend 的控件身份适配与执行；
+- 真实 ChatGPT 原生 Stop、assistant retry 和确认未提交 resend 的控件合同与实际执行验收；
 - Composer / Connector 历史真实故障在当前页面结构上的精确收敛；
-- Hide suggested work 的当前结构合同；
+- Hide suggested work 的当前真实结构合同与页面验收；
 - `functional-convergence` 完整候选的浏览器证据物化与正式 candidate run。
 
 本轮禁止启动浏览器，因此上述真实目标验证留作明确缺口，不会被本地模型或旧截图冒充。隐私、最小权限、typing hot path、浏览器测试边界、fail-open 和版本一致性规则始终有效。

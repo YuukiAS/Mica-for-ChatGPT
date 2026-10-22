@@ -1,8 +1,8 @@
 (() => {
-  const VERSION = "0.5.5";
-  const VERSION_NAME = "0.5.5";
-  const BUILD_LABEL = "functional-convergence.6";
-  const CONTRACT_HASH = "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538";
+  const VERSION = "0.5.6";
+  const VERSION_NAME = "0.5.6";
+  const BUILD_LABEL = "functional-convergence.7";
+  const CONTRACT_HASH = "6a5aacc436288b2dfbabd7ec6725114acc34fc3d910faaa9db812c5c5f679d9b";
   const DEFAULT_SETTINGS = Object.freeze({ enabled: true, lowMemory: true, highlighter: true, copyExport: true, reliability: true, hideSuggestedWork: false, lowMemoryKeepCount: 40, lowMemoryThreshold: 80 });
   const RECOVERY_AUTH = Object.freeze({ popup: Symbol("popup"), settings: Symbol("settings"), trustedGesture: Symbol("trusted-gesture") });
   const adapter = globalThis.MicaChatGPTAdapter;
@@ -14,6 +14,8 @@
   const highlightInteractionPolicy = globalThis.MicaHighlightInteractionPolicy;
   const pdfExport = globalThis.MicaPdfExport;
   const recoveryController = globalThis.MicaRecoveryController;
+  const recoveryControlAdapter = globalThis.MicaRecoveryControlAdapter;
+  const suggestedWorkController = globalThis.MicaSuggestedWorkController;
   let settings = { ...DEFAULT_SETTINGS };
   let productSettings = settingsModel?.defaults?.() || null;
   let observer = null;
@@ -55,8 +57,15 @@
     await recoveryController?.configure?.({
       adapter,
       getConversationKey: () => currentConversationId(),
+      executeRecoveryAction: (action) => recoveryControlAdapter?.execute?.(action) || { ok: false, actionId: action?.actionId || null, reason: "recovery_control_adapter_unavailable" },
       settings: { ...(productSettings?.reliability || {}), enabled: settings.enabled && settings.reliability }
     });
+    recoveryControlAdapter?.configure?.({
+      adapter,
+      controller: recoveryController,
+      settings: { ...(productSettings?.reliability || {}), enabled: settings.enabled && settings.reliability }
+    });
+    suggestedWorkController?.configure?.({ adapter, enabled: settings.enabled && settings.hideSuggestedWork });
     refreshStatus();
     exposeFixtureHook();
   }
@@ -108,6 +117,8 @@
       scheduleRefresh();
       scheduleHighlightReconcile();
       recoveryController?.scheduleReconcile?.();
+      recoveryControlAdapter?.scheduleReconcile?.();
+      suggestedWorkController?.scheduleReconcile?.();
     });
     observer.observe(document.documentElement, { childList: true, subtree: true });
   }
@@ -122,6 +133,8 @@
       recoveryController?.onContextChanged?.();
       scheduleRefresh();
       scheduleHighlightReconcile();
+      recoveryControlAdapter?.scheduleReconcile?.();
+      suggestedWorkController?.scheduleReconcile?.();
     };
     addEventListener("popstate", onNavigation, { passive: true });
     addEventListener("hashchange", onNavigation, { passive: true });
@@ -346,6 +359,8 @@
     if (settings.enabled && settings.highlighter) scheduleHighlightReconcile();
     else clearHighlighterSurface();
     recoveryController?.updateSettings?.({ ...(productSettings?.reliability || {}), enabled: settings.enabled && settings.reliability });
+    recoveryControlAdapter?.updateSettings?.({ ...(productSettings?.reliability || {}), enabled: settings.enabled && settings.reliability });
+    suggestedWorkController?.updateSettings?.({ enabled: settings.enabled && settings.hideSuggestedWork });
     reconcileHistoryControl();
   }
 
@@ -988,7 +1003,8 @@
       page: {
         supportedHost: ["chatgpt.com", "chat.openai.com"].includes(location.hostname),
         state: status.state,
-        compatibility: status.compatibility || null
+        compatibility: status.compatibility || null,
+        targetSurfaces: adapter.inspectTargetSurfaceDiagnostics?.(document) || null
       },
       runtime: {
         enabled: settings.enabled,
@@ -997,7 +1013,9 @@
         observerActive: !!observer,
         lowMemory: { ...lowMemoryStatus, enabled: settings.enabled && settings.lowMemory },
         highlighter: highlighterStatus(),
-        reliability: recoveryController?.snapshot?.() || null
+        reliability: recoveryController?.snapshot?.() || null,
+        recoveryControls: recoveryControlAdapter?.getStatus?.() || null,
+        suggestedWork: suggestedWorkController?.getStatus?.() || null
       },
       privacy: {
         conversationTextIncluded: false,
@@ -1035,6 +1053,9 @@
       exportPendingAnswer,
       copyPendingAnswer,
       getRecoveryStatus: () => recoveryController?.snapshot?.() || null,
+      getRecoveryControlStatus: () => recoveryControlAdapter?.getStatus?.() || null,
+      getSuggestedWorkStatus: () => suggestedWorkController?.getStatus?.() || null,
+      reconcileSuggestedWork: () => suggestedWorkController?.reconcile?.() || null,
       buildPdfExportModel: (documentModel) => pdfExport?.buildModel(documentModel, highlightRecords) || null,
       adapter,
       answerDocument

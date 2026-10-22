@@ -1,7 +1,13 @@
-# TODO: Hide ChatGPT Suggested Work / Suggested Prompts
+# Hide ChatGPT Suggested Work / Suggested Prompts
 
-Status: TODO / later implementation
+Status: backend implemented in `0.5.6`; current-site contract and real-page acceptance pending
 Priority: UX pain point, independent from current composer P0 recovery work
+
+## 2026-10-22 implementation note
+
+The setting, adapter boundary and reversible controller now ship in `dist/mica-dev`. The controller consumes only one `EXACT` adapter result, preserves the element's original `hidden`, `inert` and `aria-hidden` state, restores it on disable or replacement, and reuses Mica's existing lifecycle observer instead of adding polling.
+
+The current ChatGPT structure is deliberately not guessed. Outside the exact synthetic contract, `ChatGPTAdapter.inspectSuggestedWorkSurface()` returns `MISSING / current_site_contract_unproven`, so enabling the setting currently leaves the native page unchanged. Developer QA can collect a bounded, text-free structural report for a later one-shot contract capture. This means the backend is implemented and fail-open, while current-site detection and visual acceptance remain unverified.
 
 ## User-reported problem
 

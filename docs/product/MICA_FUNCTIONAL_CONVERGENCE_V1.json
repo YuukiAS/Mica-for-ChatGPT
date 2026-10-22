@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "updatedAt": "2026-10-22",
   "candidate": {
-    "version": "0.5.5",
-    "buildLabel": "functional-convergence.6",
+    "version": "0.5.6",
+    "buildLabel": "functional-convergence.7",
     "branch": "codex/mica-functional-convergence",
     "releaseReady": false,
     "browserExecutionAllowedThisRun": false
@@ -154,7 +154,7 @@
       "realAcceptance": "Current candidate on target low-memory device",
       "status": "IMPLEMENTED_UNVERIFIED",
       "result": "Data-plane code is retained; background settings migration was updated.",
-      "gap": "The current 0.5.5 runtime was not exercised in a browser."
+      "gap": "The current 0.5.6 runtime was not exercised in a browser."
     },
     {
       "id": "MFC-200",
@@ -301,14 +301,14 @@
       "source": ["goal sections 8.3 through 8.5"],
       "userProblem": "Use native Stop, retry or a confirmed-unsent resend without duplicating consequential work.",
       "existingImplementation": false,
-      "module": "future ChatGPT recovery control adapter",
+      "module": "ChatGPTAdapter and extension/src/reliability/recovery-control-adapter.ts",
       "iterationAction": "new",
       "successBehavior": "Exact current-turn native control identity is proven before one bounded action.",
-      "automatedVerification": [],
+      "automatedVerification": ["target-surface-adapter-fixture", "recovery-control-adapter-fixture", "recovery-action-policy-fixture", "recovery-controller-fixture", "static build validation"],
       "realAcceptance": "Current authenticated ChatGPT control identity and side-effect cases",
-      "status": "MISSING",
-      "result": "The policy, authorization and executor boundary now exist, but the ordinary content runtime intentionally has no ChatGPT native-control executor.",
-      "gap": "Exact live control identity and invocation behavior are unavailable under the no-browser constraint."
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "result": "The content runtime now connects the controller to a proof-gated control adapter. It submits evidence once, revalidates subject and control identity immediately before invocation, supports Stop, retry and confirmed-unsent resend, and rejects consequential or unknown states. Only fixture contracts are EXACT today, so current-site UNKNOWN remains inert.",
+      "gap": "Current authenticated ChatGPT control identities and invocation behavior remain unverified; no live selector is guessed or activated."
     },
     {
       "id": "MFC-403",
@@ -336,21 +336,21 @@
       "realAcceptance": "Current authenticated ChatGPT native control adapter and action identity",
       "status": "IMPLEMENTED_VERIFIED",
       "result": "The browser-independent backend authorizes native Stop, assistant retry and confirmed-unsent resend once, rejects stale or mismatched evidence and unsafe tools, applies settle/backoff rules, and keeps content out of claims.",
-      "gap": "The real native-control adapter is intentionally absent; MFC-402 remains MISSING until exact live evidence is available."
+      "gap": "The proof-gated control adapter now exists, but current authenticated ChatGPT controls remain contract-UNKNOWN and therefore inert until exact live evidence is captured."
     },
     {
       "id": "MFC-405",
       "source": ["goal section 4", "goal sections 8.1 through 8.7"],
       "userProblem": "Keep reliability and reload safety from creating a second, drifting ChatGPT DOM selector architecture.",
       "existingImplementation": false,
-      "module": "ChatGPTAdapter and recovery controller",
+      "module": "ChatGPTAdapter, recovery controller, recovery control adapter and suggested-work controller",
       "iterationAction": "repair",
-      "successBehavior": "Composer context, assistant progress, tool safety and reload safety are observed only through the adapter; the controller owns state but no page selectors.",
-      "automatedVerification": ["chatgpt-adapter-recovery-fixture", "recovery-controller-fixture", "static build validation"],
+      "successBehavior": "Composer context, assistant progress, tool safety, reload safety, native recovery controls and suggested-work identity are observed only through the adapter; downstream controllers own state but no page selectors.",
+      "automatedVerification": ["chatgpt-adapter-recovery-fixture", "target-surface-adapter-fixture", "recovery-controller-fixture", "static build validation"],
       "realAcceptance": "Current authenticated ChatGPT lifecycle and tool markers",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Adapter methods now return bounded recovery observations, hash progress without exposing answer text, classify uncertain tools conservatively, and fail reload safety closed when the composer is unavailable. Static validation rejects direct querySelector usage in the recovery controller and content reload gate.",
-      "gap": "Live observations remain PARTIAL because the current lifecycle/tool contract is UNKNOWN; this architecture result does not satisfy MFC-402 or the real-only MFC-410 acceptance."
+      "result": "Adapter methods now return bounded recovery and interface observations, hash progress without exposing answer text, classify uncertain tools conservatively, and fail reload or action execution closed when identity is unavailable. Static validation rejects direct page selectors in the recovery, recovery-control and suggested-work controllers.",
+      "gap": "Live lifecycle, native-control and suggested-work contracts remain PARTIAL or MISSING; this architecture result does not satisfy their real-site acceptance or the real-only MFC-410 acceptance."
     },
     {
       "id": "MFC-410",
@@ -385,14 +385,14 @@
       "source": ["docs/tasks/2026-09-08-hide-suggested-work.md", "goal section 11.2"],
       "userProblem": "Hide only the risky suggested-work region without hiding genuine input suggestions.",
       "existingImplementation": false,
-      "module": "future interface adapter",
+      "module": "ChatGPTAdapter and extension/src/features/suggested-work-controller.ts",
       "iterationAction": "new",
       "successBehavior": "Only an exact contract-proven surface is hidden and unknown structures stay native.",
-      "automatedVerification": [],
+      "automatedVerification": ["target-surface-adapter-fixture", "suggested-work-controller-fixture", "static build validation"],
       "realAcceptance": "Current ChatGPT suggested-work surface",
-      "status": "MISSING",
-      "result": "A preserved setting exists, but there is no active page mutation.",
-      "gap": "Exact current target structure is unavailable."
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "result": "The independent setting now drives a reversible controller that hides only one EXACT adapter-owned surface, restores the original hidden/inert/aria-hidden state on disable or replacement, and adds no polling or competing observer. Current-site UNKNOWN remains untouched.",
+      "gap": "The current authenticated suggested-work structure is still unavailable, so the real page remains native until an exact contract is captured and accepted."
     },
     {
       "id": "MFC-500",
@@ -415,11 +415,11 @@
       "existingImplementation": true,
       "module": "scripts/release-config.mjs and dist/mica-dev",
       "iterationAction": "repair",
-      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.5.",
+      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.6.",
       "automatedVerification": ["npm run build", "npm run test:build"],
-      "realAcceptance": "Extension manager shows 0.5.5 after reload",
+      "realAcceptance": "Extension manager shows 0.5.6 after reload",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Runtime version is 0.5.5 with build label functional-convergence.6.",
+      "result": "Runtime version is 0.5.6 with build label functional-convergence.7.",
       "gap": "Extension manager display was not opened."
     },
     {
@@ -458,10 +458,10 @@
       "module": "acceptance validator, controls and functional-convergence profile",
       "iterationAction": "repair",
       "successBehavior": "Known-bad controls remain rejected and convergence requirements become formal candidate gates.",
-      "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "recovery-action-policy-fixture", "acceptance preflight", "build validator"],
+      "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "recovery-action-policy-fixture", "target-surface-backend-fixture", "acceptance preflight", "build validator"],
       "realAcceptance": "Full acceptance candidate run",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Validator 1.8.0 also binds recovery-action-safety into the functional-convergence profile. Nine known-good controls pass and all 43 known-bad controls, including a rehashed wrong-turn action authorization, are rejected.",
+      "result": "Validator 1.9.0 also binds target-surface-backend into the functional-convergence profile. Ten known-good controls pass and all 44 known-bad controls, including rehashed wrong-turn action authorization and forged live-contract fail-open evidence, are rejected.",
       "gap": "A complete browser-bound candidate bundle was not materialized or run in this no-browser iteration."
     }
   ]

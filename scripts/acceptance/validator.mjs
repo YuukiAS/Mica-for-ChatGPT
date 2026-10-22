@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-export const VALIDATOR_VERSION = "1.8.0";
+export const VALIDATOR_VERSION = "1.9.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 const PLACEMENT_PROOF_OBSERVATION_IDS = [
   "copy-inside-assistant-turn",
@@ -28,8 +28,8 @@ const ACCEPTANCE_PROFILES = {
   "milestone-a": [...FOUNDATION_GATES, "low-memory-benefit"],
   "milestone-b": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection"],
   "release-0.3.0": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection"],
-  "functional-convergence": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety"],
-  "all-controls": [...FOUNDATION_GATES, "copy-serialization", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "low-memory-benefit", "highlight-remount", "pdf-selection"]
+  "functional-convergence": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "target-surface-backend"],
+  "all-controls": [...FOUNDATION_GATES, "copy-serialization", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "target-surface-backend", "low-memory-benefit", "highlight-remount", "pdf-selection"]
 };
 
 const EVIDENCE_CLASSES = new Set([
@@ -402,6 +402,40 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
       if (m[field] !== true) fail(`recovery action invariant ${field} failed`);
     }
     if (m.realControlAdapterIncluded !== false) fail("synthetic recovery action evidence overclaimed a real control adapter");
+    return;
+  }
+
+  if (kind === "target-surface-backend") {
+    const measured = await readBoundJson("target-surface-backend");
+    if (record.subject?.surface !== "target-surface-backend") fail("wrong target-surface backend target");
+    if (!sameJson(m, measured)) fail("target-surface backend measurement differs from the bound fixture evidence");
+    for (const field of [
+      "passed",
+      "suggestedWorkExactFixtureContract",
+      "ambiguousSuggestedWorkFailsOpen",
+      "recoveryControlSubjectBound",
+      "recoveryControlRevalidatedBeforeClick",
+      "confirmedResendRequiresEmptyComposer",
+      "targetDiagnosticsExcludeVisibleText",
+      "pageWritableFixtureMarkerRejected",
+      "toggleOnHidesExactSurface",
+      "toggleOffRestoresOriginalState",
+      "unrelatedCardsPreserved",
+      "remountReconciled",
+      "noPollingOrOwnObserver",
+      "exactEvidenceSubmittedOnce",
+      "subjectAndControlBoundExecution",
+      "changedControlRejected",
+      "consequentialStateRejected",
+      "retryFallbackSupported",
+      "confirmedUnsentResendSupported",
+      "unknownLiveContractFailsOpen"
+    ]) {
+      if (m[field] !== true) fail(`target-surface backend invariant ${field} failed`);
+    }
+    if (m.realSuggestedWorkContractIncluded !== false || m.realRecoveryControlContractIncluded !== false) {
+      fail("synthetic target-surface evidence overclaimed a real current-site contract");
+    }
     return;
   }
 

@@ -43,7 +43,7 @@ the production validator, CLI, control runner, schemas and contracts.
   selection.
 - `release-0.3.0`: the full Milestone B set. Low Memory cannot be omitted.
 - `functional-convergence`: the full Milestone B set plus complete-conversation
-  export, recovery-deduplication and recovery-action-safety gates. The export gate binds a versioned
+  export, recovery-deduplication, recovery-action-safety and target-surface-backend gates. The export gate binds a versioned
   fixture to exact completeness proof, turn/role identity, settled-only
   documents, Markdown/PDF assembly and rejection of forged or partial inputs.
   The recovery gate binds Service Worker restart persistence, one-shot action
@@ -52,7 +52,11 @@ the production validator, CLI, control runner, schemas and contracts.
   fresh evidence to the recovery, scope, subject and native-control identities;
   it also requires one-shot limits, configured backoff, tool-safety rejection
   and content-free claims. It proves the browser-independent authorization
-  backend, not a live ChatGPT native-control adapter.
+  backend, not a live ChatGPT native-control adapter. The target-surface gate
+  verifies reversible suggested-work hiding, exact fixture control identity,
+  pre-action revalidation, remount handling, no competing observer and
+  privacy-safe structural diagnostics. It explicitly requires both current-site
+  contracts to remain marked absent until real evidence exists.
 
 The profile-to-gate mapping is enforced by the validator, so shortening a
 bundle's `requiredGates` cannot manufacture a PASS.

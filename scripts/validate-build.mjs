@@ -42,7 +42,7 @@ assert(JSON.stringify([...manifest.optional_host_permissions].sort()) === JSON.s
 assert(manifest.background?.service_worker === "low-memory-background.js", "Low Memory registration service worker missing");
 assert(manifest.options_ui?.page === "options/index.html" && manifest.options_ui?.open_in_tab === true, "settings page registration missing");
 assert(JSON.stringify(manifest.content_scripts?.[0]?.js) === JSON.stringify(["low-memory-config.js"]) && manifest.content_scripts?.[0]?.run_at === "document_start", "Low Memory config bridge order drifted");
-assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["highlight-interaction-policy.js", "settings-model.js", "chatgpt-adapter.js", "answer-document.js", "conversation-export.js", "answer-serializer.js", "highlight-engine.js", "pdf-export-model.js", "recovery-action-policy.js", "recovery-state-machine.js", "recovery-controller.js", "content.js"]), "functional convergence content-script order drifted");
+assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["highlight-interaction-policy.js", "settings-model.js", "chatgpt-adapter.js", "answer-document.js", "conversation-export.js", "answer-serializer.js", "highlight-engine.js", "pdf-export-model.js", "recovery-action-policy.js", "recovery-state-machine.js", "recovery-controller.js", "recovery-control-adapter.js", "suggested-work-controller.js", "content.js"]), "functional convergence content-script order drifted");
 assert(!manifest.content_scripts.some((entry) => entry.world === "MAIN"), "Low Memory MAIN scripts must be extension-controlled dynamic registrations");
 
 for (const size of [16, 32, 48, 128]) {
@@ -69,7 +69,9 @@ const pdfExportModel = await readFile(path.join(distDir, "pdf-export-model.js"),
 const recoveryActionPolicy = await readFile(path.join(distDir, "recovery-action-policy.js"), "utf8");
 const recoveryStateMachine = await readFile(path.join(distDir, "recovery-state-machine.js"), "utf8");
 const recoveryController = await readFile(path.join(distDir, "recovery-controller.js"), "utf8");
+const recoveryControlAdapter = await readFile(path.join(distDir, "recovery-control-adapter.js"), "utf8");
 const recoveryLedger = await readFile(path.join(distDir, "recovery-ledger.js"), "utf8");
+const suggestedWorkController = await readFile(path.join(distDir, "suggested-work-controller.js"), "utf8");
 const content = await readFile(path.join(distDir, "content.js"), "utf8");
 const lowMemoryCore = await readFile(path.join(distDir, "low-memory-core.js"), "utf8");
 const lowMemoryPage = await readFile(path.join(distDir, "low-memory-page.js"), "utf8");
@@ -82,7 +84,7 @@ const qa = await readFile(path.join(distDir, "popup", "qa.js"), "utf8");
 const pdfExportPage = await readFile(path.join(distDir, "pdf", "pdf-export-page.js"), "utf8");
 
 for (const text of [adapter, content]) assert(text.includes(contractHash), "built current ChatGPT contract hash drifted");
-for (const text of [highlightInteractionPolicy, adapter, answerDocument, conversationExport, settingsModel, answerSerializer, highlightEngine, generalWebModel, generalWebHighlighter, pdfExportModel, recoveryActionPolicy, recoveryStateMachine, recoveryController, recoveryLedger, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, options, troubleshooting, qa, pdfExportPage]) {
+for (const text of [highlightInteractionPolicy, adapter, answerDocument, conversationExport, settingsModel, answerSerializer, highlightEngine, generalWebModel, generalWebHighlighter, pdfExportModel, recoveryActionPolicy, recoveryStateMachine, recoveryController, recoveryControlAdapter, recoveryLedger, suggestedWorkController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, options, troubleshooting, qa, pdfExportPage]) {
   assert(!/__MICA_(?:VERSION|VERSION_NAME|BUILD_LABEL|CHATGPT_CONTRACT_HASH|DEV_BUILD)__/.test(text), "unresolved build placeholder remains");
   new Function(text);
 }
@@ -95,6 +97,12 @@ for (const token of [
   "inspectComposerRecovery",
   "inspectTurnRecovery",
   "inspectReloadSafety",
+  "inspectSuggestedWorkSurface",
+  "inspectRecoveryControl",
+  "executeRecoveryControl",
+  "inspectTargetSurfaceDiagnostics",
+  "hasTargetSurfaceFixtureAuthority",
+  "__MICA_TEST_ONLY_TARGET_SURFACE_CONTRACT__",
   "failOpen"
 ]) assert(adapter.includes(token), `adapter missing ${token}`);
 
@@ -117,7 +125,12 @@ for (const token of ["MicaRecoveryActionPolicy", "EXACT", "native_stop", "assist
 for (const token of ["MicaRecoveryStateMachine", "A_COMMITTED", "B_NOT_COMMITTED", "C_UNKNOWN", "reload_limit_reached", "consequential_or_unknown_action", "ACTION_EVIDENCE", "NATIVE_STOP_SETTLING", "actionClaim", "recovery_backend_unavailable", "rawConversationIdIncluded: false"]) assert(recoveryStateMachine.includes(token), `recovery state machine missing ${token}`);
 for (const token of ["MicaRecoveryController", "MICA_RELIABILITY_CONTEXT", "MICA_RELIABILITY_CLAIM_ACTION", "MICA_RELIABILITY_APPEND_HISTORY", "chrome.storage.session", "trusted_submit", "inspectComposerRecovery", "inspectTurnRecovery", "submitActionEvidence", "executeRecoveryAction", "draftIncluded: false"]) assert(recoveryController.includes(token), `recovery controller missing ${token}`);
 assert(!/querySelector(?:All)?\s*\(/.test(recoveryController), "recovery controller bypassed ChatGPTAdapter with direct page selectors");
+for (const token of ["MicaRecoveryControlAdapter", "inspectRecoveryControl", "executeRecoveryControl", "EXACT", "exact_control_evidence_submitted", "consequentialAction", "confirmed_resend", "conversationTextIncluded: false"]) assert(recoveryControlAdapter.includes(token), `recovery control adapter missing ${token}`);
+assert(!/querySelector(?:All)?\s*\(/.test(recoveryControlAdapter), "recovery control adapter bypassed ChatGPTAdapter with direct page selectors");
 for (const token of ["MicaRecoveryLedger", "micaRecoveryActionClaimsV1", "native_stop", "confirmed_resend", "already_claimed", "claim_identity_conflict", "history_duplicate", "rawConversationIdIncluded: false"]) assert(recoveryLedger.includes(token), `recovery ledger missing ${token}`);
+for (const token of ["MicaSuggestedWorkController", "inspectSuggestedWorkSurface", "EXACT", "data-mica-suggested-work-hidden", "restoreActiveSurface", "textIncluded: false"]) assert(suggestedWorkController.includes(token), `suggested-work controller missing ${token}`);
+assert(!/MutationObserver|setInterval|setTimeout/.test(suggestedWorkController), "suggested-work controller added polling or a competing observer");
+assert(!/querySelector(?:All)?\s*\(/.test(suggestedWorkController), "suggested-work controller bypassed ChatGPTAdapter with direct page selectors");
 
 for (const token of [
   "MicaHighlightEngine",
@@ -153,6 +166,9 @@ for (const token of [
   "MICA_EXPORT_CONVERSATION_PDF",
   "MICA_LOAD_FULL_HISTORY",
   "mica-developer-qa.v1",
+  "targetSurfaces",
+  "recoveryControls",
+  "suggestedWork",
   `const VERSION = "${MACHINE_VERSION}"`,
   `const BUILD_LABEL = "${BUILD_LABEL}"`,
   "conversationTextIncluded: false",
@@ -192,7 +208,7 @@ const reportBody = extractFunctionBody(content, "buildSanitizedQaReport");
 assert(!/innerText|textContent|innerHTML|outerHTML/.test(reportBody), "sanitized QA report must not read conversation text/HTML");
 const safeReloadBody = extractFunctionBody(content, "safeToReload");
 assert(safeReloadBody.includes("adapter.inspectReloadSafety") && !/querySelector|textContent|\.value/.test(safeReloadBody), "reload safety must be owned by ChatGPTAdapter");
-for (const text of [settingsModel, conversationExport, answerSerializer, highlightEngine, pdfExportModel, recoveryActionPolicy, recoveryStateMachine, recoveryController, recoveryLedger, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground]) {
+for (const text of [settingsModel, conversationExport, answerSerializer, highlightEngine, pdfExportModel, recoveryActionPolicy, recoveryStateMachine, recoveryController, recoveryControlAdapter, recoveryLedger, suggestedWorkController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground]) {
   assert(!/addEventListener\(["'](?:beforeinput|input|keydown|compositionstart|compositionupdate|compositionend)/.test(text), "runtime added a typing hot-path listener");
 }
 assert(!/addEventListener\(["'](?:beforeinput|input|compositionstart|compositionupdate|compositionend)/.test(generalWebHighlighter), "general web runtime added a synchronous typing listener");

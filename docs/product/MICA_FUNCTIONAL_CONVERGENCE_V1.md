@@ -1,6 +1,6 @@
 # Mica 功能收敛 V1
 
-Mica `0.5.5` 是一次后端功能收敛候选，不是正式发布。它在 `codex/mica-product-system-rebuild` 的 Foundation、Low Memory、Highlighter 和 PDF 基础上，新增统一设置模型、AnswerDocument 驱动的 Markdown/Notion 序列化、完整会话导出、高亮记录迁移、有边界的断流恢复状态机、按站点授权的普通网页高亮运行时，以及 ChatGPT/普通网页共用的高亮交互策略。当前用户明确禁止启动浏览器和操作真实 ChatGPT，因此本轮只把纯 Node、静态构建、存储合同和验收器控制集能够证明的部分标为已验证；真实页面交互、PDF 查看器和 Notion 原生公式均保留明确缺口。
+Mica `0.5.6` 是一次后端功能收敛候选，不是正式发布。它在 `codex/mica-product-system-rebuild` 的 Foundation、Low Memory、Highlighter 和 PDF 基础上，新增统一设置模型、AnswerDocument 驱动的 Markdown/Notion 序列化、完整会话导出、高亮记录迁移、有边界的断流恢复状态机、按站点授权的普通网页高亮运行时、共用高亮交互策略，以及受当前站点合同约束的恢复控件和建议工作控制器。当前用户明确禁止启动浏览器和操作真实 ChatGPT，因此本轮只把纯 Node、静态构建、存储合同和验收器控制集能够证明的部分标为已验证；真实页面交互、PDF 查看器和 Notion 原生公式均保留明确缺口。
 
 配套机器矩阵位于 [`MICA_FUNCTIONAL_CONVERGENCE_V1.json`](MICA_FUNCTIONAL_CONVERGENCE_V1.json)。它是当前功能状态的唯一机器可读来源，README 和 ROADMAP 只做面向读者的摘要。
 
@@ -101,7 +101,11 @@ ChatGPT 与普通网页运行时现在共用 `MicaHighlightInteractionPolicy`。
 
 Reliability controller 不再维护自己的 ChatGPT DOM 选择器。composer 值与敏感上下文、assistant 进展签名、工具安全分流和 reload 安全检查都由 `ChatGPTAdapter` 返回；controller 只消费这些观察并驱动状态机。进展签名只带本地哈希、长度和工具阶段计数，不把回答正文写入状态或历史。adapter 找不到 composer 时，reload 安全检查直接 fail closed。当前真实页面的 lifecycle/tool contract 仍是 `UNKNOWN`，因此 live 观察只标为 `PARTIAL`，不会被包装成精确控件证据。
 
-普通内容运行时仍未提供真实 ChatGPT 控件执行器。这是有意的 fail-closed 边界：离线测试证明的是策略、状态转换、后台 claim 和执行器接口，不是页面控件身份。真实控件适配要等精确 live contract 后才能接入。
+普通内容运行时现在已经连接 `MicaRecoveryControlAdapter`。它根据当前恢复状态选择 Stop、assistant retry 或 confirmed-unsent resend，只提交一次新鲜的 `EXACT` 证据，并在执行前通过 `ChatGPTAdapter` 再次核对 subject 与 control identity。确认未提交的 resend 还要求 composer 为空，才允许恢复短期草稿并调用已证明的原生控件。当前真实 ChatGPT 合同没有这些控件的精确身份，所以 live observation 返回 `MISSING`，运行时保持原生；离线 fixture 中的精确合同不能冒充真实页面合同。
+
+`Hide suggested work` 设置也已经接入独立控制器。控制器本身不维护页面选择器，也不创建轮询或第二个 observer；它只接受 adapter 返回的唯一 `EXACT` 表面，保存原来的 `hidden`、`inert` 和 `aria-hidden` 状态后可逆隐藏。功能关闭、节点被替换、候选歧义或合同失效时会恢复原状态。当前真实 suggested-work 结构仍是 `UNKNOWN`，因此真实页面不会因旧截图或猜测选择器而发生变化。
+
+Developer QA 报告新增有界目标结构采集。它只在用户导出报告时读取 composer 附近三层祖先和最新 assistant turn 的结构候选，记录结构 token、相对关系、按钮状态、语义分类与 aria label 指纹，不记录 label 原文、建议文本、回答正文或原始 DOM。该报告为后续一次实站采集准备证据入口，但本轮没有运行它。
 
 ## 需求与实现矩阵摘要
 
@@ -120,12 +124,13 @@ Reliability controller 不再维护自己的 ChatGPT DOM 选择器。composer �
 | MFC-300 | 本轮 §8/§11 | 版本化设置和安全上限 | `IMPLEMENTED_VERIFIED` | convergence core | 设置页渲染 |
 | MFC-400 | Issue #4、本轮 §8 | 60 秒无进展状态机 | `IMPLEMENTED_VERIFIED` | convergence core | 真实断流流程 |
 | MFC-401 | Issue #4、本轮 §8 | 有界自动刷新和跨刷新去重 | `IMPLEMENTED_UNVERIFIED` | 状态/存储合同 | 真实 ChatGPT 回合 |
+| MFC-402 | 本轮 §8.3–§8.5 | 原生 Stop/retry/confirmed-unsent resend 执行 | `IMPLEMENTED_UNVERIFIED` | target-surface backend + action policy + controller | 当前真实控件合同与实际动作 |
 | MFC-403 | 本轮 §8.5/§8.6 | 跨刷新动作去重和无正文历史 | `IMPLEMENTED_VERIFIED` | ledger + controller + worker-restart fixtures | 真实多标签页 reload |
 | MFC-404 | 本轮 §8.3–§8.5/§13E | Stop/retry/resend 精确动作授权 | `IMPLEMENTED_VERIFIED` | policy + controller + ledger + validator controls | 真实原生控件 adapter |
 | MFC-405 | 本轮 §4/§8 | Reliability 只通过 adapter 观察页面结构 | `IMPLEMENTED_VERIFIED` | adapter recovery + controller + static selector gate | lifecycle/tool 真实合同仍为 PARTIAL |
 | MFC-410 | Issues #5/#6 | 输入框与连接器旧故障收敛 | `BLOCKED_BY_REAL_EXTERNAL_DEPENDENCY` | 历史证据存在 | 失败页精确 DOM/AX 合同 |
-| MFC-420 | 历史任务 | Hide suggested work | `MISSING` | 仅设置项 | 精确且稳定的目标结构 |
-| MFC-620 | 本轮 §13 | 验收器拒绝伪完整性结论 | `IMPLEMENTED_VERIFIED` | validator 1.8.0 preflight | 完整浏览器候选 run |
+| MFC-420 | 历史任务 | Hide suggested work | `IMPLEMENTED_UNVERIFIED` | adapter fixture + 可逆控制器 + 静态门禁 | 当前真实目标结构与页面效果 |
+| MFC-620 | 本轮 §13 | 验收器拒绝伪完整性结论 | `IMPLEMENTED_VERIFIED` | validator 1.9.0 preflight | 完整浏览器候选 run |
 
 完整字段、模块归属、成功行为和未解决差距见 JSON 矩阵。
 
@@ -137,6 +142,7 @@ Reliability controller 不再维护自己的 ChatGPT DOM 选择器。composer �
 npm run build
 node scripts/highlight-interaction-policy-fixture.mjs
 node scripts/chatgpt-adapter-recovery-fixture.mjs
+node scripts/target-surface-backend-fixture.mjs
 node scripts/convergence-core-fixture.mjs
 node scripts/conversation-export-fixture.mjs
 node scripts/recovery-action-policy-fixture.mjs
@@ -145,11 +151,12 @@ node scripts/recovery-controller-fixture.mjs
 node scripts/general-web-core-fixture.mjs
 node scripts/general-web-background-fixture.mjs
 node scripts/low-memory-background-fixture.mjs
+node scripts/pdf-background-fixture.mjs
 npm run test:build
 npm run acceptance:preflight
 ```
 
-`highlight-interaction-policy-fixture.mjs` 覆盖快捷键规范化、危险组合拒绝、三种交互模式、默认颜色路由以及 repeat/IME 保护。`chatgpt-adapter-recovery-fixture.mjs` 覆盖 property-backed composer、敏感/有副作用上下文、无正文进展签名、工具安全分流和 reload fail-closed；controller fixture 另用会抛错的伪 selector 证明 controller 没有绕过 adapter。`convergence-core-fixture.mjs` 覆盖设置迁移和安全上限、Markdown/Notion 序列化、五公式样本、高亮记录导入导出，以及可靠性关键状态。`conversation-export-fixture.mjs` 另行覆盖完整性证明、turn/role 身份绑定、整段 Markdown/PDF、高亮偏移，以及对 partial、stale、streaming 和伪造输入的拒绝。`recovery-action-policy-fixture.mjs` 覆盖证据新鲜度、五类身份绑定、三种动作的一次性授权、backoff、工具安全和 claim 无正文；controller、ledger 与 Worker fixture 再验证实际执行边界、重启去重、并发写入、50 条历史上限和存储失败 fail-closed。Acceptance validator `1.8.0` 已将完整会话、恢复去重和恢复动作安全都纳入 `functional-convergence` profile；预检接受 9 个 known-good，并拒绝全部 43 个 known-bad。它们都不替代真实 ChatGPT、系统剪贴板、Notion、PDF viewer 或实际设置页渲染。
+`highlight-interaction-policy-fixture.mjs` 覆盖快捷键规范化、危险组合拒绝、三种交互模式、默认颜色路由以及 repeat/IME 保护。`chatgpt-adapter-recovery-fixture.mjs` 覆盖 property-backed composer、敏感/有副作用上下文、无正文进展签名、工具安全分流和 reload fail-closed；controller fixture 另用会抛错的伪 selector 证明 controller 没有绕过 adapter。`target-surface-backend-fixture.mjs` 汇总 adapter、恢复控件和 suggested-work 三组 fixture，覆盖唯一合同、歧义 fail-open、动作前重验证、composer 空值、toggle、remount、原状态恢复、无轮询及无正文诊断。`convergence-core-fixture.mjs` 覆盖设置迁移和安全上限、Markdown/Notion 序列化、五公式样本、高亮记录导入导出，以及可靠性关键状态。`conversation-export-fixture.mjs` 另行覆盖完整性证明、turn/role 身份绑定、整段 Markdown/PDF、高亮偏移，以及对 partial、stale、streaming 和伪造输入的拒绝。controller、ledger 与 Worker fixture 再验证实际执行边界、重启去重、并发写入、50 条历史上限和存储失败 fail-closed。Acceptance validator `1.9.0` 已把 target-surface backend 加入 `functional-convergence` profile；预检接受 10 个 known-good，并拒绝全部 44 个 known-bad。它们都不替代真实 ChatGPT、系统剪贴板、Notion、PDF viewer 或实际设置页渲染。
 
 ## 明确保留的差距
 
@@ -158,10 +165,10 @@ npm run acceptance:preflight
 - 普通网页高亮的实际权限提示、文章页渲染与交互验收；
 - 整段 conversation 的 full-history reload、系统剪贴板和 PDF viewer 验收；
 - Notion 一次粘贴后的原生可编辑公式；
-- 真实 ChatGPT 原生 Stop、assistant retry 和确认未提交 resend 的控件身份适配与执行；
+- 真实 ChatGPT 原生 Stop、assistant retry 和确认未提交 resend 的控件合同与实际动作验收；
 - 历史 Composer / Connector 修复在当前真实页面上的精确收敛；
-- Hide suggested work 的当前 ChatGPT 结构合同；
-- 当前 `0.5.5` 的浏览器、真实 ChatGPT、PDF viewer 和 Notion 验收；
+- Hide suggested work 的当前 ChatGPT 结构合同与页面验收；
+- 当前 `0.5.6` 的浏览器、真实 ChatGPT、PDF viewer 和 Notion 验收；
 - `functional-convergence` profile 的完整浏览器候选物化与 candidate run。
 
-这些缺口不会阻止源码和开发构建继续存在，但会阻止把 `0.5.5` 称为发布候选或声称全功能验收通过。
+这些缺口不会阻止源码和开发构建继续存在，但会阻止把 `0.5.6` 称为发布候选或声称全功能验收通过。

@@ -1,6 +1,6 @@
 (() => {
   const CONTRACT_ID = "chatgpt-current-2026-10-12-v1";
-  const CONTRACT_HASH = "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538";
+  const CONTRACT_HASH = "6a5aacc436288b2dfbabd7ec6725114acc34fc3d910faaa9db812c5c5f679d9b";
   const CONTRACT_VERSION = 1;
   const CURRENT_TURN_SELECTOR = "section[data-testid^='conversation-turn-']";
   const FIXTURE_TURN_SELECTOR = "[data-testid^='conversation-turn-']";
@@ -16,10 +16,17 @@
   const CONSEQUENTIAL_SELECTOR = "[data-mica-tool-safety='consequential'],[data-mica-consequential='true'],[data-testid*='write'],[data-testid*='purchase'],[data-testid*='delete'],[data-testid*='send-email']";
   const SENSITIVE_COMPOSER_SELECTOR = "[data-testid*='attachment'],[data-testid*='file'],[data-testid*='connector'],[data-testid*='tool'],[aria-label*='connector' i],[aria-label*='连接器']";
   const ACTIVE_LIFECYCLE_SELECTOR = "[role='dialog'],[data-is-streaming='true'],[data-testid*='stop' i],[aria-label*='Stop generating' i],[aria-label*='停止生成']";
+  const FIXTURE_SUGGESTED_WORK_SELECTOR = "[data-mica-suggested-work-surface='true']";
+  const RECOVERY_ACTION_TYPES = Object.freeze(["native_stop", "assistant_retry", "confirmed_resend"]);
+  const TARGET_DIAGNOSTIC_SELECTOR = "button,[role='button'],[data-testid*='suggest' i],[data-testid*='prompt' i],[data-testid*='stop' i],[data-testid*='retry' i],[data-testid*='regenerate' i],[data-testid*='send' i]";
   const SUPPORTED_HOSTS = new Set(["chatgpt.com", "chat.openai.com"]);
 
   function isFixture(doc) {
     return doc?.documentElement?.dataset?.micaFixture === "true";
+  }
+
+  function hasTargetSurfaceFixtureAuthority(doc) {
+    return isFixture(doc) && globalThis.__MICA_TEST_ONLY_TARGET_SURFACE_CONTRACT__ === true;
   }
 
   function isSupportedDocument(doc) {
@@ -175,6 +182,240 @@
     return { safe: true, reason: "empty_composer_no_active_lifecycle_marker", evidenceClass: isFixture(doc) ? "EXACT" : "PARTIAL" };
   }
 
+  function inspectSuggestedWorkSurface(doc = document) {
+    if (!isSupportedDocument(doc)) return suggestedWorkObservation("MISSING", "unsupported_document");
+    if (!hasTargetSurfaceFixtureAuthority(doc)) {
+      return suggestedWorkObservation("MISSING", "current_site_contract_unproven", {
+        detectionSource: "contract-required"
+      });
+    }
+    const composer = findComposer(doc)?.element;
+    if (!(composer instanceof HTMLElement)) return suggestedWorkObservation("MISSING", "composer_unavailable");
+    const candidates = Array.from(doc.querySelectorAll(FIXTURE_SUGGESTED_WORK_SELECTOR))
+      .filter((candidate) => validFixtureSuggestedWorkSurface(candidate, composer));
+    if (candidates.length !== 1) {
+      return suggestedWorkObservation(candidates.length > 1 ? "AMBIGUOUS" : "MISSING", candidates.length > 1 ? "multiple_contract_candidates" : "contract_candidate_unavailable", {
+        candidateCount: candidates.length,
+        detectionSource: "fixture-contract-v1"
+      });
+    }
+    return suggestedWorkObservation("EXACT", "contract_match", {
+      surface: candidates[0],
+      candidateCount: 1,
+      detectionSource: "fixture-contract-v1",
+      variantId: "composer-sibling-suggested-work-v1"
+    });
+  }
+
+  function validFixtureSuggestedWorkSurface(candidate, composer) {
+    if (!(candidate instanceof HTMLElement) || candidate === composer || candidate.contains(composer) || composer.contains(candidate)) return false;
+    if (candidate.getAttribute("data-mica-suggested-work-variant") !== "composer-sibling-v1") return false;
+    if (!boundedCommonAncestor(candidate, composer, 4)) return false;
+    if (candidate.closest("form") || candidate.querySelector("input,textarea,select,[contenteditable='true'],[role='textbox'],[role='dialog'],[role='menu'],[role='listbox']")) return false;
+    const actions = candidate.querySelectorAll("button,[role='button']");
+    return actions.length > 0 && actions.length <= 12;
+  }
+
+  function suggestedWorkObservation(evidenceClass, reason, extra = {}) {
+    return {
+      surface: null,
+      evidenceClass,
+      reason,
+      candidateCount: 0,
+      detectionSource: "none",
+      variantId: "unproven-v1",
+      ...extra
+    };
+  }
+
+  function inspectRecoveryControl(actionType, state, doc = document) {
+    if (!RECOVERY_ACTION_TYPES.includes(actionType)) return recoveryControlObservation(actionType, "MISSING", "unsupported_action_type");
+    if (!isSupportedDocument(doc)) return recoveryControlObservation(actionType, "MISSING", "unsupported_document");
+    if (!hasTargetSurfaceFixtureAuthority(doc)) return recoveryControlObservation(actionType, "MISSING", "current_site_contract_unproven");
+    const subject = actionType === "confirmed_resend" ? state?.promptFingerprint : state?.assistantTurnId;
+    if (!subject) return recoveryControlObservation(actionType, "MISSING", "recovery_subject_unavailable");
+    const candidates = Array.from(doc.querySelectorAll(`[data-mica-recovery-control='${actionType}']`))
+      .filter((candidate) => validFixtureRecoveryControl(candidate, actionType, subject));
+    if (candidates.length !== 1) {
+      return recoveryControlObservation(actionType, candidates.length > 1 ? "AMBIGUOUS" : "MISSING", candidates.length > 1 ? "multiple_contract_candidates" : "contract_candidate_unavailable", {
+        candidateCount: candidates.length
+      });
+    }
+    const control = candidates[0];
+    const controlIdentity = `${actionType}|${subject}|${control.getAttribute("data-mica-recovery-control-id")}`;
+    return recoveryControlObservation(actionType, "EXACT", "contract_match", {
+      control,
+      controlIdHash: hashIdentity(controlIdentity),
+      subjectHash: hashIdentity(subject),
+      candidateCount: 1,
+      variantId: `fixture-${actionType}-control-v1`
+    });
+  }
+
+  function validFixtureRecoveryControl(candidate, actionType, subject) {
+    if (!(candidate instanceof HTMLElement) || String(candidate.tagName || "").toUpperCase() !== "BUTTON") return false;
+    if (candidate.disabled === true || candidate.hidden === true || candidate.getAttribute("aria-disabled") === "true") return false;
+    if (candidate.getAttribute("data-mica-recovery-control") !== actionType) return false;
+    if (candidate.getAttribute("data-mica-recovery-subject") !== subject) return false;
+    return /^[a-z0-9._:-]{1,96}$/i.test(candidate.getAttribute("data-mica-recovery-control-id") || "");
+  }
+
+  function recoveryControlObservation(actionType, evidenceClass, reason, extra = {}) {
+    return {
+      actionType,
+      control: null,
+      controlIdHash: null,
+      subjectHash: null,
+      candidateCount: 0,
+      evidenceClass,
+      reason,
+      variantId: "unproven-v1",
+      ...extra
+    };
+  }
+
+  function executeRecoveryControl(action, state, doc = document) {
+    if (!action || !RECOVERY_ACTION_TYPES.includes(action.type)) return { ok: false, reason: "invalid_recovery_action" };
+    const observation = inspectRecoveryControl(action.type, state, doc);
+    if (observation.evidenceClass !== "EXACT" || !observation.control) return { ok: false, reason: observation.reason || "recovery_control_unavailable" };
+    if (observation.controlIdHash !== action.controlIdHash) return { ok: false, reason: "recovery_control_identity_changed" };
+    if (action.type === "confirmed_resend") {
+      const composerContext = inspectComposerRecovery(doc);
+      if (composerContext.evidenceClass !== "EXACT" || !composerContext.composer?.element) return { ok: false, reason: "composer_contract_unavailable" };
+      if (composerContext.value.trim()) return { ok: false, reason: "composer_not_empty" };
+      if (!String(action.draft || "").trim()) return { ok: false, reason: "resend_draft_unavailable" };
+      setComposerValue(composerContext.composer.element, String(action.draft));
+    }
+    observation.control.click();
+    return { ok: true, reason: "exact_native_control_invoked", controlIdHash: observation.controlIdHash };
+  }
+
+  function inspectTargetSurfaceDiagnostics(doc = document) {
+    if (!isSupportedDocument(doc)) return targetSurfaceDiagnostics("unsupported_document");
+    const composer = findComposer(doc);
+    const turns = listTurns(doc);
+    const lastAssistant = turns.filter((turn) => turn.role === "assistant").at(-1) || null;
+    const roots = [];
+    if (composer?.element) {
+      const form = composer.element.closest("form");
+      let current = form?.parentElement || composer.element.parentElement;
+      for (let depth = 1; current instanceof HTMLElement && depth <= 3; depth += 1) {
+        roots.push({ root: current, relation: `composer-ancestor-${depth}` });
+        current = current.parentElement;
+      }
+    }
+    if (lastAssistant?.element instanceof HTMLElement) roots.push({ root: lastAssistant.element, relation: "latest-assistant-turn" });
+    const candidates = [];
+    const seen = new Set();
+    for (const entry of roots) {
+      for (const node of Array.from(entry.root.querySelectorAll(TARGET_DIAGNOSTIC_SELECTOR))) {
+        if (!(node instanceof HTMLElement) || seen.has(node) || candidates.length >= 32) continue;
+        seen.add(node);
+        candidates.push(sanitizeTargetCandidate(node, entry.relation));
+      }
+    }
+    const suggestedWork = inspectSuggestedWorkSurface(doc);
+    return targetSurfaceDiagnostics("captured", {
+      composerPresent: !!composer,
+      composerVariantId: composer?.variantId || null,
+      latestAssistantPresent: !!lastAssistant,
+      boundedRootCount: roots.length,
+      candidateCount: candidates.length,
+      candidates,
+      suggestedWorkContract: {
+        evidenceClass: suggestedWork.evidenceClass,
+        reason: suggestedWork.reason,
+        candidateCount: suggestedWork.candidateCount,
+        detectionSource: suggestedWork.detectionSource,
+        variantId: suggestedWork.variantId
+      },
+      recoveryControlContract: Object.fromEntries(RECOVERY_ACTION_TYPES.map((actionType) => {
+        const observation = inspectRecoveryControl(actionType, {
+          assistantTurnId: lastAssistant?.turnId || null,
+          promptFingerprint: "diagnostic-only"
+        }, doc);
+        return [actionType, {
+          evidenceClass: observation.evidenceClass,
+          reason: observation.reason,
+          candidateCount: observation.candidateCount,
+          variantId: observation.variantId
+        }];
+      }))
+    });
+  }
+
+  function sanitizeTargetCandidate(node, relation) {
+    const ariaLabel = node.getAttribute("aria-label") || "";
+    const testId = node.getAttribute("data-testid") || "";
+    const dataType = node.getAttribute("data-type") || "";
+    return {
+      relation,
+      tag: String(node.tagName || "").toLowerCase().slice(0, 24),
+      role: structuralToken(node.getAttribute("role")),
+      testId: structuralToken(testId),
+      dataType: structuralToken(dataType),
+      ariaSemantic: classifyAriaSemantic(ariaLabel),
+      ariaLabelFingerprint: ariaLabel ? fingerprint(ariaLabel) : null,
+      disabled: node.disabled === true || node.getAttribute("aria-disabled") === "true",
+      hidden: node.hidden === true || node.getAttribute("aria-hidden") === "true"
+    };
+  }
+
+  function targetSurfaceDiagnostics(reason, extra = {}) {
+    return {
+      schemaVersion: 1,
+      reason,
+      composerPresent: false,
+      composerVariantId: null,
+      latestAssistantPresent: false,
+      boundedRootCount: 0,
+      candidateCount: 0,
+      candidates: [],
+      suggestionTextIncluded: false,
+      conversationTextIncluded: false,
+      rawDomIncluded: false,
+      ...extra
+    };
+  }
+
+  function structuralToken(value) {
+    const token = String(value || "").trim();
+    return /^[a-z0-9._:-]{1,96}$/i.test(token) && !/^conversation-turn-/i.test(token) ? token : null;
+  }
+
+  function classifyAriaSemantic(value) {
+    const normalized = normalizeVisibleText(value).toLowerCase();
+    if (!normalized) return "none";
+    if (/stop(?: generating)?|停止生成/.test(normalized)) return "stop";
+    if (/retry|regenerate|重试|重新生成/.test(normalized)) return "retry";
+    if (/send(?: message| prompt)?|发送/.test(normalized)) return "send";
+    if (/suggest|prompt starter|建议|推荐/.test(normalized)) return "suggested";
+    return "other";
+  }
+
+  function boundedCommonAncestor(first, second, maxDepth) {
+    const ancestors = new Set();
+    let current = first?.parentElement;
+    for (let depth = 0; current instanceof HTMLElement && depth < maxDepth; depth += 1) {
+      ancestors.add(current);
+      current = current.parentElement;
+    }
+    current = second?.parentElement;
+    for (let depth = 0; current instanceof HTMLElement && depth < maxDepth; depth += 1) {
+      if (ancestors.has(current)) return current;
+      current = current.parentElement;
+    }
+    return null;
+  }
+
+  function setComposerValue(composer, value) {
+    if (composer instanceof HTMLTextAreaElement) Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(composer, value);
+    else if (composer instanceof HTMLInputElement) Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(composer, value);
+    else composer.textContent = value;
+    const EventConstructor = typeof InputEvent === "function" ? InputEvent : Event;
+    composer.dispatchEvent(new EventConstructor("input", { bubbles: true, inputType: "insertText", data: null }));
+  }
+
   function composerValue(composer) {
     return composer instanceof HTMLTextAreaElement || composer instanceof HTMLInputElement ? composer.value : composer?.textContent || "";
   }
@@ -191,6 +432,20 @@
       hash = Math.imul(hash, 16777619);
     }
     return `fnv1a:${(hash >>> 0).toString(16).padStart(8, "0")}:${normalized.length}`;
+  }
+
+  function hashIdentity(value) {
+    const text = String(value || "");
+    return `${hashText(text)}${hashText(`mica:${text}`)}`;
+  }
+
+  function hashText(value) {
+    let hash = 2166136261;
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(16).padStart(8, "0");
   }
 
   function inspect(doc = document) {
@@ -226,7 +481,9 @@
       ] : [], composer ? null : "No contract-valid composer was observed."),
       capability("conversation.scrollRoot", "unproven-v1", "UNKNOWN", [], "Current scroll-root restoration contract is not yet proven."),
       capability("answer.math", "unproven-v1", "UNKNOWN", [], "Current ChatGPT math structure is not yet proven."),
-      capability("lifecycle.streamingEditBranchTools", "unproven-v1", "UNKNOWN", [], "Current lifecycle contract is not yet proven.")
+      capability("lifecycle.streamingEditBranchTools", "unproven-v1", "UNKNOWN", [], "Current lifecycle contract is not yet proven."),
+      capability("recovery.nativeControls", "unproven-v1", "UNKNOWN", [], "Current native Stop, retry and resend control identities are not yet proven."),
+      capability("interface.suggestedWork", "unproven-v1", "UNKNOWN", [], "Current suggested-work surface identity is not yet proven.")
     ];
 
     if (!turnStructureValid) {
@@ -282,6 +539,10 @@
     generationStateForTurn,
     inspectComposerRecovery,
     inspectTurnRecovery,
-    inspectReloadSafety
+    inspectReloadSafety,
+    inspectSuggestedWorkSurface,
+    inspectRecoveryControl,
+    executeRecoveryControl,
+    inspectTargetSurfaceDiagnostics
   });
 })();
