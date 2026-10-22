@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-export const VALIDATOR_VERSION = "1.10.0";
+export const VALIDATOR_VERSION = "1.11.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 const PLACEMENT_PROOF_OBSERVATION_IDS = [
   "copy-inside-assistant-turn",
@@ -334,6 +334,15 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
       "markdownConversation",
       "pdfConversation",
       "highlightsShifted",
+      "pdfSettingsConsumed",
+      "answerDocumentTableCellStructure",
+      "tableHighlightPdfInheritance",
+      "structuredTableMath",
+      "markdownTableFormatting",
+      "notionTableEquationMetadata",
+      "pdfInlineSemanticsModel",
+      "unsafePdfLinksRejected",
+      "pdfRenderSemanticsWired",
       "lowMemoryRequiresFullHistory",
       "forgedCompletenessRejected",
       "streamingAssistantRejected"

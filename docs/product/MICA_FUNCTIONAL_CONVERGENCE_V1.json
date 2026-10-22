@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "updatedAt": "2026-10-22",
   "candidate": {
-    "version": "0.5.7",
-    "buildLabel": "functional-convergence.8",
+    "version": "0.5.8",
+    "buildLabel": "functional-convergence.9",
     "branch": "codex/mica-functional-convergence",
     "releaseReady": false,
     "browserExecutionAllowedThisRun": false
@@ -55,7 +55,7 @@
       "automatedVerification": ["convergence-core-fixture", "static build validation"],
       "realAcceptance": "Current ChatGPT answers including KaTeX and remounts",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "Inline marks and inline-code runs were added; conservative raw-math recognition was tightened.",
+      "result": "Inline marks, inline-code runs and per-table-cell inline structure are retained; table math, links and emphasis now reach every export backend, and conservative raw-math recognition remains bounded.",
       "gap": "DOM parsing changes require browser fixture regression."
     },
     {
@@ -83,7 +83,7 @@
       "automatedVerification": ["convergence-core-fixture"],
       "realAcceptance": "Clipboard action from an exact settled answer",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Serializer backend, trusted-gesture selection route and proof-gated one-answer action menu backend are in the build.",
+      "result": "Serializer backend, trusted-gesture selection route and proof-gated one-answer action menu backend are in the build. Structured table cells preserve marks, links, inline code and raw TeX in GFM output.",
       "gap": "Actual Clipboard API behavior and current-site action-cluster placement were not browser-tested."
     },
     {
@@ -97,7 +97,7 @@
       "automatedVerification": ["convergence-core-fixture"],
       "realAcceptance": "Real Notion paste produces editable native equations",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "Rich clipboard payload contains separate inline and block equation metadata.",
+      "result": "Rich clipboard payload contains separate inline and block equation metadata, including equations nested in table cells.",
       "gap": "Real Notion conversion behavior remains unverified and is not claimed."
     },
     {
@@ -168,7 +168,7 @@
       "realAcceptance": "Current candidate on target low-memory device",
       "status": "IMPLEMENTED_UNVERIFIED",
       "result": "Data-plane code is retained; background settings migration was updated.",
-      "gap": "The current 0.5.7 runtime was not exercised in a browser."
+      "gap": "The current 0.5.8 runtime was not exercised in a browser."
     },
     {
       "id": "MFC-200",
@@ -237,7 +237,7 @@
       "automatedVerification": ["conversation-export-fixture", "existing PDF fixture evidence", "static build validation"],
       "realAcceptance": "Actual PDF viewer visual, selection, search and copy checks",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "Single-answer and conversation PDF models now consume the persisted page-size and include-highlights settings; the export page maps A4 and Letter to explicit print page rules.",
+      "result": "Single-answer and conversation PDF models consume page-size and include-highlights settings. Table-cell math, inline emphasis/code, citations and allowlisted http(s)/mailto links survive into the print model; unsafe href schemes are discarded. Table selection projection now uses the same row/cell separators as PDF, so logical cross-cell highlights inherit without pixel coordinates.",
       "gap": "No PDF was generated or opened in this browser-free run."
     },
     {
@@ -429,11 +429,11 @@
       "existingImplementation": true,
       "module": "scripts/release-config.mjs and dist/mica-dev",
       "iterationAction": "repair",
-      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.7.",
+      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.8.",
       "automatedVerification": ["npm run build", "npm run test:build"],
-      "realAcceptance": "Extension manager shows 0.5.7 after reload",
+      "realAcceptance": "Extension manager shows 0.5.8 after reload",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Runtime version is 0.5.7 with build label functional-convergence.8.",
+      "result": "Runtime version is 0.5.8 with build label functional-convergence.9.",
       "gap": "Extension manager display was not opened."
     },
     {
@@ -475,7 +475,7 @@
       "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "recovery-action-policy-fixture", "target-surface-backend-fixture", "acceptance preflight", "build validator"],
       "realAcceptance": "Full acceptance candidate run",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Validator 1.10.0 binds answer-action menu invariants into target-surface-backend. Ten known-good controls pass and all 45 known-bad controls, including a rehashed multi-button answer-action claim, are rejected.",
+      "result": "Validator 1.11.0 binds answer-action invariants and export-fidelity invariants. The control corpus includes a rehashed false structured-table claim in addition to the existing target-surface and safety controls.",
       "gap": "A complete browser-bound candidate bundle was not materialized or run in this no-browser iteration."
     }
   ]

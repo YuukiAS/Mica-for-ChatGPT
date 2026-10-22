@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Mica for ChatGPT",
   "short_name": "Mica",
-  "version": "0.5.7",
-  "version_name": "0.5.7",
+  "version": "0.5.8",
+  "version_name": "0.5.8",
   "description": "Local controls for a calmer, more capable ChatGPT workspace.",
   "icons": {
     "16": "icons/icon16.png",

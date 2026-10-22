@@ -118,12 +118,13 @@ for (const token of [
   "opaque_interactive",
   "unknown_block",
   "inline_math",
-  "display_math"
+  "display_math",
+  "cellInlines"
 ]) assert(answerDocument.includes(token), `AnswerDocument core missing ${token}`);
 for (const token of ["MicaSettingsModel", "noProgressTimeoutSeconds", "maxAutoReloadsPerTurn", "consequentialActionAutoReplay", "micaSettings"]) assert(settingsModel.includes(token), `settings model missing ${token}`);
 for (const token of ["MicaConversationExport", "validateBundle", "completeSelection", "roleSequenceHash", "turnSequenceHash", "conversation_completeness_unproven", "assistant_not_settled"]) assert(conversationExport.includes(token), `conversation export coordinator missing ${token}`);
 for (const token of ["generalWebOrigins", "normalizeWebOrigin", "toMatchPattern", "chatgpt.com"]) assert(settingsModel.includes(token), `settings origin model missing ${token}`);
-for (const token of ["MicaAnswerSerializer", "serializeMarkdown", "serializeNotion", "serializeNotionImport", "conversation_completeness_unproven", "notion_native_equations_require_real_target_validation"]) assert(answerSerializer.includes(token), `answer serializer missing ${token}`);
+for (const token of ["MicaAnswerSerializer", "serializeMarkdown", "serializeNotion", "serializeNotionImport", "cellInlines", "tableCellToHtml", "conversation_completeness_unproven", "notion_native_equations_require_real_target_validation"]) assert(answerSerializer.includes(token), `answer serializer missing ${token}`);
 for (const token of ["MicaRecoveryActionPolicy", "EXACT", "native_stop", "assistant_retry", "confirmed_resend", "action_evidence_expired", "action_identity_mismatch", "consequential_or_unknown_action"]) assert(recoveryActionPolicy.includes(token), `recovery action policy missing ${token}`);
 for (const token of ["MicaRecoveryStateMachine", "A_COMMITTED", "B_NOT_COMMITTED", "C_UNKNOWN", "reload_limit_reached", "consequential_or_unknown_action", "ACTION_EVIDENCE", "NATIVE_STOP_SETTLING", "actionClaim", "recovery_backend_unavailable", "rawConversationIdIncluded: false"]) assert(recoveryStateMachine.includes(token), `recovery state machine missing ${token}`);
 for (const token of ["MicaRecoveryController", "MICA_RELIABILITY_CONTEXT", "MICA_RELIABILITY_CLAIM_ACTION", "MICA_RELIABILITY_APPEND_HISTORY", "chrome.storage.session", "trusted_submit", "inspectComposerRecovery", "inspectTurnRecovery", "submitActionEvidence", "executeRecoveryAction", "draftIncluded: false"]) assert(recoveryController.includes(token), `recovery controller missing ${token}`);
@@ -187,9 +188,9 @@ for (const token of ["collectConversationBundle", "conversationExportStatus", "c
 for (const token of ["data-mica-ui", "highlight-toolbar", "Copy Markdown", "Copy for Notion", "event.isTrusted", "CSS.highlights", "handleHighlightShortcutKeydown", "applyDefaultHighlightShortcut", "permanentToolbar: false"]) {
   assert(content.includes(token), `Highlighter runtime missing ${token}`);
 }
-for (const token of ["MicaPdfExport", "buildConversationModel", "unsupported_answer_structure", "visible-tex-source", "pageSize", "includeHighlights", "localOnly: true"]) assert(pdfExportModel.includes(token), `PDF export model missing ${token}`);
+for (const token of ["MicaPdfExport", "buildConversationModel", "unsupported_answer_structure", "visible-tex-source", "cellInlines", "sanitizeMarks", "safeHref", "pageSize", "includeHighlights", "localOnly: true"]) assert(pdfExportModel.includes(token), `PDF export model missing ${token}`);
 for (const token of ["MICA_OPEN_PDF_EXPORT", "MICA_GET_PDF_EXPORT", "MAX_PDF_EXPORT_BYTES", "chrome.tabs.create"]) assert(lowMemoryBackground.includes(token), `PDF background flow missing ${token}`);
-for (const token of ["Print / Save as PDF", "MicaPdfExportPage", "dataset.micaPdfKind", "window.print"]) assert(`${await readFile(path.join(distDir, "pdf", "pdf-export.html"), "utf8")}\n${pdfExportPage}`.includes(token), `PDF export page missing ${token}`);
+for (const token of ["Print / Save as PDF", "MicaPdfExportPage", "dataset.micaPdfKind", "applyUnitSemantics", "mica-export-link", "noopener noreferrer", "window.print"]) assert(`${await readFile(path.join(distDir, "pdf", "pdf-export.html"), "utf8")}\n${pdfExportPage}`.includes(token), `PDF export page missing ${token}`);
 for (const token of ["data-page-size", "mica-a4", "mica-letter", "size:Letter"]) assert(`${pdfExportPage}\n${pdfExportCss}`.includes(token), `PDF page-size runtime missing ${token}`);
 
 for (const token of ["windowTurboStreamChunk", "windowJsonPayload", "client-history-window", "reactManagedInteractiveNodesDetached", "visibleRoleSequenceHash"]) {

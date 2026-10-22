@@ -127,7 +127,8 @@
         if (rowIndex) appendSeparator(state, "\n");
         return row.map((cell, cellIndex) => {
           if (cellIndex) appendSeparator(state, "\t");
-          return [appendUnit(state, String(cell || ""), "text")];
+          const inlines = block.cellInlines?.[rowIndex]?.[cellIndex];
+          return Array.isArray(inlines) ? serializeInlines(inlines, state) : [appendUnit(state, String(cell || ""), "text")];
         });
       });
       return { ...base, rows };
@@ -142,9 +143,11 @@
 
   function serializeInlines(inlines, state) {
     return (inlines || []).map((run) => {
-      if (run.kind === "inline_math") return appendUnit(state, visibleMath(run), "inline_math", run.rawTeX || null);
-      if (run.kind === "image") return appendUnit(state, run.alt ? `[Image: ${run.alt}]` : "[Image]", "image");
-      return appendUnit(state, run.text || run.label || "", run.kind || "text", null, run.href || null);
+      if (run.kind === "inline_math") return appendUnit(state, visibleMath(run), "inline_math", run.rawTeX || null, null, run.marks);
+      if (run.kind === "image") return appendUnit(state, run.alt ? `[Image: ${run.alt}]` : "[Image]", "image", null, null, run.marks);
+      const kind = run.kind || "text";
+      const href = kind === "link" || kind === "citation" ? safeHref(run.href) : null;
+      return appendUnit(state, run.text || run.label || "", kind, null, href, run.marks);
     }).filter((unit) => unit.text.length > 0);
   }
 
@@ -156,13 +159,23 @@
     state.text += text;
   }
 
-  function appendUnit(state, text, kind, rawTeX = null, href = null) {
+  function appendUnit(state, text, kind, rawTeX = null, href = null, marks = []) {
     const value = String(text || "");
     const start = state.text.length;
     state.text += value;
-    const unit = { text: value, kind, start, end: state.text.length, rawTeX, href };
+    const unit = { text: value, kind, start, end: state.text.length, rawTeX, href, marks: sanitizeMarks(marks) };
     state.units.push(unit);
     return unit;
+  }
+
+  function sanitizeMarks(value) {
+    const allowed = new Set(["strong", "emphasis", "strikethrough", "code"]);
+    return [...new Set(Array.isArray(value) ? value.filter((mark) => allowed.has(mark)) : [])];
+  }
+
+  function safeHref(value) {
+    const href = String(value || "").trim();
+    return /^(https?:|mailto:)/i.test(href) ? href.replace(/[\s<>]/g, "") : null;
   }
 
   function resolveHighlights(records, answerDocument, text) {

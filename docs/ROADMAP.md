@@ -1,6 +1,6 @@
 # Mica Roadmap
 
-Mica 以 2026-10-12 的冻结产品系统为基础继续推进。Foundation、Low Memory、Highlighter 和 PDF 的既有成果仍是架构底座；`0.5.7` 功能收敛阶段新增统一设置、Markdown/Notion 数据路径、完整会话导出、高级 Reliability 后端、按站点授权的普通网页高亮、共用高亮交互策略，以及受当前站点合同约束的恢复控件、建议工作控制器和单回答 Mica actions 后端。各项状态以 [`product/MICA_FUNCTIONAL_CONVERGENCE_V1.md`](product/MICA_FUNCTIONAL_CONVERGENCE_V1.md) 为准，历史候选证据不自动等于当前构建已完成真实验收。
+Mica 以 2026-10-12 的冻结产品系统为基础继续推进。Foundation、Low Memory、Highlighter 和 PDF 的既有成果仍是架构底座；`0.5.8` 功能收敛阶段新增统一设置、Markdown/Notion 数据路径、完整会话导出、高级 Reliability 后端、按站点授权的普通网页高亮、共用高亮交互策略，以及受当前站点合同约束的恢复控件、建议工作控制器和单回答 Mica actions 后端。各项状态以 [`product/MICA_FUNCTIONAL_CONVERGENCE_V1.md`](product/MICA_FUNCTIONAL_CONVERGENCE_V1.md) 为准，历史候选证据不自动等于当前构建已完成真实验收。
 
 ## Foundation（内部关口）
 
@@ -39,10 +39,12 @@ ChatGPT 原生 virtualization 只是基线。`content-visibility`、DOM 数量�
 
 ## 功能收敛阶段 — Copy / Settings / Reliability
 
-当前 `0.5.7` 后端候选已经加入：
+当前 `0.5.8` 后端候选已经加入：
 
 - 版本化设置 schema 和统一 Options 页面；
 - AnswerDocument 驱动的 Markdown、Notion rich clipboard 和 Notion import file；
+- 表格单元格的结构化 inline 模型，使其中的公式、强调、行内代码、链接和引用能够进入 Markdown、Notion 与 PDF，而不是被压平成纯文本；
+- PDF print model 的富文本语义和链接安全层：保留强调、删除线、行内代码、引用及允许的 `http(s)` / `mailto` 链接，拒绝危险 scheme；
 - 由 adapter 唯一 `EXACT` 目标驱动的单回答 `Mica actions` 菜单；菜单按设置排序和裁剪可用动作，streaming、歧义和 remount 都会 fail-open；
 - 以完整历史计数、角色顺序、conversation 身份和 settled turn 为硬门槛的整段 Markdown/PDF 导出；
 - 真正消费 A4/Letter、PDF 高亮包含开关和默认导出动作顺序的导出路径；

@@ -78,15 +78,37 @@
       const active = highlights.find((highlight) => highlight.start <= start && highlight.end >= end);
       const leaf = active ? element("mark") : element("span");
       if (active) leaf.dataset.color = active.color;
+      applyUnitSemantics(leaf, unit);
       if (["inline_math", "display_math"].includes(unit.kind)) {
         leaf.classList.add("math");
         leaf.dataset.micaPdfKind = unit.kind;
         if (unit.rawTeX) leaf.dataset.tex = unit.rawTeX;
       }
-      if (unit.kind === "link" && unit.href) leaf.dataset.href = unit.href;
       leaf.textContent = text;
-      parent.append(leaf);
+      const href = safeHref(unit.href);
+      if (["link", "citation"].includes(unit.kind) && href) {
+        const link = element("a", "mica-export-link");
+        link.setAttribute("href", href);
+        link.setAttribute("target", "_blank");
+        link.setAttribute("rel", "noopener noreferrer");
+        link.append(leaf);
+        parent.append(link);
+      } else {
+        parent.append(leaf);
+      }
     }
+  }
+
+  function applyUnitSemantics(leaf, unit) {
+    leaf.classList.add(`unit-${["text", "inline_code", "link", "citation", "image"].includes(unit.kind) ? unit.kind : "text"}`);
+    for (const mark of Array.isArray(unit.marks) ? unit.marks : []) {
+      if (["strong", "emphasis", "strikethrough", "code"].includes(mark)) leaf.classList.add(`mark-${mark}`);
+    }
+  }
+
+  function safeHref(value) {
+    const href = String(value || "").trim();
+    return /^(https?:|mailto:)/i.test(href) ? href.replace(/[\s<>]/g, "") : null;
   }
 
   function renderError(message) {

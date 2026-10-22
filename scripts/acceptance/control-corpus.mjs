@@ -188,6 +188,11 @@ export async function runControlCorpus(repoRoot) {
       evidence(context.manifest, "conversation-export-completeness").measurement.forgedCompletenessRejected = false;
       refreshRoot(context.manifest);
     }],
+    ["forged-export-fidelity-rehash", async (context) => {
+      await mutateJsonArtifact(context, "conversation-export", (value) => { value.structuredTableMath = false; });
+      evidence(context.manifest, "conversation-export-completeness").measurement.structuredTableMath = false;
+      refreshRoot(context.manifest);
+    }],
     ["forged-recovery-deduplication-rehash", async (context) => {
       await mutateJsonArtifact(context, "recovery-ledger", (value) => { value.workerRestartDeduplicated = false; });
       evidence(context.manifest, "recovery-deduplication").measurement.workerRestartDeduplicated = false;
@@ -604,6 +609,15 @@ function controlConversationExport() {
     markdownConversation: true,
     pdfConversation: true,
     highlightsShifted: true,
+    pdfSettingsConsumed: true,
+    answerDocumentTableCellStructure: true,
+    tableHighlightPdfInheritance: true,
+    structuredTableMath: true,
+    markdownTableFormatting: true,
+    notionTableEquationMetadata: true,
+    pdfInlineSemanticsModel: true,
+    unsafePdfLinksRejected: true,
+    pdfRenderSemanticsWired: true,
     lowMemoryRequiresFullHistory: true,
     forgedCompletenessRejected: true,
     streamingAssistantRejected: true

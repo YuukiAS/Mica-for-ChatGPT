@@ -104,8 +104,14 @@
       return finalizeBlock(state, "quote", { text: inlineText(inlines), inlines });
     }
     if (tag === "table") {
-      const rows = Array.from(node.querySelectorAll("tr")).map((row) => Array.from(row.querySelectorAll("th,td")).map((cell) => normalizeText(cell.textContent || "")));
-      return finalizeBlock(state, "table", { rows });
+      const cells = Array.from(node.querySelectorAll("tr")).map((row) => Array.from(row.querySelectorAll("th,td")).map((cell) => {
+        const inlines = parseInlineRuns(cell);
+        return { text: inlineText(inlines), inlines };
+      }));
+      return finalizeBlock(state, "table", {
+        rows: cells.map((row) => row.map((cell) => cell.text)),
+        cellInlines: cells.map((row) => row.map((cell) => cell.inlines))
+      });
     }
     if (tag === "pre") {
       const code = node.querySelector("code")?.textContent ?? node.textContent ?? "";
@@ -244,7 +250,7 @@
   function blockVisibleText(kind, payload) {
     if (typeof payload.text === "string") return payload.text;
     if (kind === "list") return payload.items.map((item) => item.text).join("\n");
-    if (kind === "table") return payload.rows.flat().join("\t");
+    if (kind === "table") return payload.rows.map((row) => row.join("\t")).join("\n");
     if (kind === "display_math") return payload.renderedText || payload.rawTeX || "";
     return payload.label || "";
   }
@@ -272,7 +278,7 @@
     if (!(turn.answerRoot instanceof HTMLElement) || !turn.answerRoot.contains(range.startContainer) || !turn.answerRoot.contains(range.endContainer)) return null;
     const projection = buildHighlightProjection(turn, answerDoc);
     if (!projection || projection.segments.length === 0) return null;
-    const selected = projection.segments.filter((segment) => rangeIntersectsNode(range, segment.node));
+    const selected = projection.segments.filter((segment) => segment.kind !== "separator" && rangeIntersectsNode(range, segment.node));
     if (selected.length === 0) return null;
     let start = projection.text.length;
     let end = 0;
@@ -375,6 +381,10 @@
     }
     if (!(node instanceof HTMLElement)) return;
     if (node.matches("[data-mica-ui],script,style,noscript,template") || node.matches(INTERACTIVE_SELECTOR)) return;
+    if (block.kind === "table" && node.tagName === "TABLE") {
+      collectTableProjectionSegments(node, block, projection);
+      return;
+    }
     if (isMathRoot(node)) {
       const math = mathPayload(node);
       const text = math.rawTeX || math.renderedText;
@@ -382,6 +392,16 @@
       return;
     }
     for (const child of node.childNodes) collectProjectionSegments(child, block, projection);
+  }
+
+  function collectTableProjectionSegments(table, block, projection) {
+    Array.from(table.querySelectorAll("tr")).forEach((row, rowIndex) => {
+      if (rowIndex) appendProjectionSegment(projection, "\n", row, "separator", block, null);
+      Array.from(row.querySelectorAll("th,td")).forEach((cell, cellIndex) => {
+        if (cellIndex) appendProjectionSegment(projection, "\t", cell, "separator", block, null);
+        for (const child of cell.childNodes) collectProjectionSegments(child, block, projection);
+      });
+    });
   }
 
   function appendProjectionSegment(projection, text, node, kind, block, rawTeX) {

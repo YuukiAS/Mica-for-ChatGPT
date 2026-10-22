@@ -101,7 +101,7 @@
     if (block.kind === "paragraph") return inlinesToMarkdown(block.inlines, config);
     if (block.kind === "quote") return inlinesToMarkdown(block.inlines, config).split("\n").map((line) => `> ${line}`.trimEnd()).join("\n");
     if (block.kind === "list") return (block.items || []).map((item, index) => `${block.ordered ? `${index + 1}.` : "-"} ${inlinesToMarkdown(item.inlines, config)}`).join("\n");
-    if (block.kind === "table") return tableToMarkdown(block.rows, config, warnings);
+    if (block.kind === "table") return tableToMarkdown(block.rows, block.cellInlines, config, warnings);
     if (block.kind === "code") return fencedCode(block.text, block.language);
     if (block.kind === "display_math") return mathMarkdown(block.rawTeX || block.renderedText, true, config);
     if (block.kind === "link" || block.kind === "citation") return safeLink(block.text, block.href);
@@ -127,8 +127,12 @@
     }).join("");
   }
 
-  function tableToMarkdown(rows, config, warnings) {
-    const values = (Array.isArray(rows) ? rows : []).map((row) => (Array.isArray(row) ? row : []).map((cell) => escapeTableCell(String(cell || ""))));
+  function tableToMarkdown(rows, cellInlines, config, warnings) {
+    const values = (Array.isArray(rows) ? rows : []).map((row, rowIndex) => (Array.isArray(row) ? row : []).map((cell, cellIndex) => {
+      const inlines = cellInlines?.[rowIndex]?.[cellIndex];
+      const rendered = Array.isArray(inlines) ? inlinesToMarkdown(inlines, config) : String(cell || "");
+      return escapeTableCell(rendered);
+    }));
     if (!values.length) return "";
     if (config.flavor !== "gfm") {
       warnings.push("table_rendered_as_tab_separated_text");
@@ -149,7 +153,7 @@
       const tag = block.ordered ? "ol" : "ul";
       return `<${tag}>${(block.items || []).map((item) => `<li>${inlinesToHtml(item.inlines)}</li>`).join("")}</${tag}>`;
     }
-    if (block.kind === "table") return `<table><tbody>${(block.rows || []).map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    if (block.kind === "table") return `<table><tbody>${(block.rows || []).map((row, rowIndex) => `<tr>${row.map((cell, cellIndex) => `<td>${tableCellToHtml(block, rowIndex, cellIndex, cell)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
     if (block.kind === "code") return `<pre><code data-language="${escapeAttribute(block.language || "")}">${escapeHtml(block.text || "")}</code></pre>`;
     if (block.kind === "display_math") return notionMath(block.rawTeX || block.renderedText, true);
     if (block.kind === "opaque_interactive") {
@@ -170,6 +174,11 @@
       else output = escapeHtml(run.text || run.label || "");
       return applyHtmlMarks(output, run.marks);
     }).join("");
+  }
+
+  function tableCellToHtml(block, rowIndex, cellIndex, fallback) {
+    const inlines = block.cellInlines?.[rowIndex]?.[cellIndex];
+    return Array.isArray(inlines) ? inlinesToHtml(inlines) : escapeHtml(fallback);
   }
 
   function notionMath(source, display) {
