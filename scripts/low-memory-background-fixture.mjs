@@ -16,6 +16,9 @@ assert(storageFailure.registered === false && storageFailure.unregisterCalls >= 
 assert(disabled.registered === false && disabled.unregisterCalls >= 1, "disabled setting left the interceptor registered");
 assert(workerRestartRecovery.unregisteredBeforeReload && workerRestartRecovery.stayedUnregisteredAfterRestart && workerRestartRecovery.registeredAfterComplete && workerRestartRecovery.mode === "full_history_bypass", "full-history reload was not durable across service-worker restart");
 assert(workerRestartRecovery.completenessProofPreserved, "conversation completeness proof was not durable across service-worker restart");
+assert(workerRestartRecovery.recoveryClaimGranted && workerRestartRecovery.recoveryDuplicateRejected, "recovery action claim was not durable across service-worker restart");
+assert(workerRestartRecovery.recoveryInvalidSourceRejected, "recovery ledger accepted an unsupported sender");
+assert(workerRestartRecovery.recoveryHistoryDeduplicated && workerRestartRecovery.recoveryHistoryContentExcluded, "privacy-safe recovery history was not deduplicated");
 
 const output = { passed: true, firstInstall, storageFailure, disabled, workerRestartRecovery, controlChannel: "chrome.scripting.registerContentScripts", siteWritableConfigAccepted: false };
 const evidenceDir = path.join(root, "results", "mica-product-system-rebuild", "low-memory-evidence");
@@ -60,7 +63,7 @@ async function runScenario({ settings, delayMs = 0, storageError = false, initia
 }
 
 async function runWorkerRestartRecovery() {
-  const shared = { registered: false, session: {}, registerCalls: 0, unregisterCalls: 0 };
+  const shared = { registered: false, session: {}, local: {}, registerCalls: 0, unregisterCalls: 0 };
   const first = createBackgroundInstance(shared);
   await new Promise((resolve) => setTimeout(resolve, 30));
   const completenessProof = {
@@ -73,12 +76,46 @@ async function runWorkerRestartRecovery() {
   };
   await new Promise((resolve) => first.chrome.runtime.onMessage.listeners[0]({ type: "MICA_LOW_MEMORY_PREPARE_FULL_HISTORY", completenessProof }, { tab: { id: 7, url: "https://chatgpt.com/c/fixture" } }, resolve));
   const unregisteredBeforeReload = !shared.registered;
+  const recoveryClaim = {
+    schemaVersion: 1,
+    actionId: "1111111111111111",
+    recoveryId: "2222222222222222",
+    scopeHash: "3333333333333333",
+    sequence: 1,
+    type: "reload",
+    ordinal: 1
+  };
+  const firstClaim = await sendMessage(first, { type: "MICA_RELIABILITY_CLAIM_ACTION", claim: recoveryClaim }, { tab: { id: 7, url: "https://chatgpt.com/c/fixture" } });
   const second = createBackgroundInstance(shared);
   await new Promise((resolve) => setTimeout(resolve, 30));
   const stayedUnregisteredAfterRestart = !shared.registered;
   second.chrome.tabs.onUpdated.listeners[0](7, { status: "complete" });
   await new Promise((resolve) => setTimeout(resolve, 40));
   const tabMode = await new Promise((resolve) => second.chrome.runtime.onMessage.listeners[0]({ type: "MICA_LOW_MEMORY_GET_TAB_MODE" }, { tab: { id: 7, url: "https://chatgpt.com/c/fixture" } }, resolve));
+  const duplicateClaim = await sendMessage(second, { type: "MICA_RELIABILITY_CLAIM_ACTION", claim: recoveryClaim }, { tab: { id: 7, url: "https://chatgpt.com/c/fixture" } });
+  const invalidSource = await sendMessage(second, { type: "MICA_RELIABILITY_CLAIM_ACTION", claim: recoveryClaim }, { tab: { id: 7, url: "https://example.com/" } });
+  const historyEntry = {
+    schemaVersion: 1,
+    eventId: "4444444444444444",
+    recoveryId: "2222222222222222",
+    scopeHash: "3333333333333333",
+    phase: "settled",
+    reason: "assistant_settled",
+    submissionStatus: "A_COMMITTED",
+    reloadCount: 1,
+    recoveryCycle: 1,
+    sensitiveContext: false,
+    consequentialAction: false,
+    updatedAt: Date.now(),
+    conversationTextIncluded: false,
+    promptTextIncluded: false,
+    draftIncluded: false,
+    rawConversationIdIncluded: false,
+    promptText: "must not persist"
+  };
+  const historyFirst = await sendMessage(second, { type: "MICA_RELIABILITY_APPEND_HISTORY", entry: historyEntry }, { tab: { id: 7, url: "https://chatgpt.com/c/fixture" } });
+  const historyDuplicate = await sendMessage(second, { type: "MICA_RELIABILITY_APPEND_HISTORY", entry: historyEntry }, { tab: { id: 7, url: "https://chatgpt.com/c/fixture" } });
+  const historySerialized = JSON.stringify(shared.local.micaRecoveryHistoryV1 || []);
   return {
     unregisteredBeforeReload,
     stayedUnregisteredAfterRestart,
@@ -86,6 +123,11 @@ async function runWorkerRestartRecovery() {
     mode: shared.session["mica.lowMemory.tabModes.v3"]?.["7"] || null,
     completenessProofPreserved: tabMode?.completenessProof?.conversationId === completenessProof.conversationId
       && tabMode?.completenessProof?.expectedTurnCount === completenessProof.expectedTurnCount,
+    recoveryClaimGranted: firstClaim?.ok === true && firstClaim?.granted === true,
+    recoveryDuplicateRejected: duplicateClaim?.ok === true && duplicateClaim?.granted === false && duplicateClaim?.reason === "already_claimed",
+    recoveryInvalidSourceRejected: invalidSource?.ok === false && invalidSource?.reason === "invalid_recovery_source",
+    recoveryHistoryDeduplicated: historyFirst?.appended === true && historyDuplicate?.appended === false && shared.local.micaRecoveryHistoryV1?.length === 1,
+    recoveryHistoryContentExcluded: !historySerialized.includes("must not persist") && !historySerialized.includes("\"promptText\":"),
     registerCalls: shared.registerCalls,
     unregisterCalls: shared.unregisterCalls
   };
@@ -98,10 +140,10 @@ function createBackgroundInstance(shared) {
     runtime,
     storage: {
       onChanged: events(),
-      local: { get: (defaults, callback) => callback({ ...defaults, enabled: true, lowMemory: true }) },
+      local: storageArea(shared.local, { enabled: true, lowMemory: true }),
       session: {
-        get: (defaults, callback) => callback({ ...defaults, ...shared.session }),
-        set: async (value) => { Object.assign(shared.session, value); }
+        ...storageArea(shared.session),
+        async remove(key, callback) { delete shared.session[key]; callback?.(); }
       }
     },
     scripting: {
@@ -113,6 +155,30 @@ function createBackgroundInstance(shared) {
   };
   vm.runInNewContext(source, { chrome, URL, setTimeout, clearTimeout, console });
   return { chrome };
+}
+
+function storageArea(values, fixed = {}) {
+  return {
+    get(defaults, callback) {
+      const result = { ...(defaults || {}), ...fixed, ...values };
+      if (callback) { callback(result); return undefined; }
+      return Promise.resolve(result);
+    },
+    set(next, callback) {
+      Object.assign(values, structuredClone(next));
+      callback?.();
+      return Promise.resolve();
+    },
+    remove(key, callback) {
+      delete values[key];
+      callback?.();
+      return Promise.resolve();
+    }
+  };
+}
+
+function sendMessage(instance, message, sender) {
+  return new Promise((resolve) => instance.chrome.runtime.onMessage.listeners[0](message, sender, resolve));
 }
 
 function assert(condition, message) { if (!condition) throw new Error(message); }

@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "updatedAt": "2026-10-22",
   "candidate": {
-    "version": "0.5.2",
-    "buildLabel": "functional-convergence.3",
+    "version": "0.5.3",
+    "buildLabel": "functional-convergence.4",
     "branch": "codex/mica-functional-convergence",
     "releaseReady": false,
     "browserExecutionAllowedThisRun": false
@@ -154,7 +154,7 @@
       "realAcceptance": "Current candidate on target low-memory device",
       "status": "IMPLEMENTED_UNVERIFIED",
       "result": "Data-plane code is retained; background settings migration was updated.",
-      "gap": "The current 0.5.2 runtime was not exercised in a browser."
+      "gap": "The current 0.5.3 runtime was not exercised in a browser."
     },
     {
       "id": "MFC-200",
@@ -301,14 +301,14 @@
       "source": ["goal sections 8.5 and 8.6"],
       "userProblem": "Keep recovery deduplication across reload and service-worker restart without logging prompt text.",
       "existingImplementation": false,
-      "module": "recovery controller and service worker",
+      "module": "recovery controller, recovery ledger and service worker",
       "iterationAction": "new",
       "successBehavior": "Snapshot is tab/conversation scoped in session storage, history contains no content, and TTL cleanup is bounded.",
-      "automatedVerification": ["convergence-core-fixture", "low-memory-background-fixture"],
+      "automatedVerification": ["convergence-core-fixture", "recovery-ledger-fixture", "recovery-controller-fixture", "low-memory-background-fixture", "acceptance preflight"],
       "realAcceptance": "Multiple tabs and actual reload",
-      "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "Storage keys, privacy-safe history and tab removal cleanup are implemented.",
-      "gap": "Actual browser restart/reload was not exercised."
+      "status": "IMPLEMENTED_VERIFIED",
+      "result": "The Service Worker serializes one-shot reload leases across restart, isolates tabs, expires stale claims, fails closed on storage loss, deduplicates bounded content-free history and clears tab claims. The controller cannot replace an active recovery draft with a parallel send intent.",
+      "gap": "Actual browser restart/reload remains part of final integration acceptance, not the backend contract proof."
     },
     {
       "id": "MFC-410",
@@ -373,11 +373,11 @@
       "existingImplementation": true,
       "module": "scripts/release-config.mjs and dist/mica-dev",
       "iterationAction": "repair",
-      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.2.",
+      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.3.",
       "automatedVerification": ["npm run build", "npm run test:build"],
-      "realAcceptance": "Extension manager shows 0.5.2 after reload",
+      "realAcceptance": "Extension manager shows 0.5.3 after reload",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Runtime version is 0.5.2 with build label functional-convergence.3.",
+      "result": "Runtime version is 0.5.3 with build label functional-convergence.4.",
       "gap": "Extension manager display was not opened."
     },
     {
@@ -416,10 +416,10 @@
       "module": "acceptance validator, controls and functional-convergence profile",
       "iterationAction": "repair",
       "successBehavior": "Known-bad controls remain rejected and convergence requirements become formal candidate gates.",
-      "automatedVerification": ["conversation-export-fixture", "acceptance preflight", "build validator"],
+      "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "acceptance preflight", "build validator"],
       "realAcceptance": "Full acceptance candidate run",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Validator 1.6.0 adds a functional-convergence profile and a conversation-export-completeness gate bound to fixture evidence. Seven known-good controls pass and all 41 known-bad controls, including rehashed forged completeness, are rejected.",
+      "result": "Validator 1.7.0 binds both conversation-export-completeness and recovery-deduplication into the functional-convergence profile. Eight known-good controls pass and all 42 known-bad controls, including rehashed forged completeness and forged restart deduplication, are rejected.",
       "gap": "A complete browser-bound candidate bundle was not materialized or run in this no-browser iteration."
     }
   ]

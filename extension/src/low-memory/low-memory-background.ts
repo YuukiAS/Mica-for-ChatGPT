@@ -7,6 +7,7 @@ const SETTINGS_KEY = globalThis.MicaSettingsModel?.storageKey || "micaSettings";
 const RECOVERY_PREFIX = "mica.recovery.v1.";
 const PDF_EXPORT_PREFIX = "mica.pdf.export.";
 const MAX_PDF_EXPORT_BYTES = 2_000_000;
+const recoveryLedger = globalThis.MicaRecoveryLedger;
 const pendingFullHistory = new Set();
 let registrationQueue = Promise.resolve();
 
@@ -24,6 +25,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   void clearTabMode(tabId);
   void clearCompletenessProof(tabId);
   void chrome.storage.session.remove(`${RECOVERY_PREFIX}${tabId}`);
+  void recoveryLedger?.clearTabClaims?.(chrome.storage.session, tabId);
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -34,6 +36,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "MICA_RELIABILITY_CONTEXT") {
     sendResponse({ ok: Number.isInteger(sender.tab?.id), tabId: sender.tab?.id || 0 });
     return false;
+  }
+  if (message?.type === "MICA_RELIABILITY_CLAIM_ACTION") {
+    void claimRecoveryAction(message, sender).then(sendResponse);
+    return true;
+  }
+  if (message?.type === "MICA_RELIABILITY_APPEND_HISTORY") {
+    void appendRecoveryHistory(message, sender).then(sendResponse);
+    return true;
   }
   if (message?.type === "MICA_LOW_MEMORY_GET_TAB_MODE") {
     void getTabMode(sender.tab?.id).then((state) => sendResponse({ ok: true, ...state }));
@@ -57,6 +67,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   return false;
 });
+
+async function claimRecoveryAction(message, sender) {
+  if (!recoveryLedger || !isSupportedTab(sender.tab)) return { ok: false, granted: false, reason: "invalid_recovery_source" };
+  return recoveryLedger.claimAction(chrome.storage.session, sender.tab.id, message?.claim);
+}
+
+async function appendRecoveryHistory(message, sender) {
+  if (!recoveryLedger || !isSupportedTab(sender.tab)) return { ok: false, appended: false, reason: "invalid_recovery_source" };
+  return recoveryLedger.appendHistory(chrome.storage.local, message?.entry);
+}
 
 async function openPdfExport(message, sender) {
   if (!isSupportedTab(sender.tab) || !validPdfToken(message?.token) || !validPdfModel(message?.model)) return { ok: false, reason: "invalid_export_request" };

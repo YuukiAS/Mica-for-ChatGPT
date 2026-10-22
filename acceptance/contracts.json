@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "validatorVersion": "1.6.0",
+  "validatorVersion": "1.7.0",
   "evidenceSchemaVersion": 1,
   "controlsUseProductionValidators": true,
   "gates": [
@@ -33,6 +33,11 @@
       "id": "conversation-export-completeness",
       "validatorKind": "conversation-export-completeness",
       "candidateEvidenceClasses": ["SYNTHETIC_FIXTURE", "LOCAL_REAL_BROWSER", "CURRENT_CHATGPT_READ_ONLY"]
+    },
+    {
+      "id": "recovery-deduplication",
+      "validatorKind": "recovery-deduplication",
+      "candidateEvidenceClasses": ["SYNTHETIC_FIXTURE", "LOCAL_REAL_BROWSER"]
     },
     {
       "id": "copy-placement",

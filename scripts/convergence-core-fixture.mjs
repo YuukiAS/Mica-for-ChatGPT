@@ -183,7 +183,20 @@ assert.equal(userStopped.userStopped, true);
 
 assert.equal(recovery.sanitizeSnapshot(JSON.parse(JSON.stringify(firstReload))).reloadCount, 1);
 assert.notEqual(recovery.makeScopeKey(scope), recovery.makeScopeKey({ ...scope, tabId: 8 }));
-assert.equal(recovery.historyEntry(firstReload).conversationTextIncluded, false);
+const recoveryHistory = recovery.historyEntry(firstReload);
+assert.equal(recoveryHistory.conversationTextIncluded, false);
+assert.equal(recoveryHistory.rawConversationIdIncluded, false);
+assert.equal("conversationKey" in recoveryHistory, false);
+assert.match(recoveryHistory.eventId, /^[a-f0-9]{16}$/);
+assert.match(recoveryHistory.recoveryId, /^[a-f0-9]{16}$/);
+const reloadClaim = recovery.actionClaim(firstReload);
+assert.equal(reloadClaim.type, "reload");
+assert.equal(reloadClaim.ordinal, 1);
+assert.match(reloadClaim.actionId, /^[a-f0-9]{16}$/);
+assert.equal(recovery.actionClaim(resumed), null);
+const backendUnavailable = recovery.transition(firstReload, { type: "RECOVERY_BACKEND_UNAVAILABLE" }, config, 63_000);
+assert.equal(backendUnavailable.phase, recovery.phases.MANUAL_REQUIRED);
+assert.equal(backendUnavailable.reason, "recovery_backend_unavailable");
 assert.equal("promptText" in recovery.snapshotForStorage(firstReload), false);
 
 console.log(JSON.stringify({
@@ -191,5 +204,5 @@ console.log(JSON.stringify({
   settings: { schemaVersion: migrated.schemaVersion, bounded: true, consequentialReplayLocked: true },
   export: { markdown: true, notionEquationCount: 5, notionNativeStatus: notion.nativeEquationStatus, notionImportFallback: true, conversationCompletenessGate: true },
   highlighterRecords: { exportImport: true, merge: true, scopedFiltering: true },
-  reliability: { normalProgressPreserved: true, firstReload: true, secondReload: true, reloadLimit: true, submissionABC: true, consequentialReplayBlocked: true, tabIsolation: true, privacySafeSnapshot: true }
+  reliability: { normalProgressPreserved: true, firstReload: true, secondReload: true, reloadLimit: true, submissionABC: true, consequentialReplayBlocked: true, tabIsolation: true, privacySafeSnapshot: true, actionClaimIdentity: true, backendFailureFailsManual: true }
 }, null, 2));

@@ -11,6 +11,8 @@ let now = 1_000;
 let reloadCount = 0;
 let copiedDraft = "";
 let lastNotice = null;
+let claimCount = 0;
+let claimAvailable = true;
 let nextTimerId = 1;
 let nextFrameId = 1;
 const timers = new Map();
@@ -53,7 +55,19 @@ const context = vm.createContext({
     runtime: {
       lastError: null,
       sendMessage(message, callback) {
-        callback(message?.type === "MICA_RELIABILITY_CONTEXT" ? { tabId: 7 } : null);
+        if (message?.type === "MICA_RELIABILITY_CONTEXT") return callback({ ok: true, tabId: 7 });
+        if (message?.type === "MICA_RELIABILITY_CLAIM_ACTION") {
+          claimCount += 1;
+          return callback(claimAvailable
+            ? { ok: true, granted: true, actionId: message.claim?.actionId }
+            : { ok: false, granted: false, reason: "claim_store_unavailable" });
+        }
+        if (message?.type === "MICA_RELIABILITY_APPEND_HISTORY") {
+          const current = Array.isArray(localValues.micaRecoveryHistoryV1) ? localValues.micaRecoveryHistoryV1 : [];
+          if (!current.some((item) => item.eventId === message.entry?.eventId)) localValues.micaRecoveryHistoryV1 = [...current, structuredClone(message.entry)].slice(-50);
+          return callback({ ok: true, appended: true });
+        }
+        callback(null);
       }
     },
     storage: {
@@ -91,6 +105,9 @@ controller.recordSendIntent("hello", { toolSafety: "none" });
 await flushPromises();
 assert.equal(controller.snapshot().phase, phases.AWAITING_USER_COMMIT);
 assert.equal(Object.values(sessionValues)[0].draft, "hello");
+controller.recordSendIntent("must not replace active recovery", { toolSafety: "none" });
+await flushPromises();
+assert.equal(Object.values(sessionValues)[0].draft, "hello", "parallel send intent replaced the active recovery draft");
 
 turns.push({ role: "user", turnId: "user-1", roleElement: { textContent: "hello" } });
 controller.reconcile();
@@ -103,6 +120,7 @@ flushTimers();
 await flushPromises();
 assert.equal(controller.snapshot().phase, phases.RELOADING);
 assert.equal(reloadCount, 1);
+assert.equal(claimCount, 1);
 assert.equal(Object.values(sessionValues)[0].state.phase, phases.RELOADING);
 assert.equal(Object.values(sessionValues)[0].state.promptTextIncluded, false);
 
@@ -127,6 +145,8 @@ assert.equal(controller.snapshot().phase, phases.SETTLED);
 assert.equal(Object.keys(sessionValues).length, 0);
 assert.equal(localValues.micaRecoveryHistoryV1.at(-1).conversationTextIncluded, false);
 assert.equal("draft" in localValues.micaRecoveryHistoryV1.at(-1), false);
+assert.equal("conversationKey" in localValues.micaRecoveryHistoryV1.at(-1), false);
+assert.equal(localValues.micaRecoveryHistoryV1.at(-1).rawConversationIdIncluded, false);
 
 controller.recordSendIntent("uncertain draft", { toolSafety: "none" });
 await flushPromises();
@@ -170,6 +190,20 @@ assert.equal(controller.snapshot().phase, phases.CANCELLED);
 assert.equal(controller.snapshot().configured, false);
 assert.equal(Object.keys(sessionValues).length, 0);
 
+claimAvailable = false;
+controller.updateSettings({ enabled: true, noProgressTimeoutSeconds: 30, commitConfirmationTimeoutSeconds: 5, postReloadReconcileTimeoutSeconds: 5 });
+controller.recordSendIntent("backend unavailable", { toolSafety: "none" });
+await flushPromises();
+turns.push({ role: "user", turnId: "user-3", roleElement: { textContent: "backend unavailable" } });
+controller.reconcile();
+await flushPromises();
+now = 100_000;
+flushTimers();
+await flushPromises();
+assert.equal(controller.snapshot().phase, phases.MANUAL_REQUIRED);
+assert.equal(controller.snapshot().reason, "recovery_backend_unavailable");
+assert.equal(reloadCount, 1, "ledger failure must fail closed without another reload");
+
 console.log(JSON.stringify({
   passed: true,
   configuredIdleScope: true,
@@ -181,6 +215,9 @@ console.log(JSON.stringify({
   unknownToolFailsManualWithoutReload: true,
   disablingGuardCancelsRecovery: true,
   privacySafeHistory: true,
+  activeIntentCannotReplaceDraft: true,
+  backgroundActionClaimed: claimCount >= 1,
+  backgroundUnavailableFailsManual: true,
   reloadCount
 }, null, 2));
 

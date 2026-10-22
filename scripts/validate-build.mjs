@@ -67,6 +67,7 @@ const generalWebHighlighter = await readFile(path.join(distDir, "general-web-hig
 const pdfExportModel = await readFile(path.join(distDir, "pdf-export-model.js"), "utf8");
 const recoveryStateMachine = await readFile(path.join(distDir, "recovery-state-machine.js"), "utf8");
 const recoveryController = await readFile(path.join(distDir, "recovery-controller.js"), "utf8");
+const recoveryLedger = await readFile(path.join(distDir, "recovery-ledger.js"), "utf8");
 const content = await readFile(path.join(distDir, "content.js"), "utf8");
 const lowMemoryCore = await readFile(path.join(distDir, "low-memory-core.js"), "utf8");
 const lowMemoryPage = await readFile(path.join(distDir, "low-memory-page.js"), "utf8");
@@ -79,7 +80,7 @@ const qa = await readFile(path.join(distDir, "popup", "qa.js"), "utf8");
 const pdfExportPage = await readFile(path.join(distDir, "pdf", "pdf-export-page.js"), "utf8");
 
 for (const text of [adapter, content]) assert(text.includes(contractHash), "built current ChatGPT contract hash drifted");
-for (const text of [adapter, answerDocument, conversationExport, settingsModel, answerSerializer, highlightEngine, generalWebModel, generalWebHighlighter, pdfExportModel, recoveryStateMachine, recoveryController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, options, troubleshooting, qa, pdfExportPage]) {
+for (const text of [adapter, answerDocument, conversationExport, settingsModel, answerSerializer, highlightEngine, generalWebModel, generalWebHighlighter, pdfExportModel, recoveryStateMachine, recoveryController, recoveryLedger, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, options, troubleshooting, qa, pdfExportPage]) {
   assert(!/__MICA_(?:VERSION|VERSION_NAME|BUILD_LABEL|CHATGPT_CONTRACT_HASH|DEV_BUILD)__/.test(text), "unresolved build placeholder remains");
   new Function(text);
 }
@@ -107,8 +108,9 @@ for (const token of ["MicaSettingsModel", "noProgressTimeoutSeconds", "maxAutoRe
 for (const token of ["MicaConversationExport", "validateBundle", "completeSelection", "roleSequenceHash", "turnSequenceHash", "conversation_completeness_unproven", "assistant_not_settled"]) assert(conversationExport.includes(token), `conversation export coordinator missing ${token}`);
 for (const token of ["generalWebOrigins", "normalizeWebOrigin", "toMatchPattern", "chatgpt.com"]) assert(settingsModel.includes(token), `settings origin model missing ${token}`);
 for (const token of ["MicaAnswerSerializer", "serializeMarkdown", "serializeNotion", "serializeNotionImport", "conversation_completeness_unproven", "notion_native_equations_require_real_target_validation"]) assert(answerSerializer.includes(token), `answer serializer missing ${token}`);
-for (const token of ["MicaRecoveryStateMachine", "A_COMMITTED", "B_NOT_COMMITTED", "C_UNKNOWN", "reload_limit_reached", "consequential_or_unknown_action"]) assert(recoveryStateMachine.includes(token), `recovery state machine missing ${token}`);
-for (const token of ["MicaRecoveryController", "MICA_RELIABILITY_CONTEXT", "chrome.storage.session", "trusted_submit", "draftIncluded: false"]) assert(recoveryController.includes(token), `recovery controller missing ${token}`);
+for (const token of ["MicaRecoveryStateMachine", "A_COMMITTED", "B_NOT_COMMITTED", "C_UNKNOWN", "reload_limit_reached", "consequential_or_unknown_action", "actionClaim", "recovery_backend_unavailable", "rawConversationIdIncluded: false"]) assert(recoveryStateMachine.includes(token), `recovery state machine missing ${token}`);
+for (const token of ["MicaRecoveryController", "MICA_RELIABILITY_CONTEXT", "MICA_RELIABILITY_CLAIM_ACTION", "MICA_RELIABILITY_APPEND_HISTORY", "chrome.storage.session", "trusted_submit", "draftIncluded: false"]) assert(recoveryController.includes(token), `recovery controller missing ${token}`);
+for (const token of ["MicaRecoveryLedger", "micaRecoveryActionClaimsV1", "already_claimed", "claim_identity_conflict", "history_duplicate", "rawConversationIdIncluded: false"]) assert(recoveryLedger.includes(token), `recovery ledger missing ${token}`);
 
 for (const token of [
   "MicaHighlightEngine",
@@ -171,13 +173,16 @@ for (const token of ["event.isTrusted", "trusted_action_required", "page_untrust
 for (const token of ["chrome.scripting.registerContentScripts", "world: \"MAIN\"", "persistAcrossSessions: true", "full_history_bypass", "mica.lowMemory.completeness.v1", "validated-conversation-graph"]) {
   assert(lowMemoryBackground.includes(token), `Low Memory background controller missing ${token}`);
 }
+for (const token of ["MICA_RELIABILITY_CLAIM_ACTION", "MICA_RELIABILITY_APPEND_HISTORY", "claimRecoveryAction", "appendRecoveryHistory", "clearTabClaims"]) {
+  assert(lowMemoryBackground.includes(token), `recovery background ledger integration missing ${token}`);
+}
 for (const token of ["MicaGeneralWebBackground", "mica-general-web-highlighter-v1", "MICA_GENERAL_WEB_SYNC", "world: \"ISOLATED\"", "chrome.permissions", "onRemoved", "general-web-highlighter.js"]) {
   assert(lowMemoryBackground.includes(token), `general web background controller missing ${token}`);
 }
 
 const reportBody = extractFunctionBody(content, "buildSanitizedQaReport");
 assert(!/innerText|textContent|innerHTML|outerHTML/.test(reportBody), "sanitized QA report must not read conversation text/HTML");
-for (const text of [settingsModel, conversationExport, answerSerializer, highlightEngine, pdfExportModel, recoveryStateMachine, recoveryController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground]) {
+for (const text of [settingsModel, conversationExport, answerSerializer, highlightEngine, pdfExportModel, recoveryStateMachine, recoveryController, recoveryLedger, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground]) {
   assert(!/addEventListener\(["'](?:beforeinput|input|keydown|compositionstart|compositionupdate|compositionend)/.test(text), "runtime added a typing hot-path listener");
 }
 assert(!/addEventListener\(["'](?:beforeinput|input|compositionstart|compositionupdate|compositionend)/.test(generalWebHighlighter), "general web runtime added a synchronous typing listener");

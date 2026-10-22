@@ -79,6 +79,7 @@
     if (type === "RESET") return create(event.scope || state.scope, now);
     if (type === "CONTEXT_CHANGED") return terminal(next, PHASES.CANCELLED, "context_changed", now);
     if (type === "USER_STOPPED") return terminal({ ...next, userStopped: true }, PHASES.CANCELLED, "user_stopped", now);
+    if (type === "RECOVERY_BACKEND_UNAVAILABLE") return terminal(next, PHASES.MANUAL_REQUIRED, "recovery_backend_unavailable", now, { type: "notify", automatic: false });
 
     if (type === "USER_COMMITTED" && [PHASES.AWAITING_USER_COMMIT, PHASES.RECONCILING].includes(state.phase)) {
       return {
@@ -240,8 +241,13 @@
   function historyEntry(value) {
     const state = sanitizeSnapshot(value);
     if (!state) return null;
+    const recoveryId = makeRecoveryId(state);
+    const scopeHash = hashIdentity(`${state.scope.tabId}|${state.scope.conversationKey}`);
     return {
       schemaVersion: MODEL_VERSION,
+      eventId: hashIdentity(`${recoveryId}|${state.phase}|${state.reason}|${state.updatedAt}`),
+      recoveryId,
+      scopeHash,
       phase: state.phase,
       reason: state.reason,
       submissionStatus: state.submissionStatus,
@@ -249,9 +255,28 @@
       recoveryCycle: state.recoveryCycle,
       sensitiveContext: state.sensitiveContext,
       consequentialAction: state.consequentialAction,
-      conversationKey: state.scope.conversationKey,
       updatedAt: state.updatedAt,
-      conversationTextIncluded: false
+      conversationTextIncluded: false,
+      promptTextIncluded: false,
+      draftIncluded: false,
+      rawConversationIdIncluded: false
+    };
+  }
+
+  function actionClaim(value) {
+    const state = sanitizeSnapshot(value);
+    const action = state?.pendingAction;
+    if (!state || action?.type !== "reload" || !Number.isInteger(action.ordinal) || action.ordinal < 1 || action.ordinal > 2) return null;
+    const recoveryId = makeRecoveryId(state);
+    const scopeHash = hashIdentity(`${state.scope.tabId}|${state.scope.conversationKey}`);
+    return {
+      schemaVersion: MODEL_VERSION,
+      actionId: hashIdentity(`${recoveryId}|${action.type}|${action.ordinal}`),
+      recoveryId,
+      scopeHash,
+      sequence: state.sequence,
+      type: action.type,
+      ordinal: action.ordinal
     };
   }
 
@@ -299,6 +324,14 @@
     return (hash >>> 0).toString(16).padStart(8, "0");
   }
 
+  function hashIdentity(value) {
+    return `${hashText(String(value || ""))}${hashText(`mica:${String(value || "")}`)}`;
+  }
+
+  function makeRecoveryId(state) {
+    return hashIdentity(`${state.scope.tabId}|${state.scope.conversationKey}|${state.sequence}|${state.intentAt}`);
+  }
+
   globalThis.MicaRecoveryStateMachine = Object.freeze({
     modelVersion: MODEL_VERSION,
     phases: PHASES,
@@ -309,6 +342,7 @@
     sanitizeConfig,
     snapshotForStorage,
     historyEntry,
+    actionClaim,
     makeScopeKey
   });
 })();

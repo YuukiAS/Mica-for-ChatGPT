@@ -30,6 +30,11 @@
     "registeredAfterComplete": true,
     "mode": "full_history_bypass",
     "completenessProofPreserved": true,
+    "recoveryClaimGranted": true,
+    "recoveryDuplicateRejected": true,
+    "recoveryInvalidSourceRejected": true,
+    "recoveryHistoryDeduplicated": true,
+    "recoveryHistoryContentExcluded": true,
     "registerCalls": 2,
     "unregisterCalls": 1
   },

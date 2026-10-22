@@ -19,6 +19,7 @@ const ALL_GATES = [
   "answer-document-core",
   "copy-serialization",
   "conversation-export-completeness",
+  "recovery-deduplication",
   "copy-placement",
   "core-flow-regression",
   "send-lifecycle-safety",
@@ -35,6 +36,7 @@ export async function runControlCorpus(repoRoot) {
     ["complete-measured-bundle", async () => {}],
     ["known-good-current-popup", async (context) => { context.requestedGateIds = ["popup-render"]; }],
     ["known-good-conversation-export-completeness", async (context) => { context.requestedGateIds = ["conversation-export-completeness"]; }],
+    ["known-good-recovery-deduplication", async (context) => { context.requestedGateIds = ["recovery-deduplication"]; }],
     ["known-good-adapter-contract", async (context) => { context.requestedGateIds = ["adapter-contract"]; }],
     ["known-good-low-memory-fixture", async (context) => { context.requestedGateIds = ["low-memory-benefit"]; }],
     ["known-good-highlighter-fixture", async (context) => { context.requestedGateIds = ["highlight-remount"]; }],
@@ -182,6 +184,11 @@ export async function runControlCorpus(repoRoot) {
       evidence(context.manifest, "conversation-export-completeness").measurement.forgedCompletenessRejected = false;
       refreshRoot(context.manifest);
     }],
+    ["forged-recovery-deduplication-rehash", async (context) => {
+      await mutateJsonArtifact(context, "recovery-ledger", (value) => { value.workerRestartDeduplicated = false; });
+      evidence(context.manifest, "recovery-deduplication").measurement.workerRestartDeduplicated = false;
+      refreshRoot(context.manifest);
+    }],
     ["packaging-version-mismatch", async ({ bundleDir, manifest }) => {
       await writeFile(path.join(bundleDir, "artifacts", "version-report.json"), JSON.stringify({
         sourceVersion: "9.9.9",
@@ -273,6 +280,7 @@ async function createGoodBundle(repoRoot) {
     ["copy-mixed-expected", "artifacts/copy-mixed-expected.txt", "text/plain", "math code table output"],
     ["copy-mixed-actual", "artifacts/copy-mixed-actual.txt", "text/plain", "math code table output"],
     ["conversation-export", "artifacts/conversation-export.json", "application/json", JSON.stringify(controlConversationExport())],
+    ["recovery-ledger", "artifacts/recovery-ledger.json", "application/json", JSON.stringify(controlRecoveryLedger())],
     ["built-manifest", "artifacts/built-manifest.json", "application/json", JSON.stringify({ version: "0.0.0" })],
     ["version-report", "artifacts/version-report.json", "application/json", JSON.stringify({
       sourceVersion: "0.0.0",
@@ -422,6 +430,7 @@ async function createGoodBundle(repoRoot) {
       ]
     }),
     record("conversation-export-completeness", { surface: "conversation-export-coordinator" }, ["conversation-export"], controlConversationExport()),
+    record("recovery-deduplication", { surface: "recovery-service-worker-ledger" }, ["recovery-ledger"], controlRecoveryLedger()),
     record("copy-placement", { surface: "assistant-action-cluster" }, ["chatgpt-contract", "current-chatgpt-bootstrap"], {
       actionInjected: false,
       capabilityStatus: "UNKNOWN",
@@ -575,6 +584,26 @@ function controlConversationExport() {
     lowMemoryRequiresFullHistory: true,
     forgedCompletenessRejected: true,
     streamingAssistantRejected: true
+  };
+}
+
+function controlRecoveryLedger() {
+  return {
+    passed: true,
+    firstClaimGranted: true,
+    duplicateClaimRejected: true,
+    workerRestartDeduplicated: true,
+    tabIsolation: true,
+    expiredClaimReclaimed: true,
+    identityConflictRejected: true,
+    invalidClaimRejected: true,
+    storageFailureFailClosed: true,
+    historyAppended: true,
+    historyDeduplicated: true,
+    concurrentHistoryPreserved: true,
+    historyBounded: true,
+    historyContentExcluded: true,
+    tabRemovalCleanup: true
   };
 }
 

@@ -1,7 +1,6 @@
 (() => {
   const machine = globalThis.MicaRecoveryStateMachine;
   const SESSION_PREFIX = "mica.recovery.v1.";
-  const HISTORY_KEY = "micaRecoveryHistoryV1";
   let adapter = null;
   let config = null;
   let getConversationKey = () => location.pathname;
@@ -14,6 +13,7 @@
   let configured = false;
   let submitListenerInstalled = false;
   let notice = null;
+  let actionInFlight = null;
 
   async function configure(options = {}) {
     if (!machine) return { ok: false, reason: "state_machine_unavailable" };
@@ -28,6 +28,7 @@
     const context = await sendRuntime({ type: "MICA_RELIABILITY_CONTEXT" });
     tabId = Number.isInteger(context?.tabId) ? context.tabId : 0;
     sessionKey = `${SESSION_PREFIX}${tabId}`;
+    actionInFlight = null;
     const restored = await restoreSnapshot();
     if (!restored) state = machine.create({ tabId, conversationKey: currentConversationKey() });
     scheduleReconcile();
@@ -54,8 +55,7 @@
     if (!configured || !String(promptText || "").trim()) return snapshot();
     const turns = adapter.listTurns(document);
     const scope = { tabId, conversationKey: currentConversationKey(), turnKey: null };
-    draft = String(promptText).slice(0, 200_000);
-    state = machine.transition(state, {
+    const next = machine.transition(state, {
       type: "SEND_INTENT",
       scope,
       promptFingerprint: fingerprint(promptText),
@@ -66,6 +66,10 @@
       consequentialAction: evidence.consequentialAction === true,
       toolSafety: evidence.toolSafety || "none"
     }, config);
+    if (next.phase !== machine.phases.AWAITING_USER_COMMIT || next.sequence <= (state?.sequence || 0)) return snapshot();
+    draft = String(promptText).slice(0, 200_000);
+    state = next;
+    actionInFlight = null;
     void persistSnapshot();
     scheduleReconcile();
     scheduleTick();
@@ -161,7 +165,18 @@
       return;
     }
     if (action.type === "reload") {
-      await persistSnapshot();
+      const claim = machine.actionClaim(state);
+      if (!claim) return handleRecoveryBackendUnavailable();
+      if (actionInFlight === claim.actionId) return;
+      actionInFlight = claim.actionId;
+      const persisted = await persistSnapshot();
+      if (!persisted) return handleRecoveryBackendUnavailable();
+      const granted = await sendRuntime({ type: "MICA_RELIABILITY_CLAIM_ACTION", claim });
+      if (!granted?.ok) return handleRecoveryBackendUnavailable();
+      if (!granted.granted) {
+        actionInFlight = null;
+        return;
+      }
       if (document.documentElement.dataset.micaFixture === "true" && typeof globalThis.__MICA_FIXTURE_RELOAD__ === "function") globalThis.__MICA_FIXTURE_RELOAD__();
       else location.reload();
       return;
@@ -198,7 +213,7 @@
   }
 
   async function persistSnapshot(includeTerminal = false) {
-    if (!sessionKey || !state || !globalThis.chrome?.storage?.session || (!includeTerminal && isTerminal(state.phase))) return;
+    if (!sessionKey || !state || !globalThis.chrome?.storage?.session || (!includeTerminal && isTerminal(state.phase))) return false;
     const ttlMinutes = config?.recoverySnapshotTtlMinutes || 30;
     const envelope = {
       schemaVersion: 1,
@@ -208,21 +223,28 @@
       state: machine.snapshotForStorage(state),
       draft: state.draftAvailable ? draft : ""
     };
-    await setStorage(globalThis.chrome.storage.session, { [sessionKey]: envelope });
+    return setStorage(globalThis.chrome.storage.session, { [sessionKey]: envelope });
   }
 
   async function finishSnapshot(remove = true) {
     clearTimeout(timer);
-    if (config?.recordPrivacySafeRecoveryHistory && globalThis.chrome?.storage?.local) await appendHistory();
+    actionInFlight = null;
+    if (config?.recordPrivacySafeRecoveryHistory) await appendHistory();
     if (remove && sessionKey && globalThis.chrome?.storage?.session) await removeStorage(globalThis.chrome.storage.session, sessionKey);
   }
 
   async function appendHistory() {
     const entry = machine.historyEntry(state);
     if (!entry) return;
-    const items = await getStorage(globalThis.chrome.storage.local, { [HISTORY_KEY]: [] });
-    const current = Array.isArray(items?.[HISTORY_KEY]) ? items[HISTORY_KEY] : [];
-    await setStorage(globalThis.chrome.storage.local, { [HISTORY_KEY]: [...current, entry].slice(-50) });
+    await sendRuntime({ type: "MICA_RELIABILITY_APPEND_HISTORY", entry });
+  }
+
+  async function handleRecoveryBackendUnavailable() {
+    actionInFlight = null;
+    state = machine.transition(state, { type: "RECOVERY_BACKEND_UNAVAILABLE" }, config);
+    if (config.showRecoveryNotifications) showNotice("unsafe");
+    await finishSnapshot();
+    return snapshot();
   }
 
   function showNotice(mode) {
