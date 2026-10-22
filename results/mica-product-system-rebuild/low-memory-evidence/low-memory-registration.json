@@ -32,6 +32,8 @@
     "completenessProofPreserved": true,
     "recoveryClaimGranted": true,
     "recoveryDuplicateRejected": true,
+    "nativeActionClaimGranted": true,
+    "nativeActionDuplicateRejected": true,
     "recoveryInvalidSourceRejected": true,
     "recoveryHistoryDeduplicated": true,
     "recoveryHistoryContentExcluded": true,

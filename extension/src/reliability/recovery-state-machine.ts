@@ -1,11 +1,14 @@
 (() => {
   const MODEL_VERSION = 1;
+  const actionPolicy = globalThis.MicaRecoveryActionPolicy;
   const PHASES = Object.freeze({
     IDLE: "idle",
     AWAITING_USER_COMMIT: "awaiting_user_commit",
     USER_COMMITTED: "user_committed",
     ASSISTANT_GENERATING: "assistant_generating",
     STALLED: "stalled",
+    ACTION_BACKOFF: "action_backoff",
+    NATIVE_STOP_SETTLING: "native_stop_settling",
     RELOADING: "reloading",
     RECONCILING: "reconciling",
     MANUAL_REQUIRED: "manual_required",
@@ -28,8 +31,10 @@
       reconcileStartedAt: 0,
       reloadCount: 0,
       recoveryCycle: 0,
+      nativeStopCount: 0,
       resendCount: 0,
       assistantRetryCount: 0,
+      actionStartedAt: 0,
       promptFingerprint: null,
       baselineUserIds: [],
       baselineAssistantIds: [],
@@ -75,13 +80,18 @@
       return next;
     }
 
+    if (type === "ACTION_EVIDENCE") return authorizeAction(state, event.evidence, config, now);
+    if (type === "ACTION_SUCCEEDED") return completeAction(state, event, config, now);
+    if (type === "ACTION_FAILED") return failAction(state, event, now);
+
     if (TERMINAL.has(state.phase) && !["CONTEXT_CHANGED", "RESET"].includes(type)) return state;
     if (type === "RESET") return create(event.scope || state.scope, now);
     if (type === "CONTEXT_CHANGED") return terminal(next, PHASES.CANCELLED, "context_changed", now);
     if (type === "USER_STOPPED") return terminal({ ...next, userStopped: true }, PHASES.CANCELLED, "user_stopped", now);
     if (type === "RECOVERY_BACKEND_UNAVAILABLE") return terminal(next, PHASES.MANUAL_REQUIRED, "recovery_backend_unavailable", now, { type: "notify", automatic: false });
 
-    if (type === "USER_COMMITTED" && [PHASES.AWAITING_USER_COMMIT, PHASES.RECONCILING].includes(state.phase)) {
+    if (type === "USER_COMMITTED" && ([PHASES.AWAITING_USER_COMMIT, PHASES.RECONCILING].includes(state.phase)
+      || (state.phase === PHASES.ACTION_BACKOFF && state.pendingAction?.type === "confirmed_resend"))) {
       return {
         ...next,
         phase: PHASES.USER_COMMITTED,
@@ -101,13 +111,13 @@
     if (type === "COMMIT_UNCERTAIN" && [PHASES.AWAITING_USER_COMMIT, PHASES.RECONCILING].includes(state.phase)) {
       return terminal({ ...next, submissionStatus: SUBMISSION.UNKNOWN }, PHASES.MANUAL_REQUIRED, "commit_uncertain", now, { type: "notify", automatic: false });
     }
-    if (type === "ASSISTANT_STARTED" && [PHASES.USER_COMMITTED, PHASES.RECONCILING, PHASES.ASSISTANT_GENERATING].includes(state.phase)) {
+    if (type === "ASSISTANT_STARTED" && [PHASES.USER_COMMITTED, PHASES.RECONCILING, PHASES.ASSISTANT_GENERATING, PHASES.ACTION_BACKOFF, PHASES.NATIVE_STOP_SETTLING].includes(state.phase)) {
       return progress(next, event, now, "assistant_started");
     }
-    if (type === "MEANINGFUL_PROGRESS" && [PHASES.USER_COMMITTED, PHASES.ASSISTANT_GENERATING, PHASES.RECONCILING, PHASES.STALLED].includes(state.phase)) {
+    if (type === "MEANINGFUL_PROGRESS" && [PHASES.USER_COMMITTED, PHASES.ASSISTANT_GENERATING, PHASES.RECONCILING, PHASES.STALLED, PHASES.ACTION_BACKOFF, PHASES.NATIVE_STOP_SETTLING].includes(state.phase)) {
       return progress(next, event, now, "meaningful_progress");
     }
-    if (type === "TOOL_PROGRESS" && [PHASES.USER_COMMITTED, PHASES.ASSISTANT_GENERATING, PHASES.RECONCILING].includes(state.phase)) {
+    if (type === "TOOL_PROGRESS" && [PHASES.USER_COMMITTED, PHASES.ASSISTANT_GENERATING, PHASES.RECONCILING, PHASES.ACTION_BACKOFF, PHASES.NATIVE_STOP_SETTLING].includes(state.phase)) {
       const safety = oneOf(event.toolSafety, ["read_only", "consequential", "unknown"], "unknown");
       if (safety !== "read_only") return terminal({ ...next, toolSafety: safety, consequentialAction: safety === "consequential" }, PHASES.MANUAL_REQUIRED, "unsafe_tool_state", now, { type: "notify", automatic: false });
       if (!config.safeReadOnlyToolRecovery) return terminal({ ...next, toolSafety: safety }, PHASES.MANUAL_REQUIRED, "read_only_tool_recovery_disabled", now, { type: "notify", automatic: false });
@@ -120,7 +130,7 @@
     if (type === "EXPLICIT_INTERRUPTION" && [PHASES.USER_COMMITTED, PHASES.ASSISTANT_GENERATING, PHASES.RECONCILING].includes(state.phase)) {
       return planRecovery({ ...next, phase: PHASES.STALLED, reason: "explicit_interruption" }, config, now);
     }
-    if (type === "TICK") return tick(next, config, now);
+    if (type === "TICK") return tick(state.phase === PHASES.ACTION_BACKOFF ? state : next, config, now);
     return next;
   }
 
@@ -134,6 +144,11 @@
       return planRecovery({ ...state, phase: PHASES.STALLED, reason: "no_meaningful_progress" }, config, now);
     }
     if (state.phase === PHASES.STALLED) return planRecovery(state, config, now);
+    if (state.phase === PHASES.NATIVE_STOP_SETTLING) {
+      if (now - state.actionStartedAt < config.nativeStopSettleSeconds * 1000) return state;
+      return planRecovery({ ...state, phase: PHASES.STALLED, reason: "native_stop_settled" }, config, now);
+    }
+    if (state.phase === PHASES.ACTION_BACKOFF) return state;
     if (state.phase === PHASES.RECONCILING) {
       if (now - state.reconcileStartedAt < config.postReloadReconcileTimeoutSeconds * 1000) return state;
       return planRecovery({ ...state, phase: PHASES.STALLED, reason: "post_reload_reconcile_timeout" }, config, now);
@@ -181,6 +196,77 @@
     };
   }
 
+  function authorizeAction(state, evidence, config, now) {
+    if (!actionPolicy?.authorize) return state;
+    const result = actionPolicy.authorize(state, evidence, config, now);
+    if (!result.ok) return state;
+    const authorization = result.authorization;
+    return {
+      ...state,
+      phase: PHASES.ACTION_BACKOFF,
+      reason: `${authorization.actionType}_authorized`,
+      pendingAction: {
+        schemaVersion: authorization.schemaVersion,
+        type: authorization.actionType,
+        automatic: true,
+        actionId: authorization.actionId,
+        recoveryId: authorization.recoveryId,
+        scopeHash: authorization.scopeHash,
+        subjectHash: authorization.subjectHash,
+        controlIdHash: authorization.controlIdHash,
+        ordinal: authorization.ordinal,
+        evidenceObservedAt: authorization.evidenceObservedAt,
+        expiresAt: authorization.expiresAt,
+        executeAfter: authorization.executeAfter
+      },
+      updatedAt: now
+    };
+  }
+
+  function completeAction(state, event, config, now) {
+    const action = state.pendingAction;
+    if (state.phase !== PHASES.ACTION_BACKOFF || !action || event.actionId !== action.actionId || event.actionType !== action.type) return state;
+    if (action.type === "native_stop") {
+      return {
+        ...state,
+        phase: PHASES.NATIVE_STOP_SETTLING,
+        nativeStopCount: Math.min(1, state.nativeStopCount + 1),
+        actionStartedAt: now,
+        reason: "native_stop_executed",
+        pendingAction: null,
+        updatedAt: now
+      };
+    }
+    if (action.type === "assistant_retry") {
+      return {
+        ...state,
+        phase: PHASES.ASSISTANT_GENERATING,
+        assistantRetryCount: Math.min(config.maxAutoAssistantRetries, state.assistantRetryCount + 1),
+        lastMeaningfulProgressAt: now,
+        reason: "assistant_retry_executed",
+        pendingAction: null,
+        updatedAt: now
+      };
+    }
+    return {
+      ...state,
+      phase: PHASES.AWAITING_USER_COMMIT,
+      submissionStatus: SUBMISSION.UNKNOWN,
+      resendCount: Math.min(config.maxAutoNewMessageResends, state.resendCount + 1),
+      intentAt: now,
+      lastMeaningfulProgressAt: now,
+      reason: "confirmed_resend_executed",
+      pendingAction: null,
+      updatedAt: now
+    };
+  }
+
+  function failAction(state, event, now) {
+    const action = state.pendingAction;
+    if (state.phase !== PHASES.ACTION_BACKOFF || !action || event.actionId !== action.actionId) return state;
+    return terminal(state, PHASES.MANUAL_REQUIRED, boundedString(event.reason, 120) || "recovery_action_failed", now, { type: "notify", automatic: false });
+  }
+
   function terminal(state, phase, reason, now, action = null) {
     return { ...state, phase, reason, pendingAction: action, updatedAt: now };
   }
@@ -196,8 +282,19 @@
       submissionStatus: oneOf(value.submissionStatus, Object.values(SUBMISSION), SUBMISSION.UNKNOWN),
       reloadCount: integer(value.reloadCount, 0, 2, 0),
       recoveryCycle: integer(value.recoveryCycle, 0, 3, 0),
+      nativeStopCount: integer(value.nativeStopCount, 0, 1, 0),
       resendCount: integer(value.resendCount, 0, 1, 0),
       assistantRetryCount: integer(value.assistantRetryCount, 0, 1, 0),
+      actionStartedAt: timestamp(value.actionStartedAt),
+      intentAt: timestamp(value.intentAt),
+      committedAt: timestamp(value.committedAt),
+      lastMeaningfulProgressAt: timestamp(value.lastMeaningfulProgressAt),
+      reconcileStartedAt: timestamp(value.reconcileStartedAt),
+      draftAvailable: value.draftAvailable === true,
+      sensitiveContext: value.sensitiveContext === true,
+      consequentialAction: value.consequentialAction === true,
+      userStopped: value.userStopped === true,
+      toolSafety: oneOf(value.toolSafety, ["none", "read_only", "consequential", "unknown"], "unknown"),
       promptFingerprint: boundedString(value.promptFingerprint, 160),
       baselineUserIds: boundedIds(value.baselineUserIds),
       baselineAssistantIds: boundedIds(value.baselineAssistantIds),
@@ -222,13 +319,20 @@
       commitConfirmationTimeoutSeconds: integer(value.commitConfirmationTimeoutSeconds, 5, 60, defaults.commitConfirmationTimeoutSeconds),
       autoRecoveryEnabled: value.autoRecoveryEnabled !== false,
       autoReloadEnabled: value.autoReloadEnabled !== false,
+      autoStopEnabled: value.autoStopEnabled === true,
       maxAutoReloadsPerTurn: integer(value.maxAutoReloadsPerTurn, 0, 2, defaults.maxAutoReloadsPerTurn),
       maxRecoveryCyclesPerTurn: integer(value.maxRecoveryCyclesPerTurn, 0, 3, defaults.maxRecoveryCyclesPerTurn),
+      nativeStopSettleSeconds: integer(value.nativeStopSettleSeconds, 1, 10, defaults.nativeStopSettleSeconds || 3),
       postReloadReconcileTimeoutSeconds: integer(value.postReloadReconcileTimeoutSeconds, 5, 60, defaults.postReloadReconcileTimeoutSeconds),
+      maxAutoNewMessageResends: integer(value.maxAutoNewMessageResends, 0, 1, defaults.maxAutoNewMessageResends || 1),
+      maxAutoAssistantRetries: integer(value.maxAutoAssistantRetries, 0, 1, defaults.maxAutoAssistantRetries || 1),
+      retryBackoffSeconds: integer(value.retryBackoffSeconds, 1, 60, defaults.retryBackoffSeconds || 3),
       recoverySnapshotTtlMinutes: integer(value.recoverySnapshotTtlMinutes, 5, 120, defaults.recoverySnapshotTtlMinutes),
       safeReadOnlyToolRecovery: value.safeReadOnlyToolRecovery !== false,
+      consequentialActionAutoReplay: false,
       showRecoveryNotifications: value.showRecoveryNotifications !== false,
-      recordPrivacySafeRecoveryHistory: value.recordPrivacySafeRecoveryHistory !== false
+      recordPrivacySafeRecoveryHistory: value.recordPrivacySafeRecoveryHistory !== false,
+      resendPolicy: oneOf(value.resendPolicy, ["never", "confirm", "confirmed-unsent-once"], defaults.resendPolicy || "confirm")
     };
   }
 
@@ -253,6 +357,9 @@
       submissionStatus: state.submissionStatus,
       reloadCount: state.reloadCount,
       recoveryCycle: state.recoveryCycle,
+      nativeStopCount: state.nativeStopCount,
+      resendCount: state.resendCount,
+      assistantRetryCount: state.assistantRetryCount,
       sensitiveContext: state.sensitiveContext,
       consequentialAction: state.consequentialAction,
       updatedAt: state.updatedAt,
@@ -263,12 +370,28 @@
     };
   }
 
-  function actionClaim(value) {
+  function actionClaim(value, rawConfig = {}, now = Date.now()) {
     const state = sanitizeSnapshot(value);
     const action = state?.pendingAction;
-    if (!state || action?.type !== "reload" || !Number.isInteger(action.ordinal) || action.ordinal < 1 || action.ordinal > 2) return null;
+    if (!state || !action) return null;
     const recoveryId = makeRecoveryId(state);
     const scopeHash = hashIdentity(`${state.scope.tabId}|${state.scope.conversationKey}`);
+    if (action.type !== "reload") {
+      const validated = actionPolicy?.validateAuthorization?.(state, { ...action, actionType: action.type }, sanitizeConfig(rawConfig), now);
+      if (!validated?.ok || !isIdentity(action.actionId) || action.recoveryId !== recoveryId || action.scopeHash !== scopeHash) return null;
+      return {
+        schemaVersion: MODEL_VERSION,
+        actionId: action.actionId,
+        recoveryId,
+        scopeHash,
+        subjectHash: action.subjectHash,
+        controlIdHash: action.controlIdHash,
+        sequence: state.sequence,
+        type: action.type,
+        ordinal: action.ordinal
+      };
+    }
+    if (!Number.isInteger(action.ordinal) || action.ordinal < 1 || action.ordinal > 2) return null;
     return {
       schemaVersion: MODEL_VERSION,
       actionId: hashIdentity(`${recoveryId}|${action.type}|${action.ordinal}`),
@@ -294,7 +417,13 @@
   }
 
   function sanitizeAction(value) {
-    if (!value || !["reload", "notify", "offer_restore_draft"].includes(value.type)) return null;
+    if (!value || !["reload", "notify", "offer_restore_draft", ...(actionPolicy?.actionTypes || [])].includes(value.type)) return null;
+    if (actionPolicy?.actionTypes?.includes(value.type)) {
+      const authorization = actionPolicy.sanitizeAuthorization({ ...value, actionType: value.type });
+      if (!authorization) return null;
+      const { actionType, ...rest } = authorization;
+      return { ...rest, type: actionType, automatic: true };
+    }
     return { type: value.type, automatic: value.automatic === true, ordinal: integer(value.ordinal, 0, 2, 0) };
   }
 
@@ -313,6 +442,15 @@
   function integer(value, min, max, fallback) {
     const numeric = Number(value);
     return Number.isFinite(numeric) ? Math.min(max, Math.max(min, Math.round(numeric))) : fallback;
+  }
+
+  function timestamp(value) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric >= 0 ? numeric : 0;
+  }
+
+  function isIdentity(value) {
+    return typeof value === "string" && /^[a-f0-9]{16}$/.test(value);
   }
 
   function hashText(value) {

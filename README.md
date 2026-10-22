@@ -1,10 +1,10 @@
 # Mica for ChatGPT
 
-Mica 是一个本地运行的 Chromium 浏览器扩展，面向需要长期使用 ChatGPT 长对话、整理回答和控制客户端资源占用的人。当前 `0.5.3` 开发候选把既有 Foundation、Low Memory、ChatGPT 高亮和 PDF 管线，与统一设置、Markdown/Notion 序列化、完整会话导出、高亮记录迁移、有边界的可靠性恢复后端及按站点授权的普通网页高亮整合到同一构建中。
+Mica 是一个本地运行的 Chromium 浏览器扩展，面向需要长期使用 ChatGPT 长对话、整理回答和控制客户端资源占用的人。当前 `0.5.4` 开发候选把既有 Foundation、Low Memory、ChatGPT 高亮和 PDF 管线，与统一设置、Markdown/Notion 序列化、完整会话导出、高亮记录迁移、有边界的可靠性恢复后端及按站点授权的普通网页高亮整合到同一构建中。
 
-当前开发候选是 `0.5.3`（`functional-convergence.4`）。Low Memory 会在 ChatGPT 解码、渲染超长 conversation 之前，把客户端历史限制为最近 40 个可见 turns，并保留必要的 system/tool 依赖与近期 branch。服务器历史不会修改；`Load full history`、关闭 Low Memory 或移除扩展后，刷新页面即可回到 ChatGPT 原生完整历史。未知数据结构保持原样并 fail-open。
+当前开发候选是 `0.5.4`（`functional-convergence.5`）。Low Memory 会在 ChatGPT 解码、渲染超长 conversation 之前，把客户端历史限制为最近 40 个可见 turns，并保留必要的 system/tool 依赖与近期 branch。服务器历史不会修改；`Load full history`、关闭 Low Memory 或移除扩展后，刷新页面即可回到 ChatGPT 原生完整历史。未知数据结构保持原样并 fail-open。
 
-这仍是未发布的开发候选。既有 Low Memory、Highlighter 和 PDF 证据来自重建候选；`0.5.3` 新整合后的浏览器回归、真实登录态 ChatGPT、普通文章页、PDF 查看器和 Notion 验收尚未运行，不能把历史证据当作当前构建的完整验收。逐项状态见 [`docs/product/MICA_FUNCTIONAL_CONVERGENCE_V1.md`](docs/product/MICA_FUNCTIONAL_CONVERGENCE_V1.md)。
+这仍是未发布的开发候选。既有 Low Memory、Highlighter 和 PDF 证据来自重建候选；`0.5.4` 新整合后的浏览器回归、真实登录态 ChatGPT、普通文章页、PDF 查看器和 Notion 验收尚未运行，不能把历史证据当作当前构建的完整验收。逐项状态见 [`docs/product/MICA_FUNCTIONAL_CONVERGENCE_V1.md`](docs/product/MICA_FUNCTIONAL_CONVERGENCE_V1.md)。
 
 ## 安装开发版
 
@@ -43,8 +43,8 @@ npm run build
 - Markdown 与 Notion 数据路径：从同一 settled `AnswerDocument` 生成 GFM/标准 Markdown、可配置数学分隔符、Notion rich clipboard 数据或确定性 Markdown 导入文件。真实 Notion 原生公式仍明确标为未验证。
 - 完整会话导出：Low Memory 在窗口化前生成不含正文的计数与角色顺序证明；加载完整历史后，协调器逐项核对 conversation 身份、turn 数量、角色顺序、稳定 ID 和 settled 状态，验证通过后才允许复制整段 Markdown 或生成整段 PDF。局部窗口、旧会话证明、streaming 回答和调用方伪造的完成布尔值都会被拒绝。
 - 一套版本化设置模型与完整 Options 页面：设置迁移、分组恢复默认、高亮记录和设置的本地导入导出，以及 Low Memory、导出和 Reliability 安全上限。
-- 一套统一的 Reliability 状态机：区分已提交、未提交和未知提交状态，按真实进展计时，最多执行两次恢复刷新，并在未知工具、外部副作用、切换 conversation、切换 tab 或用户主动停止时终止自动流程。刷新动作先向 Service Worker 取得一次性租约；租约跨 Service Worker 重启保留，按标签页隔离并自动过期。隐私历史也由后台串行去重，不保存草稿、prompt 或原始 conversation ID。
-- 固定开发路径 `dist/mica-dev`，manifest、弹窗、设置页和诊断报告均显示 `0.5.3`。
+- 一套统一的 Reliability 状态机：区分已提交、未提交和未知提交状态，按真实进展计时，最多执行两次恢复刷新，并在未知工具、外部副作用、切换 conversation、切换 tab 或用户主动停止时终止自动流程。刷新、原生 Stop、assistant retry 和确认未提交后的 resend 共用一次性后台 claim；后三类动作还必须提供新鲜、精确且与 recovery、scope、turn 和原生控件身份一致的证据。当前没有接入真实 ChatGPT 控件执行器，所以它们会 fail-closed，不会凭设置项自行触发。隐私历史也由后台串行去重，不保存草稿、prompt 或原始 conversation ID。
+- 固定开发路径 `dist/mica-dev`，manifest、弹窗、设置页和诊断报告均显示 `0.5.4`。
 
 旧的 composer recovery、connector continuity、send residual recovery、页面状态点和 containment runtime 仍未重新并行启用。新 Reliability 后端只监听可信的提交动作和结构变化，不在普通键入事件里扫描或克隆 DOM。历史源码和失败 fixture 继续保留，等待真实页面精确合同后再迁移必要行为。
 
@@ -68,7 +68,7 @@ LOW_MEMORY_TRUNCATION=PASS
 
 当前 256 MB V8 old-space 压力 workload 使用 800 turns、约 100 MiB UTF-16 retained content，重复 3 次。最终候选中位数结果为：A/B 保留 801 个 mapping nodes 和约 100 MiB 内容，C 保留 41 个 nodes（40 个最近 turns）和约 5 MiB 内容；相对 installed/off，JS heap 从 101.685 MiB 降到 6.402 MiB，fresh Edge 进程树 private memory 从 643.117 MiB 降到 626.672 MiB。mounted DOM 在三组中都保持 12，mutation 都是 62，typing p95 都是 0.01 ms，说明收益来自额外的数据截断，而不是把 ChatGPT 已有 virtualization 当成功劳。
 
-上述 `LOW_MEMORY_TRUNCATION=PASS` 属于 `0.3.0` 重建候选及其同一独立 reviewer 的历史证据。`0.5.3` 保留了该数据平面，但修改了设置和 service worker 集成，因此仍需当前构建的浏览器回归，不能直接继承为完整候选结论。
+上述 `LOW_MEMORY_TRUNCATION=PASS` 属于 `0.3.0` 重建候选及其同一独立 reviewer 的历史证据。`0.5.4` 保留了该数据平面，但修改了设置和 service worker 集成，因此仍需当前构建的浏览器回归，不能直接继承为完整候选结论。
 
 ## Highlighter 与 PDF 的候选证据
 
@@ -76,7 +76,7 @@ Highlighter 使用 CSS Custom Highlight API，不包裹或删除 ChatGPT 的 Rea
 
 PDF fixture 从真实构建产物生成两页 A4 PDF，并在 PDF.js 5.6.205 的实际 text layer 中用可信 pointer 事件连续选择 `Before x+1 after`。展示数学 `E=mc^2` 也可选择，`pdfplumber` 能从同一个 PDF 独立提取两段数学文本。黄色跨数学高亮和薄荷色跨页高亮保留在渲染结果中。导出 model 只在 `chrome.storage.session` 中一次性传递；不支持的来源、伪造 consumer 和失败的导出页创建都会 fail-open 并清理临时数据。
 
-`0.3.0` 的 focused evidence 支持 `PDF_TEXT_SEARCH_SELECT=PASS` 与 `WEB_HIGHLIGHT_CROSS_MATH_TO_PDF=PASS`。由于 `0.5.3` 扩展了 AnswerDocument、后台注册和内容脚本，这些结果只作为回归基线；当前构建重新通过对应浏览器 fixture 和实际 PDF viewer 之前，不写入新的 PASS。
+`0.3.0` 的 focused evidence 支持 `PDF_TEXT_SEARCH_SELECT=PASS` 与 `WEB_HIGHLIGHT_CROSS_MATH_TO_PDF=PASS`。由于 `0.5.4` 扩展了 AnswerDocument、后台注册和内容脚本，这些结果只作为回归基线；当前构建重新通过对应浏览器 fixture 和实际 PDF viewer 之前，不写入新的 PASS。
 
 ## 本地验证
 
@@ -99,9 +99,9 @@ npm run test:build
 npm run acceptance:preflight
 ```
 
-`test:convergence-core` 是不启动浏览器的纯 Node 验证，覆盖设置迁移、Markdown/Notion 序列化、五公式样本、完整会话证明与 Markdown/PDF 组装、两类高亮记录迁移、普通网页锚点和权限过滤注册，以及 Reliability 状态机、恢复动作租约和隐私历史 ledger。`test:foundation-core` 使用隔离 Chromium 验证 adapter、AnswerDocument、fail-open、编辑/branch/remount identity、诊断隐私和 typing hot path。`test:low-memory` 验证 ordinary JSON 与 turbo-stream 图窗口化；`test:low-memory-page` 验证早期拦截、fallback、禁用、reload bypass 和上滑恢复入口；`test:low-memory:pressure` 执行重复 A/B/C 资源测量。`test:highlighter` 与压力命令验证锚点、remount 和交互所有权。`test:pdf` 验证实际 PDF、PDF.js 指针选择和独立文本提取，`test:pdf-background` 验证本地一次性 handoff。`test:popup-render` 验证实际构建的 popup 状态、尺寸、缩放、主题与键盘顺序。
+`test:convergence-core` 是不启动浏览器的纯 Node 验证，覆盖设置迁移、Markdown/Notion 序列化、五公式样本、完整会话证明与 Markdown/PDF 组装、两类高亮记录迁移、普通网页锚点和权限过滤注册，以及 Reliability 状态机、精确动作授权、恢复 claim 和隐私历史 ledger。`test:foundation-core` 使用隔离 Chromium 验证 adapter、AnswerDocument、fail-open、编辑/branch/remount identity、诊断隐私和 typing hot path。`test:low-memory` 验证 ordinary JSON 与 turbo-stream 图窗口化；`test:low-memory-page` 验证早期拦截、fallback、禁用、reload bypass 和上滑恢复入口；`test:low-memory:pressure` 执行重复 A/B/C 资源测量。`test:highlighter` 与压力命令验证锚点、remount 和交互所有权。`test:pdf` 验证实际 PDF、PDF.js 指针选择和独立文本提取，`test:pdf-background` 验证本地一次性 handoff。`test:popup-render` 验证实际构建的 popup 状态、尺寸、缩放、主题与键盘顺序。
 
-验收器的入口和证据模型见 [`acceptance/README.md`](acceptance/README.md)。它会同时运行 known-good 与 known-bad controls，并拒绝 Low Memory no-op、缺失或篡改证据、旧候选报告、错误页面、重复截图、能力合同缺项、不可选择数学 PDF、伪造会话完整性和伪造恢复去重结果，以及漏掉必需 gate 的候选结果。
+验收器的入口和证据模型见 [`acceptance/README.md`](acceptance/README.md)。它会同时运行 known-good 与 known-bad controls，并拒绝 Low Memory no-op、缺失或篡改证据、旧候选报告、错误页面、重复截图、能力合同缺项、不可选择数学 PDF、伪造会话完整性、伪造恢复去重和错 turn 动作授权结果，以及漏掉必需 gate 的候选结果。
 
 自动化测试使用仓库 fixture 与隔离 Playwright Chromium，不连接用户日常 Edge profile，也不自动操作登录态 ChatGPT。当前页面协议依据来自隔离浏览器中的公开只读 shared conversation；最终登录态 current-site 验收仍按冻结 Goal 的 HUMAN_ONLY 边界执行。
 

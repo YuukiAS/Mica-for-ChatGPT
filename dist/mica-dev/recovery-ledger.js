@@ -11,6 +11,8 @@
     "user_committed",
     "assistant_generating",
     "stalled",
+    "action_backoff",
+    "native_stop_settling",
     "reloading",
     "reconciling",
     "manual_required",
@@ -18,6 +20,7 @@
     "cancelled"
   ]);
   const SUBMISSION = new Set(["A_COMMITTED", "B_NOT_COMMITTED", "C_UNKNOWN"]);
+  const ACTION_TYPES = new Set(["reload", "native_stop", "assistant_retry", "confirmed_resend"]);
   let queue = Promise.resolve();
 
   function claimAction(sessionArea, tabId, rawClaim, now = Date.now()) {
@@ -90,8 +93,13 @@
   function sanitizeActionClaim(value) {
     if (!value || value.schemaVersion !== SCHEMA_VERSION) return null;
     if (!isIdentity(value.actionId) || !isIdentity(value.recoveryId) || !isIdentity(value.scopeHash)) return null;
-    if (value.type !== "reload" || !Number.isInteger(value.ordinal) || value.ordinal < 1 || value.ordinal > 2) return null;
+    if (!ACTION_TYPES.has(value.type) || !Number.isInteger(value.ordinal) || value.ordinal < 1 || value.ordinal > (value.type === "reload" ? 2 : 1)) return null;
     if (!Number.isInteger(value.sequence) || value.sequence < 1 || value.sequence > 1_000_000) return null;
+    const actionSpecific = value.type === "reload" ? {} : {
+      subjectHash: isIdentity(value.subjectHash) ? value.subjectHash : null,
+      controlIdHash: isIdentity(value.controlIdHash) ? value.controlIdHash : null
+    };
+    if (value.type !== "reload" && (!actionSpecific.subjectHash || !actionSpecific.controlIdHash)) return null;
     return {
       schemaVersion: SCHEMA_VERSION,
       actionId: value.actionId,
@@ -99,7 +107,8 @@
       scopeHash: value.scopeHash,
       sequence: value.sequence,
       type: value.type,
-      ordinal: value.ordinal
+      ordinal: value.ordinal,
+      ...actionSpecific
     };
   }
 
@@ -120,6 +129,9 @@
       submissionStatus: value.submissionStatus,
       reloadCount: integer(value.reloadCount, 0, 2, 0),
       recoveryCycle: integer(value.recoveryCycle, 0, 3, 0),
+      nativeStopCount: integer(value.nativeStopCount, 0, 1, 0),
+      resendCount: integer(value.resendCount, 0, 1, 0),
+      assistantRetryCount: integer(value.assistantRetryCount, 0, 1, 0),
       sensitiveContext: value.sensitiveContext === true,
       consequentialAction: value.consequentialAction === true,
       updatedAt,

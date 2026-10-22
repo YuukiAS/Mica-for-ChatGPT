@@ -105,7 +105,8 @@ if (includesHighlightPdf) {
 if (includesFunctionalConvergence) {
   copies.push(
     [path.join(convergenceDir, "conversation-export.json"), "conversation-export.json"],
-    [path.join(convergenceDir, "recovery-ledger.json"), "recovery-ledger.json"]
+    [path.join(convergenceDir, "recovery-ledger.json"), "recovery-ledger.json"],
+    [path.join(convergenceDir, "recovery-actions.json"), "recovery-actions.json"]
   );
 }
 for (const [source, destination] of copies) await cp(source, path.join(bundleDir, "artifacts", destination));
@@ -158,7 +159,8 @@ if (includesHighlightPdf) {
 if (includesFunctionalConvergence) {
   artifactDefinitions.push(
     ["conversation-export", "conversation-export.json", "application/json"],
-    ["recovery-ledger", "recovery-ledger.json", "application/json"]
+    ["recovery-ledger", "recovery-ledger.json", "application/json"],
+    ["recovery-actions", "recovery-actions.json", "application/json"]
   );
 }
 const artifacts = [];
@@ -183,6 +185,7 @@ const pdfFixture = includesHighlightPdf ? JSON.parse(await readFile(path.join(bu
 const pdfBackground = includesHighlightPdf ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "pdf-background.json"), "utf8")) : null;
 const conversationExport = includesFunctionalConvergence ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "conversation-export.json"), "utf8")) : null;
 const recoveryLedger = includesFunctionalConvergence ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "recovery-ledger.json"), "utf8")) : null;
+const recoveryActions = includesFunctionalConvergence ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "recovery-actions.json"), "utf8")) : null;
 const contractHash = artifactHash("chatgpt-contract");
 const bootstrapHash = artifactHash("current-chatgpt-bootstrap");
 const distHash = artifactHash("dist-tree");
@@ -206,7 +209,7 @@ const requiredGates = [
 ];
 if (includesLowMemory) requiredGates.splice(requiredGates.indexOf("privacy"), 0, "low-memory-benefit");
 if (includesHighlightPdf) requiredGates.splice(requiredGates.indexOf("privacy"), 0, "highlight-remount", "pdf-selection");
-if (includesFunctionalConvergence) requiredGates.splice(requiredGates.indexOf("privacy"), 0, "conversation-export-completeness", "recovery-deduplication");
+if (includesFunctionalConvergence) requiredGates.splice(requiredGates.indexOf("privacy"), 0, "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety");
 
 const evidence = [
   record("candidate-identity", "LOCAL_REAL_BROWSER", { surface: "built-extension" }, ["dist-tree", "built-manifest"], { commit, distHash }),
@@ -334,7 +337,8 @@ if (includesHighlightPdf) {
 if (includesFunctionalConvergence) {
   evidence.splice(evidence.findIndex((item) => item.gateId === "privacy"), 0,
     record("conversation-export-completeness", "SYNTHETIC_FIXTURE", { surface: "conversation-export-coordinator" }, ["conversation-export"], conversationExport),
-    record("recovery-deduplication", "SYNTHETIC_FIXTURE", { surface: "recovery-service-worker-ledger" }, ["recovery-ledger"], recoveryLedger)
+    record("recovery-deduplication", "SYNTHETIC_FIXTURE", { surface: "recovery-service-worker-ledger" }, ["recovery-ledger"], recoveryLedger),
+    record("recovery-action-safety", "SYNTHETIC_FIXTURE", { surface: "recovery-action-policy" }, ["recovery-actions"], recoveryActions)
   );
 }
 

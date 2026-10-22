@@ -5,6 +5,7 @@
     {"id": "known-good-current-popup", "expected": "ACCEPT"},
     {"id": "known-good-conversation-export-completeness", "expected": "ACCEPT"},
     {"id": "known-good-recovery-deduplication", "expected": "ACCEPT"},
+    {"id": "known-good-recovery-action-safety", "expected": "ACCEPT"},
     {"id": "known-good-adapter-contract", "expected": "ACCEPT"},
     {"id": "known-good-low-memory-fixture", "expected": "ACCEPT"},
     {"id": "known-good-highlighter-fixture", "expected": "ACCEPT"},
@@ -51,6 +52,7 @@
     {"id": "copy-serialization-output-mismatch", "expected": "REJECT"},
     {"id": "forged-conversation-completeness-rehash", "expected": "REJECT"},
     {"id": "forged-recovery-deduplication-rehash", "expected": "REJECT"},
+    {"id": "forged-recovery-action-safety-rehash", "expected": "REJECT"},
     {"id": "packaging-version-mismatch", "expected": "REJECT"},
     {"id": "omitted-release-gate", "expected": "REJECT"}
   ]

@@ -39,6 +39,28 @@ const storageFailure = await restartedWorker.claimAction(failingStorageArea(), 7
 assert.equal(storageFailure.ok, false);
 assert.equal(storageFailure.granted, false);
 
+const nativeStopClaim = {
+  ...actionClaim("9999999999999999", "1212121212121212", "3434343434343434", 3, 1),
+  type: "native_stop",
+  subjectHash: "5656565656565656",
+  controlIdHash: "7878787878787878"
+};
+const nativeStopGranted = await restartedWorker.claimAction(storageArea(shared.session), 9, nativeStopClaim, now + 6);
+assert.equal(nativeStopGranted.granted, true);
+const nativeStopDuplicate = await restartedWorker.claimAction(storageArea(shared.session), 9, nativeStopClaim, now + 7);
+assert.equal(nativeStopDuplicate.reason, "already_claimed");
+const nativeStopMalformed = await restartedWorker.claimAction(storageArea(shared.session), 9, { ...nativeStopClaim, controlIdHash: null }, now + 8);
+assert.equal(nativeStopMalformed.reason, "invalid_action_claim");
+const resendClaim = {
+  ...nativeStopClaim,
+  actionId: "8989898989898989",
+  recoveryId: "1313131313131313",
+  type: "confirmed_resend",
+  subjectHash: "5757575757575757",
+  controlIdHash: "7979797979797979"
+};
+assert.equal((await restartedWorker.claimAction(storageArea(shared.session), 9, resendClaim, now + 9)).granted, true);
+
 now += restartedWorker.claimTtlMs + 10;
 const afterExpiryWorker = loadLedger();
 const reclaimed = await afterExpiryWorker.claimAction(storageArea(shared.session), 7, claim, now);
@@ -88,6 +110,10 @@ const output = {
   identityConflictRejected: conflict.reason === "claim_identity_conflict",
   invalidClaimRejected: invalid.reason === "invalid_action_claim",
   storageFailureFailClosed: storageFailure.ok === false && storageFailure.granted === false,
+  nativeActionClaimed: nativeStopGranted.granted === true,
+  nativeActionDeduplicated: nativeStopDuplicate.reason === "already_claimed",
+  malformedNativeActionRejected: nativeStopMalformed.reason === "invalid_action_claim",
+  confirmedResendClaimed: true,
   historyAppended: appended.appended === true,
   historyDeduplicated: repeated.reason === "history_duplicate",
   concurrentHistoryPreserved: true,

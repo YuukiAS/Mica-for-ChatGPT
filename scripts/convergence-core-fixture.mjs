@@ -10,13 +10,14 @@ const dist = path.join(root, "dist", DEV_DIST_DIR_NAME);
 const context = vm.createContext({ console, structuredClone, setTimeout, clearTimeout });
 context.globalThis = context;
 
-for (const file of ["settings-model.js", "answer-serializer.js", "highlight-engine.js", "recovery-state-machine.js"]) {
+for (const file of ["settings-model.js", "answer-serializer.js", "highlight-engine.js", "recovery-action-policy.js", "recovery-state-machine.js"]) {
   vm.runInContext(await readFile(path.join(dist, file), "utf8"), context, { filename: file });
 }
 
 const settingsModel = context.MicaSettingsModel;
 const serializer = context.MicaAnswerSerializer;
 const highlighter = context.MicaHighlightEngine;
+const recoveryActionPolicy = context.MicaRecoveryActionPolicy;
 const recovery = context.MicaRecoveryStateMachine;
 
 const migrated = settingsModel.fromStorage({
@@ -199,10 +200,100 @@ assert.equal(backendUnavailable.phase, recovery.phases.MANUAL_REQUIRED);
 assert.equal(backendUnavailable.reason, "recovery_backend_unavailable");
 assert.equal("promptText" in recovery.snapshotForStorage(firstReload), false);
 
+const actionConfig = recovery.sanitizeConfig({
+  ...config,
+  autoStopEnabled: true,
+  nativeStopSettleSeconds: 3,
+  maxAutoNewMessageResends: 1,
+  maxAutoAssistantRetries: 1,
+  retryBackoffSeconds: 3,
+  resendPolicy: "confirmed-unsent-once",
+  consequentialActionAutoReplay: true
+});
+assert.equal(actionConfig.autoStopEnabled, true);
+assert.equal(actionConfig.nativeStopSettleSeconds, 3);
+assert.equal(actionConfig.maxAutoNewMessageResends, 1);
+assert.equal(actionConfig.maxAutoAssistantRetries, 1);
+assert.equal(actionConfig.retryBackoffSeconds, 3);
+assert.equal(actionConfig.resendPolicy, "confirmed-unsent-once");
+assert.equal(actionConfig.consequentialActionAutoReplay, false);
+
+let stopCandidate = recovery.transition(committed(), { type: "ASSISTANT_STARTED", turnId: "assistant-stop", progressSignature: "stop-p1" }, actionConfig, 2_000);
+stopCandidate = recovery.transition(stopCandidate, { type: "TICK" }, actionConfig, 62_000);
+stopCandidate = recovery.transition(stopCandidate, { type: "PAGE_RESTORED" }, actionConfig, 63_000);
+const stopIdentity = recoveryActionPolicy.identityForState(stopCandidate, "native_stop");
+const stopEvidence = exactActionEvidence("native_stop", stopIdentity, "1111111111111111", 64_000);
+const stopAuthorized = recovery.transition(stopCandidate, { type: "ACTION_EVIDENCE", evidence: stopEvidence }, actionConfig, 64_000);
+assert.equal(stopAuthorized.phase, recovery.phases.ACTION_BACKOFF);
+assert.equal(stopAuthorized.pendingAction.type, "native_stop");
+assert.equal(stopAuthorized.pendingAction.executeAfter, 64_000);
+assert.equal(recovery.actionClaim(stopAuthorized, actionConfig, 64_000).type, "native_stop");
+const stopSettling = recovery.transition(stopAuthorized, { type: "ACTION_SUCCEEDED", actionId: stopAuthorized.pendingAction.actionId, actionType: "native_stop" }, actionConfig, 64_100);
+assert.equal(stopSettling.phase, recovery.phases.NATIVE_STOP_SETTLING);
+assert.equal(stopSettling.nativeStopCount, 1);
+assert.equal(recovery.transition(stopSettling, { type: "TICK" }, actionConfig, 66_999).phase, recovery.phases.NATIVE_STOP_SETTLING);
+const stopSettledWithoutReload = recovery.transition(stopSettling, { type: "SETTLED" }, actionConfig, 66_000);
+assert.equal(stopSettledWithoutReload.phase, recovery.phases.SETTLED);
+assert.equal(stopSettledWithoutReload.pendingAction, null);
+const stopThenReload = recovery.transition(stopSettling, { type: "TICK" }, actionConfig, 67_100);
+assert.equal(stopThenReload.pendingAction.type, "reload");
+assert.equal(stopThenReload.pendingAction.ordinal, 2);
+
+const staleStop = recovery.transition(stopCandidate, { type: "ACTION_EVIDENCE", evidence: stopEvidence }, actionConfig, 80_000);
+assert.deepEqual(staleStop, stopCandidate, "stale action evidence must not mutate recovery state");
+const wrongTurnStop = recovery.transition(stopCandidate, { type: "ACTION_EVIDENCE", evidence: { ...stopEvidence, subjectHash: "2222222222222222" } }, actionConfig, 64_000);
+assert.deepEqual(wrongTurnStop, stopCandidate, "wrong-turn action evidence must be rejected");
+
+let unsafeStopCandidate = recovery.transition(committed(1_000, { consequentialAction: true, toolSafety: "consequential" }), { type: "ASSISTANT_STARTED", turnId: "assistant-unsafe", progressSignature: "unsafe-p1" }, actionConfig, 2_000);
+unsafeStopCandidate = recovery.transition(unsafeStopCandidate, { type: "TICK" }, actionConfig, 62_000);
+assert.equal(unsafeStopCandidate.phase, recovery.phases.MANUAL_REQUIRED);
+
+const retryIdentity = recoveryActionPolicy.identityForState(stopCandidate, "assistant_retry");
+const retryEvidence = exactActionEvidence("assistant_retry", retryIdentity, "3333333333333333", 64_000);
+const retryAuthorized = recovery.transition(stopCandidate, { type: "ACTION_EVIDENCE", evidence: retryEvidence }, actionConfig, 64_000);
+assert.equal(retryAuthorized.pendingAction.type, "assistant_retry");
+assert.equal(retryAuthorized.pendingAction.executeAfter, 67_000);
+const retryCancelledByProgress = recovery.transition(retryAuthorized, { type: "MEANINGFUL_PROGRESS", turnId: "assistant-stop", progressSignature: "retry-progress" }, actionConfig, 65_000);
+assert.equal(retryCancelledByProgress.phase, recovery.phases.ASSISTANT_GENERATING);
+assert.equal(retryCancelledByProgress.pendingAction, null);
+assert.equal(recovery.actionClaim(retryCancelledByProgress, actionConfig, 67_000), null);
+const retryStarted = recovery.transition(retryAuthorized, { type: "ACTION_SUCCEEDED", actionId: retryAuthorized.pendingAction.actionId, actionType: "assistant_retry" }, actionConfig, 67_000);
+assert.equal(retryStarted.phase, recovery.phases.ASSISTANT_GENERATING);
+assert.equal(retryStarted.assistantRetryCount, 1);
+
+const resendConfig = { ...actionConfig, resendPolicy: "confirmed-unsent-once" };
+const resendIdentity = recoveryActionPolicy.identityForState(confirmedAbsent, "confirmed_resend");
+const resendEvidence = exactActionEvidence("confirmed_resend", resendIdentity, "4444444444444444", 14_000);
+const resendAuthorized = recovery.transition(confirmedAbsent, { type: "ACTION_EVIDENCE", evidence: resendEvidence }, resendConfig, 14_000);
+assert.equal(resendAuthorized.pendingAction.type, "confirmed_resend");
+assert.equal(resendAuthorized.pendingAction.executeAfter, 17_000);
+const resendCancelledByCommit = recovery.transition(resendAuthorized, { type: "USER_COMMITTED", turnId: "late-user-turn" }, resendConfig, 15_000);
+assert.equal(resendCancelledByCommit.phase, recovery.phases.USER_COMMITTED);
+assert.equal(resendCancelledByCommit.pendingAction, null);
+const resendStarted = recovery.transition(resendAuthorized, { type: "ACTION_SUCCEEDED", actionId: resendAuthorized.pendingAction.actionId, actionType: "confirmed_resend" }, resendConfig, 17_000);
+assert.equal(resendStarted.phase, recovery.phases.AWAITING_USER_COMMIT);
+assert.equal(resendStarted.resendCount, 1);
+assert.equal(resendStarted.draftAvailable, true);
+const resendBlockedByDefault = recoveryActionPolicy.authorize(confirmedAbsent, resendEvidence, config, 14_000);
+assert.equal(resendBlockedByDefault.ok, false);
+assert.equal(resendBlockedByDefault.reason, "resend_policy_blocked");
+
+function exactActionEvidence(actionType, identity, controlIdHash, observedAt) {
+  return {
+    schemaVersion: 1,
+    evidenceClass: "EXACT",
+    actionType,
+    ...identity,
+    controlIdHash,
+    observedAt,
+    expiresAt: observedAt + 10_000
+  };
+}
+
 console.log(JSON.stringify({
   passed: true,
   settings: { schemaVersion: migrated.schemaVersion, bounded: true, consequentialReplayLocked: true },
   export: { markdown: true, notionEquationCount: 5, notionNativeStatus: notion.nativeEquationStatus, notionImportFallback: true, conversationCompletenessGate: true },
   highlighterRecords: { exportImport: true, merge: true, scopedFiltering: true },
-  reliability: { normalProgressPreserved: true, firstReload: true, secondReload: true, reloadLimit: true, submissionABC: true, consequentialReplayBlocked: true, tabIsolation: true, privacySafeSnapshot: true, actionClaimIdentity: true, backendFailureFailsManual: true }
+  reliability: { normalProgressPreserved: true, firstReload: true, secondReload: true, reloadLimit: true, submissionABC: true, consequentialReplayBlocked: true, tabIsolation: true, privacySafeSnapshot: true, actionClaimIdentity: true, backendFailureFailsManual: true, exactNativeStopAuthorization: true, nativeStopThenSecondReload: true, stopSettlementCancelsReload: true, staleAndWrongTurnEvidenceRejected: true, exactAssistantRetryAuthorization: true, confirmedUnsentResendAuthorization: true, recoveredProgressCancelsAction: true, lateCommitCancelsResend: true, actionSettingsConsumed: true }
 }, null, 2));

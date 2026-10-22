@@ -1,6 +1,6 @@
 # Mica 功能收敛 V1
 
-Mica `0.5.3` 是一次后端功能收敛候选，不是正式发布。它在 `codex/mica-product-system-rebuild` 的 Foundation、Low Memory、Highlighter 和 PDF 基础上，新增统一设置模型、AnswerDocument 驱动的 Markdown/Notion 序列化、完整会话导出、高亮记录迁移、有边界的断流恢复状态机，以及按站点授权的普通网页高亮运行时。当前用户明确禁止启动浏览器和操作真实 ChatGPT，因此本轮只把纯 Node、静态构建、存储合同和验收器控制集能够证明的部分标为已验证；真实页面交互、PDF 查看器和 Notion 原生公式均保留明确缺口。
+Mica `0.5.4` 是一次后端功能收敛候选，不是正式发布。它在 `codex/mica-product-system-rebuild` 的 Foundation、Low Memory、Highlighter 和 PDF 基础上，新增统一设置模型、AnswerDocument 驱动的 Markdown/Notion 序列化、完整会话导出、高亮记录迁移、有边界的断流恢复状态机，以及按站点授权的普通网页高亮运行时。当前用户明确禁止启动浏览器和操作真实 ChatGPT，因此本轮只把纯 Node、静态构建、存储合同和验收器控制集能够证明的部分标为已验证；真实页面交互、PDF 查看器和 Notion 原生公式均保留明确缺口。
 
 配套机器矩阵位于 [`MICA_FUNCTIONAL_CONVERGENCE_V1.json`](MICA_FUNCTIONAL_CONVERGENCE_V1.json)。它是当前功能状态的唯一机器可读来源，README 和 ROADMAP 只做面向读者的摘要。
 
@@ -32,8 +32,9 @@ SettingsModel（schemaVersion 5）
   -> popup / options / content / service worker
 
 RecoveryStateMachine（纯状态与安全策略）
+  -> RecoveryActionPolicy（精确证据、次数与 backoff）
   -> RecoveryController（提交后监听、会话快照、刷新后对账）
-     -> RecoveryLedger（后台动作租约、去重、隐私历史）
+     -> RecoveryLedger（后台动作 claim、去重、隐私历史）
 ```
 
 新功能不得独立抓取回答 DOM。永久复制和导出只接受 `generationState=SETTLED` 且 `durable=true` 的 `AnswerDocument`；对话导出还必须显式证明所选范围完整。高亮、恢复和设置数据均留在浏览器扩展本地存储中。
@@ -87,11 +88,13 @@ Notion 有两条清楚区分的路径：
 - B：确定未提交，只提供原草稿的人工恢复入口；
 - C：状态未知，禁止自动重发。
 
-状态机允许最多 2 次刷新、每轮 1 个恢复周期，并拒绝并行恢复。只读工具可继续观察；未知或有外部副作用的工具进入人工处理。原始草稿只进入 `chrome.storage.session`。每次自动刷新还必须先向 Service Worker 申请由 recovery、tab、sequence 和 ordinal 共同绑定的一次性租约；租约跨 Service Worker 重启保留，按标签页隔离，5 分钟后自动失效。后台存储不可用时，控制器转入人工处理，不会绕过门槛继续刷新。
+状态机允许最多 2 次刷新、每轮 1 个恢复周期，并拒绝并行恢复。只读工具可继续观察；未知或有外部副作用的工具进入人工处理。原始草稿只进入 `chrome.storage.session`。每次自动动作还必须先向 Service Worker 申请由 recovery、tab、sequence 和 ordinal 共同绑定的一次性 claim；claim 跨 Service Worker 重启保留，按标签页隔离，5 分钟后自动失效。后台存储不可用时，控制器转入人工处理，不会绕过门槛继续动作。
 
 持久恢复历史也改由 Service Worker 串行写入。相同终态事件只记录一次，多标签页并发不会互相覆盖，最多保留 50 条；记录只包含哈希化 scope、状态、原因、次数和安全标记，不包含草稿、prompt、conversation 原始 ID 或对话正文。页面侧重复发送意图也不能替换正在恢复的草稿。
 
-当前运行时只实现了保守的自动刷新与刷新后对账。原生 Stop、自动 assistant retry 和自动新消息 resend 尚未接入，因为没有本轮真实页面合同可证明控件身份和副作用安全；设置中的策略字段不会让这些动作偷偷发生。
+`RecoveryActionPolicy` 已把原生 Stop、assistant retry 和确认未提交 resend 变成严格的后端授权合同：证据必须是 10 秒内的 `EXACT` 观察，并同时绑定 recovery、scope、subject 和原生控件哈希；错 conversation、错 turn、陈旧证据、未知工具、有外部副作用工具和超过次数上限都会被拒绝。Stop 完成后先等待配置的 settle 时间，再决定是否进入第二次刷新；retry 与 resend 使用配置的 backoff。动作 claim 与历史不包含草稿或正文。
+
+普通内容运行时仍未提供真实 ChatGPT 控件执行器。这是有意的 fail-closed 边界：离线测试证明的是策略、状态转换、后台 claim 和执行器接口，不是页面控件身份。真实控件适配要等精确 live contract 后才能接入。
 
 ## 需求与实现矩阵摘要
 
@@ -110,9 +113,10 @@ Notion 有两条清楚区分的路径：
 | MFC-400 | Issue #4、本轮 §8 | 60 秒无进展状态机 | `IMPLEMENTED_VERIFIED` | convergence core | 真实断流流程 |
 | MFC-401 | Issue #4、本轮 §8 | 有界自动刷新和跨刷新去重 | `IMPLEMENTED_UNVERIFIED` | 状态/存储合同 | 真实 ChatGPT 回合 |
 | MFC-403 | 本轮 §8.5/§8.6 | 跨刷新动作去重和无正文历史 | `IMPLEMENTED_VERIFIED` | ledger + controller + worker-restart fixtures | 真实多标签页 reload |
+| MFC-404 | 本轮 §8.3–§8.5/§13E | Stop/retry/resend 精确动作授权 | `IMPLEMENTED_VERIFIED` | policy + controller + ledger + validator controls | 真实原生控件 adapter |
 | MFC-410 | Issues #5/#6 | 输入框与连接器旧故障收敛 | `BLOCKED_BY_REAL_EXTERNAL_DEPENDENCY` | 历史证据存在 | 失败页精确 DOM/AX 合同 |
 | MFC-420 | 历史任务 | Hide suggested work | `MISSING` | 仅设置项 | 精确且稳定的目标结构 |
-| MFC-620 | 本轮 §13 | 验收器拒绝伪完整性结论 | `IMPLEMENTED_VERIFIED` | validator 1.7.0 preflight | 完整浏览器候选 run |
+| MFC-620 | 本轮 §13 | 验收器拒绝伪完整性结论 | `IMPLEMENTED_VERIFIED` | validator 1.8.0 preflight | 完整浏览器候选 run |
 
 完整字段、模块归属、成功行为和未解决差距见 JSON 矩阵。
 
@@ -124,6 +128,7 @@ Notion 有两条清楚区分的路径：
 npm run build
 node scripts/convergence-core-fixture.mjs
 node scripts/conversation-export-fixture.mjs
+node scripts/recovery-action-policy-fixture.mjs
 node scripts/recovery-ledger-fixture.mjs
 node scripts/recovery-controller-fixture.mjs
 node scripts/general-web-core-fixture.mjs
@@ -133,7 +138,7 @@ npm run test:build
 npm run acceptance:preflight
 ```
 
-`convergence-core-fixture.mjs` 覆盖设置迁移和安全上限、Markdown/Notion 序列化、五公式样本、高亮记录导入导出，以及可靠性 15 类关键状态。`conversation-export-fixture.mjs` 另行覆盖完整性证明、turn/role 身份绑定、整段 Markdown/PDF、高亮偏移，以及对 partial、stale、streaming 和伪造输入的拒绝。`recovery-ledger-fixture.mjs` 覆盖首次租约、重复拒绝、Service Worker 重启、多标签页隔离、TTL、冲突身份、存储失败、历史去重、并发写入、50 条上限、隐私字段和标签页清理。Acceptance validator `1.7.0` 已将完整会话和恢复去重都纳入 `functional-convergence` profile；预检接受 8 个 known-good，并拒绝全部 42 个 known-bad。它们都不替代真实 ChatGPT、系统剪贴板、Notion、PDF viewer 或实际设置页渲染。
+`convergence-core-fixture.mjs` 覆盖设置迁移和安全上限、Markdown/Notion 序列化、五公式样本、高亮记录导入导出，以及可靠性关键状态。`conversation-export-fixture.mjs` 另行覆盖完整性证明、turn/role 身份绑定、整段 Markdown/PDF、高亮偏移，以及对 partial、stale、streaming 和伪造输入的拒绝。`recovery-action-policy-fixture.mjs` 覆盖证据新鲜度、五类身份绑定、三种动作的一次性授权、backoff、工具安全和 claim 无正文；controller、ledger 与 Worker fixture 再验证实际执行边界、重启去重、并发写入、50 条历史上限和存储失败 fail-closed。Acceptance validator `1.8.0` 已将完整会话、恢复去重和恢复动作安全都纳入 `functional-convergence` profile；预检接受 9 个 known-good，并拒绝全部 43 个 known-bad。它们都不替代真实 ChatGPT、系统剪贴板、Notion、PDF viewer 或实际设置页渲染。
 
 ## 明确保留的差距
 
@@ -142,10 +147,10 @@ npm run acceptance:preflight
 - 普通网页高亮的实际权限提示、文章页渲染与交互验收；
 - 整段 conversation 的 full-history reload、系统剪贴板和 PDF viewer 验收；
 - Notion 一次粘贴后的原生可编辑公式；
-- 原生 Stop、assistant retry 和确认未提交后的自动 resend；
+- 真实 ChatGPT 原生 Stop、assistant retry 和确认未提交 resend 的控件身份适配与执行；
 - 历史 Composer / Connector 修复在当前真实页面上的精确收敛；
 - Hide suggested work 的当前 ChatGPT 结构合同；
-- 当前 `0.5.3` 的浏览器、真实 ChatGPT、PDF viewer 和 Notion 验收；
+- 当前 `0.5.4` 的浏览器、真实 ChatGPT、PDF viewer 和 Notion 验收；
 - `functional-convergence` profile 的完整浏览器候选物化与 candidate run。
 
-这些缺口不会阻止源码和开发构建继续存在，但会阻止把 `0.5.3` 称为发布候选或声称全功能验收通过。
+这些缺口不会阻止源码和开发构建继续存在，但会阻止把 `0.5.4` 称为发布候选或声称全功能验收通过。

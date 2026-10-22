@@ -20,6 +20,7 @@ const ALL_GATES = [
   "copy-serialization",
   "conversation-export-completeness",
   "recovery-deduplication",
+  "recovery-action-safety",
   "copy-placement",
   "core-flow-regression",
   "send-lifecycle-safety",
@@ -37,6 +38,7 @@ export async function runControlCorpus(repoRoot) {
     ["known-good-current-popup", async (context) => { context.requestedGateIds = ["popup-render"]; }],
     ["known-good-conversation-export-completeness", async (context) => { context.requestedGateIds = ["conversation-export-completeness"]; }],
     ["known-good-recovery-deduplication", async (context) => { context.requestedGateIds = ["recovery-deduplication"]; }],
+    ["known-good-recovery-action-safety", async (context) => { context.requestedGateIds = ["recovery-action-safety"]; }],
     ["known-good-adapter-contract", async (context) => { context.requestedGateIds = ["adapter-contract"]; }],
     ["known-good-low-memory-fixture", async (context) => { context.requestedGateIds = ["low-memory-benefit"]; }],
     ["known-good-highlighter-fixture", async (context) => { context.requestedGateIds = ["highlight-remount"]; }],
@@ -189,6 +191,11 @@ export async function runControlCorpus(repoRoot) {
       evidence(context.manifest, "recovery-deduplication").measurement.workerRestartDeduplicated = false;
       refreshRoot(context.manifest);
     }],
+    ["forged-recovery-action-safety-rehash", async (context) => {
+      await mutateJsonArtifact(context, "recovery-actions", (value) => { value.wrongTurnEvidenceRejected = false; });
+      evidence(context.manifest, "recovery-action-safety").measurement.wrongTurnEvidenceRejected = false;
+      refreshRoot(context.manifest);
+    }],
     ["packaging-version-mismatch", async ({ bundleDir, manifest }) => {
       await writeFile(path.join(bundleDir, "artifacts", "version-report.json"), JSON.stringify({
         sourceVersion: "9.9.9",
@@ -281,6 +288,7 @@ async function createGoodBundle(repoRoot) {
     ["copy-mixed-actual", "artifacts/copy-mixed-actual.txt", "text/plain", "math code table output"],
     ["conversation-export", "artifacts/conversation-export.json", "application/json", JSON.stringify(controlConversationExport())],
     ["recovery-ledger", "artifacts/recovery-ledger.json", "application/json", JSON.stringify(controlRecoveryLedger())],
+    ["recovery-actions", "artifacts/recovery-actions.json", "application/json", JSON.stringify(controlRecoveryActions())],
     ["built-manifest", "artifacts/built-manifest.json", "application/json", JSON.stringify({ version: "0.0.0" })],
     ["version-report", "artifacts/version-report.json", "application/json", JSON.stringify({
       sourceVersion: "0.0.0",
@@ -431,6 +439,7 @@ async function createGoodBundle(repoRoot) {
     }),
     record("conversation-export-completeness", { surface: "conversation-export-coordinator" }, ["conversation-export"], controlConversationExport()),
     record("recovery-deduplication", { surface: "recovery-service-worker-ledger" }, ["recovery-ledger"], controlRecoveryLedger()),
+    record("recovery-action-safety", { surface: "recovery-action-policy" }, ["recovery-actions"], controlRecoveryActions()),
     record("copy-placement", { surface: "assistant-action-cluster" }, ["chatgpt-contract", "current-chatgpt-bootstrap"], {
       actionInjected: false,
       capabilityStatus: "UNKNOWN",
@@ -598,12 +607,44 @@ function controlRecoveryLedger() {
     identityConflictRejected: true,
     invalidClaimRejected: true,
     storageFailureFailClosed: true,
+    nativeActionClaimed: true,
+    nativeActionDeduplicated: true,
+    malformedNativeActionRejected: true,
+    confirmedResendClaimed: true,
     historyAppended: true,
     historyDeduplicated: true,
     concurrentHistoryPreserved: true,
     historyBounded: true,
     historyContentExcluded: true,
     tabRemovalCleanup: true
+  };
+}
+
+function controlRecoveryActions() {
+  return {
+    schemaVersion: 1,
+    subject: "recovery-action-policy",
+    passed: true,
+    exactEvidenceRequired: true,
+    evidenceFreshnessBounded: true,
+    recoveryIdentityBound: true,
+    scopeIdentityBound: true,
+    subjectIdentityBound: true,
+    controlIdentityBound: true,
+    nativeStopAuthorizedOnce: true,
+    assistantRetryAuthorizedOnce: true,
+    confirmedUnsentResendAuthorizedOnce: true,
+    retryBackoffApplied: true,
+    backoffPendingActionRetained: true,
+    insufficientBackoffEvidenceRejected: true,
+    sensitiveContextRejected: true,
+    unknownToolRejected: true,
+    nonExactEvidenceRejected: true,
+    staleEvidenceRejected: true,
+    wrongTurnEvidenceRejected: true,
+    wrongScopeEvidenceRejected: true,
+    contentExcludedFromClaim: true,
+    realControlAdapterIncluded: false
   };
 }
 

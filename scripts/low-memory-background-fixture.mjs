@@ -17,6 +17,7 @@ assert(disabled.registered === false && disabled.unregisterCalls >= 1, "disabled
 assert(workerRestartRecovery.unregisteredBeforeReload && workerRestartRecovery.stayedUnregisteredAfterRestart && workerRestartRecovery.registeredAfterComplete && workerRestartRecovery.mode === "full_history_bypass", "full-history reload was not durable across service-worker restart");
 assert(workerRestartRecovery.completenessProofPreserved, "conversation completeness proof was not durable across service-worker restart");
 assert(workerRestartRecovery.recoveryClaimGranted && workerRestartRecovery.recoveryDuplicateRejected, "recovery action claim was not durable across service-worker restart");
+assert(workerRestartRecovery.nativeActionClaimGranted && workerRestartRecovery.nativeActionDuplicateRejected, "native recovery action claim was not durable across service-worker restart");
 assert(workerRestartRecovery.recoveryInvalidSourceRejected, "recovery ledger accepted an unsupported sender");
 assert(workerRestartRecovery.recoveryHistoryDeduplicated && workerRestartRecovery.recoveryHistoryContentExcluded, "privacy-safe recovery history was not deduplicated");
 
@@ -86,6 +87,18 @@ async function runWorkerRestartRecovery() {
     ordinal: 1
   };
   const firstClaim = await sendMessage(first, { type: "MICA_RELIABILITY_CLAIM_ACTION", claim: recoveryClaim }, { tab: { id: 7, url: "https://chatgpt.com/c/fixture" } });
+  const nativeActionClaim = {
+    schemaVersion: 1,
+    actionId: "5555555555555555",
+    recoveryId: "6666666666666666",
+    scopeHash: "3333333333333333",
+    subjectHash: "7777777777777777",
+    controlIdHash: "8888888888888888",
+    sequence: 2,
+    type: "native_stop",
+    ordinal: 1
+  };
+  const nativeFirstClaim = await sendMessage(first, { type: "MICA_RELIABILITY_CLAIM_ACTION", claim: nativeActionClaim }, { tab: { id: 7, url: "https://chatgpt.com/c/fixture" } });
   const second = createBackgroundInstance(shared);
   await new Promise((resolve) => setTimeout(resolve, 30));
   const stayedUnregisteredAfterRestart = !shared.registered;
@@ -93,6 +106,7 @@ async function runWorkerRestartRecovery() {
   await new Promise((resolve) => setTimeout(resolve, 40));
   const tabMode = await new Promise((resolve) => second.chrome.runtime.onMessage.listeners[0]({ type: "MICA_LOW_MEMORY_GET_TAB_MODE" }, { tab: { id: 7, url: "https://chatgpt.com/c/fixture" } }, resolve));
   const duplicateClaim = await sendMessage(second, { type: "MICA_RELIABILITY_CLAIM_ACTION", claim: recoveryClaim }, { tab: { id: 7, url: "https://chatgpt.com/c/fixture" } });
+  const nativeDuplicateClaim = await sendMessage(second, { type: "MICA_RELIABILITY_CLAIM_ACTION", claim: nativeActionClaim }, { tab: { id: 7, url: "https://chatgpt.com/c/fixture" } });
   const invalidSource = await sendMessage(second, { type: "MICA_RELIABILITY_CLAIM_ACTION", claim: recoveryClaim }, { tab: { id: 7, url: "https://example.com/" } });
   const historyEntry = {
     schemaVersion: 1,
@@ -125,6 +139,8 @@ async function runWorkerRestartRecovery() {
       && tabMode?.completenessProof?.expectedTurnCount === completenessProof.expectedTurnCount,
     recoveryClaimGranted: firstClaim?.ok === true && firstClaim?.granted === true,
     recoveryDuplicateRejected: duplicateClaim?.ok === true && duplicateClaim?.granted === false && duplicateClaim?.reason === "already_claimed",
+    nativeActionClaimGranted: nativeFirstClaim?.ok === true && nativeFirstClaim?.granted === true,
+    nativeActionDuplicateRejected: nativeDuplicateClaim?.ok === true && nativeDuplicateClaim?.granted === false && nativeDuplicateClaim?.reason === "already_claimed",
     recoveryInvalidSourceRejected: invalidSource?.ok === false && invalidSource?.reason === "invalid_recovery_source",
     recoveryHistoryDeduplicated: historyFirst?.appended === true && historyDuplicate?.appended === false && shared.local.micaRecoveryHistoryV1?.length === 1,
     recoveryHistoryContentExcluded: !historySerialized.includes("must not persist") && !historySerialized.includes("\"promptText\":"),

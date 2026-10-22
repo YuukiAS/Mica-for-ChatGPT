@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "validatorVersion": "1.7.0",
+  "validatorVersion": "1.8.0",
   "evidenceSchemaVersion": 1,
   "controlsUseProductionValidators": true,
   "gates": [
@@ -37,6 +37,11 @@
     {
       "id": "recovery-deduplication",
       "validatorKind": "recovery-deduplication",
+      "candidateEvidenceClasses": ["SYNTHETIC_FIXTURE", "LOCAL_REAL_BROWSER"]
+    },
+    {
+      "id": "recovery-action-safety",
+      "validatorKind": "recovery-action-safety",
       "candidateEvidenceClasses": ["SYNTHETIC_FIXTURE", "LOCAL_REAL_BROWSER"]
     },
     {

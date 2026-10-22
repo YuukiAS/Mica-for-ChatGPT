@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Mica for ChatGPT",
   "short_name": "Mica",
-  "version": "0.5.3",
-  "version_name": "0.5.3",
+  "version": "0.5.4",
+  "version_name": "0.5.4",
   "description": "Local controls for a calmer, more capable ChatGPT workspace.",
   "icons": {
     "16": "icons/icon16.png",
@@ -66,6 +66,7 @@
         "answer-serializer.js",
         "highlight-engine.js",
         "pdf-export-model.js",
+        "recovery-action-policy.js",
         "recovery-state-machine.js",
         "recovery-controller.js",
         "content.js"

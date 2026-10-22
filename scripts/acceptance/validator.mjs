@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-export const VALIDATOR_VERSION = "1.7.0";
+export const VALIDATOR_VERSION = "1.8.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 const PLACEMENT_PROOF_OBSERVATION_IDS = [
   "copy-inside-assistant-turn",
@@ -28,8 +28,8 @@ const ACCEPTANCE_PROFILES = {
   "milestone-a": [...FOUNDATION_GATES, "low-memory-benefit"],
   "milestone-b": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection"],
   "release-0.3.0": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection"],
-  "functional-convergence": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection", "conversation-export-completeness", "recovery-deduplication"],
-  "all-controls": [...FOUNDATION_GATES, "copy-serialization", "conversation-export-completeness", "recovery-deduplication", "low-memory-benefit", "highlight-remount", "pdf-selection"]
+  "functional-convergence": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety"],
+  "all-controls": [...FOUNDATION_GATES, "copy-serialization", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "low-memory-benefit", "highlight-remount", "pdf-selection"]
 };
 
 const EVIDENCE_CLASSES = new Set([
@@ -357,6 +357,10 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
       "identityConflictRejected",
       "invalidClaimRejected",
       "storageFailureFailClosed",
+      "nativeActionClaimed",
+      "nativeActionDeduplicated",
+      "malformedNativeActionRejected",
+      "confirmedResendClaimed",
       "historyAppended",
       "historyDeduplicated",
       "concurrentHistoryPreserved",
@@ -366,6 +370,38 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
     ]) {
       if (m[field] !== true) fail(`recovery ledger invariant ${field} failed`);
     }
+    return;
+  }
+
+  if (kind === "recovery-action-safety") {
+    const measured = await readBoundJson("recovery-actions");
+    if (record.subject?.surface !== "recovery-action-policy") fail("wrong recovery action policy surface target");
+    if (!sameJson(m, measured)) fail("recovery action measurement differs from the bound fixture evidence");
+    for (const field of [
+      "passed",
+      "exactEvidenceRequired",
+      "evidenceFreshnessBounded",
+      "recoveryIdentityBound",
+      "scopeIdentityBound",
+      "subjectIdentityBound",
+      "controlIdentityBound",
+      "nativeStopAuthorizedOnce",
+      "assistantRetryAuthorizedOnce",
+      "confirmedUnsentResendAuthorizedOnce",
+      "retryBackoffApplied",
+      "backoffPendingActionRetained",
+      "insufficientBackoffEvidenceRejected",
+      "sensitiveContextRejected",
+      "unknownToolRejected",
+      "nonExactEvidenceRejected",
+      "staleEvidenceRejected",
+      "wrongTurnEvidenceRejected",
+      "wrongScopeEvidenceRejected",
+      "contentExcludedFromClaim"
+    ]) {
+      if (m[field] !== true) fail(`recovery action invariant ${field} failed`);
+    }
+    if (m.realControlAdapterIncluded !== false) fail("synthetic recovery action evidence overclaimed a real control adapter");
     return;
   }
 
@@ -694,7 +730,7 @@ export function computeEvidenceRootHash(artifacts, evidence) {
 }
 
 export async function computeValidatorTreeHash(repoRoot) {
-  return hashFileSet(repoRoot, ["scripts/acceptance", "scripts/conversation-export-fixture.mjs", "scripts/recovery-ledger-fixture.mjs", "acceptance/schema", "acceptance/contracts.json"]);
+  return hashFileSet(repoRoot, ["scripts/acceptance", "scripts/conversation-export-fixture.mjs", "scripts/recovery-action-policy-fixture.mjs", "scripts/recovery-ledger-fixture.mjs", "acceptance/schema", "acceptance/contracts.json"]);
 }
 
 export async function computeFixtureSetHash(repoRoot) {

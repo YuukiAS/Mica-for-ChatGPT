@@ -13,6 +13,7 @@ let copiedDraft = "";
 let lastNotice = null;
 let claimCount = 0;
 let claimAvailable = true;
+const executedActions = [];
 let nextTimerId = 1;
 let nextFrameId = 1;
 const timers = new Map();
@@ -78,7 +79,7 @@ const context = vm.createContext({
 });
 context.globalThis = context;
 
-for (const file of ["settings-model.js", "recovery-state-machine.js", "recovery-controller.js"]) {
+for (const file of ["settings-model.js", "recovery-action-policy.js", "recovery-state-machine.js", "recovery-controller.js"]) {
   vm.runInContext(await readFile(path.join(dist, file), "utf8"), context, { filename: file });
 }
 
@@ -90,10 +91,16 @@ const adapter = {
 };
 const controller = context.MicaRecoveryController;
 const phases = context.MicaRecoveryStateMachine.phases;
+const actionPolicy = context.MicaRecoveryActionPolicy;
+const executeRecoveryAction = async (action) => {
+  executedActions.push(structuredClone(action));
+  return { ok: true, actionId: action.actionId };
+};
 
 const configured = await controller.configure({
   adapter,
   getConversationKey: () => "conversation-a",
+  executeRecoveryAction,
   settings: { enabled: true, noProgressTimeoutSeconds: 30, commitConfirmationTimeoutSeconds: 5, postReloadReconcileTimeoutSeconds: 5 }
 });
 flushFrames();
@@ -127,6 +134,7 @@ assert.equal(Object.values(sessionValues)[0].state.promptTextIncluded, false);
 const restored = await controller.configure({
   adapter,
   getConversationKey: () => "conversation-a",
+  executeRecoveryAction,
   settings: { enabled: true, noProgressTimeoutSeconds: 30, commitConfirmationTimeoutSeconds: 5, postReloadReconcileTimeoutSeconds: 5 }
 });
 flushFrames();
@@ -190,19 +198,139 @@ assert.equal(controller.snapshot().phase, phases.CANCELLED);
 assert.equal(controller.snapshot().configured, false);
 assert.equal(Object.keys(sessionValues).length, 0);
 
+controller.updateSettings({ enabled: true, autoStopEnabled: true, noProgressTimeoutSeconds: 30, commitConfirmationTimeoutSeconds: 5, nativeStopSettleSeconds: 3, postReloadReconcileTimeoutSeconds: 5 });
+controller.recordSendIntent("stop then reload", { toolSafety: "none" });
+await flushPromises();
+turns.push({ role: "user", turnId: "user-3", roleElement: { textContent: "stop then reload" } });
+controller.reconcile();
+await flushPromises();
+const stopAssistant = {
+  role: "assistant",
+  turnId: "assistant-3",
+  generationState: "STREAMING",
+  answerRoot: { textContent: "partial" },
+  element: { querySelectorAll() { return []; }, querySelector() { return null; } }
+};
+turns.push(stopAssistant);
+controller.reconcile();
+await flushPromises();
+const reloadBeforeStopFlow = reloadCount;
+now = 69_000;
+flushTimers();
+await flushPromises();
+assert.equal(controller.snapshot().phase, phases.RELOADING);
+assert.equal(reloadCount, reloadBeforeStopFlow + 1);
+
+const stopRestored = await controller.configure({
+  adapter,
+  getConversationKey: () => "conversation-a",
+  executeRecoveryAction,
+  settings: { enabled: true, autoStopEnabled: true, noProgressTimeoutSeconds: 30, commitConfirmationTimeoutSeconds: 5, nativeStopSettleSeconds: 3, postReloadReconcileTimeoutSeconds: 5 }
+});
+flushFrames();
+assert.equal(stopRestored.snapshot.phase, phases.RECONCILING);
+const stopIdentity = actionPolicy.identityForState(controller.snapshot(), "native_stop");
+const stopEvidence = {
+  schemaVersion: 1,
+  evidenceClass: "EXACT",
+  actionType: "native_stop",
+  ...stopIdentity,
+  controlIdHash: "5555555555555555",
+  observedAt: now,
+  expiresAt: now + actionPolicy.evidenceMaxAgeMs
+};
+controller.submitActionEvidence(stopEvidence);
+await flushPromises();
+assert.equal(executedActions.length, 1);
+assert.equal(executedActions[0].type, "native_stop");
+assert.equal(executedActions[0].draft, undefined);
+assert.equal(controller.snapshot().phase, phases.NATIVE_STOP_SETTLING);
+const claimsAfterStop = claimCount;
+controller.submitActionEvidence(stopEvidence);
+await flushPromises();
+assert.equal(executedActions.length, 1, "used action evidence must not execute twice");
+assert.equal(claimCount, claimsAfterStop, "used action evidence must not create another claim");
+
+stopAssistant.generationState = "SETTLED";
+stopAssistant.answerRoot.textContent = "completed during native Stop settle";
+controller.reconcile();
+await flushPromises();
+assert.equal(controller.snapshot().phase, phases.SETTLED);
+now = 72_100;
+flushTimers();
+await flushPromises();
+assert.equal(controller.snapshot().phase, phases.SETTLED);
+assert.equal(reloadCount, reloadBeforeStopFlow + 1, "settled answer during native Stop confirmation must cancel the second reload");
+
+controller.updateSettings({ enabled: true, noProgressTimeoutSeconds: 30, commitConfirmationTimeoutSeconds: 5, maxAutoAssistantRetries: 1, retryBackoffSeconds: 3, postReloadReconcileTimeoutSeconds: 5 });
+controller.recordSendIntent("retry after backoff", { toolSafety: "none" });
+await flushPromises();
+turns.push({ role: "user", turnId: "user-4", roleElement: { textContent: "retry after backoff" } });
+controller.reconcile();
+await flushPromises();
+const retryAssistant = {
+  role: "assistant",
+  turnId: "assistant-4",
+  generationState: "STREAMING",
+  answerRoot: { textContent: "retry partial" },
+  element: { querySelectorAll() { return []; }, querySelector() { return null; } }
+};
+turns.push(retryAssistant);
+controller.reconcile();
+await flushPromises();
+now = 103_000;
+flushTimers();
+await flushPromises();
+assert.equal(controller.snapshot().phase, phases.RELOADING);
+await controller.configure({
+  adapter,
+  getConversationKey: () => "conversation-a",
+  executeRecoveryAction,
+  settings: { enabled: true, noProgressTimeoutSeconds: 30, commitConfirmationTimeoutSeconds: 5, maxAutoAssistantRetries: 1, retryBackoffSeconds: 3, postReloadReconcileTimeoutSeconds: 5 }
+});
+flushFrames();
+const retryIdentity = actionPolicy.identityForState(controller.snapshot(), "assistant_retry");
+controller.submitActionEvidence({
+  schemaVersion: 1,
+  evidenceClass: "EXACT",
+  actionType: "assistant_retry",
+  ...retryIdentity,
+  controlIdHash: "6666666666666666",
+  observedAt: now,
+  expiresAt: now + actionPolicy.evidenceMaxAgeMs
+});
+await flushPromises();
+assert.equal(controller.snapshot().phase, phases.ACTION_BACKOFF);
+assert.equal(executedActions.filter((action) => action.type === "assistant_retry").length, 0);
+now = 104_000;
+flushTimers();
+await flushPromises();
+assert.equal(controller.snapshot().phase, phases.ACTION_BACKOFF, "early timer must retain the authorized backoff action");
+now = 106_100;
+flushTimers();
+await flushPromises();
+assert.equal(executedActions.filter((action) => action.type === "assistant_retry").length, 1);
+assert.equal(controller.snapshot().phase, phases.ASSISTANT_GENERATING);
+retryAssistant.generationState = "SETTLED";
+retryAssistant.answerRoot.textContent = "completed after assistant retry";
+controller.reconcile();
+await flushPromises();
+assert.equal(controller.snapshot().phase, phases.SETTLED);
+
+const reloadBeforeBackendFailure = reloadCount;
 claimAvailable = false;
 controller.updateSettings({ enabled: true, noProgressTimeoutSeconds: 30, commitConfirmationTimeoutSeconds: 5, postReloadReconcileTimeoutSeconds: 5 });
 controller.recordSendIntent("backend unavailable", { toolSafety: "none" });
 await flushPromises();
-turns.push({ role: "user", turnId: "user-3", roleElement: { textContent: "backend unavailable" } });
+turns.push({ role: "user", turnId: "user-5", roleElement: { textContent: "backend unavailable" } });
 controller.reconcile();
 await flushPromises();
-now = 100_000;
+now = 137_000;
 flushTimers();
 await flushPromises();
 assert.equal(controller.snapshot().phase, phases.MANUAL_REQUIRED);
 assert.equal(controller.snapshot().reason, "recovery_backend_unavailable");
-assert.equal(reloadCount, 1, "ledger failure must fail closed without another reload");
+assert.equal(reloadCount, reloadBeforeBackendFailure, "ledger failure must fail closed without another reload");
 
 console.log(JSON.stringify({
   passed: true,
@@ -218,6 +346,10 @@ console.log(JSON.stringify({
   activeIntentCannotReplaceDraft: true,
   backgroundActionClaimed: claimCount >= 1,
   backgroundUnavailableFailsManual: true,
+  exactNativeStopExecutedOnce: executedActions.filter((action) => action.type === "native_stop").length === 1,
+  nativeStopSettlementAvoidedSecondReload: true,
+  exactAssistantRetryExecutedAfterBackoff: executedActions.filter((action) => action.type === "assistant_retry").length === 1,
+  backoffPendingActionRetained: true,
   reloadCount
 }, null, 2));
 
@@ -242,7 +374,5 @@ function flushTimers() {
 }
 
 async function flushPromises() {
-  await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
+  for (let index = 0; index < 10; index += 1) await Promise.resolve();
 }

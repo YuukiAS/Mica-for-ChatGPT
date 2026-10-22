@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "updatedAt": "2026-10-22",
   "candidate": {
-    "version": "0.5.3",
-    "buildLabel": "functional-convergence.4",
+    "version": "0.5.4",
+    "buildLabel": "functional-convergence.5",
     "branch": "codex/mica-functional-convergence",
     "releaseReady": false,
     "browserExecutionAllowedThisRun": false
@@ -154,7 +154,7 @@
       "realAcceptance": "Current candidate on target low-memory device",
       "status": "IMPLEMENTED_UNVERIFIED",
       "result": "Data-plane code is retained; background settings migration was updated.",
-      "gap": "The current 0.5.3 runtime was not exercised in a browser."
+      "gap": "The current 0.5.4 runtime was not exercised in a browser."
     },
     {
       "id": "MFC-200",
@@ -287,14 +287,14 @@
       "source": ["goal sections 8.3 through 8.5"],
       "userProblem": "Use native Stop, retry or a confirmed-unsent resend without duplicating consequential work.",
       "existingImplementation": false,
-      "module": "future recovery action adapter",
+      "module": "future ChatGPT recovery control adapter",
       "iterationAction": "new",
       "successBehavior": "Exact current-turn native control identity is proven before one bounded action.",
       "automatedVerification": [],
       "realAcceptance": "Current authenticated ChatGPT control identity and side-effect cases",
       "status": "MISSING",
-      "result": "Settings and state policies exist, but runtime actions intentionally do not execute.",
-      "gap": "Exact live control and tool safety evidence is unavailable under the no-browser constraint."
+      "result": "The policy, authorization and executor boundary now exist, but the ordinary content runtime intentionally has no ChatGPT native-control executor.",
+      "gap": "Exact live control identity and invocation behavior are unavailable under the no-browser constraint."
     },
     {
       "id": "MFC-403",
@@ -309,6 +309,20 @@
       "status": "IMPLEMENTED_VERIFIED",
       "result": "The Service Worker serializes one-shot reload leases across restart, isolates tabs, expires stale claims, fails closed on storage loss, deduplicates bounded content-free history and clears tab claims. The controller cannot replace an active recovery draft with a parallel send intent.",
       "gap": "Actual browser restart/reload remains part of final integration acceptance, not the backend contract proof."
+    },
+    {
+      "id": "MFC-404",
+      "source": ["goal sections 8.3 through 8.5", "goal section 13E"],
+      "userProblem": "Prevent Stop, retry and confirmed-unsent resend from executing on stale, wrong-turn or side-effecting evidence.",
+      "existingImplementation": false,
+      "module": "recovery action policy, state machine, controller and service-worker ledger",
+      "iterationAction": "new",
+      "successBehavior": "One action requires exact fresh evidence bound to recovery, scope, subject and native-control identity, consumes configured counters and backoff, and obtains one content-free Service Worker claim before execution.",
+      "automatedVerification": ["recovery-action-policy-fixture", "recovery-controller-fixture", "recovery-ledger-fixture", "low-memory-background-fixture", "acceptance preflight"],
+      "realAcceptance": "Current authenticated ChatGPT native control adapter and action identity",
+      "status": "IMPLEMENTED_VERIFIED",
+      "result": "The browser-independent backend authorizes native Stop, assistant retry and confirmed-unsent resend once, rejects stale or mismatched evidence and unsafe tools, applies settle/backoff rules, and keeps content out of claims.",
+      "gap": "The real native-control adapter is intentionally absent; MFC-402 remains MISSING until exact live evidence is available."
     },
     {
       "id": "MFC-410",
@@ -373,11 +387,11 @@
       "existingImplementation": true,
       "module": "scripts/release-config.mjs and dist/mica-dev",
       "iterationAction": "repair",
-      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.3.",
+      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.4.",
       "automatedVerification": ["npm run build", "npm run test:build"],
-      "realAcceptance": "Extension manager shows 0.5.3 after reload",
+      "realAcceptance": "Extension manager shows 0.5.4 after reload",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Runtime version is 0.5.3 with build label functional-convergence.4.",
+      "result": "Runtime version is 0.5.4 with build label functional-convergence.5.",
       "gap": "Extension manager display was not opened."
     },
     {
@@ -416,10 +430,10 @@
       "module": "acceptance validator, controls and functional-convergence profile",
       "iterationAction": "repair",
       "successBehavior": "Known-bad controls remain rejected and convergence requirements become formal candidate gates.",
-      "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "acceptance preflight", "build validator"],
+      "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "recovery-action-policy-fixture", "acceptance preflight", "build validator"],
       "realAcceptance": "Full acceptance candidate run",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Validator 1.7.0 binds both conversation-export-completeness and recovery-deduplication into the functional-convergence profile. Eight known-good controls pass and all 42 known-bad controls, including rehashed forged completeness and forged restart deduplication, are rejected.",
+      "result": "Validator 1.8.0 also binds recovery-action-safety into the functional-convergence profile. Nine known-good controls pass and all 43 known-bad controls, including a rehashed wrong-turn action authorization, are rejected.",
       "gap": "A complete browser-bound candidate bundle was not materialized or run in this no-browser iteration."
     }
   ]

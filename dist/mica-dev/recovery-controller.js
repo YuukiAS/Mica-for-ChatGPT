@@ -14,11 +14,13 @@
   let submitListenerInstalled = false;
   let notice = null;
   let actionInFlight = null;
+  let executeRecoveryAction = null;
 
   async function configure(options = {}) {
     if (!machine) return { ok: false, reason: "state_machine_unavailable" };
     adapter = options.adapter || adapter;
     getConversationKey = typeof options.getConversationKey === "function" ? options.getConversationKey : getConversationKey;
+    executeRecoveryAction = typeof options.executeRecoveryAction === "function" ? options.executeRecoveryAction : null;
     config = machine.sanitizeConfig(options.settings || config || {});
     configured = !!adapter && config.enabled;
     if (!submitListenerInstalled && typeof addEventListener === "function") {
@@ -93,7 +95,8 @@
       return snapshot();
     }
     const turns = adapter.listTurns(document);
-    if (state.phase === machine.phases.AWAITING_USER_COMMIT) {
+    if (state.phase === machine.phases.AWAITING_USER_COMMIT
+      || (state.phase === machine.phases.ACTION_BACKOFF && state.pendingAction?.type === "confirmed_resend")) {
       const baseline = new Set(state.baselineUserIds);
       const committed = turns.find((turn) => turn.role === "user" && !baseline.has(turn.turnId) && fingerprint(turn.roleElement?.textContent || "") === state.promptFingerprint);
       if (committed) {
@@ -101,7 +104,7 @@
         draft = "";
       }
     }
-    if ([machine.phases.USER_COMMITTED, machine.phases.ASSISTANT_GENERATING, machine.phases.RECONCILING].includes(state.phase)) {
+    if ([machine.phases.USER_COMMITTED, machine.phases.ASSISTANT_GENERATING, machine.phases.RECONCILING, machine.phases.ACTION_BACKOFF, machine.phases.NATIVE_STOP_SETTLING].includes(state.phase)) {
       const baseline = new Set(state.baselineAssistantIds);
       const assistants = turns.filter((turn) => turn.role === "assistant" && (!baseline.has(turn.turnId) || turn.turnId === state.assistantTurnId));
       const assistant = assistants.at(-1);
@@ -147,6 +150,8 @@
     if (state.phase === machine.phases.AWAITING_USER_COMMIT) deadline = state.intentAt + config.commitConfirmationTimeoutSeconds * 1000;
     else if ([machine.phases.USER_COMMITTED, machine.phases.ASSISTANT_GENERATING].includes(state.phase)) deadline = state.lastMeaningfulProgressAt + config.noProgressTimeoutSeconds * 1000;
     else if (state.phase === machine.phases.RECONCILING) deadline = state.reconcileStartedAt + config.postReloadReconcileTimeoutSeconds * 1000;
+    else if (state.phase === machine.phases.ACTION_BACKOFF) deadline = state.pendingAction?.executeAfter || now;
+    else if (state.phase === machine.phases.NATIVE_STOP_SETTLING) deadline = state.actionStartedAt + config.nativeStopSettleSeconds * 1000;
     timer = setTimeout(runTick, Math.max(250, deadline - now));
   }
 
@@ -164,8 +169,12 @@
       scheduleTick();
       return;
     }
-    if (action.type === "reload") {
-      const claim = machine.actionClaim(state);
+    if (Number(action.executeAfter) > Date.now()) {
+      scheduleTick();
+      return;
+    }
+    if (action.type === "reload" || ["native_stop", "assistant_retry", "confirmed_resend"].includes(action.type)) {
+      const claim = machine.actionClaim(state, config);
       if (!claim) return handleRecoveryBackendUnavailable();
       if (actionInFlight === claim.actionId) return;
       actionInFlight = claim.actionId;
@@ -177,6 +186,7 @@
         actionInFlight = null;
         return;
       }
+      if (action.type !== "reload") return executeAuthorizedAction(action);
       if (document.documentElement.dataset.micaFixture === "true" && typeof globalThis.__MICA_FIXTURE_RELOAD__ === "function") globalThis.__MICA_FIXTURE_RELOAD__();
       else location.reload();
       return;
@@ -188,6 +198,47 @@
     if (preserveDraft) await persistSnapshot(true);
     if (config.showRecoveryNotifications) showNotice(manualMode);
     await finishSnapshot(!preserveDraft);
+  }
+
+  async function executeAuthorizedAction(action) {
+    if (!executeRecoveryAction) return failAuthorizedAction(action, "action_executor_unavailable");
+    let result = null;
+    try {
+      result = await executeRecoveryAction(Object.freeze({
+        type: action.type,
+        actionId: action.actionId,
+        ordinal: action.ordinal,
+        controlIdHash: action.controlIdHash,
+        subjectHash: action.subjectHash,
+        draft: action.type === "confirmed_resend" ? draft : undefined
+      }));
+    } catch (_error) {
+      return failAuthorizedAction(action, "action_executor_failed");
+    }
+    if (!result?.ok || result.actionId !== action.actionId) return failAuthorizedAction(action, "action_executor_rejected");
+    actionInFlight = null;
+    state = machine.transition(state, { type: "ACTION_SUCCEEDED", actionId: action.actionId, actionType: action.type }, config);
+    await persistSnapshot();
+    scheduleReconcile();
+    scheduleTick();
+    return snapshot();
+  }
+
+  async function failAuthorizedAction(action, reason) {
+    actionInFlight = null;
+    state = machine.transition(state, { type: "ACTION_FAILED", actionId: action.actionId, reason }, config);
+    if (config.showRecoveryNotifications) showNotice("unsafe");
+    await finishSnapshot();
+    return snapshot();
+  }
+
+  function submitActionEvidence(evidence) {
+    if (!configured || !state) return snapshot();
+    const next = machine.transition(state, { type: "ACTION_EVIDENCE", evidence }, config);
+    if (next === state || !next.pendingAction) return snapshot();
+    state = next;
+    void applyPendingAction();
+    return snapshot();
   }
 
   async function restoreSnapshot() {
@@ -397,5 +448,5 @@
     return new Promise((resolve) => area.remove(key, () => resolve(!globalThis.chrome?.runtime?.lastError)));
   }
 
-  globalThis.MicaRecoveryController = Object.freeze({ configure, updateSettings, recordSendIntent, scheduleReconcile, reconcile, onContextChanged, snapshot, fingerprint });
+  globalThis.MicaRecoveryController = Object.freeze({ configure, updateSettings, recordSendIntent, submitActionEvidence, scheduleReconcile, reconcile, onContextChanged, snapshot, fingerprint });
 })();

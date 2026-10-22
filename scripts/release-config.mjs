@@ -1,6 +1,6 @@
-export const MACHINE_VERSION = "0.5.3";
-export const VERSION_NAME = "0.5.3";
-export const BUILD_LABEL = "functional-convergence.4";
+export const MACHINE_VERSION = "0.5.4";
+export const VERSION_NAME = "0.5.4";
+export const BUILD_LABEL = "functional-convergence.5";
 export const DEV_BUILD = true;
 export const RELEASE_TAG = `v${VERSION_NAME}`;
 export const DEV_DIST_DIR_NAME = "mica-dev";
@@ -17,6 +17,7 @@ export const REQUIRED_EXTENSION_FILES = [
   "general-web-model.js",
   "general-web-highlighter.js",
   "pdf-export-model.js",
+  "recovery-action-policy.js",
   "recovery-state-machine.js",
   "recovery-controller.js",
   "recovery-ledger.js",

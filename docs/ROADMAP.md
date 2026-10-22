@@ -1,6 +1,6 @@
 # Mica Roadmap
 
-Mica 以 2026-10-12 的冻结产品系统为基础继续推进。Foundation、Low Memory、Highlighter 和 PDF 的既有成果仍是架构底座；`0.5.3` 功能收敛阶段新增统一设置、Markdown/Notion 数据路径、完整会话导出、高级 Reliability 后端和按站点授权的普通网页高亮。各项状态以 [`product/MICA_FUNCTIONAL_CONVERGENCE_V1.md`](product/MICA_FUNCTIONAL_CONVERGENCE_V1.md) 为准，历史候选证据不自动等于当前构建已完成真实验收。
+Mica 以 2026-10-12 的冻结产品系统为基础继续推进。Foundation、Low Memory、Highlighter 和 PDF 的既有成果仍是架构底座；`0.5.4` 功能收敛阶段新增统一设置、Markdown/Notion 数据路径、完整会话导出、高级 Reliability 后端和按站点授权的普通网页高亮。各项状态以 [`product/MICA_FUNCTIONAL_CONVERGENCE_V1.md`](product/MICA_FUNCTIONAL_CONVERGENCE_V1.md) 为准，历史候选证据不自动等于当前构建已完成真实验收。
 
 ## Foundation（内部关口）
 
@@ -39,14 +39,15 @@ ChatGPT 原生 virtualization 只是基线。`content-visibility`、DOM 数量�
 
 ## 功能收敛阶段 — Copy / Settings / Reliability
 
-当前 `0.5.3` 后端候选已经加入：
+当前 `0.5.4` 后端候选已经加入：
 
 - 版本化设置 schema 和统一 Options 页面；
 - AnswerDocument 驱动的 Markdown、Notion rich clipboard 和 Notion import file；
 - 以完整历史计数、角色顺序、conversation 身份和 settled turn 为硬门槛的整段 Markdown/PDF 导出；
 - 高亮记录导入、导出、合并和清理；
 - 普通网页 exact-origin 可选权限、动态注册、语义锚点、四种颜色及本地备份；
-- 约 60 秒无真实进展的状态机、最多两次恢复刷新、跨刷新草稿快照，以及由 Service Worker 管理的动作租约和隐私历史 ledger；
+- 约 60 秒无真实进展的状态机、最多两次恢复刷新、跨刷新草稿快照，以及由 Service Worker 管理的动作 claim 和隐私历史 ledger；
+- 原生 Stop、assistant retry、确认未提交 resend 的精确证据授权、次数限制、settle/backoff 和 fail-closed 执行边界；
 - 对已提交、未提交、未知提交状态以及只读/有副作用工具的安全分流。
 
 这些代码已经进入固定开发路径，但浏览器集成仍需当前构建回归。真实 Notion 原生公式、PDF viewer、真实 ChatGPT 断流和设置页渲染在完成对应验收前保持未验证。
@@ -56,7 +57,7 @@ ChatGPT 原生 virtualization 只是基线。`content-visibility`、DOM 数量�
 - 普通网页权限提示、文章页绘制、编辑和跨刷新恢复的实际浏览器验收；
 - 完整 conversation 的 full-history reload、剪贴板和 PDF 产品路径浏览器验收；
 - Notion 一次粘贴后的原生可编辑公式；
-- 原生 Stop、assistant retry 和确认未提交后的自动 resend；
+- 真实 ChatGPT 原生 Stop、assistant retry 和确认未提交 resend 的控件身份适配与执行；
 - Composer / Connector 历史真实故障在当前页面结构上的精确收敛；
 - Hide suggested work 的当前结构合同；
 - `functional-convergence` 完整候选的浏览器证据物化与正式 candidate run。

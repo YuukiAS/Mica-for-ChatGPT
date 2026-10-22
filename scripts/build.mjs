@@ -58,6 +58,7 @@ const manifest = {
         "answer-serializer.js",
         "highlight-engine.js",
         "pdf-export-model.js",
+        "recovery-action-policy.js",
         "recovery-state-machine.js",
         "recovery-controller.js",
         "content.js"
@@ -92,6 +93,7 @@ const generalWebModel = render(await readFile(path.join(srcDir, "features", "hig
 const generalWebHighlighter = render(await readFile(path.join(srcDir, "features", "highlighter", "general-web-highlighter.ts"), "utf8"));
 const generalWebBackground = render(await readFile(path.join(srcDir, "features", "highlighter", "general-web-background.ts"), "utf8"));
 const pdfExportModel = render(await readFile(path.join(srcDir, "features", "pdf", "pdf-export-model.ts"), "utf8"));
+const recoveryActionPolicy = render(await readFile(path.join(srcDir, "reliability", "recovery-action-policy.ts"), "utf8"));
 const recoveryStateMachine = render(await readFile(path.join(srcDir, "reliability", "recovery-state-machine.ts"), "utf8"));
 const recoveryController = render(await readFile(path.join(srcDir, "reliability", "recovery-controller.ts"), "utf8"));
 const recoveryLedger = render(await readFile(path.join(srcDir, "reliability", "recovery-ledger.ts"), "utf8"));
@@ -99,7 +101,7 @@ const lowMemoryCore = render(await readFile(path.join(srcDir, "low-memory", "low
 const lowMemoryPage = render(await readFile(path.join(srcDir, "low-memory", "low-memory-page.ts"), "utf8"));
 const lowMemoryConfig = render(await readFile(path.join(srcDir, "low-memory", "low-memory-config.ts"), "utf8"));
 const lowMemoryBackgroundCore = render(await readFile(path.join(srcDir, "low-memory", "low-memory-background.ts"), "utf8"));
-const lowMemoryBackground = `${settingsModel}\n${recoveryStateMachine}\n${recoveryLedger}\n${lowMemoryBackgroundCore}\n${generalWebBackground}`;
+const lowMemoryBackground = `${settingsModel}\n${recoveryActionPolicy}\n${recoveryStateMachine}\n${recoveryLedger}\n${lowMemoryBackgroundCore}\n${generalWebBackground}`;
 const popup = render(await readFile(path.join(popupDir, "popup.ts"), "utf8"));
 const options = render(await readFile(path.join(optionsDir, "options.ts"), "utf8"));
 const troubleshooting = render(await readFile(path.join(popupDir, "troubleshooting.ts"), "utf8"));
@@ -116,6 +118,7 @@ await writeFile(path.join(outDir, "highlight-engine.js"), highlightEngine);
 await writeFile(path.join(outDir, "general-web-model.js"), generalWebModel);
 await writeFile(path.join(outDir, "general-web-highlighter.js"), generalWebHighlighter);
 await writeFile(path.join(outDir, "pdf-export-model.js"), pdfExportModel);
+await writeFile(path.join(outDir, "recovery-action-policy.js"), recoveryActionPolicy);
 await writeFile(path.join(outDir, "recovery-state-machine.js"), recoveryStateMachine);
 await writeFile(path.join(outDir, "recovery-controller.js"), recoveryController);
 await writeFile(path.join(outDir, "recovery-ledger.js"), recoveryLedger);
