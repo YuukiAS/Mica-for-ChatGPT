@@ -80,6 +80,38 @@
     return records;
   }
 
+  function exportJson(value) {
+    const records = sanitizeRecords(value);
+    return `${JSON.stringify({ schemaVersion: MODEL_VERSION, exportedAt: new Date().toISOString(), records }, null, 2)}\n`;
+  }
+
+  function importJson(text) {
+    try {
+      const parsed = JSON.parse(String(text || ""));
+      const source = Array.isArray(parsed) ? parsed : parsed?.records;
+      if (!Array.isArray(source)) return { ok: false, reason: "highlight_records_missing" };
+      const records = sanitizeRecords(source);
+      if (source.length > 0 && records.length === 0) return { ok: false, reason: "highlight_records_invalid" };
+      return { ok: true, records, rejectedCount: Math.max(0, source.length - records.length) };
+    } catch (_error) {
+      return { ok: false, reason: "highlight_records_invalid_json" };
+    }
+  }
+
+  function mergeRecords(current, incoming) {
+    const byId = new Map(sanitizeRecords(current).map((record) => [record.id, record]));
+    for (const record of sanitizeRecords(incoming)) byId.set(record.id, record);
+    return sanitizeRecords([...byId.values()].slice(-MAX_RECORDS));
+  }
+
+  function recordsForScope(value, scope = {}) {
+    return sanitizeRecords(value).filter((record) => {
+      if (scope.conversationId && record.anchor.conversationId !== scope.conversationId) return false;
+      if (scope.turnId && record.anchor.turnId !== scope.turnId) return false;
+      return true;
+    });
+  }
+
   function validRecord(record) {
     const anchor = record?.anchor;
     return record?.schemaVersion === MODEL_VERSION
@@ -129,6 +161,10 @@
     resolveRecord,
     withResolution,
     withColor,
-    sanitizeRecords
+    sanitizeRecords,
+    exportJson,
+    importJson,
+    mergeRecords,
+    recordsForScope
   });
 })();

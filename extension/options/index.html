@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="options.css">
+    <title>Mica Settings</title>
+  </head>
+  <body>
+    <main>
+      <header class="page-header">
+        <div><p class="eyebrow">Mica</p><h1>Settings</h1><p>Local settings only. Conversation content is never uploaded.</p></div>
+        <span id="version"></span>
+      </header>
+
+      <form id="settings-form">
+        <section data-section="general">
+          <header><div><h2>General</h2><p>Master state and display preferences.</p></div><button type="button" data-reset="general">Reset section</button></header>
+          <label class="row"><span><strong>Enable Mica</strong><small>Turning this off preserves every feature preference.</small></span><input id="enabled" type="checkbox"></label>
+          <label class="row"><span><strong>Theme</strong></span><select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+          <label class="row"><span><strong>Language</strong></span><select id="language"><option value="auto">Automatic</option><option value="zh-CN">简体中文</option><option value="en">English</option></select></label>
+        </section>
+
+        <section data-section="highlighter">
+          <header><div><h2>Reading & highlighting</h2><p>Answer highlighting and local anchor storage.</p></div><button type="button" data-reset="highlighter">Reset section</button></header>
+          <label class="row"><span><strong>ChatGPT highlighter</strong></span><input id="feature-highlighter" type="checkbox"></label>
+          <label class="row"><span><strong>Default color</strong></span><select id="highlight-color"><option value="yellow">Yellow</option><option value="mint">Mint</option><option value="blue">Blue</option><option value="pink">Pink</option></select></label>
+          <label class="row"><span><strong>Shortcut</strong><small>Stored for the configurable command surface.</small></span><input id="highlight-shortcut" type="text" maxlength="64"></label>
+          <label class="row"><span><strong>General web highlighting</strong><small>Saved separately; site-permission activation remains fail-open.</small></span><input id="general-web" type="checkbox"></label>
+          <div class="actions">
+            <button id="export-highlights" type="button">Export highlights</button>
+            <label class="file-button">Import highlights<input id="import-highlights" type="file" accept="application/json,.json"></label>
+            <button id="clear-highlights" type="button">Clear all highlights</button>
+          </div>
+        </section>
+
+        <section data-section="export">
+          <header><div><h2>Copy & export</h2><p>Markdown, Notion-ready clipboard data, PDF, and math delimiters.</p></div><button type="button" data-reset="export">Reset section</button></header>
+          <label class="row"><span><strong>Enable copy and export</strong></span><input id="feature-copy-export" type="checkbox"></label>
+          <label class="row"><span><strong>Default action</strong></span><select id="export-default"><option value="markdown">Markdown</option><option value="notion">Notion-ready</option><option value="pdf">PDF</option></select></label>
+          <label class="row"><span><strong>Markdown flavor</strong></span><select id="markdown-flavor"><option value="gfm">GitHub Markdown</option><option value="standard">Standard Markdown</option></select></label>
+          <label class="row"><span><strong>Inline math</strong></span><select id="inline-math"><option value="dollar">$…$</option><option value="parentheses">\(…\)</option></select></label>
+          <label class="row"><span><strong>Display math</strong></span><select id="display-math"><option value="double-dollar">$$…$$</option><option value="brackets">\[…\]</option></select></label>
+          <label class="row"><span><strong>PDF page size</strong></span><select id="pdf-page-size"><option value="A4">A4</option><option value="Letter">Letter</option></select></label>
+          <label class="row"><span><strong>Include highlights in PDF</strong></span><input id="pdf-highlights" type="checkbox"></label>
+          <label class="row"><span><strong>Notion mode</strong><small>Native equations remain explicitly unverified until a real-target check.</small></span><select id="notion-mode"><option value="clipboard">Rich clipboard</option><option value="import-file">Deterministic import file</option><option value="disabled">Disabled</option></select></label>
+        </section>
+
+        <section data-section="lowMemory">
+          <header><div><h2>Performance</h2><p>Client-side conversation windowing only; server history is unchanged.</p></div><button type="button" data-reset="lowMemory">Reset section</button></header>
+          <label class="row"><span><strong>Low Memory</strong></span><input id="feature-low-memory" type="checkbox"></label>
+          <label class="row"><span><strong>Recent turns kept active</strong></span><input id="keep-turns" type="number" min="8" max="120" step="1"></label>
+          <label class="row"><span><strong>Activation threshold</strong></span><input id="low-memory-threshold" type="number" min="10" max="500" step="1"></label>
+        </section>
+
+        <section data-section="reliability">
+          <header><div><h2>Reliability</h2><p>Bounded recovery with exact commit checks and no blind replay.</p></div><button type="button" data-reset="reliability">Reset section</button></header>
+          <label class="row"><span><strong>Reliability guard</strong></span><input id="feature-reliability" type="checkbox"></label>
+          <label class="row"><span><strong>Stall watchdog</strong></span><input id="stall-watchdog" type="checkbox"></label>
+          <label class="row"><span><strong>No-progress threshold</strong><small>30–600 seconds.</small></span><input id="no-progress" type="number" min="30" max="600" step="1"></label>
+          <label class="row"><span><strong>Commit confirmation window</strong><small>5–60 seconds.</small></span><input id="commit-window" type="number" min="5" max="60" step="1"></label>
+          <label class="row"><span><strong>Automatic recovery</strong></span><input id="auto-recovery" type="checkbox"></label>
+          <label class="row"><span><strong>Automatic reload</strong></span><input id="auto-reload" type="checkbox"></label>
+          <label class="row"><span><strong>Allow native Stop when verified</strong><small>Stored now; no Stop control is used until its current-turn identity is proven.</small></span><input id="auto-stop" type="checkbox"></label>
+          <label class="row"><span><strong>Maximum reloads per turn</strong><small>Hard limit: 2.</small></span><input id="max-reloads" type="number" min="0" max="2" step="1"></label>
+          <label class="row"><span><strong>Maximum recovery cycles per turn</strong><small>0–3; one cycle by default.</small></span><input id="max-recovery-cycles" type="number" min="0" max="3" step="1"></label>
+          <label class="row"><span><strong>Native Stop settle time</strong><small>1–10 seconds; reserved for the verified Stop path.</small></span><input id="native-stop-settle" type="number" min="1" max="10" step="1"></label>
+          <label class="row"><span><strong>Post-reload reconciliation</strong><small>5–60 seconds.</small></span><input id="reconcile-window" type="number" min="5" max="60" step="1"></label>
+          <label class="row"><span><strong>Maximum confirmed-unsent resends</strong><small>Hard limit: 1. Unknown delivery is never resent.</small></span><input id="max-new-resends" type="number" min="0" max="1" step="1"></label>
+          <label class="row"><span><strong>Maximum assistant retries</strong><small>Hard limit: 1; consequential actions are never replayed.</small></span><input id="max-assistant-retries" type="number" min="0" max="1" step="1"></label>
+          <label class="row"><span><strong>Retry backoff</strong><small>1–60 seconds.</small></span><input id="retry-backoff" type="number" min="1" max="60" step="1"></label>
+          <label class="row"><span><strong>Draft snapshot lifetime</strong><small>5–120 minutes, extension session storage only.</small></span><input id="snapshot-ttl" type="number" min="5" max="120" step="1"></label>
+          <label class="row"><span><strong>Recover read-only tools</strong><small>Only explicitly classified read-only progress is eligible.</small></span><input id="safe-read-only" type="checkbox"></label>
+          <label class="row"><span><strong>New-message resend policy</strong></span><select id="resend-policy"><option value="never">Never</option><option value="confirm">Ask first</option><option value="confirmed-unsent-once">Only confirmed unsent, once</option></select></label>
+          <label class="row"><span><strong>Recovery notifications</strong></span><input id="recovery-notifications" type="checkbox"></label>
+          <label class="row"><span><strong>Privacy-safe recovery history</strong></span><input id="recovery-history" type="checkbox"></label>
+          <p class="guardrail">Automatic replay of consequential actions is permanently disabled and cannot be changed here.</p>
+        </section>
+
+        <section data-section="interface">
+          <header><div><h2>Interface</h2><p>Independent local page controls.</p></div><button type="button" data-reset="interface">Reset section</button></header>
+          <label class="row"><span><strong>Hide suggested work</strong><small>Only contract-proven surfaces may be hidden; unknown structures stay native.</small></span><input id="hide-suggested-work" type="checkbox"></label>
+        </section>
+
+        <section>
+          <header><div><h2>Troubleshooting & settings data</h2><p>Import and export settings without conversation content.</p></div></header>
+          <div class="actions">
+            <button id="export-settings" type="button">Export settings</button>
+            <label class="file-button">Import settings<input id="import-settings" type="file" accept="application/json,.json"></label>
+            <button id="restore-defaults" type="button">Restore all defaults</button>
+            <button id="clear-recovery-history" type="button">Clear recovery history</button>
+          </div>
+        </section>
+
+        <footer class="save-bar"><span id="status" role="status" aria-live="polite">Settings are stored locally.</span><button id="save" class="primary" type="submit">Save settings</button></footer>
+      </form>
+    </main>
+    <script src="../settings-model.js"></script>
+    <script src="../highlight-engine.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>

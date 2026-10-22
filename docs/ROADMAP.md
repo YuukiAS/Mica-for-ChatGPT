@@ -1,6 +1,6 @@
 # Mica Roadmap
 
-Mica 当前按 2026-10-12 已冻结的产品系统推进。阶段顺序是硬约束：先建立可验证的基础，再交付低内存能力，最后完成高亮与 PDF。没有通过前一阶段的验收，不进入后一阶段。
+Mica 以 2026-10-12 的冻结产品系统为基础继续推进。Foundation、Low Memory、Highlighter 和 PDF 的既有成果仍是架构底座；`0.5.0` 功能收敛阶段新增统一设置、Markdown/Notion 数据路径和高级 Reliability 后端。各项状态以 [`product/MICA_FUNCTIONAL_CONVERGENCE_V1.md`](product/MICA_FUNCTIONAL_CONVERGENCE_V1.md) 为准，历史候选证据不自动等于当前构建已完成真实验收。
 
 ## Foundation（内部关口）
 
@@ -37,13 +37,26 @@ ChatGPT 原生 virtualization 只是基线。`content-visibility`、DOM 数量�
 - 可选择、可搜索的行内和展示数学文本；
 - 真实 PDF viewer 的视觉、文本层、选择和搜索验收。
 
-## 延后范围
+## 功能收敛阶段 — Copy / Settings / Reliability
 
-以下内容不属于当前 Foundation、Milestone A 或 Milestone B 的完成条件：
+当前 `0.5.0` 后端候选已经加入：
 
-- 约 60 秒无进展后的高级 Reliability 自动恢复；
-- Notion 真实目标集成；
-- 任意非 ChatGPT 网页高亮；
-- 其他次要复用功能。
+- 版本化设置 schema 和统一 Options 页面；
+- AnswerDocument 驱动的 Markdown、Notion rich clipboard 和 Notion import file；
+- 高亮记录导入、导出、合并和清理；
+- 约 60 秒无真实进展的状态机、最多两次恢复刷新、跨刷新去重和草稿会话快照；
+- 对已提交、未提交、未知提交状态以及只读/有副作用工具的安全分流。
 
-这些能力只有在当前优先 Goal 收口后，或被证明是 P0–P3 的窄依赖时，才会重新排期。隐私、最小权限、typing hot path、浏览器测试边界、fail-open 和版本一致性规则始终有效。
+这些代码已经进入固定开发路径，但浏览器集成仍需当前构建回归。真实 Notion 原生公式、PDF viewer、真实 ChatGPT 断流和设置页渲染在完成对应验收前保持未验证。
+
+## 仍未完成
+
+- 任意非 ChatGPT 网页高亮及其可选站点权限；
+- 完整 conversation 的安全收集和 PDF 产品入口；
+- Notion 一次粘贴后的原生可编辑公式；
+- 原生 Stop、assistant retry 和确认未提交后的自动 resend；
+- Composer / Connector 历史真实故障在当前页面结构上的精确收敛；
+- Hide suggested work 的当前结构合同；
+- 将新增门槛并入正式 acceptance validator。
+
+本轮禁止启动浏览器，因此上述真实目标验证留作明确缺口，不会被本地模型或旧截图冒充。隐私、最小权限、typing hot path、浏览器测试边界、fail-open 和版本一致性规则始终有效。

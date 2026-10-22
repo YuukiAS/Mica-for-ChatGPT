@@ -1,0 +1,127 @@
+# Mica 功能收敛 V1
+
+Mica `0.5.0` 是一次后端功能收敛候选，不是正式发布。它在 `codex/mica-product-system-rebuild` 的 Foundation、Low Memory、Highlighter 和 PDF 基础上，新增统一设置模型、AnswerDocument 驱动的 Markdown/Notion 序列化、高亮记录迁移，以及有边界的断流恢复状态机。当前用户明确禁止启动浏览器和操作真实 ChatGPT，因此本轮只把纯 Node、静态构建与存储合同能够证明的部分标为已验证；真实页面交互、PDF 查看器和 Notion 原生公式均保留明确缺口。
+
+配套机器矩阵位于 [`MICA_FUNCTIONAL_CONVERGENCE_V1.json`](MICA_FUNCTIONAL_CONVERGENCE_V1.json)。它是当前功能状态的唯一机器可读来源，README 和 ROADMAP 只做面向读者的摘要。
+
+## 状态含义
+
+| 状态 | 含义 |
+| --- | --- |
+| `IMPLEMENTED_VERIFIED` | 代码已进入当前构建，并有本轮允许范围内的自动验证。 |
+| `IMPLEMENTED_UNVERIFIED` | 代码已进入当前构建，但本轮没有运行所需浏览器或真实目标验收。 |
+| `MISSING` | 当前候选没有完成该能力，或只有设置项而没有运行时。 |
+| `SUPERSEDED` | 历史实现已由当前架构替代，不应重新并行启用。 |
+| `BLOCKED_BY_REAL_EXTERNAL_DEPENDENCY` | 本地工作已做到安全边界，结论仍依赖本轮明确禁止的真实网站、登录态、查看器或外部权限。 |
+
+## 本轮架构边界
+
+```text
+ChatGPTAdapter
+  -> AnswerDocument（唯一回答语义模型）
+     -> Highlighter anchors
+     -> Markdown / Notion serializer
+     -> PDF export model
+
+SettingsModel（schemaVersion 4）
+  -> popup / options / content / service worker
+
+RecoveryStateMachine（纯状态与安全策略）
+  -> RecoveryController（提交后监听、会话快照、刷新后对账）
+```
+
+新功能不得独立抓取回答 DOM。永久复制和导出只接受 `generationState=SETTLED` 且 `durable=true` 的 `AnswerDocument`；对话导出还必须显式证明所选范围完整。高亮、恢复和设置数据均留在浏览器扩展本地存储中。
+
+## 已完成的后端能力
+
+### 统一设置
+
+`MicaSettingsModel` 将旧的扁平设置迁移到版本化 schema，并同时保留兼容字段。总开关不会删除子功能偏好。数值会被限制在安全范围内，`consequentialActionAutoReplay` 永远为 `false`，不能通过导入设置绕过。
+
+设置页已经覆盖通用、高亮、复制与导出、低内存、可靠性、界面和故障排查。高亮记录与设置都可本地导入、导出和清理。页面运行效果本轮未做浏览器验收，因此设置页整体仍是 `IMPLEMENTED_UNVERIFIED`。
+
+### Markdown 与 Notion 数据路径
+
+`MicaAnswerSerializer` 只消费稳定的 `AnswerDocument`，保留标题、段落、强调、列表、引用、GFM 表格、代码语言、链接、图片和行内/展示数学。数学分隔符可在 `$...$` / `$$...$$` 与 `\(...\)` / `\[...\]` 之间选择；代码块和行内代码不会经过数学替换。
+
+Notion 有两条清楚区分的路径：
+
+- Rich clipboard 同时提供 `text/plain` 与 `text/html`，公式携带明确的行内/块级语义和 TeX 表达式；真实 Notion 是否把它转成可编辑原生公式尚未验证。
+- Import file 生成确定性的 GFM Markdown 文件，用作一次导入的保底路径。它不冒充直接粘贴已通过，也不声称导入后一定是原生公式。
+
+要求中的中文五公式样本已经进入纯 Node 回归，并检查五个行内公式的数量和顺序。
+
+### 高亮记录
+
+现有 ChatGPT 高亮继续使用文档身份、回答身份、source version、块身份、文本范围、前后文和 TeX 组成锚点。新增的记录工具能够：
+
+- 导出带 schema 的本地 JSON；
+- 导入并拒绝完全无效的数据；
+- 按记录 ID 合并，避免无界重复；
+- 按 conversation 或 turn 筛选；
+- 在设置页清空全部本地记录。
+
+通用网页高亮仍未实现。当前设置只保存独立偏好，不请求全站权限，也不把这个偏好显示成已生效能力。
+
+### 可靠性状态机
+
+新的 `RecoveryStateMachine` 覆盖发送意图、等待提交、已提交、生成中、停滞、刷新、刷新后对账、完成、取消和人工处理。它保存 `lastMeaningfulProgressAt`，只有回答签名、turn 身份或明确工具阶段推进才刷新计时。
+
+提交状态始终分成：
+
+- A：确定已提交，只恢复当前 assistant turn，绝不新建同一 user turn；
+- B：确定未提交，只提供原草稿的人工恢复入口；
+- C：状态未知，禁止自动重发。
+
+状态机允许最多 2 次刷新、每轮 1 个恢复周期，并拒绝并行恢复。只读工具可继续观察；未知或有外部副作用的工具进入人工处理。原始草稿只进入 `chrome.storage.session`，持久历史只记录无正文的状态摘要。conversation、tab 或用户主动停止变化时，旧流程立即失效。
+
+当前运行时只实现了保守的自动刷新与刷新后对账。原生 Stop、自动 assistant retry 和自动新消息 resend 尚未接入，因为没有本轮真实页面合同可证明控件身份和副作用安全；设置中的策略字段不会让这些动作偷偷发生。
+
+## 需求与实现矩阵摘要
+
+| 编号 | 来源 | 用户结果 | 当前状态 | 自动证据 | 真实验收 |
+| --- | --- | --- | --- | --- | --- |
+| MFC-010 | 冻结产品系统 | 所有回答能力共享一个解析入口 | `IMPLEMENTED_UNVERIFIED` | build/static | 真实 ChatGPT contract |
+| MFC-020 | 本轮 §4/§7 | 稳定回答可复制为 Markdown | `IMPLEMENTED_VERIFIED` | convergence core | 实际剪贴板仍需浏览器 |
+| MFC-021 | Issue #10、本轮 §7 | Notion rich clipboard 保留公式语义 | `IMPLEMENTED_UNVERIFIED` | MIME/结构模型 | 真实 Notion paste |
+| MFC-022 | Issue #10、本轮 §7 | 确定性 Notion 导入文件 | `IMPLEMENTED_VERIFIED` | convergence core | 真实导入结果 |
+| MFC-100 | Issue #1、重建分支 | 长对话客户端数据窗口化 | `IMPLEMENTED_UNVERIFIED` | 既有证据 + 本轮后台纯测试 | 当前构建浏览器回归 |
+| MFC-200 | Issue #9、Milestone B | ChatGPT 正文与公式高亮 | `IMPLEMENTED_UNVERIFIED` | 既有 fixture 证据 | 当前构建浏览器回归 |
+| MFC-202 | Issue #9、本轮 §5 | 普通网页高亮 | `MISSING` | 无 | 可选站点权限 + 文章页 |
+| MFC-220 | Milestone B、本轮 §6 | 回答 PDF 与高亮继承 | `IMPLEMENTED_UNVERIFIED` | 既有 fixture 证据 | 当前构建 PDF viewer |
+| MFC-300 | 本轮 §8/§11 | 版本化设置和安全上限 | `IMPLEMENTED_VERIFIED` | convergence core | 设置页渲染 |
+| MFC-400 | Issue #4、本轮 §8 | 60 秒无进展状态机 | `IMPLEMENTED_VERIFIED` | convergence core | 真实断流流程 |
+| MFC-401 | Issue #4、本轮 §8 | 有界自动刷新和跨刷新去重 | `IMPLEMENTED_UNVERIFIED` | 状态/存储合同 | 真实 ChatGPT 回合 |
+| MFC-410 | Issues #5/#6 | 输入框与连接器旧故障收敛 | `BLOCKED_BY_REAL_EXTERNAL_DEPENDENCY` | 历史证据存在 | 失败页精确 DOM/AX 合同 |
+| MFC-420 | 历史任务 | Hide suggested work | `MISSING` | 仅设置项 | 精确且稳定的目标结构 |
+
+完整字段、模块归属、成功行为和未解决差距见 JSON 矩阵。
+
+## 本轮允许范围内的验证
+
+不启动浏览器的验证入口：
+
+```bash
+npm run build
+node scripts/convergence-core-fixture.mjs
+node scripts/recovery-controller-fixture.mjs
+node scripts/low-memory-background-fixture.mjs
+npm run test:build
+```
+
+`convergence-core-fixture.mjs` 覆盖设置迁移和安全上限、Markdown/Notion 序列化、五公式样本、对话完整性门槛、高亮记录导入导出，以及可靠性 15 类关键状态。它不替代真实 ChatGPT、系统剪贴板、Notion、PDF viewer 或实际设置页渲染。
+
+## 明确保留的差距
+
+以下工作没有被虚假标成完成：
+
+- 普通网页高亮与可选站点权限运行时；
+- 整段 conversation 的完整选择和 PDF 产品入口；
+- Notion 一次粘贴后的原生可编辑公式；
+- 原生 Stop、assistant retry 和确认未提交后的自动 resend；
+- 历史 Composer / Connector 修复在当前真实页面上的精确收敛；
+- Hide suggested work 的当前 ChatGPT 结构合同；
+- 当前 `0.5.0` 的浏览器、真实 ChatGPT、PDF viewer 和 Notion 验收；
+- 将新增门槛正式并入现有 acceptance validator。
+
+这些缺口不会阻止源码和开发构建继续存在，但会阻止把 `0.5.0` 称为发布候选或声称全功能验收通过。

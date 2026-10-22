@@ -1,6 +1,6 @@
-export const MACHINE_VERSION = "0.3.0";
-export const VERSION_NAME = "0.3.0";
-export const BUILD_LABEL = "highlight-pdf.1";
+export const MACHINE_VERSION = "0.5.0";
+export const VERSION_NAME = "0.5.0";
+export const BUILD_LABEL = "functional-convergence.1";
 export const DEV_BUILD = true;
 export const RELEASE_TAG = `v${VERSION_NAME}`;
 export const DEV_DIST_DIR_NAME = "mica-dev";
@@ -10,8 +10,12 @@ export const REQUIRED_EXTENSION_FILES = [
   "manifest.json",
   "chatgpt-adapter.js",
   "answer-document.js",
+  "settings-model.js",
+  "answer-serializer.js",
   "highlight-engine.js",
   "pdf-export-model.js",
+  "recovery-state-machine.js",
+  "recovery-controller.js",
   "low-memory-core.js",
   "low-memory-page.js",
   "low-memory-config.js",
@@ -25,6 +29,9 @@ export const REQUIRED_EXTENSION_FILES = [
   "pdf/pdf-export.css",
   "pdf/pdf-export-page.js",
   "popup/popup.js",
+  "options/index.html",
+  "options/options.css",
+  "options/options.js",
   "popup/troubleshooting.js",
   "popup/qa.js",
   "icons/icon16.png",

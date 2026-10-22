@@ -12,6 +12,7 @@ const compatibilityDetail = document.getElementById("compatibility-detail");
 const pageHealth = document.getElementById("page-health");
 const version = document.getElementById("version");
 const developerQaLink = document.getElementById("developer-qa-link");
+const settingsLink = document.getElementById("settings-link");
 
 const COPY = {
   loading: ["Checking this page…", ""],
@@ -35,11 +36,17 @@ async function initialize() {
   enabled.addEventListener("change", onEnabledChange);
   lowMemory.addEventListener("change", onLowMemoryChange);
   loadFullHistory.addEventListener("click", onLoadFullHistory);
+  settingsLink.addEventListener("click", openSettings);
   const response = await sendToActiveTab({ type: "MICA_GET_STATUS" });
   if (response?.settings) enabled.checked = response.settings.enabled;
   if (response?.settings) lowMemory.checked = response.settings.lowMemory;
   render(response?.status || unavailableStatus());
   restoreOriginFocus();
+}
+
+function openSettings(event) {
+  event.preventDefault();
+  chrome.runtime.openOptionsPage();
 }
 
 function restoreOriginFocus() {

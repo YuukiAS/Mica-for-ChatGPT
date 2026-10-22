@@ -3,13 +3,17 @@
   const VERSION_NAME = "__MICA_VERSION_NAME__";
   const BUILD_LABEL = "__MICA_BUILD_LABEL__";
   const CONTRACT_HASH = "__MICA_CHATGPT_CONTRACT_HASH__";
-  const DEFAULT_SETTINGS = Object.freeze({ enabled: true, lowMemory: true, lowMemoryKeepCount: 40, lowMemoryThreshold: 80 });
+  const DEFAULT_SETTINGS = Object.freeze({ enabled: true, lowMemory: true, highlighter: true, copyExport: true, reliability: true, hideSuggestedWork: false, lowMemoryKeepCount: 40, lowMemoryThreshold: 80 });
   const RECOVERY_AUTH = Object.freeze({ popup: Symbol("popup"), settings: Symbol("settings"), trustedGesture: Symbol("trusted-gesture") });
   const adapter = globalThis.MicaChatGPTAdapter;
   const answerDocument = globalThis.MicaAnswerDocument;
+  const settingsModel = globalThis.MicaSettingsModel;
+  const answerSerializer = globalThis.MicaAnswerSerializer;
   const highlightEngine = globalThis.MicaHighlightEngine;
   const pdfExport = globalThis.MicaPdfExport;
+  const recoveryController = globalThis.MicaRecoveryController;
   let settings = { ...DEFAULT_SETTINGS };
+  let productSettings = settingsModel?.defaults?.() || null;
   let observer = null;
   let scheduled = false;
   let lastStatus = loadingStatus();
@@ -34,10 +38,16 @@
       lowMemoryStatus = { ...defaultLowMemoryStatus("user_requested_full_history"), state: "full_history_bypass" };
     }
     setupMessages();
+    setupStorageSignals();
     setupNavigationSignals();
     setupLowMemorySignals();
     if (settings.enabled) setupObserver();
     await initializeHighlighter();
+    await recoveryController?.configure?.({
+      adapter,
+      getConversationKey: () => currentConversationId(),
+      settings: { ...(productSettings?.reliability || {}), enabled: settings.enabled && settings.reliability }
+    });
     refreshStatus();
     exposeFixtureHook();
   }
@@ -50,17 +60,23 @@
     return new Promise((resolve) => {
       const storage = globalThis.chrome?.storage?.local;
       if (!storage) return resolve({ ...DEFAULT_SETTINGS, enabled: false, lowMemory: false });
-      storage.get(DEFAULT_SETTINGS, (items) => resolve(chrome.runtime?.lastError
-        ? { ...DEFAULT_SETTINGS, enabled: false, lowMemory: false }
-        : sanitizeSettings(items || DEFAULT_SETTINGS)));
+      storage.get(null, (items) => {
+        if (chrome.runtime?.lastError) return resolve({ ...DEFAULT_SETTINGS, enabled: false, lowMemory: false });
+        if (settingsModel) {
+          productSettings = settingsModel.fromStorage(items || {});
+          return resolve(sanitizeSettings(settingsModel.toLegacyFlat(productSettings)));
+        }
+        resolve(sanitizeSettings(items || DEFAULT_SETTINGS));
+      });
     });
   }
 
-  function writeSettings(next) {
+  function writeSettings() {
     return new Promise((resolve) => {
       const storage = globalThis.chrome?.storage?.local;
       if (!storage) return resolve();
-      storage.set(next, () => resolve());
+      const value = settingsModel && productSettings ? settingsModel.toStorageRecord(productSettings) : settings;
+      storage.set(value, () => resolve());
     });
   }
 
@@ -68,6 +84,10 @@
     return {
       enabled: typeof value.enabled === "boolean" ? value.enabled : DEFAULT_SETTINGS.enabled,
       lowMemory: typeof value.lowMemory === "boolean" ? value.lowMemory : DEFAULT_SETTINGS.lowMemory,
+      highlighter: typeof value.highlighter === "boolean" ? value.highlighter : DEFAULT_SETTINGS.highlighter,
+      copyExport: typeof value.copyExport === "boolean" ? value.copyExport : DEFAULT_SETTINGS.copyExport,
+      reliability: typeof value.reliability === "boolean" ? value.reliability : DEFAULT_SETTINGS.reliability,
+      hideSuggestedWork: typeof value.hideSuggestedWork === "boolean" ? value.hideSuggestedWork : DEFAULT_SETTINGS.hideSuggestedWork,
       lowMemoryKeepCount: clampNumber(value.lowMemoryKeepCount, 8, 120, DEFAULT_SETTINGS.lowMemoryKeepCount),
       lowMemoryThreshold: clampNumber(value.lowMemoryThreshold, 10, 500, DEFAULT_SETTINGS.lowMemoryThreshold)
     };
@@ -78,6 +98,7 @@
     observer = new MutationObserver(() => {
       scheduleRefresh();
       scheduleHighlightReconcile();
+      recoveryController?.scheduleReconcile?.();
     });
     observer.observe(document.documentElement, { childList: true, subtree: true });
   }
@@ -89,11 +110,28 @@
 
   function setupNavigationSignals() {
     const onNavigation = () => {
+      recoveryController?.onContextChanged?.();
       scheduleRefresh();
       scheduleHighlightReconcile();
     };
     addEventListener("popstate", onNavigation, { passive: true });
     addEventListener("hashchange", onNavigation, { passive: true });
+  }
+
+  function setupStorageSignals() {
+    const storage = globalThis.chrome?.storage;
+    if (!storage?.onChanged) return;
+    storage.onChanged.addListener((changes, area) => {
+      if (area !== "local") return;
+      const nested = settingsModel && changes[settingsModel.storageKey]?.newValue;
+      if (nested) {
+        void applySettings(settingsModel.sanitize(nested), false);
+        return;
+      }
+      const patch = {};
+      for (const key of Object.keys(DEFAULT_SETTINGS)) if (changes[key]) patch[key] = changes[key].newValue;
+      if (Object.keys(patch).length) void applySettings(patch, false);
+    });
   }
 
   function setupLowMemorySignals() {
@@ -231,6 +269,10 @@
         sendResponse({ answerDocument: getAnswerDocument(message.turnId) });
         return false;
       }
+      if (message?.type === "MICA_SERIALIZE_ANSWER") {
+        sendResponse(serializeAnswer(message.turnId, message.format));
+        return false;
+      }
       if (message?.type === "MICA_LOAD_FULL_HISTORY") {
         void requestFullHistory("popup", RECOVERY_AUTH.popup).then(sendResponse);
         return true;
@@ -250,12 +292,18 @@
     });
   }
 
-  async function applySettings(value) {
+  async function applySettings(value, persist = true) {
     const wasLowMemoryActive = lowMemoryStatus.active === true;
     const wasLowMemoryEnabled = settings.enabled && settings.lowMemory;
-    const next = sanitizeSettings({ ...settings, ...(value || {}) });
+    if (settingsModel) {
+      productSettings = value?.schemaVersion
+        ? settingsModel.sanitize(value)
+        : settingsModel.withLegacyPatch(productSettings || settingsModel.defaults(), value || {});
+    }
+    const modelFlat = settingsModel && productSettings ? settingsModel.toLegacyFlat(productSettings) : {};
+    const next = sanitizeSettings({ ...settings, ...(value || {}), ...modelFlat });
     settings = next;
-    await writeSettings(settings);
+    if (persist) await writeSettings();
     const registration = await globalThis.MicaLowMemoryConfig?.syncRegistration?.();
     const isLowMemoryEnabled = settings.enabled && settings.lowMemory;
     if (!registration?.ok) {
@@ -275,7 +323,9 @@
       teardownObserver();
       clearHighlighterSurface();
     }
-    if (settings.enabled) scheduleHighlightReconcile();
+    if (settings.enabled && settings.highlighter) scheduleHighlightReconcile();
+    else clearHighlighterSurface();
+    recoveryController?.updateSettings?.({ ...(productSettings?.reliability || {}), enabled: settings.enabled && settings.reliability });
     reconcileHistoryControl();
   }
 
@@ -451,7 +501,7 @@
   }
 
   function handleHighlightPointerUp(event) {
-    if (!settings.enabled || !highlighterReady || highlightToolbar?.contains(event.target)) return;
+    if (!settings.enabled || !settings.highlighter || !highlighterReady || highlightToolbar?.contains(event.target)) return;
     const point = { x: event.clientX, y: event.clientY };
     requestAnimationFrame(() => {
       const selection = getSelection();
@@ -461,7 +511,7 @@
   }
 
   function handleHighlightKeyUp(event) {
-    if (!settings.enabled || !highlighterReady) return;
+    if (!settings.enabled || !settings.highlighter || !highlighterReady) return;
     if (!event.shiftKey || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
     if (isEditableTarget(event.target)) return;
     requestAnimationFrame(() => inspectHighlightSelection(true));
@@ -520,9 +570,10 @@
     highlightToolbar.toggleAttribute("data-editing", !!recordId);
     const deleteButton = highlightToolbar.shadowRoot.querySelector("[data-action='delete']");
     deleteButton.hidden = !recordId;
-    highlightToolbar.style.left = `${Math.max(12, Math.min(innerWidth - 286, rect.left + rect.width / 2 - 128))}px`;
-    highlightToolbar.style.top = `${rect.top >= 58 ? rect.top - 48 : rect.bottom + 8}px`;
     if (!highlightToolbar.isConnected) document.documentElement.append(highlightToolbar);
+    const toolbarWidth = Math.min(highlightToolbar.getBoundingClientRect().width || 520, innerWidth - 24);
+    highlightToolbar.style.left = `${Math.max(12, Math.min(innerWidth - toolbarWidth - 12, rect.left + rect.width / 2 - toolbarWidth / 2))}px`;
+    highlightToolbar.style.top = `${rect.top >= 104 ? rect.top - 92 : rect.bottom + 8}px`;
     if (focusToolbar) highlightToolbar.shadowRoot.querySelector("button:not([hidden])")?.focus();
   }
 
@@ -533,7 +584,7 @@
     const shadow = host.attachShadow({ mode: "open" });
     shadow.innerHTML = `<style>
       :host{font:500 12px/1 system-ui,sans-serif;color:#17201e}
-      div{display:flex;align-items:center;gap:5px;padding:6px;border:1px solid rgba(23,32,30,.18);border-radius:999px;background:rgba(255,255,255,.98);box-shadow:0 8px 24px rgba(0,0,0,.16)}
+      div{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:5px;max-width:calc(100vw - 24px);padding:6px;border:1px solid rgba(23,32,30,.18);border-radius:12px;background:rgba(255,255,255,.98);box-shadow:0 8px 24px rgba(0,0,0,.16)}
       button{width:28px;height:28px;border:1px solid rgba(23,32,30,.22);border-radius:50%;cursor:pointer;padding:0;background:var(--swatch)}
       button:focus-visible{outline:2px solid #0b766b;outline-offset:2px}
       button[data-action]{width:auto;border-radius:999px;padding:0 9px;background:transparent;color:inherit;font:600 11px/1 system-ui,sans-serif;white-space:nowrap}
@@ -544,6 +595,8 @@
       <button type="button" data-color="mint" aria-label="Mint highlight" style="--swatch:#9ee3cf"></button>
       <button type="button" data-color="blue" aria-label="Blue highlight" style="--swatch:#9ec9f5"></button>
       <button type="button" data-color="pink" aria-label="Pink highlight" style="--swatch:#f2acd0"></button>
+      <button type="button" data-action="markdown" aria-label="Copy answer as Markdown">Copy Markdown</button>
+      <button type="button" data-action="notion" aria-label="Copy answer for Notion">Copy for Notion</button>
       <button type="button" data-action="pdf" aria-label="Export answer as PDF">Export PDF</button>
       <button type="button" data-action="delete" aria-label="Delete highlight">Delete</button>
     </div>`;
@@ -553,6 +606,8 @@
       if (!button) return;
       if (button.dataset.action === "delete" && pendingHighlight?.recordId) await deleteHighlight(pendingHighlight.recordId);
       else if (button.dataset.action === "pdf") await exportPendingAnswer();
+      else if (button.dataset.action === "markdown") await copyPendingAnswer("markdown");
+      else if (button.dataset.action === "notion") await copyPendingAnswer("notion");
       else if (button.dataset.color) {
         if (pendingHighlight?.recordId) await updateHighlightColor(pendingHighlight.recordId, button.dataset.color);
         else await createHighlightFromPending(button.dataset.color);
@@ -600,14 +655,8 @@
   }
 
   async function exportPendingAnswer() {
-    if (!pdfExport || !pendingHighlight) return false;
-    let documentModel = pendingHighlight.documentModel || null;
-    if (!documentModel && pendingHighlight.recordId) {
-      const record = highlightRecords.find((item) => item.id === pendingHighlight.recordId);
-      const turn = record ? adapter.listTurns(document).find((item) => item.role === "assistant" && item.turnId === record.anchor.turnId) : null;
-      const generationState = turn ? adapter.generationStateForTurn(turn) : null;
-      if (turn && generationState === "SETTLED") documentModel = answerDocument.fromAssistantTurn(turn, { conversationId: currentConversationId(), generationState });
-    }
+    if (!settings.copyExport || !pdfExport || !pendingHighlight) return false;
+    const documentModel = documentForPendingAnswer();
     if (!documentModel) return false;
     const built = pdfExport.buildModel(documentModel, highlightRecords);
     if (!built?.ok) return false;
@@ -616,6 +665,57 @@
     return new Promise((resolve) => {
       chrome.runtime.sendMessage({ type: "MICA_OPEN_PDF_EXPORT", token, model: built.model }, (response) => resolve(!chrome.runtime.lastError && response?.ok === true));
     });
+  }
+
+  async function copyPendingAnswer(format) {
+    if (!settings.copyExport || !answerSerializer || !pendingHighlight) return false;
+    const documentModel = documentForPendingAnswer();
+    if (!documentModel) return false;
+    if (format === "notion" && productSettings?.export?.notionMode === "disabled") return false;
+    if (format === "notion" && productSettings?.export?.notionMode === "import-file") {
+      const imported = answerSerializer.serializeNotionImport(documentModel, productSettings?.export || {});
+      if (!imported?.ok) return false;
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(new Blob([imported.content], { type: "text/markdown" }));
+      link.download = imported.fileName;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 0);
+      hideHighlightToolbar();
+      return true;
+    }
+    const output = format === "notion"
+      ? answerSerializer.serializeNotion(documentModel, productSettings?.export || {})
+      : answerSerializer.serializeMarkdown(documentModel, {
+        flavor: productSettings?.export?.markdownFlavor,
+        inlineMathDelimiter: productSettings?.export?.inlineMathDelimiter,
+        displayMathDelimiter: productSettings?.export?.displayMathDelimiter
+      });
+    if (!output?.ok) return false;
+    try {
+      if (format === "notion" && output.html && typeof ClipboardItem === "function" && navigator.clipboard?.write) {
+        await navigator.clipboard.write([new ClipboardItem({
+          "text/plain": new Blob([output.plainText], { type: "text/plain" }),
+          "text/html": new Blob([output.html], { type: "text/html" })
+        })]);
+      } else {
+        await navigator.clipboard.writeText(output.markdown || output.plainText);
+      }
+      hideHighlightToolbar();
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function documentForPendingAnswer() {
+    let documentModel = pendingHighlight?.documentModel || null;
+    if (!documentModel && pendingHighlight?.recordId) {
+      const record = highlightRecords.find((item) => item.id === pendingHighlight.recordId);
+      const turn = record ? adapter.listTurns(document).find((item) => item.role === "assistant" && item.turnId === record.anchor.turnId) : null;
+      const generationState = turn ? adapter.generationStateForTurn(turn) : null;
+      if (turn && generationState === "SETTLED") documentModel = answerDocument.fromAssistantTurn(turn, { conversationId: currentConversationId(), generationState });
+    }
+    return documentModel?.durable ? documentModel : null;
   }
 
   function inspectExistingHighlightAtPoint(point) {
@@ -636,7 +736,7 @@
   }
 
   function scheduleHighlightReconcile() {
-    if (!settings.enabled || !highlighterReady || highlightFrame) return;
+    if (!settings.enabled || !settings.highlighter || !highlighterReady || highlightFrame) return;
     highlightFrame = requestAnimationFrame(() => {
       highlightFrame = 0;
       reconcileHighlights();
@@ -644,7 +744,7 @@
   }
 
   function reconcileHighlights() {
-    if (!highlightEngine || !settings.enabled || !highlighterReady) {
+    if (!highlightEngine || !settings.enabled || !settings.highlighter || !highlighterReady) {
       clearRenderedHighlights();
       return highlighterStatus();
     }
@@ -707,6 +807,7 @@
     const current = highlightRecords.filter((record) => record.anchor.conversationId === currentConversationId());
     return {
       supported: highlighterReady,
+      enabled: settings.enabled && settings.highlighter,
       localOnly: true,
       recordCount: current.length,
       renderedCount: renderedHighlights.size,
@@ -728,6 +829,19 @@
     return answerDocument.fromAssistantTurn(turn, {
       conversationId: currentConversationId(),
       generationState
+    });
+  }
+
+  function serializeAnswer(turnId, format = "markdown") {
+    if (!settings.enabled || !settings.copyExport || !answerSerializer) return { ok: false, reason: "copy_export_disabled" };
+    const documentModel = getAnswerDocument(turnId);
+    if (!documentModel?.durable) return { ok: false, reason: "answer_not_settled" };
+    if (format === "notion") return answerSerializer.serializeNotion(documentModel, productSettings?.export || {});
+    if (format === "pdf") return pdfExport?.buildModel(documentModel, highlightRecords) || { ok: false, reason: "pdf_unavailable" };
+    return answerSerializer.serializeMarkdown(documentModel, {
+      flavor: productSettings?.export?.markdownFlavor,
+      inlineMathDelimiter: productSettings?.export?.inlineMathDelimiter,
+      displayMathDelimiter: productSettings?.export?.displayMathDelimiter
     });
   }
 
@@ -753,7 +867,8 @@
         answerDocumentModelVersion: answerDocument.modelVersion,
         observerActive: !!observer,
         lowMemory: { ...lowMemoryStatus, enabled: settings.enabled && settings.lowMemory },
-        highlighter: highlighterStatus()
+        highlighter: highlighterStatus(),
+        reliability: recoveryController?.snapshot?.() || null
       },
       privacy: {
         conversationTextIncluded: false,
@@ -771,6 +886,7 @@
       refreshStatus,
       buildSanitizedQaReport,
       getAnswerDocument,
+      serializeAnswer,
       applySettings,
       requestFullHistory,
       getLowMemoryStatus: () => ({ ...lowMemoryStatus }),
@@ -781,6 +897,8 @@
       updateHighlightColor,
       deleteHighlight,
       exportPendingAnswer,
+      copyPendingAnswer,
+      getRecoveryStatus: () => recoveryController?.snapshot?.() || null,
       buildPdfExportModel: (documentModel) => pdfExport?.buildModel(documentModel, highlightRecords) || null,
       adapter,
       answerDocument

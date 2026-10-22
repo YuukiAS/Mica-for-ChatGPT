@@ -6,6 +6,23 @@ import { BUILD_LABEL, DEV_DIST_DIR_NAME, ICON_SIZES, MACHINE_VERSION, REQUIRED_E
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = path.join(root, "dist", DEV_DIST_DIR_NAME);
+const packageMetadata = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+const convergenceMatrix = JSON.parse(await readFile(path.join(root, "docs", "product", "MICA_FUNCTIONAL_CONVERGENCE_V1.json"), "utf8"));
+
+assert(packageMetadata.version === MACHINE_VERSION, "package version must match release config");
+assert(convergenceMatrix.candidate?.version === MACHINE_VERSION, "convergence matrix version must match release config");
+assert(convergenceMatrix.candidate?.buildLabel === BUILD_LABEL, "convergence matrix build label must match release config");
+const requirementIds = new Set();
+for (const requirement of convergenceMatrix.requirements || []) {
+  assert(/^MFC-\d{3}$/.test(requirement.id), "convergence requirement id is invalid");
+  assert(!requirementIds.has(requirement.id), `duplicate convergence requirement: ${requirement.id}`);
+  requirementIds.add(requirement.id);
+  assert(convergenceMatrix.statusVocabulary.includes(requirement.status), `unknown convergence status: ${requirement.status}`);
+  for (const field of ["source", "userProblem", "module", "iterationAction", "successBehavior", "automatedVerification", "realAcceptance", "result", "gap"]) {
+    assert(field in requirement, `convergence requirement ${requirement.id} missing ${field}`);
+  }
+}
+assert(requirementIds.size >= 20, "convergence matrix does not cover the minimum functional groups");
 
 for (const relative of REQUIRED_EXTENSION_FILES) await assertFile(path.join(distDir, relative));
 
@@ -18,10 +35,12 @@ assert(manifest.action?.default_title === "Mica", "action.default_title missing"
 assert(manifest.permissions?.includes("storage"), "storage permission missing");
 assert(manifest.permissions?.includes("activeTab"), "activeTab permission missing");
 assert(manifest.permissions?.includes("scripting"), "scripting permission missing");
+assert(manifest.permissions?.includes("clipboardWrite"), "clipboardWrite permission missing");
 assert(!manifest.host_permissions?.some((host) => !/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(host)), "unexpected host permission");
 assert(manifest.background?.service_worker === "low-memory-background.js", "Low Memory registration service worker missing");
+assert(manifest.options_ui?.page === "options/index.html" && manifest.options_ui?.open_in_tab === true, "settings page registration missing");
 assert(JSON.stringify(manifest.content_scripts?.[0]?.js) === JSON.stringify(["low-memory-config.js"]) && manifest.content_scripts?.[0]?.run_at === "document_start", "Low Memory config bridge order drifted");
-assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["chatgpt-adapter.js", "answer-document.js", "highlight-engine.js", "pdf-export-model.js", "content.js"]), "foundation/highlighter/PDF content-script order drifted");
+assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["settings-model.js", "chatgpt-adapter.js", "answer-document.js", "answer-serializer.js", "highlight-engine.js", "pdf-export-model.js", "recovery-state-machine.js", "recovery-controller.js", "content.js"]), "functional convergence content-script order drifted");
 assert(!manifest.content_scripts.some((entry) => entry.world === "MAIN"), "Low Memory MAIN scripts must be extension-controlled dynamic registrations");
 
 for (const size of [16, 32, 48, 128]) {
@@ -37,20 +56,25 @@ const contractSource = await readFile(path.join(root, "contracts", "chatgpt", "c
 const contractHash = createHash("sha256").update(contractSource).digest("hex");
 const adapter = await readFile(path.join(distDir, "chatgpt-adapter.js"), "utf8");
 const answerDocument = await readFile(path.join(distDir, "answer-document.js"), "utf8");
+const settingsModel = await readFile(path.join(distDir, "settings-model.js"), "utf8");
+const answerSerializer = await readFile(path.join(distDir, "answer-serializer.js"), "utf8");
 const highlightEngine = await readFile(path.join(distDir, "highlight-engine.js"), "utf8");
 const pdfExportModel = await readFile(path.join(distDir, "pdf-export-model.js"), "utf8");
+const recoveryStateMachine = await readFile(path.join(distDir, "recovery-state-machine.js"), "utf8");
+const recoveryController = await readFile(path.join(distDir, "recovery-controller.js"), "utf8");
 const content = await readFile(path.join(distDir, "content.js"), "utf8");
 const lowMemoryCore = await readFile(path.join(distDir, "low-memory-core.js"), "utf8");
 const lowMemoryPage = await readFile(path.join(distDir, "low-memory-page.js"), "utf8");
 const lowMemoryConfig = await readFile(path.join(distDir, "low-memory-config.js"), "utf8");
 const lowMemoryBackground = await readFile(path.join(distDir, "low-memory-background.js"), "utf8");
 const popup = await readFile(path.join(distDir, "popup", "popup.js"), "utf8");
+const options = await readFile(path.join(distDir, "options", "options.js"), "utf8");
 const troubleshooting = await readFile(path.join(distDir, "popup", "troubleshooting.js"), "utf8");
 const qa = await readFile(path.join(distDir, "popup", "qa.js"), "utf8");
 const pdfExportPage = await readFile(path.join(distDir, "pdf", "pdf-export-page.js"), "utf8");
 
 for (const text of [adapter, content]) assert(text.includes(contractHash), "built current ChatGPT contract hash drifted");
-for (const text of [adapter, answerDocument, highlightEngine, pdfExportModel, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, troubleshooting, qa, pdfExportPage]) {
+for (const text of [adapter, answerDocument, settingsModel, answerSerializer, highlightEngine, pdfExportModel, recoveryStateMachine, recoveryController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, options, troubleshooting, qa, pdfExportPage]) {
   assert(!/__MICA_(?:VERSION|VERSION_NAME|BUILD_LABEL|CHATGPT_CONTRACT_HASH|DEV_BUILD)__/.test(text), "unresolved build placeholder remains");
   new Function(text);
 }
@@ -74,6 +98,10 @@ for (const token of [
   "inline_math",
   "display_math"
 ]) assert(answerDocument.includes(token), `AnswerDocument core missing ${token}`);
+for (const token of ["MicaSettingsModel", "noProgressTimeoutSeconds", "maxAutoReloadsPerTurn", "consequentialActionAutoReplay", "micaSettings"]) assert(settingsModel.includes(token), `settings model missing ${token}`);
+for (const token of ["MicaAnswerSerializer", "serializeMarkdown", "serializeNotion", "serializeNotionImport", "conversation_completeness_unproven", "notion_native_equations_require_real_target_validation"]) assert(answerSerializer.includes(token), `answer serializer missing ${token}`);
+for (const token of ["MicaRecoveryStateMachine", "A_COMMITTED", "B_NOT_COMMITTED", "C_UNKNOWN", "reload_limit_reached", "consequential_or_unknown_action"]) assert(recoveryStateMachine.includes(token), `recovery state machine missing ${token}`);
+for (const token of ["MicaRecoveryController", "MICA_RELIABILITY_CONTEXT", "chrome.storage.session", "trusted_submit", "draftIncluded: false"]) assert(recoveryController.includes(token), `recovery controller missing ${token}`);
 
 for (const token of [
   "MicaHighlightEngine",
@@ -82,7 +110,11 @@ for (const token of [
   "conversationId",
   "sourceVersion",
   "textQuote",
-  "mathTeX"
+  "mathTeX",
+  "exportJson",
+  "importJson",
+  "mergeRecords",
+  "recordsForScope"
 ]) assert(highlightEngine.includes(token), `HighlightEngine missing ${token}`);
 
 for (const token of ["captureHighlightSelection", "resolveHighlightAnchor", "unique_quote_context", "extractRawMathSources"]) {
@@ -105,7 +137,7 @@ for (const token of [
   "conversationTextIncluded: false",
   "rawDomIncluded: false"
 ]) assert(content.includes(token), `content runtime missing ${token}`);
-for (const token of ["data-mica-ui", "highlight-toolbar", "event.isTrusted", "CSS.highlights", "permanentToolbar: false"]) {
+for (const token of ["data-mica-ui", "highlight-toolbar", "Copy Markdown", "Copy for Notion", "event.isTrusted", "CSS.highlights", "permanentToolbar: false"]) {
   assert(content.includes(token), `Highlighter runtime missing ${token}`);
 }
 for (const token of ["MicaPdfExport", "unsupported_answer_structure", "visible-tex-source", "localOnly: true"]) assert(pdfExportModel.includes(token), `PDF export model missing ${token}`);
@@ -130,7 +162,7 @@ for (const token of ["chrome.scripting.registerContentScripts", "world: \"MAIN\"
 
 const reportBody = extractFunctionBody(content, "buildSanitizedQaReport");
 assert(!/innerText|textContent|innerHTML|outerHTML/.test(reportBody), "sanitized QA report must not read conversation text/HTML");
-for (const text of [highlightEngine, pdfExportModel, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground]) {
+for (const text of [settingsModel, answerSerializer, highlightEngine, pdfExportModel, recoveryStateMachine, recoveryController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground]) {
   assert(!/addEventListener\(["'](?:beforeinput|input|keydown|compositionstart|compositionupdate|compositionend)/.test(text), "runtime added a typing hot-path listener");
 }
 assert(!/addEventListener\(["'](?:beforeinput|input|compositionstart|compositionupdate|compositionend)/.test(content), "content runtime added a typing hot-path listener");
@@ -145,9 +177,16 @@ for (const token of ["!event.shiftKey", "isEditableTarget", "requestAnimationFra
 assert(!/Range\.prototype|Selection\.prototype/.test(`${answerDocument}\n${highlightEngine}\n${content}`), "Highlighter must not patch global Range/Selection prototypes");
 
 const normalHtml = await readFile(path.join(distDir, "popup", "index.html"), "utf8");
-for (const token of ["Mica", "Enable Mica", "Checking this page…", "Low memory", "Keeps 40 recent turns active", "Load full history", "Page health", "Troubleshooting", "Advanced"]) {
+for (const token of ["Mica", "Enable Mica", "Checking this page…", "Low memory", "Keeps 40 recent turns active", "Load full history", "Page health", "Settings", "Troubleshooting", "Advanced"]) {
   assert(normalHtml.includes(token), `normal popup missing ${token}`);
 }
+
+const optionsHtml = await readFile(path.join(distDir, "options", "index.html"), "utf8");
+for (const token of ["General", "Reading & highlighting", "Copy & export", "Performance", "Reliability", "Allow native Stop when verified", "Maximum recovery cycles per turn", "Maximum confirmed-unsent resends", "Maximum assistant retries", "Recover read-only tools", "Hide suggested work", "Export highlights", "Import highlights", "Clear all highlights", "Export settings", "Restore all defaults", "Save settings"]) {
+  assert(optionsHtml.includes(token), `settings page missing ${token}`);
+}
+assert(optionsHtml.indexOf("../settings-model.js") < optionsHtml.indexOf("../highlight-engine.js") && optionsHtml.indexOf("../highlight-engine.js") < optionsHtml.indexOf("options.js"), "settings dependency script order drifted");
+for (const token of ["MicaSettingsModel", "MicaHighlightEngine", "autoStopEnabled", "maxRecoveryCyclesPerTurn", "maxAutoNewMessageResends", "maxAutoAssistantRetries", "consequentialActionAutoReplay: false", "micaRecoveryHistoryV1", "mergeRecords", "mica-highlights.json"]) assert(options.includes(token), `settings runtime missing ${token}`);
 for (const forbidden of ["Start diagnostics", "Stop diagnostics", "Copy report", "mounted", "selector", "Surface Atlas"]) {
   assert(!normalHtml.includes(forbidden), `normal popup exposes internal diagnostic copy: ${forbidden}`);
 }

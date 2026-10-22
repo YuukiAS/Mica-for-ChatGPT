@@ -2,26 +2,36 @@ const SCRIPT_ID = "mica-low-memory-main-v3";
 const MATCHES = ["https://chatgpt.com/*", "https://chat.openai.com/*"];
 const MODE_KEY = "mica.lowMemory.tabModes.v3";
 const DEFAULTS = Object.freeze({ enabled: true, lowMemory: true });
+const SETTINGS_KEY = globalThis.MicaSettingsModel?.storageKey || "micaSettings";
+const RECOVERY_PREFIX = "mica.recovery.v1.";
 const PDF_EXPORT_PREFIX = "mica.pdf.export.";
 const MAX_PDF_EXPORT_BYTES = 2_000_000;
 const pendingFullHistory = new Set();
 let registrationQueue = Promise.resolve();
 
-chrome.runtime.onInstalled.addListener(() => { void syncRegistration(); });
-chrome.runtime.onStartup.addListener(() => { void syncRegistration(); });
+chrome.runtime.onInstalled.addListener(() => { void migrateSettings().then(syncRegistration); });
+chrome.runtime.onStartup.addListener(() => { void migrateSettings().then(syncRegistration); });
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && ("enabled" in changes || "lowMemory" in changes)) void syncRegistration();
+  if (area === "local" && ("enabled" in changes || "lowMemory" in changes || SETTINGS_KEY in changes)) void syncRegistration();
 });
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "loading" && !pendingFullHistory.has(tabId)) void clearCompletedTabMode(tabId);
   if (changeInfo.status === "complete") void finishFullHistoryReload(tabId);
 });
-chrome.tabs.onRemoved.addListener((tabId) => { pendingFullHistory.delete(tabId); void clearTabMode(tabId); });
+chrome.tabs.onRemoved.addListener((tabId) => {
+  pendingFullHistory.delete(tabId);
+  void clearTabMode(tabId);
+  void chrome.storage.session.remove(`${RECOVERY_PREFIX}${tabId}`);
+});
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "MICA_LOW_MEMORY_SYNC") {
     void syncRegistration().then(sendResponse);
     return true;
+  }
+  if (message?.type === "MICA_RELIABILITY_CONTEXT") {
+    sendResponse({ ok: Number.isInteger(sender.tab?.id), tabId: sender.tab?.id || 0 });
+    return false;
   }
   if (message?.type === "MICA_LOW_MEMORY_GET_TAB_MODE") {
     void getTabMode(sender.tab?.id).then((mode) => sendResponse({ ok: true, mode }));
@@ -148,11 +158,31 @@ async function resumeWindowing(tab) {
 
 function readSettings() {
   return new Promise((resolve) => {
-    chrome.storage.local.get(DEFAULTS, (items) => {
+    chrome.storage.local.get({ ...DEFAULTS, [SETTINGS_KEY]: null }, (items) => {
       if (chrome.runtime.lastError) return resolve({ ok: false, value: { enabled: false, lowMemory: false } });
+      if (globalThis.MicaSettingsModel) {
+        const settings = globalThis.MicaSettingsModel.fromStorage(items || {});
+        const flat = globalThis.MicaSettingsModel.toLegacyFlat(settings);
+        return resolve({ ok: true, value: { enabled: flat.enabled, lowMemory: flat.lowMemory } });
+      }
       resolve({ ok: true, value: { enabled: items?.enabled !== false, lowMemory: items?.lowMemory !== false } });
     });
   });
+}
+
+async function migrateSettings() {
+  if (!globalThis.MicaSettingsModel) return { ok: false, reason: "settings_model_unavailable" };
+  try {
+    const items = await new Promise((resolve) => chrome.storage.local.get(null, (value) => resolve(value || {})));
+    const settings = globalThis.MicaSettingsModel.fromStorage(items || {});
+    await new Promise((resolve) => {
+      if (!chrome.storage.local.set) return resolve();
+      chrome.storage.local.set(globalThis.MicaSettingsModel.toStorageRecord(settings), resolve);
+    });
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, reason: `settings_migration_failed:${String(error?.message || error || "unknown")}` };
+  }
 }
 
 async function getTabMode(tabId) {
@@ -206,4 +236,4 @@ function isSupportedTab(tab) {
   catch (_error) { return false; }
 }
 
-void syncRegistration();
+void migrateSettings().then(syncRegistration);

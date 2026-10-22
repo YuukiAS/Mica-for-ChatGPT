@@ -98,39 +98,58 @@
 
   function parseInlineRuns(root) {
     const runs = [];
-    walkInline(root, runs);
+    walkInline(root, runs, []);
     return mergeTextRuns(runs);
   }
 
-  function walkInline(node, runs) {
+  function walkInline(node, runs, marks) {
     for (const child of node.childNodes) {
       if (child.nodeType === Node.TEXT_NODE) {
         const text = normalizeInlineText(child.nodeValue || "");
-        if (text) runs.push(...rawMathRuns(text));
+        if (text) runs.push(...rawMathRuns(text, marks));
         continue;
       }
       if (!(child instanceof HTMLElement)) continue;
       if (child.matches(".katex-display")) continue;
+      const childMarks = marksForElement(child, marks);
       if (child.matches(".katex,mjx-container,math[alttext],[data-tex],[data-math-source]")
         && !child.closest(".katex-display,mjx-container[display='true'],math[display='block'],[data-math-display='true']")) {
-        runs.push({ kind: "inline_math", ...mathPayload(child), displayMode: false });
+        runs.push(withMarks({ kind: "inline_math", ...mathPayload(child), displayMode: false }, childMarks));
+        continue;
+      }
+      if (child.tagName === "CODE") {
+        runs.push(withMarks({ kind: "inline_code", text: child.textContent || "" }, childMarks.filter(mark => mark !== "code")));
         continue;
       }
       if (child.tagName === "A") {
         const kind = child.matches("[data-testid*='citation'],[data-citation]") ? "citation" : "link";
-        runs.push({ kind, text: normalizeText(child.textContent || ""), href: child.getAttribute("href") || null });
+        runs.push(withMarks({ kind, text: normalizeText(child.textContent || ""), href: child.getAttribute("href") || null }, childMarks));
         continue;
       }
       if (child.tagName === "IMG") {
-        runs.push({ kind: "image", alt: child.getAttribute("alt") || "", src: child.getAttribute("src") || null });
+        runs.push(withMarks({ kind: "image", alt: child.getAttribute("alt") || "", src: child.getAttribute("src") || null }, childMarks));
         continue;
       }
       if (child.matches("button,input,select,textarea,[contenteditable='true'],[role='button']")) {
         runs.push({ kind: "opaque_interactive", label: accessibleLabel(child), interactive: true });
         continue;
       }
-      walkInline(child, runs);
+      walkInline(child, runs, childMarks);
     }
+  }
+
+  function marksForElement(element, inherited) {
+    const marks = new Set(inherited || []);
+    const tag = element.tagName;
+    if (tag === "STRONG" || tag === "B") marks.add("strong");
+    if (tag === "EM" || tag === "I") marks.add("emphasis");
+    if (tag === "S" || tag === "DEL") marks.add("strikethrough");
+    if (tag === "CODE") marks.add("code");
+    return [...marks];
+  }
+
+  function withMarks(run, marks) {
+    return marks?.length ? { ...run, marks: [...marks] } : run;
   }
 
   function finalizeBlock(state, kind, payload) {
@@ -163,7 +182,7 @@
     return { rawTeX, renderedText };
   }
 
-  function rawMathRuns(text) {
+  function rawMathRuns(text, marks = []) {
     const runs = [];
     const pattern = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|(^|[^$])\$([^\n$]+?)\$/g;
     let cursor = 0;
@@ -171,13 +190,22 @@
     while ((match = pattern.exec(text))) {
       const leading = match[4] || "";
       const formulaStart = match.index + leading.length;
-      if (formulaStart > cursor) runs.push({ kind: "text", text: text.slice(cursor, formulaStart) });
       const rawTeX = (match[1] || match[2] || match[3] || match[5] || "").trim();
-      if (rawTeX) runs.push({ kind: "inline_math", rawTeX, renderedText: rawTeX, displayMode: !!(match[1] || match[2]) });
+      const inlineDollar = !!match[5];
+      if ((inlineDollar && (text[formulaStart - 1] === "\\" || !plausibleInlineMath(rawTeX))) || !rawTeX) continue;
+      if (formulaStart > cursor) runs.push(withMarks({ kind: "text", text: text.slice(cursor, formulaStart) }, marks));
+      runs.push(withMarks({ kind: "inline_math", rawTeX, renderedText: rawTeX, displayMode: !!(match[1] || match[2]) }, marks));
       cursor = pattern.lastIndex;
     }
-    if (cursor < text.length) runs.push({ kind: "text", text: text.slice(cursor) });
-    return runs.length ? runs : [{ kind: "text", text }];
+    if (cursor < text.length) runs.push(withMarks({ kind: "text", text: text.slice(cursor) }, marks));
+    return runs.length ? runs : [withMarks({ kind: "text", text }, marks)];
+  }
+
+  function plausibleInlineMath(source) {
+    const value = String(source || "").trim();
+    if (!value || /^\d+(?:[.,]\d+)?(?:\s*(?:USD|HKD|CNY|dollars?))?$/i.test(value)) return false;
+    if (/^[\p{L}\p{N}]+(?:\s+[\p{L}\p{N}]+){1,}$/u.test(value)) return false;
+    return /[\\_^{}=+\-*/<>]|^[\p{L}]$/u.test(value);
   }
 
   function codeLanguage(node) {
@@ -209,7 +237,7 @@
     const merged = [];
     for (const run of runs) {
       const previous = merged.at(-1);
-      if (run.kind === "text" && previous?.kind === "text") previous.text += run.text;
+      if (run.kind === "text" && previous?.kind === "text" && stableStringify(run.marks || []) === stableStringify(previous.marks || [])) previous.text += run.text;
       else merged.push(run);
     }
     return merged;
