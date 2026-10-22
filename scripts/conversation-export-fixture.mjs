@@ -91,7 +91,12 @@ const parsedTable = parsedTableFixture.document;
 assert.equal(parsedTable.orderedBlocks[0].kind, "table");
 assert.equal(parsedTable.orderedBlocks[0].cellInlines[0][0][0].marks[0], "strong");
 assert.equal(parsedTable.orderedBlocks[0].cellInlines[1][0][0].rawTeX, "\\beta");
+assert.equal(parsedTable.orderedBlocks[0].cellInlines[1][0][0].mathMlTree.tag, "math");
+assert.equal(findMathMlTags(parsedTable.orderedBlocks[0].cellInlines[1][0][0].mathMlTree).includes("annotation"), false);
 assert.equal(parsedTable.orderedBlocks[0].cellInlines[1][1][0].href, "https://example.com/paper");
+const nativeMathRun = parsedTable.orderedBlocks[1].inlines.find((run) => run.kind === "inline_math");
+assert.equal(nativeMathRun.rawTeX, null);
+assert.equal(nativeMathRun.mathMlTree.tag, "math");
 const tableSelection = parsedTableFixture.answerDocument.captureHighlightSelection(parsedTableFixture.turn, parsedTable, parsedTableFixture.range);
 assert.equal(tableSelection.textQuote, "Estimate\tFormula\n\\beta\tCitation");
 const parsedTablePdf = pdf.buildModel(parsedTable, [{
@@ -125,17 +130,57 @@ assert.ok(richUnits.some((unit) => unit.text === "Bold" && unit.marks.includes("
 assert.ok(richUnits.some((unit) => unit.text === "code" && unit.kind === "inline_code"));
 assert.ok(richUnits.some((unit) => unit.text === "Citation" && unit.href === "https://example.com/paper"));
 assert.ok(richUnits.some((unit) => unit.text === "Unsafe" && unit.href === null));
-assert.ok(richPdf.model.blocks.find((block) => block.kind === "table")?.rows[1][0].some((unit) => unit.kind === "inline_math" && unit.rawTeX === "\\beta"));
+const semanticMathUnit = richPdf.model.blocks.find((block) => block.kind === "table")?.rows[1][0].find((unit) => unit.kind === "inline_math" && unit.rawTeX === "\\beta");
+assert.equal(semanticMathUnit.mathMlTree.tag, "math");
+assert.equal(richPdf.model.mathRendering.strategy, "semantic-mathml-with-visible-tex-fallback");
+assert.equal(richPdf.model.mathRendering.semanticUnitCount, 1);
+assert.equal(richPdf.model.mathRendering.fallbackUnitCount, 0);
+
+const unsafeMathAnswer = richAnswerDocument();
+unsafeMathAnswer.documentId = "answer-unsafe-mathml";
+unsafeMathAnswer.sourceVersion = "settled-unsafe-mathml";
+unsafeMathAnswer.orderedBlocks[1].cellInlines[1][0][0].mathMlTree = {
+  tag: "math",
+  attributes: {},
+  children: [{ tag: "script", attributes: {}, children: [{ text: "alert(1)" }] }]
+};
+const unsafeMathPdf = pdf.buildModel(unsafeMathAnswer);
+assert.equal(unsafeMathPdf.ok, true);
+assert.equal(unsafeMathPdf.model.mathRendering.semanticUnitCount, 0);
+assert.equal(unsafeMathPdf.model.mathRendering.fallbackUnitCount, 1);
+assert.equal(unsafeMathPdf.model.blocks.find((block) => block.kind === "table").rows[1][0][0].mathMlTree, null);
 
 const pageHarness = createPdfPageHarness();
 vm.runInNewContext(await readFile(path.join(dist, "pdf", "pdf-export-page.js"), "utf8"), pageHarness.context, { filename: "pdf-export-page.js" });
-assert.equal(pageHarness.context.MicaPdfExportPage.renderModel(richPdf.model).ok, true);
+const semanticRender = pageHarness.context.MicaPdfExportPage.renderModel(richPdf.model);
+assert.equal(semanticRender.ok, true);
+assert.equal(semanticRender.semanticMath, 1);
 const anchors = findElements(pageHarness.root, (node) => node.tagName === "a");
 assert.equal(anchors.length, 2);
 assert.ok(anchors.every((node) => /^https:\/\//.test(node.attributes.href)));
 assert.ok(findElements(pageHarness.root, (node) => node.classList.contains("mark-strong")).length >= 2);
 assert.ok(findElements(pageHarness.root, (node) => node.classList.contains("unit-inline_code")).length >= 1);
 assert.ok(findElements(pageHarness.root, (node) => node.dataset.micaPdfKind === "inline_math").length >= 1);
+assert.equal(findElements(pageHarness.root, (node) => node.namespaceURI === "http://www.w3.org/1998/Math/MathML" && node.tagName === "math").length, 1);
+assert.equal(findElements(pageHarness.root, (node) => node.dataset.micaMathRendering === "semantic-mathml").length, 1);
+
+const partialMathHighlightModel = structuredClone(richPdf.model);
+partialMathHighlightModel.highlights = [{ id: "partial-math", color: "pink", start: semanticMathUnit.start, end: semanticMathUnit.start + 1 }];
+const partialMathRender = pageHarness.context.MicaPdfExportPage.renderModel(partialMathHighlightModel);
+assert.equal(partialMathRender.ok, true);
+assert.equal(partialMathRender.partialHighlightMathFallback, 1);
+assert.equal(findElements(pageHarness.root, (node) => node.namespaceURI === "http://www.w3.org/1998/Math/MathML" && node.tagName === "math").length, 0);
+assert.ok(findElements(pageHarness.root, (node) => node.dataset.micaMathRendering === "text-fallback-partial-highlight").length >= 1);
+
+const invalidPageMathModel = structuredClone(richPdf.model);
+invalidPageMathModel.highlights = [];
+invalidPageMathModel.blocks.find((block) => block.kind === "table").rows[1][0][0].mathMlTree = deeplyNestedMathMlTree(40);
+const invalidPageMathRender = pageHarness.context.MicaPdfExportPage.renderModel(invalidPageMathModel);
+assert.equal(invalidPageMathRender.ok, true);
+assert.equal(invalidPageMathRender.semanticMath, 0);
+assert.equal(invalidPageMathRender.fallbackMath, 1);
+assert.equal(invalidPageMathRender.invalidTreeMathFallback, 1);
+assert.ok(findElements(pageHarness.root, (node) => node.dataset.micaMathRendering === "text-fallback-invalid-mathml").length >= 1);
 
 assert.equal(coordinator.readiness({ enabled: true, lowMemoryActive: true, inspection, completenessProof: proof, conversationId }).reason, "load_full_history_required");
 assert.equal(coordinator.collect({ inspection: { ...inspection, turns: turns.slice(0, 3) }, completenessProof: proof, conversationId, createDocument }).reason, "turn_count_mismatch");
@@ -161,6 +206,13 @@ const output = {
   pdfInlineSemanticsModel: true,
   unsafePdfLinksRejected: true,
   pdfRenderSemanticsWired: true,
+  semanticMathMlCaptured: true,
+  nativeMathMlCaptured: true,
+  semanticMathMlPdfModel: true,
+  semanticMathMlRendered: true,
+  unsafeMathMlRejected: true,
+  partialMathHighlightFallback: true,
+  pdfPageMathMlBudgetEnforced: true,
   lowMemoryRequiresFullHistory: true,
   forgedCompletenessRejected: true,
   streamingAssistantRejected: true
@@ -199,7 +251,22 @@ async function parseRichTableWithAnswerDocument() {
   const formulaText = harness.text("Formula");
   const betaText = harness.text("β");
   const citationText = harness.text("Citation");
-  const betaMath = harness.element("span", { class: "katex", "data-tex": "\\beta" }, [harness.element("span", { class: "katex-html" }, [betaText])]);
+  const betaMathMl = harness.element("math", { display: "inline" }, [
+    harness.element("semantics", {}, [
+      harness.element("mrow", {}, [harness.element("mi", {}, [harness.text("β")])]),
+      harness.element("annotation", { encoding: "application/x-tex" }, [harness.text("\\beta")])
+    ])
+  ]);
+  const betaMath = harness.element("span", { class: "katex", "data-tex": "\\beta" }, [harness.element("span", { class: "katex-html" }, [betaText]), betaMathMl]);
+  const nativeMath = harness.element("math", {}, [
+    harness.element("mrow", {}, [
+      harness.element("mi", {}, [harness.text("x")]),
+      harness.element("mo", {}, [harness.text("+")]),
+      harness.element("mn", {}, [harness.text("1")])
+    ])
+  ]);
+  nativeMath.htmlElement = false;
+  assert.equal(nativeMath instanceof harness.context.HTMLElement, false);
   const table = harness.element("table", {}, [
     harness.element("tr", {}, [
       harness.element("th", {}, [harness.element("strong", {}, [estimateText])]),
@@ -210,7 +277,7 @@ async function parseRichTableWithAnswerDocument() {
       harness.element("td", {}, [harness.element("a", { href: "https://example.com/paper" }, [citationText])])
     ])
   ]);
-  const root = harness.element("div", {}, [table]);
+  const root = harness.element("div", {}, [table, harness.element("p", {}, [harness.text("Native "), nativeMath])]);
   const turn = {
     role: "assistant",
     turnId: "conversation-turn-table",
@@ -257,7 +324,7 @@ function richAnswerDocument() {
         rows: [["Estimate", "Formula"], ["β", "Citation"]],
         cellInlines: [
           [[{ kind: "text", text: "Estimate", marks: ["strong"] }], [{ kind: "text", text: "Formula" }]],
-          [[{ kind: "inline_math", rawTeX: "\\beta", renderedText: "β" }], [{ kind: "citation", text: "Citation", href: "https://example.com/paper" }]]
+          [[{ kind: "inline_math", rawTeX: "\\beta", renderedText: "β", mathMlTree: betaMathMlTree() }], [{ kind: "citation", text: "Citation", href: "https://example.com/paper" }]]
         ]
       }
     ]
@@ -271,10 +338,52 @@ function blockUnits(block) {
   return [];
 }
 
+function betaMathMlTree() {
+  return {
+    tag: "math",
+    attributes: { display: "inline" },
+    children: [{
+      tag: "semantics",
+      attributes: {},
+      children: [{
+        tag: "mrow",
+        attributes: {},
+        children: [{ tag: "mi", attributes: { mathvariant: "italic" }, children: [{ text: "β" }] }]
+      }]
+    }]
+  };
+}
+
+function findMathMlTags(tree) {
+  if (!tree || typeof tree !== "object") return [];
+  return [tree.tag, ...(tree.children || []).flatMap(findMathMlTags)].filter(Boolean);
+}
+
+function deeplyNestedMathMlTree(depth) {
+  let node = { tag: "mi", attributes: {}, children: [{ text: "x" }] };
+  for (let index = 0; index < depth; index += 1) node = { tag: "mrow", attributes: {}, children: [node] };
+  return { tag: "math", attributes: {}, children: [node] };
+}
+
 function createPdfPageHarness() {
+  class FakeText {
+    constructor(value) {
+      this.nodeType = 3;
+      this.tagName = "#text";
+      this.namespaceURI = null;
+      this.textContent = String(value);
+      this.children = [];
+      this.parentElement = null;
+      this.dataset = {};
+      this.attributes = {};
+      this.classList = { contains: () => false };
+    }
+  }
   class FakeElement {
-    constructor(tagName) {
+    constructor(tagName, namespaceURI = "http://www.w3.org/1999/xhtml") {
       this.tagName = String(tagName || "").toLowerCase();
+      this.localName = this.tagName;
+      this.namespaceURI = namespaceURI;
       this.children = [];
       this.dataset = {};
       this.attributes = {};
@@ -288,8 +397,8 @@ function createPdfPageHarness() {
     }
     set className(value) { this._classes = new Set(String(value || "").split(/\s+/).filter(Boolean)); }
     get className() { return [...this._classes].join(" "); }
-    append(...nodes) { this.children.push(...nodes); }
-    replaceChildren(...nodes) { this.children = [...nodes]; }
+    append(...nodes) { for (const node of nodes) { node.parentElement = this; this.children.push(node); } }
+    replaceChildren(...nodes) { this.children = []; this.append(...nodes); }
     setAttribute(name, value) { this.attributes[name] = String(value); }
     addEventListener() {}
   }
@@ -302,7 +411,9 @@ function createPdfPageHarness() {
     documentElement,
     title: "",
     getElementById: (id) => nodes[id] || null,
-    createElement: (tagName) => new FakeElement(tagName)
+    createElement: (tagName) => new FakeElement(tagName),
+    createElementNS: (namespaceURI, tagName) => new FakeElement(tagName, namespaceURI),
+    createTextNode: (value) => new FakeText(value)
   };
   return {
     root,
@@ -337,9 +448,14 @@ function createAnswerDocumentHarness() {
     get textContent() { return this.nodeValue; }
   }
   class FakeElement {
+    static [Symbol.hasInstance](value) {
+      return Object.prototype.isPrototypeOf.call(FakeElement.prototype, value) && value?.htmlElement !== false;
+    }
     constructor(tagName, attributes = {}, children = []) {
       this.nodeType = NODE.ELEMENT_NODE;
+      this.htmlElement = true;
       this.tagName = String(tagName).toUpperCase();
+      this.localName = String(tagName).toLowerCase();
       this.attributes = { ...attributes };
       this.className = attributes.class || "";
       this.childNodes = [];

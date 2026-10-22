@@ -17,6 +17,21 @@
   ]);
   const KNOWN_BLOCK_SELECTOR = "h1,h2,h3,h4,h5,h6,p,ul,ol,blockquote,table,pre,.katex-display,mjx-container[display='true'],math[display='block'],[data-math-display='true']";
   const INTERACTIVE_SELECTOR = "button,input,select,textarea,iframe,form,[contenteditable='true'],[role='button'],[role='dialog'],[role='menu'],[data-testid*='tool'],[data-testid*='file'],[data-testid*='attachment'],[data-testid*='connector'],[data-testid*='auth']";
+  const MATHML_TAGS = new Set([
+    "math", "semantics", "mrow", "mi", "mn", "mo", "ms", "mtext", "mspace",
+    "mfrac", "msqrt", "mroot", "msub", "msup", "msubsup", "munder", "mover",
+    "munderover", "mmultiscripts", "mprescripts", "none", "mtable", "mtr", "mlabeledtr",
+    "mtd", "menclose", "mfenced", "mstyle", "mpadded", "mphantom"
+  ]);
+  const MATHML_ATTRIBUTES = [
+    "display", "mathvariant", "scriptlevel", "displaystyle", "stretchy", "symmetric",
+    "maxsize", "minsize", "largeop", "movablelimits", "accent", "accentunder", "fence",
+    "separator", "form", "notation", "rowalign", "columnalign", "rowspacing", "columnspacing",
+    "columnspan", "rowspan", "bevelled", "linethickness"
+  ];
+  const MAX_MATHML_NODES = 512;
+  const MAX_MATHML_DEPTH = 32;
+  const MAX_MATHML_TEXT = 4096;
 
   function fromAssistantTurn(turn, options = {}) {
     if (!turn || turn.role !== "assistant" || !(turn.answerRoot instanceof HTMLElement)) return null;
@@ -67,7 +82,7 @@
 
   function parseBlocks(root, state) {
     if (root.matches(KNOWN_BLOCK_SELECTOR)) return [parseBlock(root, state)].filter(Boolean);
-    const candidates = Array.from(root.childNodes).filter((node) => node instanceof HTMLElement || (node.nodeType === Node.TEXT_NODE && normalizeText(node.nodeValue || "")));
+    const candidates = Array.from(root.childNodes).filter((node) => isElementNode(node) || (node.nodeType === Node.TEXT_NODE && normalizeText(node.nodeValue || "")));
     if (candidates.length === 0) {
       const text = normalizeText(root.textContent || "");
       return text ? [finalizeBlock(state, "paragraph", { text, inlines: textInline(text, state.cursor) })] : [];
@@ -82,7 +97,7 @@
   }
 
   function parseBlock(node, state) {
-    if (!(node instanceof HTMLElement)) return null;
+    if (!isElementNode(node)) return null;
     const tag = node.tagName.toLowerCase();
     if (/^h[1-6]$/.test(tag)) {
       const text = normalizeText(node.textContent || "");
@@ -139,10 +154,10 @@
         if (text) runs.push(...rawMathRuns(text, marks));
         continue;
       }
-      if (!(child instanceof HTMLElement)) continue;
+      if (!isElementNode(child)) continue;
       if (child.matches(".katex-display")) continue;
       const childMarks = marksForElement(child, marks);
-      if (child.matches(".katex,mjx-container,math[alttext],[data-tex],[data-math-source]")
+      if (child.matches(".katex,mjx-container,math,[data-tex],[data-math-source]")
         && !child.closest(".katex-display,mjx-container[display='true'],math[display='block'],[data-math-display='true']")) {
         runs.push(withMarks({ kind: "inline_math", ...mathPayload(child), displayMode: false }, childMarks));
         continue;
@@ -209,7 +224,60 @@
       || node.getAttribute("aria-label")
       || null;
     const renderedText = normalizeText(node.querySelector(".katex-html")?.textContent || node.textContent || "");
-    return { rawTeX, renderedText };
+    return { rawTeX, renderedText, mathMlTree: extractMathMlTree(node) };
+  }
+
+  function extractMathMlTree(node) {
+    const root = node.matches?.("math")
+      ? node
+      : node.querySelector?.(".katex-mathml math")
+        || node.querySelector?.("mjx-assistive-mml math")
+        || node.querySelector?.("math");
+    if (!root) return null;
+    const budget = { nodes: 0, text: 0, invalid: false };
+    const tree = sanitizeMathMlDomNode(root, 0, budget);
+    return !budget.invalid && tree?.tag === "math" ? tree : null;
+  }
+
+  function sanitizeMathMlDomNode(node, depth, budget) {
+    if (budget.invalid || depth > MAX_MATHML_DEPTH) {
+      budget.invalid = true;
+      return null;
+    }
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = String(node.nodeValue || "").replace(/\s+/g, " ").trim();
+      if (!text) return null;
+      budget.nodes += 1;
+      budget.text += text.length;
+      if (budget.nodes > MAX_MATHML_NODES || budget.text > MAX_MATHML_TEXT) {
+        budget.invalid = true;
+        return null;
+      }
+      return { text };
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return null;
+    const tag = String(node.localName || node.tagName || "").toLowerCase();
+    if (tag === "annotation" || tag === "annotation-xml") return null;
+    if (!MATHML_TAGS.has(tag)) {
+      budget.invalid = true;
+      return null;
+    }
+    budget.nodes += 1;
+    if (budget.nodes > MAX_MATHML_NODES) {
+      budget.invalid = true;
+      return null;
+    }
+    const attributes = {};
+    for (const name of MATHML_ATTRIBUTES) {
+      const value = node.getAttribute?.(name);
+      if (value !== null && value.length <= 128 && !/[<>\u0000-\u001f]/.test(value)) attributes[name] = value;
+    }
+    const children = [];
+    for (const child of node.childNodes || []) {
+      const sanitized = sanitizeMathMlDomNode(child, depth + 1, budget);
+      if (sanitized) children.push(sanitized);
+    }
+    return { tag, attributes, children };
   }
 
   function rawMathRuns(text, marks = []) {
@@ -362,7 +430,7 @@
     const root = turn.answerRoot;
     const nodes = root.matches(KNOWN_BLOCK_SELECTOR)
       ? [root]
-      : Array.from(root.childNodes).filter((node) => node instanceof HTMLElement || (node.nodeType === Node.TEXT_NODE && normalizeText(node.nodeValue || "")));
+      : Array.from(root.childNodes).filter((node) => isElementNode(node) || (node.nodeType === Node.TEXT_NODE && normalizeText(node.nodeValue || "")));
     if (nodes.length !== answerDoc.orderedBlocks.length) return null;
     const projection = { text: "", segments: [] };
     nodes.forEach((node, index) => {
@@ -379,7 +447,7 @@
       appendProjectionSegment(projection, node.nodeValue || "", node, "text", block, null);
       return;
     }
-    if (!(node instanceof HTMLElement)) return;
+    if (!isElementNode(node)) return;
     if (node.matches("[data-mica-ui],script,style,noscript,template") || node.matches(INTERACTIVE_SELECTOR)) return;
     if (block.kind === "table" && node.tagName === "TABLE") {
       collectTableProjectionSegments(node, block, projection);
@@ -434,13 +502,19 @@
   }
 
   function isMathRoot(node) {
-    return node.matches(".katex,.katex-display,mjx-container,math[alttext],[data-tex],[data-math-source]")
-      && !node.parentElement?.closest(".katex,.katex-display,mjx-container,math[alttext],[data-tex],[data-math-source]");
+    return node.matches(".katex,.katex-display,mjx-container,math,[data-tex],[data-math-source]")
+      && !node.parentElement?.closest(".katex,.katex-display,mjx-container,math,[data-tex],[data-math-source]");
   }
 
   function rangeIntersectsNode(range, node) {
     try { return range.intersectsNode(node); }
     catch (_error) { return false; }
+  }
+
+  function isElementNode(node) {
+    return node?.nodeType === Node.ELEMENT_NODE
+      && typeof node.matches === "function"
+      && typeof node.querySelector === "function";
   }
 
   function extractRawMathSources(text) {

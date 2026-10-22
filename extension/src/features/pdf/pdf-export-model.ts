@@ -2,6 +2,21 @@
   const MODEL_VERSION = 1;
   const COLORS = new Set(["yellow", "mint", "blue", "pink"]);
   const MAX_TEXT_LENGTH = 1_000_000;
+  const MATHML_TAGS = new Set([
+    "math", "semantics", "mrow", "mi", "mn", "mo", "ms", "mtext", "mspace",
+    "mfrac", "msqrt", "mroot", "msub", "msup", "msubsup", "munder", "mover",
+    "munderover", "mmultiscripts", "mprescripts", "none", "mtable", "mtr", "mlabeledtr",
+    "mtd", "menclose", "mfenced", "mstyle", "mpadded", "mphantom"
+  ]);
+  const MATHML_ATTRIBUTES = new Set([
+    "display", "mathvariant", "scriptlevel", "displaystyle", "stretchy", "symmetric",
+    "maxsize", "minsize", "largeop", "movablelimits", "accent", "accentunder", "fence",
+    "separator", "form", "notation", "rowalign", "columnalign", "rowspacing", "columnspacing",
+    "columnspan", "rowspan", "bevelled", "linethickness"
+  ]);
+  const MAX_MATHML_NODES = 512;
+  const MAX_MATHML_DEPTH = 32;
+  const MAX_MATHML_TEXT = 4096;
 
   function buildModel(answerDocument, records = [], options = {}) {
     if (!answerDocument?.durable || answerDocument.generationState !== "SETTLED") return failure("answer_not_settled");
@@ -31,7 +46,8 @@
         unresolvedHighlightCount: highlights.unresolved,
         pageSize: exportOptions.pageSize,
         includeHighlights: exportOptions.includeHighlights,
-        mathFallback: "visible-tex-source",
+        mathRendering: summarizeMathRendering(state.units),
+        mathFallback: "visible-tex-source-when-semantic-mathml-unavailable",
         localOnly: true
       }
     };
@@ -82,7 +98,8 @@
         unresolvedHighlightCount: state.unresolved,
         pageSize: exportOptions.pageSize,
         includeHighlights: exportOptions.includeHighlights,
-        mathFallback: "visible-tex-source",
+        mathRendering: summarizeMathRendering(collectBlockUnits(state.blocks)),
+        mathFallback: "visible-tex-source-when-semantic-mathml-unavailable",
         turnCount: checked.bundle.entries.length,
         answerCount: counts.assistant,
         completionProof: { ...checked.bundle.completionProof },
@@ -136,14 +153,14 @@
     if (block.kind === "code") return { ...base, language: block.language || null, units: [appendUnit(state, block.text || "", "code")] };
     if (block.kind === "display_math") {
       const text = visibleMath(block);
-      return { ...base, units: [appendUnit(state, text, "display_math", block.rawTeX || null)] };
+      return { ...base, units: [appendUnit(state, text, "display_math", block.rawTeX || null, null, [], block.mathMlTree)] };
     }
     return { ...base, units: [appendUnit(state, block.text || block.label || "", "text")] };
   }
 
   function serializeInlines(inlines, state) {
     return (inlines || []).map((run) => {
-      if (run.kind === "inline_math") return appendUnit(state, visibleMath(run), "inline_math", run.rawTeX || null, null, run.marks);
+      if (run.kind === "inline_math") return appendUnit(state, visibleMath(run), "inline_math", run.rawTeX || null, null, run.marks, run.mathMlTree);
       if (run.kind === "image") return appendUnit(state, run.alt ? `[Image: ${run.alt}]` : "[Image]", "image", null, null, run.marks);
       const kind = run.kind || "text";
       const href = kind === "link" || kind === "citation" ? safeHref(run.href) : null;
@@ -159,11 +176,11 @@
     state.text += text;
   }
 
-  function appendUnit(state, text, kind, rawTeX = null, href = null, marks = []) {
+  function appendUnit(state, text, kind, rawTeX = null, href = null, marks = [], mathMlTree = null) {
     const value = String(text || "");
     const start = state.text.length;
     state.text += value;
-    const unit = { text: value, kind, start, end: state.text.length, rawTeX, href, marks: sanitizeMarks(marks) };
+    const unit = { text: value, kind, start, end: state.text.length, rawTeX, href, marks: sanitizeMarks(marks), mathMlTree: sanitizeMathMlTree(mathMlTree) };
     state.units.push(unit);
     return unit;
   }
@@ -176,6 +193,82 @@
   function safeHref(value) {
     const href = String(value || "").trim();
     return /^(https?:|mailto:)/i.test(href) ? href.replace(/[\s<>]/g, "") : null;
+  }
+
+  function sanitizeMathMlTree(value) {
+    if (!value) return null;
+    const budget = { nodes: 0, text: 0, invalid: false };
+    const tree = sanitizeMathMlNode(value, 0, budget);
+    return !budget.invalid && tree?.tag === "math" ? tree : null;
+  }
+
+  function sanitizeMathMlNode(value, depth, budget) {
+    if (budget.invalid || depth > MAX_MATHML_DEPTH || !value || typeof value !== "object" || Array.isArray(value)) {
+      budget.invalid = true;
+      return null;
+    }
+    if (typeof value.text === "string") {
+      const text = value.text.replace(/\s+/g, " ").trim();
+      if (!text || Object.keys(value).some((key) => key !== "text")) {
+        if (Object.keys(value).some((key) => key !== "text")) budget.invalid = true;
+        return null;
+      }
+      budget.nodes += 1;
+      budget.text += text.length;
+      if (budget.nodes > MAX_MATHML_NODES || budget.text > MAX_MATHML_TEXT) budget.invalid = true;
+      return budget.invalid ? null : { text };
+    }
+    const tag = String(value.tag || "").toLowerCase();
+    if (!MATHML_TAGS.has(tag)) {
+      budget.invalid = true;
+      return null;
+    }
+    budget.nodes += 1;
+    if (budget.nodes > MAX_MATHML_NODES) {
+      budget.invalid = true;
+      return null;
+    }
+    const attributes = {};
+    for (const [name, raw] of Object.entries(value.attributes || {})) {
+      const attribute = String(name).toLowerCase();
+      const text = String(raw);
+      if (!MATHML_ATTRIBUTES.has(attribute) || text.length > 128 || /[<>\u0000-\u001f]/.test(text)) {
+        budget.invalid = true;
+        return null;
+      }
+      attributes[attribute] = text;
+    }
+    if (!Array.isArray(value.children)) {
+      budget.invalid = true;
+      return null;
+    }
+    const children = [];
+    for (const child of value.children) {
+      const sanitized = sanitizeMathMlNode(child, depth + 1, budget);
+      if (sanitized) children.push(sanitized);
+    }
+    return budget.invalid ? null : { tag, attributes, children };
+  }
+
+  function summarizeMathRendering(units) {
+    const mathUnits = units.filter((unit) => ["inline_math", "display_math"].includes(unit.kind));
+    const semanticUnitCount = mathUnits.filter((unit) => unit.mathMlTree).length;
+    return {
+      strategy: "semantic-mathml-with-visible-tex-fallback",
+      totalUnitCount: mathUnits.length,
+      semanticUnitCount,
+      fallbackUnitCount: mathUnits.length - semanticUnitCount
+    };
+  }
+
+  function collectBlockUnits(blocks) {
+    const units = [];
+    for (const block of blocks || []) {
+      if (Array.isArray(block.units)) units.push(...block.units);
+      if (Array.isArray(block.items)) for (const item of block.items) units.push(...item);
+      if (Array.isArray(block.rows)) for (const row of block.rows) for (const cell of row) units.push(...cell);
+    }
+    return units;
   }
 
   function resolveHighlights(records, answerDocument, text) {

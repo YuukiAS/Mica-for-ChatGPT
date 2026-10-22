@@ -53,6 +53,7 @@
     {"id": "copy-serialization-output-mismatch", "expected": "REJECT"},
     {"id": "forged-conversation-completeness-rehash", "expected": "REJECT"},
     {"id": "forged-export-fidelity-rehash", "expected": "REJECT"},
+    {"id": "forged-semantic-mathml-rehash", "expected": "REJECT"},
     {"id": "forged-recovery-deduplication-rehash", "expected": "REJECT"},
     {"id": "forged-recovery-action-safety-rehash", "expected": "REJECT"},
     {"id": "forged-target-surface-backend-rehash", "expected": "REJECT"},

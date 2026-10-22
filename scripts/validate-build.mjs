@@ -119,7 +119,10 @@ for (const token of [
   "unknown_block",
   "inline_math",
   "display_math",
-  "cellInlines"
+  "cellInlines",
+  "mathMlTree",
+  "MAX_MATHML_NODES",
+  "isElementNode"
 ]) assert(answerDocument.includes(token), `AnswerDocument core missing ${token}`);
 for (const token of ["MicaSettingsModel", "noProgressTimeoutSeconds", "maxAutoReloadsPerTurn", "consequentialActionAutoReplay", "micaSettings"]) assert(settingsModel.includes(token), `settings model missing ${token}`);
 for (const token of ["MicaConversationExport", "validateBundle", "completeSelection", "roleSequenceHash", "turnSequenceHash", "conversation_completeness_unproven", "assistant_not_settled"]) assert(conversationExport.includes(token), `conversation export coordinator missing ${token}`);
@@ -188,9 +191,9 @@ for (const token of ["collectConversationBundle", "conversationExportStatus", "c
 for (const token of ["data-mica-ui", "highlight-toolbar", "Copy Markdown", "Copy for Notion", "event.isTrusted", "CSS.highlights", "handleHighlightShortcutKeydown", "applyDefaultHighlightShortcut", "permanentToolbar: false"]) {
   assert(content.includes(token), `Highlighter runtime missing ${token}`);
 }
-for (const token of ["MicaPdfExport", "buildConversationModel", "unsupported_answer_structure", "visible-tex-source", "cellInlines", "sanitizeMarks", "safeHref", "pageSize", "includeHighlights", "localOnly: true"]) assert(pdfExportModel.includes(token), `PDF export model missing ${token}`);
+for (const token of ["MicaPdfExport", "buildConversationModel", "unsupported_answer_structure", "semantic-mathml-with-visible-tex-fallback", "cellInlines", "sanitizeMarks", "safeHref", "sanitizeMathMlTree", "MAX_MATHML_NODES", "mathRendering", "pageSize", "includeHighlights", "localOnly: true"]) assert(pdfExportModel.includes(token), `PDF export model missing ${token}`);
 for (const token of ["MICA_OPEN_PDF_EXPORT", "MICA_GET_PDF_EXPORT", "MAX_PDF_EXPORT_BYTES", "chrome.tabs.create"]) assert(lowMemoryBackground.includes(token), `PDF background flow missing ${token}`);
-for (const token of ["Print / Save as PDF", "MicaPdfExportPage", "dataset.micaPdfKind", "applyUnitSemantics", "mica-export-link", "noopener noreferrer", "window.print"]) assert(`${await readFile(path.join(distDir, "pdf", "pdf-export.html"), "utf8")}\n${pdfExportPage}`.includes(token), `PDF export page missing ${token}`);
+for (const token of ["Print / Save as PDF", "MicaPdfExportPage", "dataset.micaPdfKind", "applyUnitSemantics", "mica-export-link", "noopener noreferrer", "createElementNS", "semantic-mathml", "text-fallback-partial-highlight", "text-fallback-invalid-mathml", "MAX_MATHML_NODES", "window.print"]) assert(`${await readFile(path.join(distDir, "pdf", "pdf-export.html"), "utf8")}\n${pdfExportPage}`.includes(token), `PDF export page missing ${token}`);
 for (const token of ["data-page-size", "mica-a4", "mica-letter", "size:Letter"]) assert(`${pdfExportPage}\n${pdfExportCss}`.includes(token), `PDF page-size runtime missing ${token}`);
 
 for (const token of ["windowTurboStreamChunk", "windowJsonPayload", "client-history-window", "reactManagedInteractiveNodesDetached", "visibleRoleSequenceHash"]) {

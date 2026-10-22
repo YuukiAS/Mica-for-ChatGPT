@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "updatedAt": "2026-10-22",
   "candidate": {
-    "version": "0.5.8",
-    "buildLabel": "functional-convergence.9",
+    "version": "0.5.9",
+    "buildLabel": "functional-convergence.10",
     "branch": "codex/mica-functional-convergence",
     "releaseReady": false,
     "browserExecutionAllowedThisRun": false
@@ -55,7 +55,7 @@
       "automatedVerification": ["convergence-core-fixture", "static build validation"],
       "realAcceptance": "Current ChatGPT answers including KaTeX and remounts",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "Inline marks, inline-code runs and per-table-cell inline structure are retained; table math, links and emphasis now reach every export backend, and conservative raw-math recognition remains bounded.",
+      "result": "Inline marks, inline-code runs and per-table-cell inline structure are retained. Supported KaTeX, MathJax or native MathML is reduced to a bounded allowlisted MathML AST; raw TeX remains available for identity and explicit fallback.",
       "gap": "DOM parsing changes require browser fixture regression."
     },
     {
@@ -168,7 +168,7 @@
       "realAcceptance": "Current candidate on target low-memory device",
       "status": "IMPLEMENTED_UNVERIFIED",
       "result": "Data-plane code is retained; background settings migration was updated.",
-      "gap": "The current 0.5.8 runtime was not exercised in a browser."
+      "gap": "The current 0.5.9 runtime was not exercised in a browser."
     },
     {
       "id": "MFC-200",
@@ -237,7 +237,7 @@
       "automatedVerification": ["conversation-export-fixture", "existing PDF fixture evidence", "static build validation"],
       "realAcceptance": "Actual PDF viewer visual, selection, search and copy checks",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "Single-answer and conversation PDF models consume page-size and include-highlights settings. Table-cell math, inline emphasis/code, citations and allowlisted http(s)/mailto links survive into the print model; unsafe href schemes are discarded. Table selection projection now uses the same row/cell separators as PDF, so logical cross-cell highlights inherit without pixel coordinates.",
+      "result": "Single-answer and conversation PDF models consume page-size and include-highlights settings. A bounded MathML AST now flows from AnswerDocument through the PDF model to namespace-aware print DOM; unsupported or unsafe trees explicitly fall back to visible TeX. Table-cell formatting, citations and allowlisted links survive, unsafe href schemes are discarded, and cross-cell highlights use logical offsets rather than pixels.",
       "gap": "No PDF was generated or opened in this browser-free run."
     },
     {
@@ -429,11 +429,11 @@
       "existingImplementation": true,
       "module": "scripts/release-config.mjs and dist/mica-dev",
       "iterationAction": "repair",
-      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.8.",
+      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.9.",
       "automatedVerification": ["npm run build", "npm run test:build"],
-      "realAcceptance": "Extension manager shows 0.5.8 after reload",
+      "realAcceptance": "Extension manager shows 0.5.9 after reload",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Runtime version is 0.5.8 with build label functional-convergence.9.",
+      "result": "Runtime version is 0.5.9 with build label functional-convergence.10.",
       "gap": "Extension manager display was not opened."
     },
     {
@@ -475,7 +475,7 @@
       "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "recovery-action-policy-fixture", "target-surface-backend-fixture", "acceptance preflight", "build validator"],
       "realAcceptance": "Full acceptance candidate run",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Validator 1.11.0 binds answer-action invariants and export-fidelity invariants. The control corpus includes a rehashed false structured-table claim in addition to the existing target-surface and safety controls.",
+      "result": "Validator 1.12.0 binds answer-action, export-fidelity and semantic-MathML invariants. The control corpus includes rehashed false structured-table and semantic-rendering claims in addition to existing target-surface and safety controls.",
       "gap": "A complete browser-bound candidate bundle was not materialized or run in this no-browser iteration."
     }
   ]

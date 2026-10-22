@@ -14,6 +14,13 @@
   "pdfInlineSemanticsModel": true,
   "unsafePdfLinksRejected": true,
   "pdfRenderSemanticsWired": true,
+  "semanticMathMlCaptured": true,
+  "nativeMathMlCaptured": true,
+  "semanticMathMlPdfModel": true,
+  "semanticMathMlRendered": true,
+  "unsafeMathMlRejected": true,
+  "partialMathHighlightFallback": true,
+  "pdfPageMathMlBudgetEnforced": true,
   "lowMemoryRequiresFullHistory": true,
   "forgedCompletenessRejected": true,
   "streamingAssistantRejected": true

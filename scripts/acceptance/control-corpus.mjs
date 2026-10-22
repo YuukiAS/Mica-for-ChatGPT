@@ -193,6 +193,11 @@ export async function runControlCorpus(repoRoot) {
       evidence(context.manifest, "conversation-export-completeness").measurement.structuredTableMath = false;
       refreshRoot(context.manifest);
     }],
+    ["forged-semantic-mathml-rehash", async (context) => {
+      await mutateJsonArtifact(context, "conversation-export", (value) => { value.semanticMathMlRendered = false; });
+      evidence(context.manifest, "conversation-export-completeness").measurement.semanticMathMlRendered = false;
+      refreshRoot(context.manifest);
+    }],
     ["forged-recovery-deduplication-rehash", async (context) => {
       await mutateJsonArtifact(context, "recovery-ledger", (value) => { value.workerRestartDeduplicated = false; });
       evidence(context.manifest, "recovery-deduplication").measurement.workerRestartDeduplicated = false;
@@ -618,6 +623,13 @@ function controlConversationExport() {
     pdfInlineSemanticsModel: true,
     unsafePdfLinksRejected: true,
     pdfRenderSemanticsWired: true,
+    semanticMathMlCaptured: true,
+    nativeMathMlCaptured: true,
+    semanticMathMlPdfModel: true,
+    semanticMathMlRendered: true,
+    unsafeMathMlRejected: true,
+    partialMathHighlightFallback: true,
+    pdfPageMathMlBudgetEnforced: true,
     lowMemoryRequiresFullHistory: true,
     forgedCompletenessRejected: true,
     streamingAssistantRejected: true
