@@ -39,6 +39,7 @@ const manifest = {
   },
   permissions: ["storage", "activeTab", "scripting", "clipboardWrite"],
   host_permissions: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+  optional_host_permissions: ["http://*/*", "https://*/*"],
   background: { service_worker: "low-memory-background.js" },
   options_ui: { page: "options/index.html", open_in_tab: true },
   content_scripts: [
@@ -85,6 +86,9 @@ const answerDocument = render(await readFile(path.join(srcDir, "core", "answer-d
 const settingsModel = render(await readFile(path.join(srcDir, "settings", "settings-model.ts"), "utf8"));
 const answerSerializer = render(await readFile(path.join(srcDir, "features", "export", "answer-serializer.ts"), "utf8"));
 const highlightEngine = render(await readFile(path.join(srcDir, "features", "highlighter", "highlight-engine.ts"), "utf8"));
+const generalWebModel = render(await readFile(path.join(srcDir, "features", "highlighter", "general-web-model.ts"), "utf8"));
+const generalWebHighlighter = render(await readFile(path.join(srcDir, "features", "highlighter", "general-web-highlighter.ts"), "utf8"));
+const generalWebBackground = render(await readFile(path.join(srcDir, "features", "highlighter", "general-web-background.ts"), "utf8"));
 const pdfExportModel = render(await readFile(path.join(srcDir, "features", "pdf", "pdf-export-model.ts"), "utf8"));
 const recoveryStateMachine = render(await readFile(path.join(srcDir, "reliability", "recovery-state-machine.ts"), "utf8"));
 const recoveryController = render(await readFile(path.join(srcDir, "reliability", "recovery-controller.ts"), "utf8"));
@@ -92,7 +96,7 @@ const lowMemoryCore = render(await readFile(path.join(srcDir, "low-memory", "low
 const lowMemoryPage = render(await readFile(path.join(srcDir, "low-memory", "low-memory-page.ts"), "utf8"));
 const lowMemoryConfig = render(await readFile(path.join(srcDir, "low-memory", "low-memory-config.ts"), "utf8"));
 const lowMemoryBackgroundCore = render(await readFile(path.join(srcDir, "low-memory", "low-memory-background.ts"), "utf8"));
-const lowMemoryBackground = `${settingsModel}\n${recoveryStateMachine}\n${lowMemoryBackgroundCore}`;
+const lowMemoryBackground = `${settingsModel}\n${recoveryStateMachine}\n${lowMemoryBackgroundCore}\n${generalWebBackground}`;
 const popup = render(await readFile(path.join(popupDir, "popup.ts"), "utf8"));
 const options = render(await readFile(path.join(optionsDir, "options.ts"), "utf8"));
 const troubleshooting = render(await readFile(path.join(popupDir, "troubleshooting.ts"), "utf8"));
@@ -105,6 +109,8 @@ await writeFile(path.join(outDir, "answer-document.js"), answerDocument);
 await writeFile(path.join(outDir, "settings-model.js"), settingsModel);
 await writeFile(path.join(outDir, "answer-serializer.js"), answerSerializer);
 await writeFile(path.join(outDir, "highlight-engine.js"), highlightEngine);
+await writeFile(path.join(outDir, "general-web-model.js"), generalWebModel);
+await writeFile(path.join(outDir, "general-web-highlighter.js"), generalWebHighlighter);
 await writeFile(path.join(outDir, "pdf-export-model.js"), pdfExportModel);
 await writeFile(path.join(outDir, "recovery-state-machine.js"), recoveryStateMachine);
 await writeFile(path.join(outDir, "recovery-controller.js"), recoveryController);

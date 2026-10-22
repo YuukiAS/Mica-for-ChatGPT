@@ -37,6 +37,8 @@ assert(manifest.permissions?.includes("activeTab"), "activeTab permission missin
 assert(manifest.permissions?.includes("scripting"), "scripting permission missing");
 assert(manifest.permissions?.includes("clipboardWrite"), "clipboardWrite permission missing");
 assert(!manifest.host_permissions?.some((host) => !/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(host)), "unexpected host permission");
+assert(JSON.stringify([...manifest.host_permissions].sort()) === JSON.stringify(["https://chat.openai.com/*", "https://chatgpt.com/*"]), "fixed ChatGPT host permissions drifted");
+assert(JSON.stringify([...manifest.optional_host_permissions].sort()) === JSON.stringify(["http://*/*", "https://*/*"]), "optional general-web host permissions missing");
 assert(manifest.background?.service_worker === "low-memory-background.js", "Low Memory registration service worker missing");
 assert(manifest.options_ui?.page === "options/index.html" && manifest.options_ui?.open_in_tab === true, "settings page registration missing");
 assert(JSON.stringify(manifest.content_scripts?.[0]?.js) === JSON.stringify(["low-memory-config.js"]) && manifest.content_scripts?.[0]?.run_at === "document_start", "Low Memory config bridge order drifted");
@@ -59,6 +61,8 @@ const answerDocument = await readFile(path.join(distDir, "answer-document.js"), 
 const settingsModel = await readFile(path.join(distDir, "settings-model.js"), "utf8");
 const answerSerializer = await readFile(path.join(distDir, "answer-serializer.js"), "utf8");
 const highlightEngine = await readFile(path.join(distDir, "highlight-engine.js"), "utf8");
+const generalWebModel = await readFile(path.join(distDir, "general-web-model.js"), "utf8");
+const generalWebHighlighter = await readFile(path.join(distDir, "general-web-highlighter.js"), "utf8");
 const pdfExportModel = await readFile(path.join(distDir, "pdf-export-model.js"), "utf8");
 const recoveryStateMachine = await readFile(path.join(distDir, "recovery-state-machine.js"), "utf8");
 const recoveryController = await readFile(path.join(distDir, "recovery-controller.js"), "utf8");
@@ -74,7 +78,7 @@ const qa = await readFile(path.join(distDir, "popup", "qa.js"), "utf8");
 const pdfExportPage = await readFile(path.join(distDir, "pdf", "pdf-export-page.js"), "utf8");
 
 for (const text of [adapter, content]) assert(text.includes(contractHash), "built current ChatGPT contract hash drifted");
-for (const text of [adapter, answerDocument, settingsModel, answerSerializer, highlightEngine, pdfExportModel, recoveryStateMachine, recoveryController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, options, troubleshooting, qa, pdfExportPage]) {
+for (const text of [adapter, answerDocument, settingsModel, answerSerializer, highlightEngine, generalWebModel, generalWebHighlighter, pdfExportModel, recoveryStateMachine, recoveryController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, options, troubleshooting, qa, pdfExportPage]) {
   assert(!/__MICA_(?:VERSION|VERSION_NAME|BUILD_LABEL|CHATGPT_CONTRACT_HASH|DEV_BUILD)__/.test(text), "unresolved build placeholder remains");
   new Function(text);
 }
@@ -99,6 +103,7 @@ for (const token of [
   "display_math"
 ]) assert(answerDocument.includes(token), `AnswerDocument core missing ${token}`);
 for (const token of ["MicaSettingsModel", "noProgressTimeoutSeconds", "maxAutoReloadsPerTurn", "consequentialActionAutoReplay", "micaSettings"]) assert(settingsModel.includes(token), `settings model missing ${token}`);
+for (const token of ["generalWebOrigins", "normalizeWebOrigin", "toMatchPattern", "chatgpt.com"]) assert(settingsModel.includes(token), `settings origin model missing ${token}`);
 for (const token of ["MicaAnswerSerializer", "serializeMarkdown", "serializeNotion", "serializeNotionImport", "conversation_completeness_unproven", "notion_native_equations_require_real_target_validation"]) assert(answerSerializer.includes(token), `answer serializer missing ${token}`);
 for (const token of ["MicaRecoveryStateMachine", "A_COMMITTED", "B_NOT_COMMITTED", "C_UNKNOWN", "reload_limit_reached", "consequential_or_unknown_action"]) assert(recoveryStateMachine.includes(token), `recovery state machine missing ${token}`);
 for (const token of ["MicaRecoveryController", "MICA_RELIABILITY_CONTEXT", "chrome.storage.session", "trusted_submit", "draftIncluded: false"]) assert(recoveryController.includes(token), `recovery controller missing ${token}`);
@@ -116,6 +121,8 @@ for (const token of [
   "mergeRecords",
   "recordsForScope"
 ]) assert(highlightEngine.includes(token), `HighlightEngine missing ${token}`);
+for (const token of ["MicaGeneralWebHighlightModel", "micaGeneralWebHighlightsV1", "quote_ambiguous", "root_mismatch", "recordsForPage", "mergeRecords"]) assert(generalWebModel.includes(token), `general web model missing ${token}`);
+for (const token of ["CSS.highlights", "new Highlight", "handleShortcutKeydown", "requestAnimationFrame", "MutationObserver", "requestIdleCallback", "Clear page", "generalWebOrigins", "indexRoot"]) assert(generalWebHighlighter.includes(token), `general web runtime missing ${token}`);
 
 for (const token of ["captureHighlightSelection", "resolveHighlightAnchor", "unique_quote_context", "extractRawMathSources"]) {
   assert(answerDocument.includes(token), `AnswerDocument highlight mapping missing ${token}`);
@@ -159,12 +166,21 @@ for (const token of ["event.isTrusted", "trusted_action_required", "page_untrust
 for (const token of ["chrome.scripting.registerContentScripts", "world: \"MAIN\"", "persistAcrossSessions: true", "full_history_bypass"]) {
   assert(lowMemoryBackground.includes(token), `Low Memory background controller missing ${token}`);
 }
+for (const token of ["MicaGeneralWebBackground", "mica-general-web-highlighter-v1", "MICA_GENERAL_WEB_SYNC", "world: \"ISOLATED\"", "chrome.permissions", "onRemoved", "general-web-highlighter.js"]) {
+  assert(lowMemoryBackground.includes(token), `general web background controller missing ${token}`);
+}
 
 const reportBody = extractFunctionBody(content, "buildSanitizedQaReport");
 assert(!/innerText|textContent|innerHTML|outerHTML/.test(reportBody), "sanitized QA report must not read conversation text/HTML");
 for (const text of [settingsModel, answerSerializer, highlightEngine, pdfExportModel, recoveryStateMachine, recoveryController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground]) {
   assert(!/addEventListener\(["'](?:beforeinput|input|keydown|compositionstart|compositionupdate|compositionend)/.test(text), "runtime added a typing hot-path listener");
 }
+assert(!/addEventListener\(["'](?:beforeinput|input|compositionstart|compositionupdate|compositionend)/.test(generalWebHighlighter), "general web runtime added a synchronous typing listener");
+const generalWebKeydownBody = extractFunctionBody(generalWebHighlighter, "handleShortcutKeydown");
+for (const token of ["querySelector", "querySelectorAll", "createTreeWalker", "cloneNode", "getComputedStyle", "getBoundingClientRect", "textContent", "innerText", "chrome.storage", "setTimeout", "indexRoot"]) {
+  assert(!generalWebKeydownBody.includes(token), `general web shortcut hot path includes heavy work: ${token}`);
+}
+for (const token of ["isEditableTarget", "requestAnimationFrame", "event.key.toLowerCase()"] ) assert(generalWebKeydownBody.includes(token), `general web shortcut hot path missing guard: ${token}`);
 assert(!/addEventListener\(["'](?:beforeinput|input|compositionstart|compositionupdate|compositionend)/.test(content), "content runtime added a typing hot-path listener");
 assert(!/(?:document|globalThis|window)\.addEventListener\(["']keydown/.test(content), "content runtime added a global keydown hot-path listener");
 const highlightKeyUpBody = extractFunctionBody(content, "handleHighlightKeyUp");
@@ -182,11 +198,11 @@ for (const token of ["Mica", "Enable Mica", "Checking this page…", "Low memory
 }
 
 const optionsHtml = await readFile(path.join(distDir, "options", "index.html"), "utf8");
-for (const token of ["General", "Reading & highlighting", "Copy & export", "Performance", "Reliability", "Allow native Stop when verified", "Maximum recovery cycles per turn", "Maximum confirmed-unsent resends", "Maximum assistant retries", "Recover read-only tools", "Hide suggested work", "Export highlights", "Import highlights", "Clear all highlights", "Export settings", "Restore all defaults", "Save settings"]) {
+for (const token of ["General", "Reading & highlighting", "Allow one website", "Add site", "Copy & export", "Performance", "Reliability", "Allow native Stop when verified", "Maximum recovery cycles per turn", "Maximum confirmed-unsent resends", "Maximum assistant retries", "Recover read-only tools", "Hide suggested work", "Export highlights", "Import highlights", "Clear all highlights", "Export settings", "Restore all defaults", "Save settings"]) {
   assert(optionsHtml.includes(token), `settings page missing ${token}`);
 }
-assert(optionsHtml.indexOf("../settings-model.js") < optionsHtml.indexOf("../highlight-engine.js") && optionsHtml.indexOf("../highlight-engine.js") < optionsHtml.indexOf("options.js"), "settings dependency script order drifted");
-for (const token of ["MicaSettingsModel", "MicaHighlightEngine", "autoStopEnabled", "maxRecoveryCyclesPerTurn", "maxAutoNewMessageResends", "maxAutoAssistantRetries", "consequentialActionAutoReplay: false", "micaRecoveryHistoryV1", "mergeRecords", "mica-highlights.json"]) assert(options.includes(token), `settings runtime missing ${token}`);
+assert(optionsHtml.indexOf("../settings-model.js") < optionsHtml.indexOf("../highlight-engine.js") && optionsHtml.indexOf("../highlight-engine.js") < optionsHtml.indexOf("../general-web-model.js") && optionsHtml.indexOf("../general-web-model.js") < optionsHtml.indexOf("options.js"), "settings dependency script order drifted");
+for (const token of ["MicaSettingsModel", "MicaHighlightEngine", "MicaGeneralWebHighlightModel", "autoStopEnabled", "maxRecoveryCyclesPerTurn", "maxAutoNewMessageResends", "maxAutoAssistantRetries", "consequentialActionAutoReplay: false", "micaRecoveryHistoryV1", "chrome.permissions.request", "MICA_GENERAL_WEB_SYNC", "generalWebRecords", "mergeRecords", "mica-highlights.json"]) assert(options.includes(token), `settings runtime missing ${token}`);
 for (const forbidden of ["Start diagnostics", "Stop diagnostics", "Copy report", "mounted", "selector", "Surface Atlas"]) {
   assert(!normalHtml.includes(forbidden), `normal popup exposes internal diagnostic copy: ${forbidden}`);
 }

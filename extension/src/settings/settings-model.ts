@@ -1,5 +1,5 @@
 (() => {
-  const SCHEMA_VERSION = 4;
+  const SCHEMA_VERSION = 5;
   const STORAGE_KEY = "micaSettings";
   const COLORS = Object.freeze(["yellow", "mint", "blue", "pink"]);
   const DEFAULTS = deepFreeze({
@@ -19,7 +19,8 @@
       defaultColor: "yellow",
       shortcut: "Alt+Shift+H",
       toolbarBehavior: "selection",
-      generalWebEnabled: false
+      generalWebEnabled: false,
+      generalWebOrigins: []
     },
     export: {
       defaultFormat: "markdown",
@@ -105,7 +106,8 @@
         defaultColor: oneOf(input.highlighter?.defaultColor, COLORS, DEFAULTS.highlighter.defaultColor),
         shortcut: boundedString(input.highlighter?.shortcut, 64, DEFAULTS.highlighter.shortcut),
         toolbarBehavior: oneOf(input.highlighter?.toolbarBehavior, ["selection", "shortcut", "both"], DEFAULTS.highlighter.toolbarBehavior),
-        generalWebEnabled: bool(input.highlighter?.generalWebEnabled, DEFAULTS.highlighter.generalWebEnabled)
+        generalWebEnabled: bool(input.highlighter?.generalWebEnabled, DEFAULTS.highlighter.generalWebEnabled),
+        generalWebOrigins: sanitizeWebOrigins(input.highlighter?.generalWebOrigins)
       },
       export: {
         defaultFormat: oneOf(input.export?.defaultFormat, ["markdown", "notion", "pdf"], DEFAULTS.export.defaultFormat),
@@ -234,6 +236,36 @@
     return typeof value === "string" && value.trim() ? value.trim().slice(0, max) : fallback;
   }
 
+  function normalizeWebOrigin(value) {
+    try {
+      const url = new URL(String(value || "").trim());
+      if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return null;
+      if (["chatgpt.com", "chat.openai.com"].includes(url.hostname)) return null;
+      return url.origin;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function toMatchPattern(value) {
+    const origin = normalizeWebOrigin(value);
+    return origin ? `${origin}/*` : null;
+  }
+
+  function sanitizeWebOrigins(value) {
+    if (!Array.isArray(value)) return [];
+    const origins = [];
+    const seen = new Set();
+    for (const candidate of value) {
+      const origin = normalizeWebOrigin(candidate);
+      if (!origin || seen.has(origin)) continue;
+      seen.add(origin);
+      origins.push(origin);
+      if (origins.length >= 100) break;
+    }
+    return origins;
+  }
+
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
   }
@@ -256,6 +288,9 @@
     toLegacyFlat,
     toStorageRecord,
     exportJson,
-    importJson
+    importJson,
+    normalizeWebOrigin,
+    toMatchPattern,
+    sanitizeWebOrigins
   });
 })();

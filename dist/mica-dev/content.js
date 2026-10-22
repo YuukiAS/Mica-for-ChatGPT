@@ -1,7 +1,7 @@
 (() => {
-  const VERSION = "0.5.0";
-  const VERSION_NAME = "0.5.0";
-  const BUILD_LABEL = "functional-convergence.1";
+  const VERSION = "0.5.1";
+  const VERSION_NAME = "0.5.1";
+  const BUILD_LABEL = "functional-convergence.2";
   const CONTRACT_HASH = "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538";
   const DEFAULT_SETTINGS = Object.freeze({ enabled: true, lowMemory: true, highlighter: true, copyExport: true, reliability: true, hideSuggestedWork: false, lowMemoryKeepCount: 40, lowMemoryThreshold: 80 });
   const RECOVERY_AUTH = Object.freeze({ popup: Symbol("popup"), settings: Symbol("settings"), trustedGesture: Symbol("trusted-gesture") });

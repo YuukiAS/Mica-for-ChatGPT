@@ -26,7 +26,12 @@
           <label class="row"><span><strong>ChatGPT highlighter</strong></span><input id="feature-highlighter" type="checkbox"></label>
           <label class="row"><span><strong>Default color</strong></span><select id="highlight-color"><option value="yellow">Yellow</option><option value="mint">Mint</option><option value="blue">Blue</option><option value="pink">Pink</option></select></label>
           <label class="row"><span><strong>Shortcut</strong><small>Stored for the configurable command surface.</small></span><input id="highlight-shortcut" type="text" maxlength="64"></label>
-          <label class="row"><span><strong>General web highlighting</strong><small>Saved separately; site-permission activation remains fail-open.</small></span><input id="general-web" type="checkbox"></label>
+          <label class="row"><span><strong>General web highlighting</strong><small>Master switch for websites you allow individually below.</small></span><input id="general-web" type="checkbox"></label>
+          <div class="site-access">
+            <label for="general-web-origin"><strong>Allow one website</strong><small>Enter a site URL or exact origin. Mica requests access only after you select Add site.</small></label>
+            <div class="site-entry"><input id="general-web-origin" type="url" inputmode="url" placeholder="https://example.com"><button id="add-general-web-origin" type="button">Add site</button></div>
+            <ul id="general-web-origins" class="origin-list" aria-label="Allowed websites"></ul>
+          </div>
           <div class="actions">
             <button id="export-highlights" type="button">Export highlights</button>
             <label class="file-button">Import highlights<input id="import-highlights" type="file" accept="application/json,.json"></label>
@@ -97,6 +102,7 @@
     </main>
     <script src="../settings-model.js"></script>
     <script src="../highlight-engine.js"></script>
+    <script src="../general-web-model.js"></script>
     <script src="options.js"></script>
   </body>
 </html>

@@ -42,9 +42,9 @@ async function runScenario({ settings, delayMs = 0, storageError = false, initia
       session: { get: (_defaults, callback) => callback({}), set: async () => {} }
     },
     scripting: {
-      getRegisteredContentScripts: async () => registered ? [{ id: "mica-low-memory-main-v3" }] : [],
-      registerContentScripts: async () => { registerCalls += 1; registered = true; },
-      unregisterContentScripts: async () => { unregisterCalls += 1; registered = false; }
+      getRegisteredContentScripts: async ({ ids } = {}) => registered && (!ids || ids.includes("mica-low-memory-main-v3")) ? [{ id: "mica-low-memory-main-v3" }] : [],
+      registerContentScripts: async (entries) => { if (entries.some((entry) => entry.id === "mica-low-memory-main-v3")) { registerCalls += 1; registered = true; } },
+      unregisterContentScripts: async ({ ids } = {}) => { if (!ids || ids.includes("mica-low-memory-main-v3")) { unregisterCalls += 1; registered = false; } }
     },
     tabs: { onUpdated: events(), onRemoved: events() }
   };
@@ -93,9 +93,9 @@ function createBackgroundInstance(shared) {
       }
     },
     scripting: {
-      getRegisteredContentScripts: async () => shared.registered ? [{ id: "mica-low-memory-main-v3" }] : [],
-      registerContentScripts: async () => { shared.registerCalls += 1; shared.registered = true; },
-      unregisterContentScripts: async () => { shared.unregisterCalls += 1; shared.registered = false; }
+      getRegisteredContentScripts: async ({ ids } = {}) => shared.registered && (!ids || ids.includes("mica-low-memory-main-v3")) ? [{ id: "mica-low-memory-main-v3" }] : [],
+      registerContentScripts: async (entries) => { if (entries.some((entry) => entry.id === "mica-low-memory-main-v3")) { shared.registerCalls += 1; shared.registered = true; } },
+      unregisterContentScripts: async ({ ids } = {}) => { if (!ids || ids.includes("mica-low-memory-main-v3")) { shared.unregisterCalls += 1; shared.registered = false; } }
     },
     tabs: { onUpdated: events(), onRemoved: events() }
   };

@@ -1,5 +1,5 @@
 (() => {
-  const SCHEMA_VERSION = 4;
+  const SCHEMA_VERSION = 5;
   const STORAGE_KEY = "micaSettings";
   const COLORS = Object.freeze(["yellow", "mint", "blue", "pink"]);
   const DEFAULTS = deepFreeze({
@@ -19,7 +19,8 @@
       defaultColor: "yellow",
       shortcut: "Alt+Shift+H",
       toolbarBehavior: "selection",
-      generalWebEnabled: false
+      generalWebEnabled: false,
+      generalWebOrigins: []
     },
     export: {
       defaultFormat: "markdown",
@@ -105,7 +106,8 @@
         defaultColor: oneOf(input.highlighter?.defaultColor, COLORS, DEFAULTS.highlighter.defaultColor),
         shortcut: boundedString(input.highlighter?.shortcut, 64, DEFAULTS.highlighter.shortcut),
         toolbarBehavior: oneOf(input.highlighter?.toolbarBehavior, ["selection", "shortcut", "both"], DEFAULTS.highlighter.toolbarBehavior),
-        generalWebEnabled: bool(input.highlighter?.generalWebEnabled, DEFAULTS.highlighter.generalWebEnabled)
+        generalWebEnabled: bool(input.highlighter?.generalWebEnabled, DEFAULTS.highlighter.generalWebEnabled),
+        generalWebOrigins: sanitizeWebOrigins(input.highlighter?.generalWebOrigins)
       },
       export: {
         defaultFormat: oneOf(input.export?.defaultFormat, ["markdown", "notion", "pdf"], DEFAULTS.export.defaultFormat),
@@ -234,6 +236,36 @@
     return typeof value === "string" && value.trim() ? value.trim().slice(0, max) : fallback;
   }
 
+  function normalizeWebOrigin(value) {
+    try {
+      const url = new URL(String(value || "").trim());
+      if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return null;
+      if (["chatgpt.com", "chat.openai.com"].includes(url.hostname)) return null;
+      return url.origin;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function toMatchPattern(value) {
+    const origin = normalizeWebOrigin(value);
+    return origin ? `${origin}/*` : null;
+  }
+
+  function sanitizeWebOrigins(value) {
+    if (!Array.isArray(value)) return [];
+    const origins = [];
+    const seen = new Set();
+    for (const candidate of value) {
+      const origin = normalizeWebOrigin(candidate);
+      if (!origin || seen.has(origin)) continue;
+      seen.add(origin);
+      origins.push(origin);
+      if (origins.length >= 100) break;
+    }
+    return origins;
+  }
+
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
   }
@@ -256,7 +288,10 @@
     toLegacyFlat,
     toStorageRecord,
     exportJson,
-    importJson
+    importJson,
+    normalizeWebOrigin,
+    toMatchPattern,
+    sanitizeWebOrigins
   });
 })();
 
@@ -814,3 +849,85 @@ function isSupportedTab(tab) {
 }
 
 void migrateSettings().then(syncRegistration);
+
+(() => {
+  const SCRIPT_ID = "mica-general-web-highlighter-v1";
+  const SETTINGS_KEY = globalThis.MicaSettingsModel?.storageKey || "micaSettings";
+  const SCRIPT_FILES = Object.freeze(["settings-model.js", "general-web-model.js", "general-web-highlighter.js"]);
+  let syncQueue = Promise.resolve();
+
+  chrome.runtime.onInstalled.addListener(() => { void syncRegistration(); });
+  chrome.runtime.onStartup.addListener(() => { void syncRegistration(); });
+  chrome.permissions?.onAdded?.addListener(() => { void syncRegistration(); });
+  chrome.permissions?.onRemoved?.addListener(() => { void syncRegistration(); });
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && SETTINGS_KEY in changes) void syncRegistration();
+  });
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type !== "MICA_GENERAL_WEB_SYNC") return false;
+    void syncRegistration().then(sendResponse);
+    return true;
+  });
+
+  function syncRegistration() {
+    syncQueue = syncQueue.then(syncRegistrationNow, syncRegistrationNow);
+    return syncQueue;
+  }
+
+  async function syncRegistrationNow() {
+    const settings = await readSettings();
+    const desired = settings.ok ? await grantedPatterns(settings.value) : [];
+    try {
+      const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [SCRIPT_ID] });
+      const currentMatches = existing[0]?.matches || [];
+      if (sameStrings(currentMatches, desired)) {
+        return { ok: true, registered: desired.length > 0, matches: desired, failOpen: !settings.ok };
+      }
+      if (existing.length) await chrome.scripting.unregisterContentScripts({ ids: [SCRIPT_ID] });
+      if (desired.length) {
+        await chrome.scripting.registerContentScripts([{
+          id: SCRIPT_ID,
+          matches: desired,
+          js: [...SCRIPT_FILES],
+          runAt: "document_idle",
+          world: "ISOLATED",
+          persistAcrossSessions: true,
+          allFrames: false
+        }]);
+      }
+      return { ok: true, registered: desired.length > 0, matches: desired, failOpen: !settings.ok };
+    } catch (error) {
+      try { await chrome.scripting.unregisterContentScripts({ ids: [SCRIPT_ID] }); } catch (_ignored) { /* fail open */ }
+      return { ok: false, registered: false, matches: [], failOpen: true, reason: `general_web_registration_failed:${String(error?.message || error || "unknown")}` };
+    }
+  }
+
+  function readSettings() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get({ [SETTINGS_KEY]: null }, (items) => {
+        if (chrome.runtime.lastError || !globalThis.MicaSettingsModel) return resolve({ ok: false, value: null });
+        resolve({ ok: true, value: globalThis.MicaSettingsModel.fromStorage(items || {}) });
+      });
+    });
+  }
+
+  async function grantedPatterns(settings) {
+    if (!settings.enabled || !settings.features.generalWebHighlighter || !settings.highlighter.generalWebEnabled) return [];
+    if (!chrome.permissions?.contains) return [];
+    const output = [];
+    for (const origin of settings.highlighter.generalWebOrigins) {
+      const pattern = globalThis.MicaSettingsModel.toMatchPattern(origin);
+      if (!pattern) continue;
+      const granted = await new Promise((resolve) => chrome.permissions.contains({ origins: [pattern] }, resolve));
+      if (granted) output.push(pattern);
+    }
+    return [...new Set(output)].sort();
+  }
+
+  function sameStrings(left, right) {
+    return JSON.stringify([...left].sort()) === JSON.stringify([...right].sort());
+  }
+
+  globalThis.MicaGeneralWebBackground = Object.freeze({ scriptId: SCRIPT_ID, scriptFiles: SCRIPT_FILES, syncRegistration });
+  void syncRegistration();
+})();

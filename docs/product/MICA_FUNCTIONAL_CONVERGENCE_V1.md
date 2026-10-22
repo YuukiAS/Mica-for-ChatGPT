@@ -1,6 +1,6 @@
 # Mica 功能收敛 V1
 
-Mica `0.5.0` 是一次后端功能收敛候选，不是正式发布。它在 `codex/mica-product-system-rebuild` 的 Foundation、Low Memory、Highlighter 和 PDF 基础上，新增统一设置模型、AnswerDocument 驱动的 Markdown/Notion 序列化、高亮记录迁移，以及有边界的断流恢复状态机。当前用户明确禁止启动浏览器和操作真实 ChatGPT，因此本轮只把纯 Node、静态构建与存储合同能够证明的部分标为已验证；真实页面交互、PDF 查看器和 Notion 原生公式均保留明确缺口。
+Mica `0.5.1` 是一次后端功能收敛候选，不是正式发布。它在 `codex/mica-product-system-rebuild` 的 Foundation、Low Memory、Highlighter 和 PDF 基础上，新增统一设置模型、AnswerDocument 驱动的 Markdown/Notion 序列化、高亮记录迁移、有边界的断流恢复状态机，以及按站点授权的普通网页高亮运行时。当前用户明确禁止启动浏览器和操作真实 ChatGPT，因此本轮只把纯 Node、静态构建与存储合同能够证明的部分标为已验证；真实页面交互、PDF 查看器和 Notion 原生公式均保留明确缺口。
 
 配套机器矩阵位于 [`MICA_FUNCTIONAL_CONVERGENCE_V1.json`](MICA_FUNCTIONAL_CONVERGENCE_V1.json)。它是当前功能状态的唯一机器可读来源，README 和 ROADMAP 只做面向读者的摘要。
 
@@ -23,7 +23,7 @@ ChatGPTAdapter
      -> Markdown / Notion serializer
      -> PDF export model
 
-SettingsModel（schemaVersion 4）
+SettingsModel（schemaVersion 5）
   -> popup / options / content / service worker
 
 RecoveryStateMachine（纯状态与安全策略）
@@ -61,7 +61,9 @@ Notion 有两条清楚区分的路径：
 - 按 conversation 或 turn 筛选；
 - 在设置页清空全部本地记录。
 
-通用网页高亮仍未实现。当前设置只保存独立偏好，不请求全站权限，也不把这个偏好显示成已生效能力。
+普通网页高亮已经进入开发构建，但默认关闭。设置页只在用户点击“Add site”时请求该 origin 的访问权，后台也只为“已保存且浏览器已授权”的 origin 动态注册隔离世界脚本；ChatGPT 仍走独立适配器，不会被普通网页运行时覆盖。
+
+网页锚点使用页面路径、语义根、文本引用、有限前后文和原始区间，不保存整页文本，也不接受绝对 DOM 路径。运行时通过 CSS Custom Highlight API 绘制四种颜色，不包裹或替换站点节点；引用缺失、重复且上下文不能唯一消歧、语义根变化或页面过大时都保持未解析。设置页的备份文件同时覆盖 ChatGPT 与普通网页记录，并继续兼容旧的单类记录文件。权限提示、文章页渲染、点击编辑和跨刷新恢复仍需浏览器验收。
 
 ### 可靠性状态机
 
@@ -87,7 +89,7 @@ Notion 有两条清楚区分的路径：
 | MFC-022 | Issue #10、本轮 §7 | 确定性 Notion 导入文件 | `IMPLEMENTED_VERIFIED` | convergence core | 真实导入结果 |
 | MFC-100 | Issue #1、重建分支 | 长对话客户端数据窗口化 | `IMPLEMENTED_UNVERIFIED` | 既有证据 + 本轮后台纯测试 | 当前构建浏览器回归 |
 | MFC-200 | Issue #9、Milestone B | ChatGPT 正文与公式高亮 | `IMPLEMENTED_UNVERIFIED` | 既有 fixture 证据 | 当前构建浏览器回归 |
-| MFC-202 | Issue #9、本轮 §5 | 普通网页高亮 | `MISSING` | 无 | 可选站点权限 + 文章页 |
+| MFC-202 | Issue #9、本轮 §5 | 普通网页高亮 | `IMPLEMENTED_UNVERIFIED` | 锚点与动态注册 fixture | 可选站点权限 + 文章页 |
 | MFC-220 | Milestone B、本轮 §6 | 回答 PDF 与高亮继承 | `IMPLEMENTED_UNVERIFIED` | 既有 fixture 证据 | 当前构建 PDF viewer |
 | MFC-300 | 本轮 §8/§11 | 版本化设置和安全上限 | `IMPLEMENTED_VERIFIED` | convergence core | 设置页渲染 |
 | MFC-400 | Issue #4、本轮 §8 | 60 秒无进展状态机 | `IMPLEMENTED_VERIFIED` | convergence core | 真实断流流程 |
@@ -105,6 +107,8 @@ Notion 有两条清楚区分的路径：
 npm run build
 node scripts/convergence-core-fixture.mjs
 node scripts/recovery-controller-fixture.mjs
+node scripts/general-web-core-fixture.mjs
+node scripts/general-web-background-fixture.mjs
 node scripts/low-memory-background-fixture.mjs
 npm run test:build
 ```
@@ -115,13 +119,13 @@ npm run test:build
 
 以下工作没有被虚假标成完成：
 
-- 普通网页高亮与可选站点权限运行时；
+- 普通网页高亮的实际权限提示、文章页渲染与交互验收；
 - 整段 conversation 的完整选择和 PDF 产品入口；
 - Notion 一次粘贴后的原生可编辑公式；
 - 原生 Stop、assistant retry 和确认未提交后的自动 resend；
 - 历史 Composer / Connector 修复在当前真实页面上的精确收敛；
 - Hide suggested work 的当前 ChatGPT 结构合同；
-- 当前 `0.5.0` 的浏览器、真实 ChatGPT、PDF viewer 和 Notion 验收；
+- 当前 `0.5.1` 的浏览器、真实 ChatGPT、PDF viewer 和 Notion 验收；
 - 将新增门槛正式并入现有 acceptance validator。
 
-这些缺口不会阻止源码和开发构建继续存在，但会阻止把 `0.5.0` 称为发布候选或声称全功能验收通过。
+这些缺口不会阻止源码和开发构建继续存在，但会阻止把 `0.5.1` 称为发布候选或声称全功能验收通过。

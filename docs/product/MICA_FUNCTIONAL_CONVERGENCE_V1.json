@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "updatedAt": "2026-10-22",
   "candidate": {
-    "version": "0.5.0",
-    "buildLabel": "functional-convergence.1",
+    "version": "0.5.1",
+    "buildLabel": "functional-convergence.2",
     "branch": "codex/mica-functional-convergence",
     "releaseReady": false,
     "browserExecutionAllowedThisRun": false
@@ -154,7 +154,7 @@
       "realAcceptance": "Current candidate on target low-memory device",
       "status": "IMPLEMENTED_UNVERIFIED",
       "result": "Data-plane code is retained; background settings migration was updated.",
-      "gap": "The current 0.5.0 runtime was not exercised in a browser."
+      "gap": "The current 0.5.1 runtime was not exercised in a browser."
     },
     {
       "id": "MFC-200",
@@ -189,14 +189,14 @@
       "source": ["issue 9", "goal section 5.1"],
       "userProblem": "Use Mica highlighting on ordinary article pages with optional site permission.",
       "existingImplementation": false,
-      "module": "future general-web adapter",
+      "module": "general-web model, dynamic registration, content runtime and options",
       "iterationAction": "new",
       "successBehavior": "User grants bounded site access and unsupported structures stay native.",
-      "automatedVerification": [],
+      "automatedVerification": ["general-web-core-fixture", "general-web-background-fixture", "static build validation"],
       "realAcceptance": "Representative article pages and permission lifecycle",
-      "status": "MISSING",
-      "result": "Only an independent disabled-by-default preference exists.",
-      "gap": "No permission request, content registration or article anchor runtime exists."
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "result": "Per-origin permission requests, permission-filtered dynamic registration, four-color CSS highlights, local anchors, edit/delete/clear, shortcut and combined backup are in the development build.",
+      "gap": "No browser was opened, so permission prompts, representative article DOMs, CSS Highlight rendering and interaction lifecycle remain unverified."
     },
     {
       "id": "MFC-220",
@@ -373,11 +373,11 @@
       "existingImplementation": true,
       "module": "scripts/release-config.mjs and dist/mica-dev",
       "iterationAction": "repair",
-      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.0.",
+      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.1.",
       "automatedVerification": ["npm run build", "npm run test:build"],
-      "realAcceptance": "Extension manager shows 0.5.0 after reload",
+      "realAcceptance": "Extension manager shows 0.5.1 after reload",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Runtime version is 0.5.0 with build label functional-convergence.1.",
+      "result": "Runtime version is 0.5.1 with build label functional-convergence.2.",
       "gap": "Extension manager display was not opened."
     },
     {

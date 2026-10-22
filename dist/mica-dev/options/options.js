@@ -1,5 +1,6 @@
 const model = globalThis.MicaSettingsModel;
 const highlightEngine = globalThis.MicaHighlightEngine;
+const generalWebModel = globalThis.MicaGeneralWebHighlightModel;
 const form = document.getElementById("settings-form");
 const statusNode = document.getElementById("status");
 let settings = model.defaults();
@@ -20,6 +21,7 @@ async function initialize() {
   document.getElementById("export-highlights").addEventListener("click", exportHighlights);
   document.getElementById("import-highlights").addEventListener("change", importHighlights);
   document.getElementById("clear-highlights").addEventListener("click", clearHighlights);
+  document.getElementById("add-general-web-origin").addEventListener("click", addGeneralWebOrigin);
 }
 
 function render(value) {
@@ -30,6 +32,7 @@ function render(value) {
   set("feature-low-memory", value.features.lowMemory); set("keep-turns", value.lowMemory.keepRecentTurns); set("low-memory-threshold", value.lowMemory.activationThreshold);
   set("feature-reliability", value.features.reliability); set("stall-watchdog", value.reliability.stallWatchdogEnabled); set("no-progress", value.reliability.noProgressTimeoutSeconds); set("commit-window", value.reliability.commitConfirmationTimeoutSeconds); set("auto-recovery", value.reliability.autoRecoveryEnabled); set("auto-reload", value.reliability.autoReloadEnabled); set("auto-stop", value.reliability.autoStopEnabled); set("max-reloads", value.reliability.maxAutoReloadsPerTurn); set("max-recovery-cycles", value.reliability.maxRecoveryCyclesPerTurn); set("native-stop-settle", value.reliability.nativeStopSettleSeconds); set("reconcile-window", value.reliability.postReloadReconcileTimeoutSeconds); set("max-new-resends", value.reliability.maxAutoNewMessageResends); set("max-assistant-retries", value.reliability.maxAutoAssistantRetries); set("retry-backoff", value.reliability.retryBackoffSeconds); set("snapshot-ttl", value.reliability.recoverySnapshotTtlMinutes); set("safe-read-only", value.reliability.safeReadOnlyToolRecovery); set("resend-policy", value.reliability.resendPolicy); set("recovery-notifications", value.reliability.showRecoveryNotifications); set("recovery-history", value.reliability.recordPrivacySafeRecoveryHistory);
   set("hide-suggested-work", value.features.hideSuggestedWork);
+  renderGeneralWebOrigins(value.highlighter.generalWebOrigins);
 }
 
 function collect() {
@@ -50,6 +53,7 @@ async function save(event) {
   event.preventDefault();
   settings = collect();
   await setStorage(model.toStorageRecord(settings));
+  await syncGeneralWebRegistration();
   render(settings);
   showStatus("Saved. Open Mica pages receive the new settings without deleting feature preferences.");
 }
@@ -102,8 +106,14 @@ async function clearRecoveryHistory() {
 }
 
 async function exportHighlights() {
-  const stored = await getStorage({ [highlightEngine.storeKey]: [] });
-  const blob = new Blob([highlightEngine.exportJson(stored[highlightEngine.storeKey])], { type: "application/json" });
+  const stored = await getStorage({ [highlightEngine.storeKey]: [], [generalWebModel.storeKey]: [] });
+  const payload = {
+    schemaVersion: 2,
+    exportedAt: new Date().toISOString(),
+    chatgptRecords: highlightEngine.sanitizeRecords(stored[highlightEngine.storeKey]),
+    generalWebRecords: generalWebModel.sanitizeRecords(stored[generalWebModel.storeKey])
+  };
+  const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], { type: "application/json" });
   downloadBlob(blob, "mica-highlights.json");
   showStatus("Highlights exported. The file stays on this device unless you share it.");
 }
@@ -111,19 +121,121 @@ async function exportHighlights() {
 async function importHighlights(event) {
   const file = event.target.files?.[0];
   if (!file) return;
-  const imported = highlightEngine.importJson(await file.text());
+  const source = await file.text();
   event.target.value = "";
+  const imported = parseHighlightImport(source);
   if (!imported.ok) return showStatus("Import failed. Choose a valid Mica highlights file.");
-  const stored = await getStorage({ [highlightEngine.storeKey]: [] });
-  const records = highlightEngine.mergeRecords(stored[highlightEngine.storeKey], imported.records);
-  await setStorage({ [highlightEngine.storeKey]: records });
-  showStatus(`Imported ${imported.records.length} highlight records${imported.rejectedCount ? `; skipped ${imported.rejectedCount} invalid records` : ""}.`);
+  const stored = await getStorage({ [highlightEngine.storeKey]: [], [generalWebModel.storeKey]: [] });
+  const next = {};
+  if (imported.chatgptRecords) next[highlightEngine.storeKey] = highlightEngine.mergeRecords(stored[highlightEngine.storeKey], imported.chatgptRecords);
+  if (imported.generalWebRecords) next[generalWebModel.storeKey] = generalWebModel.mergeRecords(stored[generalWebModel.storeKey], imported.generalWebRecords);
+  await setStorage(next);
+  showStatus(`Imported ${imported.importedCount} highlight records${imported.rejectedCount ? `; skipped ${imported.rejectedCount} invalid records` : ""}.`);
 }
 
 async function clearHighlights() {
   if (!globalThis.confirm("Clear all local highlights? This cannot be undone.")) return;
-  await new Promise((resolve) => chrome.storage.local.remove(highlightEngine.storeKey, resolve));
+  await new Promise((resolve) => chrome.storage.local.remove([highlightEngine.storeKey, generalWebModel.storeKey], resolve));
   showStatus("All local highlight records cleared.");
+}
+
+async function addGeneralWebOrigin() {
+  const input = document.getElementById("general-web-origin");
+  const origin = model.normalizeWebOrigin(input.value);
+  const pattern = model.toMatchPattern(origin);
+  if (!origin || !pattern) return showStatus("Enter a valid http or https site. ChatGPT uses its dedicated highlighter.");
+  const granted = await requestOrigins([pattern]);
+  if (!granted) return showStatus("Site access was not granted. Mica did not activate on that site.");
+  settings = collect();
+  settings = model.patch(settings, {
+    features: { ...settings.features, generalWebHighlighter: true },
+    highlighter: { ...settings.highlighter, generalWebEnabled: true, generalWebOrigins: [...settings.highlighter.generalWebOrigins, origin] }
+  });
+  await setStorage(model.toStorageRecord(settings));
+  await syncGeneralWebRegistration();
+  input.value = "";
+  render(settings);
+  showStatus(`Allowed Mica highlighting on ${origin}. Existing tabs may need one reload.`);
+}
+
+async function removeGeneralWebOrigin(origin) {
+  const pattern = model.toMatchPattern(origin);
+  if (pattern) await removeOrigins([pattern]);
+  settings = collect();
+  settings = model.patch(settings, {
+    highlighter: { ...settings.highlighter, generalWebOrigins: settings.highlighter.generalWebOrigins.filter((item) => item !== origin) }
+  });
+  await setStorage(model.toStorageRecord(settings));
+  await syncGeneralWebRegistration();
+  render(settings);
+  showStatus(`Removed Mica site access for ${origin}.`);
+}
+
+function renderGeneralWebOrigins(origins) {
+  const list = document.getElementById("general-web-origins");
+  list.replaceChildren();
+  if (!origins.length) {
+    const empty = document.createElement("li");
+    empty.className = "empty";
+    empty.textContent = "No websites are allowed. Mica will not run its general-web highlighter anywhere.";
+    list.append(empty);
+    return;
+  }
+  for (const origin of origins) {
+    const item = document.createElement("li");
+    const label = document.createElement("span");
+    label.textContent = origin;
+    const state = document.createElement("small");
+    state.textContent = "Checking permission…";
+    label.append(state);
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "Remove";
+    remove.addEventListener("click", () => { void removeGeneralWebOrigin(origin); });
+    item.append(label, remove);
+    list.append(item);
+    const pattern = model.toMatchPattern(origin);
+    if (pattern) chrome.permissions.contains({ origins: [pattern] }, (granted) => { state.textContent = granted ? "Allowed on this exact origin" : "Permission missing; runtime stays off"; });
+  }
+}
+
+function parseHighlightImport(source) {
+  try {
+    const parsed = JSON.parse(String(source || ""));
+    if (Array.isArray(parsed?.chatgptRecords) || Array.isArray(parsed?.generalWebRecords)) {
+      const chatgptSource = Array.isArray(parsed.chatgptRecords) ? parsed.chatgptRecords : [];
+      const webSource = Array.isArray(parsed.generalWebRecords) ? parsed.generalWebRecords : [];
+      const chatgptRecords = highlightEngine.sanitizeRecords(chatgptSource);
+      const generalWebRecords = generalWebModel.sanitizeRecords(webSource);
+      return { ok: true, chatgptRecords, generalWebRecords, importedCount: chatgptRecords.length + generalWebRecords.length, rejectedCount: chatgptSource.length + webSource.length - chatgptRecords.length - generalWebRecords.length };
+    }
+    const records = Array.isArray(parsed) ? parsed : parsed?.records;
+    if (!Array.isArray(records)) return { ok: false };
+    const isGeneralWeb = records.some((record) => String(record?.id || "").startsWith("web-highlight-"));
+    const imported = isGeneralWeb ? generalWebModel.importJson(source) : highlightEngine.importJson(source);
+    if (!imported.ok) return { ok: false };
+    return {
+      ok: true,
+      chatgptRecords: isGeneralWeb ? null : imported.records,
+      generalWebRecords: isGeneralWeb ? imported.records : null,
+      importedCount: imported.records.length,
+      rejectedCount: imported.rejectedCount
+    };
+  } catch (_error) {
+    return { ok: false };
+  }
+}
+
+function requestOrigins(origins) {
+  return new Promise((resolve) => chrome.permissions.request({ origins }, (granted) => resolve(!chrome.runtime.lastError && !!granted)));
+}
+
+function removeOrigins(origins) {
+  return new Promise((resolve) => chrome.permissions.remove({ origins }, (removed) => resolve(!chrome.runtime.lastError && !!removed)));
+}
+
+function syncGeneralWebRegistration() {
+  return new Promise((resolve) => chrome.runtime.sendMessage({ type: "MICA_GENERAL_WEB_SYNC" }, (response) => resolve(chrome.runtime.lastError ? { ok: false } : response)));
 }
 
 function downloadBlob(blob, fileName) {
