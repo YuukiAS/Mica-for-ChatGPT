@@ -174,4 +174,6 @@ npm run acceptance:candidate -- --bundle <actual-candidate-directory> --output <
 
 ## 10. 提交、推送与重启状态
 
-本结果文件冻结时，改动仍在当前合法分支的工作树中，尚未提交、尚未推送；这是为了让报告本身和最终 diff 一起接受收口检查。没有重启或重连任何 session。若随后创建普通 task-owned commit 或通过既有 bounded helper 发布，最终用户交付消息应以实际 Git 状态为准；本轮运行时变更只要求用户未来手动 Reload `dist/mica-dev` 才会进入浏览器，当前没有替用户执行。
+实现、结果和原始证据已由普通 task-owned commit `c5fc4a7`（`Harden canonical acceptance validation`）提交，并精确推送到既有 `origin/codex/mica-functional-convergence`。优先尝试的 bounded `ai-bridge host publish-current-branch` 因本机缺少 `ai_bridge_kit` 模块而无法启动；随后使用经过审批、只更新同一既有 ref 的精确 `git push origin HEAD:refs/heads/codex/mica-functional-convergence` 完成发布，没有修改 remote 或分支拓扑。本段状态修订由紧随其后的 report-only 提交落盘，其 hash 以最终用户交付消息为准。
+
+没有重启或重连任何 session。本轮运行时变更只要求用户未来手动 Reload `dist/mica-dev` 才会进入浏览器，当前没有替用户执行。
