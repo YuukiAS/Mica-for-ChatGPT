@@ -25,9 +25,12 @@
       const documentModel = options.createDocument(turn);
       if (!documentModel?.durable || documentModel.generationState !== "SETTLED") return failure(turn.role === "assistant" ? "assistant_not_settled" : "user_turn_unavailable", { turnId: turn.turnId });
       if (documentModel.role !== turn.role || documentModel.turnId !== turn.turnId || documentModel.conversationId !== conversationId) return failure("document_identity_mismatch", { turnId: turn.turnId });
+      if (documentModel.producedBy !== "MicaChatGPTAdapter") return failure("document_producer_unproven", { turnId: turn.turnId });
       if (!Array.isArray(documentModel.orderedBlocks) || documentModel.orderedBlocks.length === 0) return failure("turn_document_empty", { turnId: turn.turnId });
+      if (documentHasUnsupportedContent(documentModel)) return failure("turn_document_incomplete", { turnId: turn.turnId });
       entries.push({ role: turn.role, turnId: turn.turnId, order: turn.order, document: documentModel });
     }
+    if (new Set(entries.map((entry) => entry.document.documentId)).size !== entries.length) return failure("document_identity_duplicate");
     if (!entries.some((entry) => entry.role === "assistant")) return failure("conversation_has_no_assistant_answer");
     const turnSequenceHash = sequenceHash(entries);
     const completionProof = {
@@ -66,8 +69,21 @@
     if (value.bundleId !== `conversation-export-${hashText(`${value.conversationId}:${proof.turnSequenceHash}`)}`) return failure("conversation_bundle_identity_invalid");
     if (new Set(value.entries.map((entry) => entry.turnId)).size !== value.entries.length) return failure("conversation_entry_identity_invalid");
     if (new Set(value.entries.map((entry) => entry.document?.documentId)).size !== value.entries.length) return failure("conversation_entry_identity_invalid");
-    if (value.entries.some((entry, index) => entry.order !== index || !["user", "assistant"].includes(entry.role) || entry.document?.role !== entry.role || entry.document?.turnId !== entry.turnId || entry.document?.conversationId !== value.conversationId || entry.document?.producedBy !== "MicaChatGPTAdapter" || !entry.document?.durable || entry.document?.generationState !== "SETTLED" || !Array.isArray(entry.document?.orderedBlocks) || entry.document.orderedBlocks.length === 0)) return failure("conversation_entry_identity_invalid");
+    if (value.entries.some((entry, index) => entry.order !== index || !["user", "assistant"].includes(entry.role) || entry.document?.role !== entry.role || entry.document?.turnId !== entry.turnId || entry.document?.conversationId !== value.conversationId || entry.document?.producedBy !== "MicaChatGPTAdapter" || !entry.document?.durable || entry.document?.generationState !== "SETTLED" || !Array.isArray(entry.document?.orderedBlocks) || entry.document.orderedBlocks.length === 0 || documentHasUnsupportedContent(entry.document))) return failure("conversation_entry_identity_invalid");
     return { ok: true, bundle: value };
+  }
+
+  function documentHasUnsupportedContent(documentModel) {
+    const supportedBlockKinds = new Set(["heading", "paragraph", "quote", "list", "table", "code", "display_math", "link", "citation", "image"]);
+    const supportedInlineKinds = new Set(["text", "inline_code", "inline_math", "link", "citation", "image"]);
+    const inlineGroups = [];
+    for (const block of documentModel?.orderedBlocks || []) {
+      if (!block || !supportedBlockKinds.has(block.kind)) return true;
+      if (Array.isArray(block.inlines)) inlineGroups.push(block.inlines);
+      for (const item of block.items || []) if (Array.isArray(item?.inlines)) inlineGroups.push(item.inlines);
+      for (const row of block.cellInlines || []) for (const cell of row || []) if (Array.isArray(cell)) inlineGroups.push(cell);
+    }
+    return inlineGroups.some((runs) => runs.some((run) => !run || !supportedInlineKinds.has(run.kind)));
   }
 
   function readiness(options = {}) {

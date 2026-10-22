@@ -1,0 +1,81 @@
+{
+  "manifest_version": 3,
+  "name": "Mica for ChatGPT",
+  "short_name": "Mica",
+  "version": "0.5.13",
+  "version_name": "0.5.13",
+  "description": "Local controls for a calmer, more capable ChatGPT workspace.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Mica",
+    "default_popup": "popup/index.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "low-memory-background.js"
+  },
+  "options_ui": {
+    "page": "options/index.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*"
+      ],
+      "js": [
+        "low-memory-config.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*"
+      ],
+      "js": [
+        "highlight-interaction-policy.js",
+        "settings-model.js",
+        "chatgpt-adapter.js",
+        "answer-document.js",
+        "conversation-export.js",
+        "answer-serializer.js",
+        "highlight-engine.js",
+        "pdf-export-model.js",
+        "recovery-action-policy.js",
+        "recovery-state-machine.js",
+        "recovery-controller.js",
+        "recovery-control-adapter.js",
+        "suggested-work-controller.js",
+        "answer-actions-controller.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

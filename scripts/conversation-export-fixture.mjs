@@ -187,6 +187,13 @@ assert.equal(coordinator.collect({ inspection: { ...inspection, turns: turns.sli
 assert.equal(coordinator.collect({ inspection, completenessProof: { ...proof, roleSequenceHash: "00000000" }, conversationId, createDocument }).reason, "turn_role_sequence_mismatch");
 assert.equal(coordinator.collect({ inspection, completenessProof: proof, conversationId: "conversation-87654321", createDocument }).reason, "conversation_identity_mismatch");
 assert.equal(coordinator.collect({ inspection, completenessProof: proof, conversationId, createDocument: (turn) => ({ ...createDocument(turn), generationState: turn.role === "assistant" ? "STREAMING" : "SETTLED", durable: turn.role !== "assistant" }) }).reason, "assistant_not_settled");
+assert.equal(coordinator.collect({ inspection: { ...inspection, turns: turns.map((turn, index) => index === 3 ? { ...turn, turnId: turns[2].turnId } : turn) }, completenessProof: proof, conversationId, createDocument }).reason, "turn_identity_duplicate");
+assert.equal(coordinator.collect({ inspection, completenessProof: proof, conversationId, createDocument: (turn) => ({ ...createDocument(turn), documentId: "duplicate-document" }) }).reason, "document_identity_duplicate");
+assert.equal(coordinator.collect({ inspection, completenessProof: proof, conversationId, createDocument: (turn) => turn.role === "assistant" ? { ...createDocument(turn), orderedBlocks: [{ blockId: "opaque-tool", kind: "opaque_interactive", order: 0, label: "tool", interactive: true }] } : createDocument(turn) }).reason, "turn_document_incomplete");
+assert.equal(coordinator.collect({ inspection, completenessProof: proof, conversationId, createDocument: (turn) => turn.role === "assistant" ? { ...createDocument(turn), orderedBlocks: [{ blockId: "unknown-content", kind: "unknown_block", order: 0, text: "unsupported" }] } : createDocument(turn) }).reason, "turn_document_incomplete");
+assert.equal(coordinator.collect({ inspection, completenessProof: proof, conversationId, createDocument: (turn) => turn.role === "assistant" ? { ...createDocument(turn), orderedBlocks: [{ blockId: "invented-content", kind: "invented_block", order: 0, text: "unsupported" }] } : createDocument(turn) }).reason, "turn_document_incomplete");
+assert.equal(coordinator.collect({ inspection, completenessProof: proof, conversationId, createDocument: (turn) => ({ ...createDocument(turn), producedBy: "CallerAuthoredDocument" }) }).reason, "document_producer_unproven");
+assert.equal(coordinator.collect({ inspection: { ...inspection, turns: turns.map((turn, index) => index === 2 ? { ...turn, role: "tool" } : turn) }, completenessProof: proof, conversationId, createDocument }).reason, "turn_order_invalid");
 assert.equal(serializer.serializeConversation([firstAssistant], { completeSelection: true }).reason, "conversation_bundle_invalid");
 assert.equal(coordinator.validateBundle({ ...collected.bundle, completionProof: { ...collected.bundle.completionProof, turnSequenceHash: "00000000" } }).reason, "conversation_sequence_unproven");
 
@@ -215,7 +222,12 @@ const output = {
   pdfPageMathMlBudgetEnforced: true,
   lowMemoryRequiresFullHistory: true,
   forgedCompletenessRejected: true,
-  streamingAssistantRejected: true
+  streamingAssistantRejected: true,
+  duplicateTurnRejected: true,
+  duplicateDocumentRejected: true,
+  unknownOrOpaqueContentRejected: true,
+  unprovenProducerRejected: true,
+  unsupportedRoleRejected: true
 };
 const evidenceDir = path.join(root, "results", "mica-product-system-rebuild", "convergence-evidence");
 await mkdir(evidenceDir, { recursive: true });

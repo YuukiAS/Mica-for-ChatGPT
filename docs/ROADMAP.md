@@ -1,6 +1,6 @@
 # Mica Roadmap
 
-Mica 以 2026-10-12 的冻结产品系统为基础继续推进。Foundation、Low Memory、Highlighter 和 PDF 的既有成果仍是架构底座；`0.5.10` 功能收敛阶段新增统一设置、Markdown/Notion 数据路径、完整会话导出、严格清洗并预留备注/标签的高亮记录后端、高级 Reliability 后端、按站点授权的普通网页高亮、共用高亮交互策略，以及受当前站点合同约束的恢复控件、建议工作控制器和单回答 Mica actions 后端。各项状态以 [`product/MICA_FUNCTIONAL_CONVERGENCE_V1.md`](product/MICA_FUNCTIONAL_CONVERGENCE_V1.md) 为准，历史候选证据不自动等于当前构建已完成真实验收。
+Mica 以 2026-10-12 的冻结产品系统为基础继续推进。Foundation、Low Memory、Highlighter 和 PDF 的既有成果仍是架构底座；当前 `0.5.13` 功能收敛候选已加入统一设置、Markdown/Notion 数据路径、完整会话导出、严格清洗并预留备注/标签的高亮记录后端、高级 Reliability 后端、按站点授权的普通网页高亮、共用高亮交互策略，以及受当前站点合同约束的恢复控件、建议工作控制器和单回答 Mica actions 后端。各项状态以 [`product/MICA_FUNCTIONAL_CONVERGENCE_V1.md`](product/MICA_FUNCTIONAL_CONVERGENCE_V1.md) 为准，历史候选证据不自动等于当前构建已完成真实验收。
 
 ## Foundation（内部关口）
 
@@ -39,7 +39,7 @@ ChatGPT 原生 virtualization 只是基线。`content-visibility`、DOM 数量�
 
 ## 功能收敛阶段 — Copy / Settings / Reliability
 
-当前 `0.5.10` 后端候选已经加入：
+当前 `0.5.13` 后端候选已经加入：
 
 - 版本化设置 schema 和统一 Options 页面；
 - AnswerDocument 驱动的 Markdown、Notion rich clipboard 和 Notion import file；

@@ -174,7 +174,7 @@ function developerQaFixture(currentContract, hash) {
   return {
     schema: "mica-developer-qa.v1",
     generatedAt: "2026-10-22T00:00:00.000Z",
-    candidate: { version: "0.5.12", versionName: "0.5.12", buildLabel: "functional-convergence.13", contractHash: hash },
+    candidate: { version: "0.5.13", versionName: "0.5.13", buildLabel: "functional-convergence.14", contractHash: hash },
     page: {
       supportedHost: true,
       state: "compatible",

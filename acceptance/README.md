@@ -13,6 +13,16 @@ npm run acceptance:focused -- --bundle <bundle-directory> --gate <gate-id>
 npm run acceptance:candidate -- --bundle <bundle-directory>
 ```
 
+Each command accepts `--output <repository-relative-json-path>`. The CLI writes
+the same native `mica.acceptance-run.v1` JSON object that it prints to stdout;
+absolute paths and paths outside the repository are rejected. Candidate and
+focused results preserve the candidate/report identities, required gates,
+artifact descriptors, raw evidence references, invalidation conditions and one
+result per requested gate. Gate status is `PASS` when the validator and required
+evidence class both pass, `FAIL` when supplied evidence contradicts the frozen
+validator, and `UNKNOWN` when the required evidence or evidence class is absent.
+An overall nonzero exit remains mandatory whenever `ok` is false.
+
 `acceptance:preflight` must accept every declared known-good control and reject
 every declared known-bad control. The focused and candidate commands require a
 `candidate` bundle; a `control` bundle cannot be presented as release evidence.
@@ -80,6 +90,11 @@ installed/on), measured process/heap ranges, retained content, mounted turns,
 mutations, typing and scroll latency, short/medium/long profiles, a recent-turn
 budget, a low-memory pressure fixture, client-only truncation, full restoration
 and the complete core-flow regression set.
+
+Every A/B/C aggregate must be the median of its complete bound sample series.
+B and C must also bind the same enabled non-Low-Memory capability set and its
+SHA-256 identity, so a candidate cannot manufacture a gain by selecting only
+favorable samples or disabling unrelated functionality.
 
 The initial quantitative floor is deliberately falsifiable: C must improve
 process memory by at least 10% or JS heap by at least 15% versus the better A/B

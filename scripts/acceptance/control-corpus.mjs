@@ -53,6 +53,10 @@ export async function runControlCorpus(repoRoot) {
     ["known-good-selectable-math-pdf", async (context) => { context.requestedGateIds = ["pdf-selection"]; }],
     ["missing-evidence", async ({ manifest }) => { manifest.evidence = manifest.evidence.filter((item) => item.gateId !== "popup-render"); refreshRoot(manifest); }],
     ["tampered-artifact", async ({ bundleDir }) => { await writeFile(path.join(bundleDir, "artifacts", "dist.zip"), "tampered dist"); }],
+    ["wrong-validator-version", async ({ manifest }) => { manifest.validator.version = "0.0.0"; }],
+    ["wrong-fixture-set-hash", async ({ manifest }) => { manifest.fixtureSetHash = "0".repeat(64); }],
+    ["wrong-contract-hash", async ({ manifest }) => { manifest.chatgptContractHash = "0".repeat(64); }],
+    ["duplicate-required-gate", async ({ manifest }) => { manifest.requiredGates.push(manifest.requiredGates[0]); }],
     ["wrong-candidate-dist-hash", async ({ manifest }) => { manifest.candidate.distHash = "0".repeat(64); }],
     ["stale-prior-candidate-report", async ({ manifest }) => { manifest.reportContext.candidateCommit = "b".repeat(40); }],
     ["duplicate-popup-screenshots", async ({ manifest }) => { evidence(manifest, "popup-render").measurement.themeArtifacts.dark = "popup-light"; refreshRoot(manifest); }],
@@ -171,6 +175,26 @@ export async function runControlCorpus(repoRoot) {
       record.subject = { surface: "target-low-memory-device" };
       refreshRoot(manifest);
     }],
+    ["low-memory-dom-only-rehash", async (context) => {
+      await mutateLowMemoryPressure(context, (value) => {
+        value.actualTruncation = false;
+        value.truncatedRepresentation = "dom-visibility-only";
+      });
+      const measurement = evidence(context.manifest, "low-memory-benefit").measurement;
+      measurement.actualTruncation = false;
+      measurement.truncatedRepresentation = "dom-visibility-only";
+      refreshRoot(context.manifest);
+    }],
+    ["low-memory-cherry-picked-sample-rehash", async (context) => {
+      await mutateLowMemoryPressure(context, (value) => { value.C.processMemoryMb = value.C.sampleSeries.processMemoryMb[0]; });
+      evidence(context.manifest, "low-memory-benefit").measurement.C.processMemoryMb = evidence(context.manifest, "low-memory-benefit").measurement.C.sampleSeries.processMemoryMb[0];
+      refreshRoot(context.manifest);
+    }],
+    ["low-memory-features-disabled-rehash", async (context) => {
+      await mutateLowMemoryPressure(context, (value) => { value.C.enabledCapabilities = ["foundation"]; });
+      evidence(context.manifest, "low-memory-benefit").measurement.C.enabledCapabilities = ["foundation"];
+      refreshRoot(context.manifest);
+    }],
     ["lost-highlight-after-remount", async ({ manifest }) => { evidence(manifest, "highlight-remount").measurement.restoredAfterRemount = false; refreshRoot(manifest); }],
     ["highlight-ambiguous-wrong-attachment-rehash", async (context) => mutateHighlighter(context, (value) => { value.ambiguous.status.renderedCount = 1; })],
     ["highlight-prototype-patch-rehash", async (context) => mutateHighlighter(context, (value) => { value.invariants.noGlobalRangePatch = false; })],
@@ -192,6 +216,11 @@ export async function runControlCorpus(repoRoot) {
     ["forged-conversation-completeness-rehash", async (context) => {
       await mutateJsonArtifact(context, "conversation-export", (value) => { value.forgedCompletenessRejected = false; });
       evidence(context.manifest, "conversation-export-completeness").measurement.forgedCompletenessRejected = false;
+      refreshRoot(context.manifest);
+    }],
+    ["forged-incomplete-content-accepted-rehash", async (context) => {
+      await mutateJsonArtifact(context, "conversation-export", (value) => { value.unknownOrOpaqueContentRejected = false; });
+      evidence(context.manifest, "conversation-export-completeness").measurement.unknownOrOpaqueContentRejected = false;
       refreshRoot(context.manifest);
     }],
     ["forged-export-fidelity-rehash", async (context) => {
@@ -599,18 +628,40 @@ function refreshRoot(manifest) {
 }
 
 function controlPressureState(variant, processMemoryMb, heapMb, retainedContentMb, mappingNodes, installed) {
+  const samples = (value, delta = 2) => [value - delta, value - (delta / 2), value, value + (delta / 2), value + delta];
+  const processSamples = samples(processMemoryMb, 20);
+  const heapSamples = samples(heapMb, 15);
+  const retainedSamples = samples(retainedContentMb, 10);
+  const mountedSamples = [12, 12, 12, 12, 12];
+  const mutationSamples = [60, 61, 62, 63, 64];
+  const typingP95Ms = variant.endsWith("-on") ? 21 : 20;
+  const scrollP95Ms = variant.endsWith("-on") ? 25 : 24;
+  const typingSamples = samples(typingP95Ms, 2);
+  const scrollSamples = samples(scrollP95Ms, 2);
   return {
     variant,
-    processMemoryMb, processMemoryRangeMb: [processMemoryMb - 20, processMemoryMb + 20],
-    heapMb, heapRangeMb: [heapMb - 15, heapMb + 15], retainedContentMb,
+    processMemoryMb, processMemoryRangeMb: [processSamples[0], processSamples.at(-1)],
+    heapMb, heapRangeMb: [heapSamples[0], heapSamples.at(-1)], retainedContentMb,
     mountedTurnCount: 12, mutationCount: 62,
-    typingP95Ms: variant.endsWith("-on") ? 21 : 20, typingRangeMs: [18, 22],
-    scrollP95Ms: variant.endsWith("-on") ? 25 : 24, scrollRangeMs: [22, 27],
+    typingP95Ms, typingRangeMs: [typingSamples[0], typingSamples.at(-1)],
+    scrollP95Ms, scrollRangeMs: [scrollSamples[0], scrollSamples.at(-1)],
     frameP95Ms: 17, longTaskCount: 0, longTaskTotalMs: 0, longTaskMaxMs: 0,
     bootstrapLongTaskCount: 1, bootstrapLongTaskTotalMs: 120, bootstrapLongTaskMaxMs: 120,
     layoutCount: 12, recalcStyleCount: 18, mappingNodes, samples: 5,
     fullExtensionRuntimeLoaded: installed,
-    runtimeVersion: installed ? "0.3.0" : null
+    runtimeVersion: installed ? "0.3.0" : null,
+    lowMemoryEnabled: variant.endsWith("-on"),
+    enabledCapabilities: installed ? ["foundation", "highlighter", "pdf", "copy-export", "reliability-backend"] : [],
+    nonLowMemoryFeatureFlagsHash: installed ? "f".repeat(64) : null,
+    sampleSeries: {
+      processMemoryMb: processSamples,
+      heapMb: heapSamples,
+      retainedContentMb: retainedSamples,
+      mountedTurnCount: mountedSamples,
+      mutationCount: mutationSamples,
+      typingP95Ms: typingSamples,
+      scrollP95Ms: scrollSamples
+    }
   };
 }
 
@@ -664,7 +715,12 @@ function controlConversationExport() {
     pdfPageMathMlBudgetEnforced: true,
     lowMemoryRequiresFullHistory: true,
     forgedCompletenessRejected: true,
-    streamingAssistantRejected: true
+    streamingAssistantRejected: true,
+    duplicateTurnRejected: true,
+    duplicateDocumentRejected: true,
+    unknownOrOpaqueContentRejected: true,
+    unprovenProducerRejected: true,
+    unsupportedRoleRejected: true
   };
 }
 
@@ -864,6 +920,15 @@ async function mutateStress({ bundleDir, manifest }, mutate) {
   await writeFile(file, JSON.stringify(value));
   manifest.artifacts.find((item) => item.id === "low-memory-stress").sha256 = await sha256File(file);
   evidence(manifest, "low-memory-benefit").measurement.stress = value;
+  refreshRoot(manifest);
+}
+
+async function mutateLowMemoryPressure({ bundleDir, manifest }, mutate) {
+  const file = path.join(bundleDir, "artifacts", "low-memory-pressure.json");
+  const value = JSON.parse(await readFile(file, "utf8"));
+  mutate(value);
+  await writeFile(file, JSON.stringify(value));
+  manifest.artifacts.find((item) => item.id === "low-memory-pressure").sha256 = await sha256File(file);
   refreshRoot(manifest);
 }
 

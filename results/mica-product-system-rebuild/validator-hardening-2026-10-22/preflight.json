@@ -1,0 +1,726 @@
+{
+  "resultSchema": "mica.acceptance-run.v1",
+  "ok": true,
+  "command": "preflight",
+  "invocation": {
+    "entrypoint": "scripts/acceptance/cli.mjs",
+    "packageCommand": "acceptance:preflight",
+    "argv": [
+      "preflight"
+    ]
+  },
+  "standard": {
+    "source": "acceptance/contracts.json",
+    "schemaVersion": 1,
+    "validatorVersion": "1.17.0"
+  },
+  "validatorVersion": "1.17.0",
+  "validatorTreeHash": "61e1bab44db1c133632ecf2222f2dac3b0fefff8aacd90439e73d3276f76efd0",
+  "fixtureSetHash": "5f5bc21e3908c0c520b80314506b8052a052b9b0432de1057d2cf11fb0bdb869",
+  "evidenceSchemaVersion": 1,
+  "knownGoodControl": "ACCEPTED",
+  "knownBadControls": "REJECTED",
+  "controls": {
+    "ok": true,
+    "knownGoodAccepted": 13,
+    "knownGoodDeclared": 13,
+    "knownBadRejected": 59,
+    "knownBadDeclared": 59,
+    "failed": [],
+    "results": [
+      {
+        "id": "complete-measured-bundle",
+        "expected": "ACCEPT",
+        "actual": "ACCEPT",
+        "errors": []
+      },
+      {
+        "id": "known-good-current-popup",
+        "expected": "ACCEPT",
+        "actual": "ACCEPT",
+        "errors": []
+      },
+      {
+        "id": "known-good-conversation-export-completeness",
+        "expected": "ACCEPT",
+        "actual": "ACCEPT",
+        "errors": []
+      },
+      {
+        "id": "known-good-recovery-deduplication",
+        "expected": "ACCEPT",
+        "actual": "ACCEPT",
+        "errors": []
+      },
+      {
+        "id": "known-good-recovery-action-safety",
+        "expected": "ACCEPT",
+        "actual": "ACCEPT",
+        "errors": []
+      },
+      {
+        "id": "known-good-target-surface-backend",
+        "expected": "ACCEPT",
+        "actual": "ACCEPT",
+        "errors": []
+      },
+      {
+        "id": "known-good-highlight-record-integrity",
+        "expected": "ACCEPT",
+        "actual": "ACCEPT",
+        "errors": []
+      },
+      {
+        "id": "known-good-local-import-integrity",
+        "expected": "ACCEPT",
+        "actual": "ACCEPT",
+        "errors": []
+      },
+      {
+        "id": "known-good-chatgpt-ui-compatibility",
+        "expected": "ACCEPT",
+        "actual": "ACCEPT",
+        "errors": []
+      },
+      {
+        "id": "known-good-adapter-contract",
+        "expected": "ACCEPT",
+        "actual": "ACCEPT",
+        "errors": []
+      },
+      {
+        "id": "known-good-low-memory-fixture",
+        "expected": "ACCEPT",
+        "actual": "ACCEPT",
+        "errors": []
+      },
+      {
+        "id": "known-good-highlighter-fixture",
+        "expected": "ACCEPT",
+        "actual": "ACCEPT",
+        "errors": []
+      },
+      {
+        "id": "known-good-selectable-math-pdf",
+        "expected": "ACCEPT",
+        "actual": "ACCEPT",
+        "errors": []
+      },
+      {
+        "id": "missing-evidence",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "gate popup-render requires exactly one evidence record"
+        ]
+      },
+      {
+        "id": "tampered-artifact",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "artifact dist hash mismatch"
+        ]
+      },
+      {
+        "id": "wrong-validator-version",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "validator version mismatch"
+        ]
+      },
+      {
+        "id": "wrong-fixture-set-hash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "fixture set hash mismatch"
+        ]
+      },
+      {
+        "id": "wrong-contract-hash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "ChatGPT contract hash mismatch",
+          "adapter-contract: manifest contract hash is not the bound contract artifact hash"
+        ]
+      },
+      {
+        "id": "duplicate-required-gate",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates"
+        ]
+      },
+      {
+        "id": "wrong-candidate-dist-hash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "candidate dist hash mismatch",
+          "stale prior-candidate report dist hash",
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "candidate-identity: measurement dist hash does not match candidate",
+          "candidate-identity: measurement dist hash does not match candidate"
+        ]
+      },
+      {
+        "id": "stale-prior-candidate-report",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "stale prior-candidate report commit",
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates"
+        ]
+      },
+      {
+        "id": "duplicate-popup-screenshots",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "popup-render: duplicate screenshot/crop used for distinct popup surfaces"
+        ]
+      },
+      {
+        "id": "wrong-popup-surface",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "popup-render: wrong page/surface target"
+        ]
+      },
+      {
+        "id": "hard-coded-pass-only",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "popup-render: required popup states were not rendered",
+          "popup-render: required popup widths were not rendered",
+          "popup-render: required popup scales were not rendered",
+          "popup-render: keyboard/accessibility evidence missing",
+          "popup-render: secondary-view focus return evidence missing",
+          "popup-render: popup measurement does not match the bound browser evidence",
+          "popup-render: light/dark screenshot artifacts missing"
+        ]
+      },
+      {
+        "id": "forged-bound-measurement",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "core-flow-regression: connector measurement differs from bound browser evidence",
+          "low-memory-benefit: low-memory core-flow measurement differs from bound active-window evidence"
+        ]
+      },
+      {
+        "id": "forced-unknown-settled",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "answer-document-core: bound AnswerDocument evidence does not prove lifecycle/ownership safety"
+        ]
+      },
+      {
+        "id": "wrong-bootstrap-capability-binding",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "adapter-contract: capability turns.list differs from the bound contract artifact",
+          "adapter-contract: capability turns.list is not supported by its current bootstrap capability",
+          "adapter-contract: capability turns.list evidence class differs from current bootstrap",
+          "adapter-contract: capability turns.list references a missing bootstrap observation",
+          "adapter-contract: capability turns.list observed invariants are not mechanically proven by current bootstrap surfaces"
+        ]
+      },
+      {
+        "id": "missing-contract-capability",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "adapter-contract: capability measurements missing",
+          "adapter-contract: measured capability set does not match the bound contract capability set"
+        ]
+      },
+      {
+        "id": "duplicate-contract-capability",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "adapter-contract: measured capability IDs must be present and unique",
+          "adapter-contract: measured capability set does not match the bound contract capability set"
+        ]
+      },
+      {
+        "id": "bootstrap-invariant-mismatch",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "adapter-contract: capability turns.list observed invariants are not mechanically proven by current bootstrap surfaces"
+        ]
+      },
+      {
+        "id": "evidence-root-mismatch",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "evidence root hash mismatch",
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates"
+        ]
+      },
+      {
+        "id": "historical-copy-misplacement",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "copy-placement: copy placement measurement is not mechanically derived from the bound contract/bootstrap evidence",
+          "copy-placement: historical Copy/Mica action misplacement was not rejected"
+        ]
+      },
+      {
+        "id": "fabricated-copy-placement-proof",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "copy-placement: copy placement measurement is not mechanically derived from the bound contract/bootstrap evidence"
+        ]
+      },
+      {
+        "id": "coherent-incomplete-placement-proof",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "copy-placement: copy placement measurement is not mechanically derived from the bound contract/bootstrap evidence"
+        ]
+      },
+      {
+        "id": "connector-residual-remount-regression",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "core-flow-regression: connector regression evidence failed",
+          "core-flow-regression: connector measurement differs from bound browser evidence"
+        ]
+      },
+      {
+        "id": "fake-waiting-send-lifecycle",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "send-lifecycle-safety: fake-waiting lifecycle would resend while progress exists",
+          "send-lifecycle-safety: consequential flow would be auto-resent",
+          "send-lifecycle-safety: send-lifecycle measurement differs from bound browser evidence"
+        ]
+      },
+      {
+        "id": "low-memory-no-op",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "low-memory-benefit: low-memory state C differs from bound pressure evidence",
+          "low-memory-benefit: low-memory state C processMemoryMb is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state C heapMb is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state C retainedContentMb is not the median of its complete repeated sample series",
+          "low-memory-benefit: no measured additional memory benefit over native/off baselines",
+          "low-memory-benefit: heavy retained content did not decrease materially"
+        ]
+      },
+      {
+        "id": "low-memory-stress-missing",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "evidence low-memory-benefit-control-evidence references missing artifact low-memory-stress",
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "low-memory-benefit: artifact low-memory-stress is missing",
+          "low-memory-benefit: low-memory stress measurement differs from bound stress evidence"
+        ]
+      },
+      {
+        "id": "low-memory-stress-failed-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "low-memory-benefit: Low Memory stress must pass exactly 8 loops and 40 runs"
+        ]
+      },
+      {
+        "id": "low-memory-stress-short-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "low-memory-benefit: Low Memory stress must pass exactly 8 loops and 40 runs"
+        ]
+      },
+      {
+        "id": "low-memory-stress-duplicate-script-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "low-memory-benefit: Low Memory stress loop 1 does not contain one PASS for each required script"
+        ]
+      },
+      {
+        "id": "low-memory-synthetic-click-authorized-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "low-memory-benefit: page-writable telemetry crossed the trusted recovery-action boundary"
+        ]
+      },
+      {
+        "id": "low-memory-target-environment-misclassified",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "low-memory-benefit: low-memory target identity differs from bound pressure evidence",
+          "low-memory-benefit: physical target low-memory device identity missing"
+        ]
+      },
+      {
+        "id": "low-memory-dom-only-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "low-memory-benefit: low-memory implementation is not a safe client-only history window"
+        ]
+      },
+      {
+        "id": "low-memory-cherry-picked-sample-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "low-memory-benefit: low-memory state C processMemoryMb is not the median of its complete repeated sample series"
+        ]
+      },
+      {
+        "id": "low-memory-features-disabled-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "low-memory-benefit: B/C did not retain the complete non-Low-Memory runtime capability set"
+        ]
+      },
+      {
+        "id": "lost-highlight-after-remount",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "highlight-remount: Highlighter measurement differs from bound browser evidence"
+        ]
+      },
+      {
+        "id": "highlight-ambiguous-wrong-attachment-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "highlight-remount: Highlighter measurement differs from bound browser evidence",
+          "highlight-remount: highlight remount, ownership, privacy, or ambiguity behavior failed"
+        ]
+      },
+      {
+        "id": "highlight-prototype-patch-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "highlight-remount: Highlighter measurement differs from bound browser evidence",
+          "highlight-remount: highlight remount, ownership, privacy, or ambiguity behavior failed"
+        ]
+      },
+      {
+        "id": "highlight-duplicate-screenshots",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "highlight-remount: Highlighter measurement differs from bound browser evidence",
+          "highlight-remount: Highlighter visual states reuse duplicate screenshots"
+        ]
+      },
+      {
+        "id": "non-selectable-inline-math-pdf",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "pdf-selection: PDF measurement differs from bound actual-viewer evidence",
+          "pdf-selection: PDF selection/text/highlight measurement incomplete"
+        ]
+      },
+      {
+        "id": "pdf-pointer-failed-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "pdf-selection: PDF measurement differs from bound actual-viewer evidence"
+        ]
+      },
+      {
+        "id": "pdf-extraction-only-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "pdf-selection: PDF measurement differs from bound actual-viewer evidence"
+        ]
+      },
+      {
+        "id": "pdf-duplicate-viewer-screenshots",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "pdf-selection: PDF measurement differs from bound actual-viewer evidence",
+          "pdf-selection: PDF render/viewer states reuse duplicate screenshots"
+        ]
+      },
+      {
+        "id": "pdf-forged-consumer-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "pdf-selection: PDF measurement differs from bound actual-viewer evidence"
+        ]
+      },
+      {
+        "id": "stale-chatgpt-contract",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "adapter-contract: capability turns.list is stale or invalidated"
+        ]
+      },
+      {
+        "id": "control-bundle-presented-as-candidate",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "bundleKind control does not match required candidate",
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates"
+        ]
+      },
+      {
+        "id": "copy-serialization-output-mismatch",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "copy-serialization: serialization case plain-markdown output differs from expected artifact"
+        ]
+      },
+      {
+        "id": "forged-conversation-completeness-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "conversation-export-completeness: conversation export invariant forgedCompletenessRejected failed"
+        ]
+      },
+      {
+        "id": "forged-incomplete-content-accepted-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "conversation-export-completeness: conversation export invariant unknownOrOpaqueContentRejected failed"
+        ]
+      },
+      {
+        "id": "forged-export-fidelity-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "conversation-export-completeness: conversation export invariant structuredTableMath failed"
+        ]
+      },
+      {
+        "id": "forged-semantic-mathml-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "conversation-export-completeness: conversation export invariant semanticMathMlRendered failed"
+        ]
+      },
+      {
+        "id": "forged-recovery-deduplication-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "recovery-deduplication: recovery ledger invariant workerRestartDeduplicated failed"
+        ]
+      },
+      {
+        "id": "forged-recovery-action-safety-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "recovery-action-safety: recovery action invariant wrongTurnEvidenceRejected failed"
+        ]
+      },
+      {
+        "id": "forged-target-surface-backend-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "target-surface-backend: target-surface backend invariant unknownLiveContractFailsOpen failed"
+        ]
+      },
+      {
+        "id": "forged-answer-action-backend-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "target-surface-backend: target-surface backend invariant singleAnswerActionEntry failed"
+        ]
+      },
+      {
+        "id": "forged-highlight-record-sanitization-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "highlight-record-integrity: highlight record integrity invariant unknownTopLevelFieldsStripped failed"
+        ]
+      },
+      {
+        "id": "forged-answer-scope-clear-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "highlight-record-integrity: highlight record integrity invariant answerScopedClearIsolated failed"
+        ]
+      },
+      {
+        "id": "forged-local-import-budget-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "local-import-integrity: local import integrity invariant highlightFileBudgetEnforced failed"
+        ]
+      },
+      {
+        "id": "forged-chatgpt-ui-isolation-rehash",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "chatgpt-ui-compatibility: ChatGPT UI compatibility invariant capabilityDriftIsolated failed"
+        ]
+      },
+      {
+        "id": "packaging-version-mismatch",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates",
+          "packaging-version: sourceVersion differs from candidate version",
+          "packaging-version: popupVersion differs from candidate version",
+          "packaging-version: diagnosticsVersion differs from candidate version",
+          "packaging-version: reportedUnpackedVersion differs from candidate version"
+        ]
+      },
+      {
+        "id": "omitted-release-gate",
+        "expected": "REJECT",
+        "actual": "REJECT",
+        "errors": [
+          "requiredGates do not match acceptance profile all-controls",
+          "requiredGates contains duplicates"
+        ]
+      }
+    ]
+  }
+}

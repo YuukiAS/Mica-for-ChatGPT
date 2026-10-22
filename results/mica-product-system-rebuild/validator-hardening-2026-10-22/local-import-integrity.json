@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "subject": "local-import-integrity",
+  "passed": true,
+  "settingsTextBudgetEnforced": true,
+  "settingsFileBudgetEnforced": true,
+  "futureSettingsSchemaRejected": true,
+  "legacySettingsAccepted": true,
+  "highlightFileBudgetEnforced": true,
+  "perFamilyRecordBudgetsEnforced": true,
+  "exactCombinedEnvelopeRequired": true,
+  "futureHighlightSchemaRejected": true,
+  "combinedRoundTrip": true,
+  "legacyFamilyImportsPreserved": true,
+  "mixedLegacyFamiliesRejected": true,
+  "deterministicConflictRule": "incoming_over_current_first_incoming_duplicate_wins",
+  "readBeforeBudgetCheck": false,
+  "unknownEnvelopeFieldsAccepted": false,
+  "externalServiceAdded": false,
+  "unboundedConversationContentImported": false
+}

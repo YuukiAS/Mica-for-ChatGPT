@@ -1,0 +1,640 @@
+{
+  "resultSchema": "mica.acceptance-run.v1",
+  "command": "candidate",
+  "bundleDir": "D:\\Code\\Mica-for-ChatGPT\\results\\mica-product-system-rebuild\\highlight-pdf-candidate\\e510461d7f94fcdeecd37bb0e97c8d204c4e5463",
+  "invocation": {
+    "entrypoint": "scripts/acceptance/cli.mjs",
+    "packageCommand": "acceptance:candidate",
+    "argv": [
+      "candidate",
+      "--bundle",
+      "results/mica-product-system-rebuild/highlight-pdf-candidate/e510461d7f94fcdeecd37bb0e97c8d204c4e5463"
+    ]
+  },
+  "standard": {
+    "source": "acceptance/contracts.json",
+    "schemaVersion": 1,
+    "validatorVersion": "1.17.0"
+  },
+  "ok": false,
+  "errors": [
+    "validator version mismatch",
+    "validator tree hash mismatch",
+    "fixture set hash mismatch",
+    "low-memory-benefit: low-memory state A processMemoryMb is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state A heapMb is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state A retainedContentMb is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state A mountedTurnCount is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state A mutationCount is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state A typingP95Ms is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state A scrollP95Ms is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state A low-memory feature state is incorrect",
+    "low-memory-benefit: low-memory state B processMemoryMb is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state B heapMb is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state B retainedContentMb is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state B mountedTurnCount is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state B mutationCount is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state B typingP95Ms is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state B scrollP95Ms is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state B low-memory feature state is incorrect",
+    "low-memory-benefit: low-memory state C processMemoryMb is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state C heapMb is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state C retainedContentMb is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state C mountedTurnCount is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state C mutationCount is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state C typingP95Ms is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state C scrollP95Ms is not the median of its complete repeated sample series",
+    "low-memory-benefit: low-memory state C low-memory feature state is incorrect",
+    "low-memory-benefit: B/C did not retain the complete non-Low-Memory runtime capability set",
+    "low-memory-benefit: B/C non-Low-Memory feature configuration differs"
+  ],
+  "identity": {
+    "validatorVersion": "1.17.0",
+    "validatorTreeHash": "61e1bab44db1c133632ecf2222f2dac3b0fefff8aacd90439e73d3276f76efd0",
+    "fixtureSetHash": "5f5bc21e3908c0c520b80314506b8052a052b9b0432de1057d2cf11fb0bdb869",
+    "evidenceSchemaVersion": 1,
+    "requiredGateIds": [
+      "candidate-identity",
+      "popup-render",
+      "adapter-contract",
+      "answer-document-core",
+      "copy-placement",
+      "core-flow-regression",
+      "send-lifecycle-safety",
+      "low-memory-benefit",
+      "highlight-remount",
+      "pdf-selection",
+      "privacy",
+      "packaging-version"
+    ],
+    "bundleKind": "candidate",
+    "acceptanceProfile": "milestone-b",
+    "candidate": {
+      "commit": "e510461d7f94fcdeecd37bb0e97c8d204c4e5463",
+      "version": "0.3.0",
+      "buildLabel": "highlight-pdf.1",
+      "distArtifactId": "dist-tree",
+      "distHash": "b43b5197b431c41a4bc30e887109011acfabda5e55905a1d778d927427c5a189"
+    },
+    "reportContext": {
+      "candidateCommit": "e510461d7f94fcdeecd37bb0e97c8d204c4e5463",
+      "distHash": "b43b5197b431c41a4bc30e887109011acfabda5e55905a1d778d927427c5a189"
+    },
+    "gateResults": [
+      {
+        "gateId": "candidate-identity",
+        "validatorKind": "candidate-identity",
+        "status": "PASS",
+        "evidenceId": "candidate-identity-foundation-evidence",
+        "evidenceClass": "LOCAL_REAL_BROWSER",
+        "artifactIds": [
+          "dist-tree",
+          "built-manifest"
+        ],
+        "reasons": []
+      },
+      {
+        "gateId": "popup-render",
+        "validatorKind": "popup-render",
+        "status": "PASS",
+        "evidenceId": "popup-render-foundation-evidence",
+        "evidenceClass": "LOCAL_REAL_BROWSER",
+        "artifactIds": [
+          "popup-render",
+          "popup-light",
+          "popup-dark",
+          "popup-320-150",
+          "popup-400-125",
+          "troubleshooting",
+          "developer-qa"
+        ],
+        "reasons": []
+      },
+      {
+        "gateId": "adapter-contract",
+        "validatorKind": "adapter-contract",
+        "status": "PASS",
+        "evidenceId": "adapter-contract-foundation-evidence",
+        "evidenceClass": "REAL_DERIVED_CURRENT_CHATGPT",
+        "artifactIds": [
+          "chatgpt-contract",
+          "current-chatgpt-bootstrap",
+          "foundation-core"
+        ],
+        "reasons": []
+      },
+      {
+        "gateId": "answer-document-core",
+        "validatorKind": "answer-document-core",
+        "status": "PASS",
+        "evidenceId": "answer-document-core-foundation-evidence",
+        "evidenceClass": "REAL_DERIVED_CURRENT_CHATGPT",
+        "artifactIds": [
+          "foundation-core",
+          "chatgpt-contract",
+          "current-chatgpt-bootstrap"
+        ],
+        "reasons": []
+      },
+      {
+        "gateId": "copy-placement",
+        "validatorKind": "copy-placement",
+        "status": "PASS",
+        "evidenceId": "copy-placement-foundation-evidence",
+        "evidenceClass": "CURRENT_CHATGPT_READ_ONLY",
+        "artifactIds": [
+          "chatgpt-contract",
+          "current-chatgpt-bootstrap"
+        ],
+        "reasons": []
+      },
+      {
+        "gateId": "core-flow-regression",
+        "validatorKind": "core-flow-regression",
+        "status": "PASS",
+        "evidenceId": "core-flow-regression-foundation-evidence",
+        "evidenceClass": "LOCAL_REAL_BROWSER",
+        "artifactIds": [
+          "foundation-flows",
+          "dist-tree"
+        ],
+        "reasons": []
+      },
+      {
+        "gateId": "send-lifecycle-safety",
+        "validatorKind": "send-lifecycle-safety",
+        "status": "PASS",
+        "evidenceId": "send-lifecycle-safety-foundation-evidence",
+        "evidenceClass": "LOCAL_REAL_BROWSER",
+        "artifactIds": [
+          "foundation-flows",
+          "dist-tree"
+        ],
+        "reasons": []
+      },
+      {
+        "gateId": "low-memory-benefit",
+        "validatorKind": "low-memory-benefit",
+        "status": "FAIL",
+        "evidenceId": "low-memory-benefit-foundation-evidence",
+        "evidenceClass": "TARGET_CLASS_ENVIRONMENT",
+        "artifactIds": [
+          "dist-tree",
+          "low-memory-pressure",
+          "low-memory-fixture",
+          "low-memory-page",
+          "low-memory-stress",
+          "low-memory-registration",
+          "foundation-flows",
+          "popup-low-memory-active",
+          "popup-low-memory-restore-required",
+          "popup-low-memory-full-history-bypass"
+        ],
+        "reasons": [
+          "low-memory-benefit: low-memory state A processMemoryMb is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state A heapMb is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state A retainedContentMb is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state A mountedTurnCount is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state A mutationCount is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state A typingP95Ms is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state A scrollP95Ms is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state A low-memory feature state is incorrect",
+          "low-memory-benefit: low-memory state B processMemoryMb is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state B heapMb is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state B retainedContentMb is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state B mountedTurnCount is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state B mutationCount is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state B typingP95Ms is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state B scrollP95Ms is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state B low-memory feature state is incorrect",
+          "low-memory-benefit: low-memory state C processMemoryMb is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state C heapMb is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state C retainedContentMb is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state C mountedTurnCount is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state C mutationCount is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state C typingP95Ms is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state C scrollP95Ms is not the median of its complete repeated sample series",
+          "low-memory-benefit: low-memory state C low-memory feature state is incorrect",
+          "low-memory-benefit: B/C did not retain the complete non-Low-Memory runtime capability set",
+          "low-memory-benefit: B/C non-Low-Memory feature configuration differs"
+        ]
+      },
+      {
+        "gateId": "highlight-remount",
+        "validatorKind": "highlight-remount",
+        "status": "PASS",
+        "evidenceId": "highlight-remount-foundation-evidence",
+        "evidenceClass": "LOCAL_REAL_BROWSER",
+        "artifactIds": [
+          "dist-tree",
+          "highlighter-fixture",
+          "highlighter-stress",
+          "highlighter-selection-light",
+          "highlighter-active-light",
+          "highlighter-edit-dark"
+        ],
+        "reasons": []
+      },
+      {
+        "gateId": "pdf-selection",
+        "validatorKind": "pdf-selection",
+        "status": "PASS",
+        "evidenceId": "pdf-selection-foundation-evidence",
+        "evidenceClass": "ACTUAL_PDF_VIEWER",
+        "artifactIds": [
+          "pdf",
+          "pdf-fixture",
+          "pdf-background",
+          "highlighter-fixture",
+          "pdf-render-1",
+          "pdf-render-2",
+          "pdf-preview",
+          "pdf-pointer-selection",
+          "pdf-display-math-selection"
+        ],
+        "reasons": []
+      },
+      {
+        "gateId": "privacy",
+        "validatorKind": "privacy",
+        "status": "PASS",
+        "evidenceId": "privacy-foundation-evidence",
+        "evidenceClass": "LOCAL_REAL_BROWSER",
+        "artifactIds": [
+          "foundation-core",
+          "foundation-flows"
+        ],
+        "reasons": []
+      },
+      {
+        "gateId": "packaging-version",
+        "validatorKind": "packaging-version",
+        "status": "PASS",
+        "evidenceId": "packaging-version-foundation-evidence",
+        "evidenceClass": "LOCAL_REAL_BROWSER",
+        "artifactIds": [
+          "built-manifest",
+          "version-report"
+        ],
+        "reasons": []
+      }
+    ],
+    "rawEvidence": [
+      {
+        "id": "candidate-identity-foundation-evidence",
+        "gateId": "candidate-identity",
+        "evidenceClass": "LOCAL_REAL_BROWSER",
+        "artifactIds": [
+          "dist-tree",
+          "built-manifest"
+        ]
+      },
+      {
+        "id": "popup-render-foundation-evidence",
+        "gateId": "popup-render",
+        "evidenceClass": "LOCAL_REAL_BROWSER",
+        "artifactIds": [
+          "popup-render",
+          "popup-light",
+          "popup-dark",
+          "popup-320-150",
+          "popup-400-125",
+          "troubleshooting",
+          "developer-qa"
+        ]
+      },
+      {
+        "id": "adapter-contract-foundation-evidence",
+        "gateId": "adapter-contract",
+        "evidenceClass": "REAL_DERIVED_CURRENT_CHATGPT",
+        "artifactIds": [
+          "chatgpt-contract",
+          "current-chatgpt-bootstrap",
+          "foundation-core"
+        ]
+      },
+      {
+        "id": "answer-document-core-foundation-evidence",
+        "gateId": "answer-document-core",
+        "evidenceClass": "REAL_DERIVED_CURRENT_CHATGPT",
+        "artifactIds": [
+          "foundation-core",
+          "chatgpt-contract",
+          "current-chatgpt-bootstrap"
+        ]
+      },
+      {
+        "id": "copy-placement-foundation-evidence",
+        "gateId": "copy-placement",
+        "evidenceClass": "CURRENT_CHATGPT_READ_ONLY",
+        "artifactIds": [
+          "chatgpt-contract",
+          "current-chatgpt-bootstrap"
+        ]
+      },
+      {
+        "id": "core-flow-regression-foundation-evidence",
+        "gateId": "core-flow-regression",
+        "evidenceClass": "LOCAL_REAL_BROWSER",
+        "artifactIds": [
+          "foundation-flows",
+          "dist-tree"
+        ]
+      },
+      {
+        "id": "send-lifecycle-safety-foundation-evidence",
+        "gateId": "send-lifecycle-safety",
+        "evidenceClass": "LOCAL_REAL_BROWSER",
+        "artifactIds": [
+          "foundation-flows",
+          "dist-tree"
+        ]
+      },
+      {
+        "id": "low-memory-benefit-foundation-evidence",
+        "gateId": "low-memory-benefit",
+        "evidenceClass": "TARGET_CLASS_ENVIRONMENT",
+        "artifactIds": [
+          "dist-tree",
+          "low-memory-pressure",
+          "low-memory-fixture",
+          "low-memory-page",
+          "low-memory-stress",
+          "low-memory-registration",
+          "foundation-flows",
+          "popup-low-memory-active",
+          "popup-low-memory-restore-required",
+          "popup-low-memory-full-history-bypass"
+        ]
+      },
+      {
+        "id": "highlight-remount-foundation-evidence",
+        "gateId": "highlight-remount",
+        "evidenceClass": "LOCAL_REAL_BROWSER",
+        "artifactIds": [
+          "dist-tree",
+          "highlighter-fixture",
+          "highlighter-stress",
+          "highlighter-selection-light",
+          "highlighter-active-light",
+          "highlighter-edit-dark"
+        ]
+      },
+      {
+        "id": "pdf-selection-foundation-evidence",
+        "gateId": "pdf-selection",
+        "evidenceClass": "ACTUAL_PDF_VIEWER",
+        "artifactIds": [
+          "pdf",
+          "pdf-fixture",
+          "pdf-background",
+          "highlighter-fixture",
+          "pdf-render-1",
+          "pdf-render-2",
+          "pdf-preview",
+          "pdf-pointer-selection",
+          "pdf-display-math-selection"
+        ]
+      },
+      {
+        "id": "privacy-foundation-evidence",
+        "gateId": "privacy",
+        "evidenceClass": "LOCAL_REAL_BROWSER",
+        "artifactIds": [
+          "foundation-core",
+          "foundation-flows"
+        ]
+      },
+      {
+        "id": "packaging-version-foundation-evidence",
+        "gateId": "packaging-version",
+        "evidenceClass": "LOCAL_REAL_BROWSER",
+        "artifactIds": [
+          "built-manifest",
+          "version-report"
+        ]
+      }
+    ],
+    "artifacts": [
+      {
+        "id": "dist-tree",
+        "path": "artifacts/dist-tree.json",
+        "sha256": "b43b5197b431c41a4bc30e887109011acfabda5e55905a1d778d927427c5a189",
+        "kind": "application/json"
+      },
+      {
+        "id": "built-manifest",
+        "path": "artifacts/built-manifest.json",
+        "sha256": "98c96509510e139333b0f7a33af8efec17cd3536e48e1da407d37d33aba4c1c3",
+        "kind": "application/json"
+      },
+      {
+        "id": "version-report",
+        "path": "artifacts/version-report.json",
+        "sha256": "2c631fb9df49b00af11d6239ad8ed6c26ba935fe1b094f8be8abf071f9c7c1aa",
+        "kind": "application/json"
+      },
+      {
+        "id": "chatgpt-contract",
+        "path": "artifacts/chatgpt-contract.json",
+        "sha256": "7bc4117efd3a32e99b17defb2809a630db3f2f951e01035af623e143bc1b9538",
+        "kind": "application/json"
+      },
+      {
+        "id": "current-chatgpt-bootstrap",
+        "path": "artifacts/current-chatgpt-bootstrap.json",
+        "sha256": "48deb6327dfb6cd8c6f968fee93551867971de9e801070e81acf5de8e036aefe",
+        "kind": "application/json"
+      },
+      {
+        "id": "foundation-core",
+        "path": "artifacts/foundation-core.json",
+        "sha256": "d477fa012a1b6247db9154ef536c72d7ca6f65a481e32b9fb43959ccc946595e",
+        "kind": "application/json"
+      },
+      {
+        "id": "foundation-flows",
+        "path": "artifacts/foundation-flows.json",
+        "sha256": "2192e1d9084d8b6e741ac677d2cf25b1fe4e5e133ad23e61ec2bd2d8c2360ae4",
+        "kind": "application/json"
+      },
+      {
+        "id": "popup-render",
+        "path": "artifacts/popup-render.json",
+        "sha256": "fd894b8211006c91465efa9db1001b7ebf286fe8de8a0ac9ca08290101cbd44f",
+        "kind": "application/json"
+      },
+      {
+        "id": "popup-light",
+        "path": "artifacts/popup-light.png",
+        "sha256": "f6807a9192612de97b3880ae8629b53c5696b6061d5ea176c40f237483dc0398",
+        "kind": "image/png"
+      },
+      {
+        "id": "popup-dark",
+        "path": "artifacts/popup-dark.png",
+        "sha256": "db240942edc18f0eac71d5f51fed1ca6fbf89870a42865cae390c35edafb2dc5",
+        "kind": "image/png"
+      },
+      {
+        "id": "popup-320-150",
+        "path": "artifacts/popup-320-150.png",
+        "sha256": "08d4eb62b8d39068b46a25dccef5f9ae91f2ab67387a43d58923532c19b18d43",
+        "kind": "image/png"
+      },
+      {
+        "id": "popup-400-125",
+        "path": "artifacts/popup-400-125.png",
+        "sha256": "1744b55fb4f501b90b470afadd8d916ab3037a93994960831a4dcf3d73d0f238",
+        "kind": "image/png"
+      },
+      {
+        "id": "troubleshooting",
+        "path": "artifacts/troubleshooting.png",
+        "sha256": "f7eafe89ce8751aefe853daa0daabe96f709df55f451e9ec1597a9dc1b34b728",
+        "kind": "image/png"
+      },
+      {
+        "id": "developer-qa",
+        "path": "artifacts/developer-qa.png",
+        "sha256": "bcf745376f8f882e7316a6b35e7466a074098a07548c3c55c7f8e4e8f5abab3c",
+        "kind": "image/png"
+      },
+      {
+        "id": "low-memory-pressure",
+        "path": "artifacts/low-memory-pressure.json",
+        "sha256": "666ef6baac91687e5278f3bfeb42bb8a59a2f964fb1da8883c8c6159ee4aa48c",
+        "kind": "application/json"
+      },
+      {
+        "id": "low-memory-fixture",
+        "path": "artifacts/low-memory-fixture.json",
+        "sha256": "13964e3744d0c13934d7514723ef4e151a758b3b174c9e880b09372bef030a0b",
+        "kind": "application/json"
+      },
+      {
+        "id": "low-memory-page",
+        "path": "artifacts/low-memory-page.json",
+        "sha256": "a783327b5f2fbc22dc1e7e1462bb2e83aa6c51b27170520b24137d4bf4bcda45",
+        "kind": "application/json"
+      },
+      {
+        "id": "low-memory-stress",
+        "path": "artifacts/low-memory-stress.json",
+        "sha256": "ab90b49b69d2355a0739ecb89e31b3b8ae96d2923a6b2f5eb678a5a717f0840a",
+        "kind": "application/json"
+      },
+      {
+        "id": "low-memory-registration",
+        "path": "artifacts/low-memory-registration.json",
+        "sha256": "57a2d2d06292f25d56f8a0ff3148b7fb9cf42f2177c4770556c989d0598c36f8",
+        "kind": "application/json"
+      },
+      {
+        "id": "popup-low-memory-active",
+        "path": "artifacts/popup-low-memory-active.png",
+        "sha256": "e932a9070e026d00a2a15516b618d688146add8c7b49d4a5d1ae50104e133f33",
+        "kind": "image/png"
+      },
+      {
+        "id": "popup-low-memory-restore-required",
+        "path": "artifacts/popup-low-memory-restore-required.png",
+        "sha256": "7539e0878ac15307f3ab96f67320aba52965baf83294819d7e3101bc5b9d2e5e",
+        "kind": "image/png"
+      },
+      {
+        "id": "popup-low-memory-full-history-bypass",
+        "path": "artifacts/popup-low-memory-full-history-bypass.png",
+        "sha256": "1c4f9492f55105e6b1313446e05a6c344b43ffc3f9d1cb2b25ac75ac601bae04",
+        "kind": "image/png"
+      },
+      {
+        "id": "highlighter-fixture",
+        "path": "artifacts/highlighter-fixture.json",
+        "sha256": "e5b47377ef9e1e8440b3a54a2650feb4ca5ceec50f8c9afcdc02ded71d3ff39c",
+        "kind": "application/json"
+      },
+      {
+        "id": "highlighter-stress",
+        "path": "artifacts/highlighter-stress.json",
+        "sha256": "67b4b9f761c0009e539c1e4149fbc5d28ed8a07e31144e87d83c4530d9da8d0e",
+        "kind": "application/json"
+      },
+      {
+        "id": "highlighter-selection-light",
+        "path": "artifacts/highlighter-selection-light.png",
+        "sha256": "da9960230983fc10f1357f720458b2e25e3c7ebe83089234bbc9f93bc19aa512",
+        "kind": "image/png"
+      },
+      {
+        "id": "highlighter-active-light",
+        "path": "artifacts/highlighter-active-light.png",
+        "sha256": "d67d22875accaa9871c5ce99cf8d6f68469e0e228edc2f83a31b7492a6ca3d00",
+        "kind": "image/png"
+      },
+      {
+        "id": "highlighter-edit-dark",
+        "path": "artifacts/highlighter-edit-dark.png",
+        "sha256": "f6a170a09cf163d98583ba60f21ba49f8392c4628835b4f0f535b40b099cdfd6",
+        "kind": "image/png"
+      },
+      {
+        "id": "pdf",
+        "path": "artifacts/mica-answer-export-sample.pdf",
+        "sha256": "fe6d7732790e7f6d698c2f19fdaf6e16fa2bc5f0e86fc341f355c46074d9d7e2",
+        "kind": "application/pdf"
+      },
+      {
+        "id": "pdf-fixture",
+        "path": "artifacts/pdf-export-fixture.json",
+        "sha256": "b9e334d313e822b8f33f6bcfdc1e5adbbcdfa5dbd02b78bf28f579e968cb119f",
+        "kind": "application/json"
+      },
+      {
+        "id": "pdf-background",
+        "path": "artifacts/pdf-background.json",
+        "sha256": "5b694c96a6bed82ef53204ef11b90bd028462b1676db75176d7089ec318b1750",
+        "kind": "application/json"
+      },
+      {
+        "id": "pdf-render-1",
+        "path": "artifacts/pdf-render-1.png",
+        "sha256": "425d1af2ab3392ad4afae3a3dead1e817496fd0dc6a7e7d99ed149567cad2b1f",
+        "kind": "image/png"
+      },
+      {
+        "id": "pdf-render-2",
+        "path": "artifacts/pdf-render-2.png",
+        "sha256": "5c6573cb50eddf4a03193ff589a7ee3fe1394b6099d9c40836d3403a8db6dbc6",
+        "kind": "image/png"
+      },
+      {
+        "id": "pdf-preview",
+        "path": "artifacts/pdf-export-preview.png",
+        "sha256": "93edcfd02aaf41026b80158621f14733d1332accd95d89ed091deaa9ee326881",
+        "kind": "image/png"
+      },
+      {
+        "id": "pdf-pointer-selection",
+        "path": "artifacts/pdfjs-pointer-selection.png",
+        "sha256": "0e35d37cd05b06a7afbab901d4aafc3202852c0f6e30f36aa4f4c554b86faa4f",
+        "kind": "image/png"
+      },
+      {
+        "id": "pdf-display-math-selection",
+        "path": "artifacts/pdfjs-display-math-selection.png",
+        "sha256": "0d05ddc69ed3db85ee1cdcbe2f7d727170a2391b0adaeb203b04c6fc6c8f2f3d",
+        "kind": "image/png"
+      }
+    ],
+    "invalidatedBy": [
+      "candidate commit change",
+      "dist hash change",
+      "validator tree change",
+      "contract hash change",
+      "fixture set change",
+      "evidence schema change",
+      "evidence root change"
+    ]
+  }
+}

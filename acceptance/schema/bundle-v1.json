@@ -23,7 +23,7 @@
   "properties": {
     "schemaVersion": {"const": 1},
     "bundleKind": {"enum": ["candidate", "control"]},
-    "acceptanceProfile": {"enum": ["foundation", "milestone-a", "milestone-b", "release-0.3.0", "all-controls"]},
+    "acceptanceProfile": {"enum": ["foundation", "milestone-a", "milestone-b", "release-0.3.0", "functional-convergence", "all-controls"]},
     "candidate": {"$ref": "mica://acceptance/candidate-v1"},
     "validator": {
       "type": "object",

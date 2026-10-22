@@ -23,5 +23,10 @@
   "pdfPageMathMlBudgetEnforced": true,
   "lowMemoryRequiresFullHistory": true,
   "forgedCompletenessRejected": true,
-  "streamingAssistantRejected": true
+  "streamingAssistantRejected": true,
+  "duplicateTurnRejected": true,
+  "duplicateDocumentRejected": true,
+  "unknownOrOpaqueContentRejected": true,
+  "unprovenProducerRejected": true,
+  "unsupportedRoleRejected": true
 }

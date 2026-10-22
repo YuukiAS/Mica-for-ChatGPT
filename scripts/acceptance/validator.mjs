@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-export const VALIDATOR_VERSION = "1.16.0";
+export const VALIDATOR_VERSION = "1.17.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 const PLACEMENT_PROOF_OBSERVATION_IDS = [
   "copy-inside-assistant-turn",
@@ -158,22 +158,38 @@ export async function validateBundle(repoRoot, bundleDir, requestedGateIds = nul
     errors.push("focused gate is not part of the bundle acceptance profile");
   }
 
+  const gateResults = [];
   for (const gateId of requiredGateIds || []) {
+    const gateErrorStart = errors.length;
     const contract = contractById.get(gateId);
     if (!contract) {
       errors.push(`unknown required gate ${gateId}`);
+      gateResults.push({ gateId, status: "UNKNOWN", evidenceId: null, evidenceClass: null, reasons: errors.slice(gateErrorStart) });
       continue;
     }
     const records = evidence.filter((record) => record.gateId === gateId);
     if (records.length !== 1) {
       errors.push(`gate ${gateId} requires exactly one evidence record`);
+      gateResults.push({ gateId, status: "UNKNOWN", evidenceId: null, evidenceClass: null, reasons: errors.slice(gateErrorStart) });
       continue;
     }
     const record = records[0];
+    let evidenceUnavailable = false;
     if (manifest.bundleKind === "candidate" && !contract.candidateEvidenceClasses.includes(record.evidenceClass)) {
       errors.push(`gate ${gateId} evidence class ${record.evidenceClass} is below the candidate minimum`);
+      evidenceUnavailable = true;
     }
     await validateMeasurement(contract.validatorKind, record, manifest, artifacts, bundleDir, errors);
+    const reasons = errors.slice(gateErrorStart);
+    gateResults.push({
+      gateId,
+      validatorKind: contract.validatorKind,
+      status: reasons.length === 0 ? "PASS" : evidenceUnavailable ? "UNKNOWN" : "FAIL",
+      evidenceId: record.id || null,
+      evidenceClass: record.evidenceClass || null,
+      artifactIds: Array.isArray(record.artifactIds) ? [...record.artifactIds] : [],
+      reasons
+    });
   }
 
   return result(errors.length === 0, errors, {
@@ -181,7 +197,20 @@ export async function validateBundle(repoRoot, bundleDir, requestedGateIds = nul
     validatorTreeHash: currentTreeHash,
     fixtureSetHash: currentFixtureSetHash,
     evidenceSchemaVersion: EVIDENCE_SCHEMA_VERSION,
-    requiredGateIds: requiredGateIds || []
+    requiredGateIds: requiredGateIds || [],
+    bundleKind: manifest.bundleKind || null,
+    acceptanceProfile: manifest.acceptanceProfile || null,
+    candidate: manifest.candidate || null,
+    reportContext: manifest.reportContext || null,
+    gateResults,
+    rawEvidence: evidence.map((record) => ({
+      id: record?.id || null,
+      gateId: record?.gateId || null,
+      evidenceClass: record?.evidenceClass || null,
+      artifactIds: Array.isArray(record?.artifactIds) ? [...record.artifactIds] : []
+    })),
+    artifacts: (manifest.artifacts || []).map((artifact) => ({ id: artifact?.id || null, path: artifact?.path || null, sha256: artifact?.sha256 || null, kind: artifact?.kind || null })),
+    invalidatedBy: ["candidate commit change", "dist hash change", "validator tree change", "contract hash change", "fixture set change", "evidence schema change", "evidence root change"]
   });
 }
 
@@ -352,7 +381,12 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
       "pdfPageMathMlBudgetEnforced",
       "lowMemoryRequiresFullHistory",
       "forgedCompletenessRejected",
-      "streamingAssistantRejected"
+      "streamingAssistantRejected",
+      "duplicateTurnRejected",
+      "duplicateDocumentRejected",
+      "unknownOrOpaqueContentRejected",
+      "unprovenProducerRejected",
+      "unsupportedRoleRejected"
     ]) {
       if (m[field] !== true) fail(`conversation export invariant ${field} failed`);
     }
@@ -677,6 +711,17 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
       for (const [rangeKey, valueKey] of [["processMemoryRangeMb", "processMemoryMb"], ["heapRangeMb", "heapMb"], ["typingRangeMs", "typingP95Ms"], ["scrollRangeMs", "scrollP95Ms"]]) {
         if (!validRange(metrics?.[rangeKey], metrics?.[valueKey])) fail(`low-memory state ${state} ${rangeKey} missing or inconsistent`);
       }
+      for (const metricKey of ["processMemoryMb", "heapMb", "retainedContentMb", "mountedTurnCount", "mutationCount", "typingP95Ms", "scrollP95Ms"]) {
+        if (!sampleSeriesMatchesMedian(metrics, metricKey)) fail(`low-memory state ${state} ${metricKey} is not the median of its complete repeated sample series`);
+      }
+      if (metrics.lowMemoryEnabled !== (state === "C")) fail(`low-memory state ${state} low-memory feature state is incorrect`);
+    }
+    const requiredNonLowMemoryCapabilities = ["foundation", "highlighter", "pdf", "copy-export", "reliability-backend"];
+    if (!sameSet(m.B.enabledCapabilities, requiredNonLowMemoryCapabilities) || !sameSet(m.C.enabledCapabilities, requiredNonLowMemoryCapabilities)) {
+      fail("B/C did not retain the complete non-Low-Memory runtime capability set");
+    }
+    if (!isSha256(m.B.nonLowMemoryFeatureFlagsHash) || m.B.nonLowMemoryFeatureFlagsHash !== m.C.nonLowMemoryFeatureFlagsHash) {
+      fail("B/C non-Low-Memory feature configuration differs");
     }
     if (!m.A || !m.B || !m.C) return;
     const baselineProcess = Math.min(m.A.processMemoryMb, m.B.processMemoryMb);
@@ -1121,6 +1166,15 @@ function finiteNonNegative(value) {
 
 function validRange(range, selectedValue) {
   return Array.isArray(range) && range.length === 2 && Number.isFinite(range[0]) && Number.isFinite(range[1]) && range[0] <= range[1] && selectedValue >= range[0] && selectedValue <= range[1];
+}
+
+function sampleSeriesMatchesMedian(metrics, metricKey) {
+  const values = metrics?.sampleSeries?.[metricKey];
+  if (!Array.isArray(values) || values.length !== metrics.samples || values.some((value) => !Number.isFinite(value))) return false;
+  const sorted = [...values].sort((a, b) => a - b);
+  const midpoint = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 ? sorted[midpoint] : (sorted[midpoint - 1] + sorted[midpoint]) / 2;
+  return metrics[metricKey] === median;
 }
 
 function ratioGain(baseline, candidate) {

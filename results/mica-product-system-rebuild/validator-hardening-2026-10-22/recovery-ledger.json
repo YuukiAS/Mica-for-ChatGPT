@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "firstClaimGranted": true,
+  "duplicateClaimRejected": true,
+  "workerRestartDeduplicated": true,
+  "tabIsolation": true,
+  "expiredClaimReclaimed": true,
+  "identityConflictRejected": true,
+  "invalidClaimRejected": true,
+  "storageFailureFailClosed": true,
+  "nativeActionClaimed": true,
+  "nativeActionDeduplicated": true,
+  "malformedNativeActionRejected": true,
+  "confirmedResendClaimed": true,
+  "historyAppended": true,
+  "historyDeduplicated": true,
+  "concurrentHistoryPreserved": true,
+  "historyBounded": true,
+  "historyContentExcluded": true,
+  "tabRemovalCleanup": true
+}
