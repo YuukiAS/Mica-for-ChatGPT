@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-export const VALIDATOR_VERSION = "1.9.0";
+export const VALIDATOR_VERSION = "1.10.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 const PLACEMENT_PROOF_OBSERVATION_IDS = [
   "copy-inside-assistant-turn",
@@ -429,11 +429,23 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
       "consequentialStateRejected",
       "retryFallbackSupported",
       "confirmedUnsentResendSupported",
-      "unknownLiveContractFailsOpen"
+      "unknownLiveContractFailsOpen",
+      "answerActionExactAdapterTarget",
+      "singleAnswerActionEntry",
+      "compactAnswerActionMenu",
+      "answerActionDefaultOrdering",
+      "untrustedAnswerActionRejected",
+      "streamingAnswerActionFailsOpen",
+      "ambiguousAnswerActionFailsOpen",
+      "answerActionRemountReconciled",
+      "answerActionToggleRemovesUi",
+      "pageWritableAnswerActionMarkerRejected",
+      "answerActionNoPollingOrTypingListener",
+      "currentSiteAnswerActionContractFailsOpen"
     ]) {
       if (m[field] !== true) fail(`target-surface backend invariant ${field} failed`);
     }
-    if (m.realSuggestedWorkContractIncluded !== false || m.realRecoveryControlContractIncluded !== false) {
+    if (m.realSuggestedWorkContractIncluded !== false || m.realRecoveryControlContractIncluded !== false || m.realAnswerActionContractIncluded !== false) {
       fail("synthetic target-surface evidence overclaimed a real current-site contract");
     }
     return;
@@ -764,7 +776,19 @@ export function computeEvidenceRootHash(artifacts, evidence) {
 }
 
 export async function computeValidatorTreeHash(repoRoot) {
-  return hashFileSet(repoRoot, ["scripts/acceptance", "scripts/conversation-export-fixture.mjs", "scripts/recovery-action-policy-fixture.mjs", "scripts/recovery-ledger-fixture.mjs", "acceptance/schema", "acceptance/contracts.json"]);
+  return hashFileSet(repoRoot, [
+    "scripts/acceptance",
+    "scripts/conversation-export-fixture.mjs",
+    "scripts/recovery-action-policy-fixture.mjs",
+    "scripts/recovery-ledger-fixture.mjs",
+    "scripts/target-surface-backend-fixture.mjs",
+    "scripts/target-surface-adapter-fixture.mjs",
+    "scripts/suggested-work-controller-fixture.mjs",
+    "scripts/recovery-control-adapter-fixture.mjs",
+    "scripts/answer-actions-controller-fixture.mjs",
+    "acceptance/schema",
+    "acceptance/contracts.json"
+  ]);
 }
 
 export async function computeFixtureSetHash(repoRoot) {

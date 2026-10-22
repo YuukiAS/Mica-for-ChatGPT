@@ -55,6 +55,7 @@
     {"id": "forged-recovery-deduplication-rehash", "expected": "REJECT"},
     {"id": "forged-recovery-action-safety-rehash", "expected": "REJECT"},
     {"id": "forged-target-surface-backend-rehash", "expected": "REJECT"},
+    {"id": "forged-answer-action-backend-rehash", "expected": "REJECT"},
     {"id": "packaging-version-mismatch", "expected": "REJECT"},
     {"id": "omitted-release-gate", "expected": "REJECT"}
   ]

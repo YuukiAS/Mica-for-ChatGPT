@@ -100,8 +100,10 @@
   function findAssistantActionCluster(turn) {
     if (!turn || turn.role !== "assistant" || !(turn.element instanceof HTMLElement)) return null;
     if (!isFixture(turn.element.ownerDocument)) return null;
-    const action = turn.element.querySelector(COPY_ACTION_SELECTOR);
-    if (!(action instanceof HTMLElement) || !turn.element.contains(action)) return null;
+    const actions = Array.from(turn.element.querySelectorAll(COPY_ACTION_SELECTOR))
+      .filter((candidate) => candidate instanceof HTMLElement && turn.element.contains(candidate));
+    if (actions.length !== 1) return null;
+    const action = actions[0];
     const cluster = action.parentElement;
     if (!(cluster instanceof HTMLElement) || !turn.element.contains(cluster)) return null;
     return {
@@ -109,6 +111,48 @@
       cluster,
       variantId: "native-copy-button-parent-v1",
       insertion: "sibling-after-native-copy"
+    };
+  }
+
+  function inspectAnswerActionTargets(doc = document) {
+    if (!isSupportedDocument(doc)) return answerActionObservation("MISSING", "unsupported_document");
+    if (!isFixture(doc)) return answerActionObservation("MISSING", "current_site_contract_unproven");
+    if (!hasTargetSurfaceFixtureAuthority(doc)) return answerActionObservation("MISSING", "fixture_contract_authority_required");
+    const turnInspection = inspectTurnCandidates(doc);
+    if (turnInspection.invalid.length > 0) return answerActionObservation("AMBIGUOUS", "turn_contract_ambiguous");
+    const targets = [];
+    const turnIds = new Set();
+    const clusters = new Set();
+    for (const turn of turnInspection.turns) {
+      if (turn.role !== "assistant" || generationStateForTurn(turn) !== "SETTLED") continue;
+      const placement = findAssistantActionCluster(turn);
+      if (!placement) continue;
+      if (turnIds.has(turn.turnId) || clusters.has(placement.cluster)) {
+        return answerActionObservation("AMBIGUOUS", "answer_action_target_not_unique");
+      }
+      turnIds.add(turn.turnId);
+      clusters.add(placement.cluster);
+      targets.push({
+        turnId: turn.turnId,
+        turn,
+        action: placement.action,
+        cluster: placement.cluster,
+        variantId: placement.variantId,
+        insertion: placement.insertion,
+        evidenceClass: "EXACT"
+      });
+    }
+    return answerActionObservation(targets.length > 0 ? "EXACT" : "MISSING", targets.length > 0 ? "contract_match" : "no_settled_exact_target", targets);
+  }
+
+  function answerActionObservation(evidenceClass, reason, targets = []) {
+    return {
+      evidenceClass,
+      reason,
+      targets,
+      targetCount: targets.length,
+      detectionSource: isFixture(targets[0]?.cluster?.ownerDocument) ? "fixture-native-copy-contract-v1" : "contract-required",
+      textIncluded: false
     };
   }
 
@@ -536,6 +580,7 @@
     resolveTurnFromNode,
     findComposer,
     findAssistantActionCluster,
+    inspectAnswerActionTargets,
     generationStateForTurn,
     inspectComposerRecovery,
     inspectTurnRecovery,

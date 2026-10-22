@@ -7,6 +7,7 @@
 
   function renderModel(model) {
     if (!root || !validModel(model)) return renderError("This export is unavailable because its document model is incomplete.");
+    document.documentElement.dataset.pageSize = model.pageSize === "Letter" ? "Letter" : "A4";
     root.replaceChildren();
     const header = element("header", "document-header");
     header.append(element("h1", "", model.title || "ChatGPT answer"));
@@ -97,7 +98,13 @@
   }
 
   function validModel(model) {
-    return model?.schemaVersion === 1 && typeof model.documentId === "string" && Array.isArray(model.blocks) && Array.isArray(model.highlights) && typeof model.plainText === "string";
+    return model?.schemaVersion === 1
+      && typeof model.documentId === "string"
+      && Array.isArray(model.blocks)
+      && Array.isArray(model.highlights)
+      && typeof model.plainText === "string"
+      && [undefined, "A4", "Letter"].includes(model.pageSize)
+      && [undefined, true, false].includes(model.includeHighlights);
   }
 
   function element(tag, className = "", text = "") {

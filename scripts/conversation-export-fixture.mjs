@@ -76,6 +76,14 @@ assert.match(pdfResult.model.plainText, /Assistant 1\nAnswer 1/);
 assert.equal(pdfResult.model.highlights.length, 1);
 assert.ok(pdfResult.model.highlights[0].start > 6, "conversation highlight must be shifted past the role heading");
 assert.equal(pdfResult.model.completionProof.status, "EXACT");
+assert.equal(pdfResult.model.pageSize, "A4");
+assert.equal(pdfResult.model.includeHighlights, true);
+const letterWithoutHighlights = pdf.buildConversationModel(collected.bundle, [highlight], { pageSize: "Letter", includeHighlights: false });
+assert.equal(letterWithoutHighlights.ok, true);
+assert.equal(letterWithoutHighlights.model.pageSize, "Letter");
+assert.equal(letterWithoutHighlights.model.includeHighlights, false);
+assert.equal(letterWithoutHighlights.model.highlights.length, 0);
+assert.equal(letterWithoutHighlights.model.unresolvedHighlightCount, 0);
 
 assert.equal(coordinator.readiness({ enabled: true, lowMemoryActive: true, inspection, completenessProof: proof, conversationId }).reason, "load_full_history_required");
 assert.equal(coordinator.collect({ inspection: { ...inspection, turns: turns.slice(0, 3) }, completenessProof: proof, conversationId, createDocument }).reason, "turn_count_mismatch");
@@ -92,6 +100,7 @@ const output = {
   markdownConversation: true,
   pdfConversation: true,
   highlightsShifted: true,
+  pdfSettingsConsumed: true,
   lowMemoryRequiresFullHistory: true,
   forgedCompletenessRejected: true,
   streamingAssistantRejected: true

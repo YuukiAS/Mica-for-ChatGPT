@@ -5,6 +5,7 @@
   "markdownConversation": true,
   "pdfConversation": true,
   "highlightsShifted": true,
+  "pdfSettingsConsumed": true,
   "lowMemoryRequiresFullHistory": true,
   "forgedCompletenessRejected": true,
   "streamingAssistantRejected": true

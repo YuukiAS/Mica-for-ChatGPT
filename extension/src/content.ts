@@ -16,6 +16,7 @@
   const recoveryController = globalThis.MicaRecoveryController;
   const recoveryControlAdapter = globalThis.MicaRecoveryControlAdapter;
   const suggestedWorkController = globalThis.MicaSuggestedWorkController;
+  const answerActionsController = globalThis.MicaAnswerActionsController;
   let settings = { ...DEFAULT_SETTINGS };
   let productSettings = settingsModel?.defaults?.() || null;
   let observer = null;
@@ -66,6 +67,13 @@
       settings: { ...(productSettings?.reliability || {}), enabled: settings.enabled && settings.reliability }
     });
     suggestedWorkController?.configure?.({ adapter, enabled: settings.enabled && settings.hideSuggestedWork });
+    answerActionsController?.configure?.({
+      adapter,
+      enabled: settings.enabled && settings.copyExport,
+      actions: availableAnswerActions(),
+      defaultAction: defaultAnswerAction(),
+      onAction: performAnswerAction
+    });
     refreshStatus();
     exposeFixtureHook();
   }
@@ -119,6 +127,7 @@
       recoveryController?.scheduleReconcile?.();
       recoveryControlAdapter?.scheduleReconcile?.();
       suggestedWorkController?.scheduleReconcile?.();
+      answerActionsController?.scheduleReconcile?.();
     });
     observer.observe(document.documentElement, { childList: true, subtree: true });
   }
@@ -135,6 +144,7 @@
       scheduleHighlightReconcile();
       recoveryControlAdapter?.scheduleReconcile?.();
       suggestedWorkController?.scheduleReconcile?.();
+      answerActionsController?.onContextChanged?.();
     };
     addEventListener("popstate", onNavigation, { passive: true });
     addEventListener("hashchange", onNavigation, { passive: true });
@@ -361,6 +371,11 @@
     recoveryController?.updateSettings?.({ ...(productSettings?.reliability || {}), enabled: settings.enabled && settings.reliability });
     recoveryControlAdapter?.updateSettings?.({ ...(productSettings?.reliability || {}), enabled: settings.enabled && settings.reliability });
     suggestedWorkController?.updateSettings?.({ enabled: settings.enabled && settings.hideSuggestedWork });
+    answerActionsController?.updateSettings?.({
+      enabled: settings.enabled && settings.copyExport,
+      actions: availableAnswerActions(),
+      defaultAction: defaultAnswerAction()
+    });
     reconcileHistoryControl();
   }
 
@@ -730,7 +745,54 @@
     if (!settings.copyExport || !pdfExport || !pendingHighlight) return false;
     const documentModel = documentForPendingAnswer();
     if (!documentModel) return false;
-    const built = pdfExport.buildModel(documentModel, highlightRecords);
+    return openPdfDocument(documentModel);
+  }
+
+  async function copyPendingAnswer(format) {
+    if (!settings.copyExport || !answerSerializer || !pendingHighlight) return false;
+    const documentModel = documentForPendingAnswer();
+    if (!documentModel) return false;
+    return copyAnswerDocument(documentModel, format);
+  }
+
+  function availableAnswerActions() {
+    const actions = ["markdown"];
+    if (productSettings?.export?.notionMode !== "disabled") actions.push("notion");
+    actions.push("pdf");
+    return actions;
+  }
+
+  function defaultAnswerAction() {
+    const actions = availableAnswerActions();
+    const configured = productSettings?.export?.defaultFormat;
+    return actions.includes(configured) ? configured : actions[0];
+  }
+
+  function pdfExportOptions() {
+    return {
+      pageSize: productSettings?.export?.pdfPageSize === "Letter" ? "Letter" : "A4",
+      includeHighlights: productSettings?.export?.pdfIncludeHighlights !== false
+    };
+  }
+
+  async function performAnswerAction(request) {
+    if (!settings.enabled || !settings.copyExport || request?.evidenceClass !== "EXACT") return false;
+    const observation = adapter.inspectAnswerActionTargets?.(document);
+    const matches = observation?.evidenceClass === "EXACT"
+      ? observation.targets.filter((target) => target.turnId === request.turnId && target.evidenceClass === "EXACT")
+      : [];
+    if (matches.length !== 1) return false;
+    const documentModel = getAnswerDocument(request.turnId);
+    if (!documentModel?.durable) return false;
+    if (request.action === "pdf") return openPdfDocument(documentModel);
+    if (request.action === "notion" && productSettings?.export?.notionMode === "disabled") return false;
+    if (request.action === "markdown" || request.action === "notion") return copyAnswerDocument(documentModel, request.action);
+    return false;
+  }
+
+  async function openPdfDocument(documentModel) {
+    if (!pdfExport || !documentModel?.durable) return false;
+    const built = pdfExport.buildModel(documentModel, highlightRecords, pdfExportOptions());
     if (!built?.ok) return false;
     const token = globalThis.crypto?.randomUUID?.();
     if (!token) return false;
@@ -739,10 +801,8 @@
     });
   }
 
-  async function copyPendingAnswer(format) {
-    if (!settings.copyExport || !answerSerializer || !pendingHighlight) return false;
-    const documentModel = documentForPendingAnswer();
-    if (!documentModel) return false;
+  async function copyAnswerDocument(documentModel, format) {
+    if (!answerSerializer || !documentModel?.durable) return false;
     if (format === "notion" && productSettings?.export?.notionMode === "disabled") return false;
     if (format === "notion" && productSettings?.export?.notionMode === "import-file") {
       const imported = answerSerializer.serializeNotionImport(documentModel, productSettings?.export || {});
@@ -752,7 +812,6 @@
       link.download = imported.fileName;
       link.click();
       setTimeout(() => URL.revokeObjectURL(link.href), 0);
-      hideHighlightToolbar();
       return true;
     }
     const output = format === "notion"
@@ -772,7 +831,6 @@
       } else {
         await navigator.clipboard.writeText(output.markdown || output.plainText);
       }
-      hideHighlightToolbar();
       return true;
     } catch (_error) {
       return false;
@@ -909,7 +967,7 @@
     const documentModel = getAnswerDocument(turnId);
     if (!documentModel?.durable) return { ok: false, reason: "answer_not_settled" };
     if (format === "notion") return answerSerializer.serializeNotion(documentModel, productSettings?.export || {});
-    if (format === "pdf") return pdfExport?.buildModel(documentModel, highlightRecords) || { ok: false, reason: "pdf_unavailable" };
+    if (format === "pdf") return pdfExport?.buildModel(documentModel, highlightRecords, pdfExportOptions()) || { ok: false, reason: "pdf_unavailable" };
     return answerSerializer.serializeMarkdown(documentModel, {
       flavor: productSettings?.export?.markdownFlavor,
       inlineMathDelimiter: productSettings?.export?.inlineMathDelimiter,
@@ -962,7 +1020,7 @@
     if (!settings.enabled || !settings.copyExport || !pdfExport?.buildConversationModel) return { ok: false, reason: "pdf_unavailable", localOnly: true };
     const collected = collectConversationBundle();
     if (!collected.ok) return collected;
-    const built = pdfExport.buildConversationModel(collected.bundle, highlightRecords);
+    const built = pdfExport.buildConversationModel(collected.bundle, highlightRecords, pdfExportOptions());
     if (!built.ok) return built;
     const token = globalThis.crypto?.randomUUID?.();
     if (!token) return { ok: false, reason: "secure_token_unavailable", localOnly: true };
@@ -1015,7 +1073,8 @@
         highlighter: highlighterStatus(),
         reliability: recoveryController?.snapshot?.() || null,
         recoveryControls: recoveryControlAdapter?.getStatus?.() || null,
-        suggestedWork: suggestedWorkController?.getStatus?.() || null
+        suggestedWork: suggestedWorkController?.getStatus?.() || null,
+        answerActions: answerActionsController?.getStatus?.() || null
       },
       privacy: {
         conversationTextIncluded: false,
@@ -1039,7 +1098,7 @@
       getConversationExportStatus: () => conversationExportStatus(),
       buildConversationPdfModel: () => {
         const collected = collectConversationBundle();
-        return collected.ok ? pdfExport?.buildConversationModel?.(collected.bundle, highlightRecords) || null : collected;
+        return collected.ok ? pdfExport?.buildConversationModel?.(collected.bundle, highlightRecords, pdfExportOptions()) || null : collected;
       },
       applySettings,
       requestFullHistory,
@@ -1056,7 +1115,10 @@
       getRecoveryControlStatus: () => recoveryControlAdapter?.getStatus?.() || null,
       getSuggestedWorkStatus: () => suggestedWorkController?.getStatus?.() || null,
       reconcileSuggestedWork: () => suggestedWorkController?.reconcile?.() || null,
-      buildPdfExportModel: (documentModel) => pdfExport?.buildModel(documentModel, highlightRecords) || null,
+      getAnswerActionsStatus: () => answerActionsController?.getStatus?.() || null,
+      reconcileAnswerActions: () => answerActionsController?.reconcile?.() || null,
+      performAnswerAction,
+      buildPdfExportModel: (documentModel) => pdfExport?.buildModel(documentModel, highlightRecords, pdfExportOptions()) || null,
       adapter,
       answerDocument
     });

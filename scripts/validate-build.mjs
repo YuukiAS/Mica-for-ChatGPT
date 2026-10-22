@@ -42,7 +42,7 @@ assert(JSON.stringify([...manifest.optional_host_permissions].sort()) === JSON.s
 assert(manifest.background?.service_worker === "low-memory-background.js", "Low Memory registration service worker missing");
 assert(manifest.options_ui?.page === "options/index.html" && manifest.options_ui?.open_in_tab === true, "settings page registration missing");
 assert(JSON.stringify(manifest.content_scripts?.[0]?.js) === JSON.stringify(["low-memory-config.js"]) && manifest.content_scripts?.[0]?.run_at === "document_start", "Low Memory config bridge order drifted");
-assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["highlight-interaction-policy.js", "settings-model.js", "chatgpt-adapter.js", "answer-document.js", "conversation-export.js", "answer-serializer.js", "highlight-engine.js", "pdf-export-model.js", "recovery-action-policy.js", "recovery-state-machine.js", "recovery-controller.js", "recovery-control-adapter.js", "suggested-work-controller.js", "content.js"]), "functional convergence content-script order drifted");
+assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["highlight-interaction-policy.js", "settings-model.js", "chatgpt-adapter.js", "answer-document.js", "conversation-export.js", "answer-serializer.js", "highlight-engine.js", "pdf-export-model.js", "recovery-action-policy.js", "recovery-state-machine.js", "recovery-controller.js", "recovery-control-adapter.js", "suggested-work-controller.js", "answer-actions-controller.js", "content.js"]), "functional convergence content-script order drifted");
 assert(!manifest.content_scripts.some((entry) => entry.world === "MAIN"), "Low Memory MAIN scripts must be extension-controlled dynamic registrations");
 
 for (const size of [16, 32, 48, 128]) {
@@ -72,6 +72,7 @@ const recoveryController = await readFile(path.join(distDir, "recovery-controlle
 const recoveryControlAdapter = await readFile(path.join(distDir, "recovery-control-adapter.js"), "utf8");
 const recoveryLedger = await readFile(path.join(distDir, "recovery-ledger.js"), "utf8");
 const suggestedWorkController = await readFile(path.join(distDir, "suggested-work-controller.js"), "utf8");
+const answerActionsController = await readFile(path.join(distDir, "answer-actions-controller.js"), "utf8");
 const content = await readFile(path.join(distDir, "content.js"), "utf8");
 const lowMemoryCore = await readFile(path.join(distDir, "low-memory-core.js"), "utf8");
 const lowMemoryPage = await readFile(path.join(distDir, "low-memory-page.js"), "utf8");
@@ -82,9 +83,10 @@ const options = await readFile(path.join(distDir, "options", "options.js"), "utf
 const troubleshooting = await readFile(path.join(distDir, "popup", "troubleshooting.js"), "utf8");
 const qa = await readFile(path.join(distDir, "popup", "qa.js"), "utf8");
 const pdfExportPage = await readFile(path.join(distDir, "pdf", "pdf-export-page.js"), "utf8");
+const pdfExportCss = await readFile(path.join(distDir, "pdf", "pdf-export.css"), "utf8");
 
 for (const text of [adapter, content]) assert(text.includes(contractHash), "built current ChatGPT contract hash drifted");
-for (const text of [highlightInteractionPolicy, adapter, answerDocument, conversationExport, settingsModel, answerSerializer, highlightEngine, generalWebModel, generalWebHighlighter, pdfExportModel, recoveryActionPolicy, recoveryStateMachine, recoveryController, recoveryControlAdapter, recoveryLedger, suggestedWorkController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, options, troubleshooting, qa, pdfExportPage]) {
+for (const text of [highlightInteractionPolicy, adapter, answerDocument, conversationExport, settingsModel, answerSerializer, highlightEngine, generalWebModel, generalWebHighlighter, pdfExportModel, recoveryActionPolicy, recoveryStateMachine, recoveryController, recoveryControlAdapter, recoveryLedger, suggestedWorkController, answerActionsController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, options, troubleshooting, qa, pdfExportPage]) {
   assert(!/__MICA_(?:VERSION|VERSION_NAME|BUILD_LABEL|CHATGPT_CONTRACT_HASH|DEV_BUILD)__/.test(text), "unresolved build placeholder remains");
   new Function(text);
 }
@@ -98,6 +100,7 @@ for (const token of [
   "inspectTurnRecovery",
   "inspectReloadSafety",
   "inspectSuggestedWorkSurface",
+  "inspectAnswerActionTargets",
   "inspectRecoveryControl",
   "executeRecoveryControl",
   "inspectTargetSurfaceDiagnostics",
@@ -131,6 +134,9 @@ for (const token of ["MicaRecoveryLedger", "micaRecoveryActionClaimsV1", "native
 for (const token of ["MicaSuggestedWorkController", "inspectSuggestedWorkSurface", "EXACT", "data-mica-suggested-work-hidden", "restoreActiveSurface", "textIncluded: false"]) assert(suggestedWorkController.includes(token), `suggested-work controller missing ${token}`);
 assert(!/MutationObserver|setInterval|setTimeout/.test(suggestedWorkController), "suggested-work controller added polling or a competing observer");
 assert(!/querySelector(?:All)?\s*\(/.test(suggestedWorkController), "suggested-work controller bypassed ChatGPTAdapter with direct page selectors");
+for (const token of ["MicaAnswerActionsController", "Mica actions", "inspectAnswerActionTargets", "event.isTrusted", "aria-haspopup", "menuitem", "permanentButtonsPerAnswer: 1", "textIncluded: false"]) assert(answerActionsController.includes(token), `answer-actions controller missing ${token}`);
+assert(!/MutationObserver|setInterval|setTimeout/.test(answerActionsController), "answer-actions controller added polling or a competing observer");
+assert(!/querySelector(?:All)?\s*\(/.test(answerActionsController), "answer-actions controller bypassed ChatGPTAdapter with direct page selectors");
 
 for (const token of [
   "MicaHighlightEngine",
@@ -169,6 +175,9 @@ for (const token of [
   "targetSurfaces",
   "recoveryControls",
   "suggestedWork",
+  "answerActions",
+  "performAnswerAction",
+  "pdfExportOptions",
   `const VERSION = "${MACHINE_VERSION}"`,
   `const BUILD_LABEL = "${BUILD_LABEL}"`,
   "conversationTextIncluded: false",
@@ -178,9 +187,10 @@ for (const token of ["collectConversationBundle", "conversationExportStatus", "c
 for (const token of ["data-mica-ui", "highlight-toolbar", "Copy Markdown", "Copy for Notion", "event.isTrusted", "CSS.highlights", "handleHighlightShortcutKeydown", "applyDefaultHighlightShortcut", "permanentToolbar: false"]) {
   assert(content.includes(token), `Highlighter runtime missing ${token}`);
 }
-for (const token of ["MicaPdfExport", "buildConversationModel", "unsupported_answer_structure", "visible-tex-source", "localOnly: true"]) assert(pdfExportModel.includes(token), `PDF export model missing ${token}`);
+for (const token of ["MicaPdfExport", "buildConversationModel", "unsupported_answer_structure", "visible-tex-source", "pageSize", "includeHighlights", "localOnly: true"]) assert(pdfExportModel.includes(token), `PDF export model missing ${token}`);
 for (const token of ["MICA_OPEN_PDF_EXPORT", "MICA_GET_PDF_EXPORT", "MAX_PDF_EXPORT_BYTES", "chrome.tabs.create"]) assert(lowMemoryBackground.includes(token), `PDF background flow missing ${token}`);
 for (const token of ["Print / Save as PDF", "MicaPdfExportPage", "dataset.micaPdfKind", "window.print"]) assert(`${await readFile(path.join(distDir, "pdf", "pdf-export.html"), "utf8")}\n${pdfExportPage}`.includes(token), `PDF export page missing ${token}`);
+for (const token of ["data-page-size", "mica-a4", "mica-letter", "size:Letter"]) assert(`${pdfExportPage}\n${pdfExportCss}`.includes(token), `PDF page-size runtime missing ${token}`);
 
 for (const token of ["windowTurboStreamChunk", "windowJsonPayload", "client-history-window", "reactManagedInteractiveNodesDetached", "visibleRoleSequenceHash"]) {
   assert(lowMemoryCore.includes(token), `Low Memory core missing ${token}`);
@@ -208,7 +218,7 @@ const reportBody = extractFunctionBody(content, "buildSanitizedQaReport");
 assert(!/innerText|textContent|innerHTML|outerHTML/.test(reportBody), "sanitized QA report must not read conversation text/HTML");
 const safeReloadBody = extractFunctionBody(content, "safeToReload");
 assert(safeReloadBody.includes("adapter.inspectReloadSafety") && !/querySelector|textContent|\.value/.test(safeReloadBody), "reload safety must be owned by ChatGPTAdapter");
-for (const text of [settingsModel, conversationExport, answerSerializer, highlightEngine, pdfExportModel, recoveryActionPolicy, recoveryStateMachine, recoveryController, recoveryControlAdapter, recoveryLedger, suggestedWorkController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground]) {
+for (const text of [settingsModel, conversationExport, answerSerializer, highlightEngine, pdfExportModel, recoveryActionPolicy, recoveryStateMachine, recoveryController, recoveryControlAdapter, recoveryLedger, suggestedWorkController, answerActionsController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground]) {
   assert(!/addEventListener\(["'](?:beforeinput|input|keydown|compositionstart|compositionupdate|compositionend)/.test(text), "runtime added a typing hot-path listener");
 }
 assert(!/addEventListener\(["'](?:beforeinput|input|compositionstart|compositionupdate|compositionend)/.test(generalWebHighlighter), "general web runtime added a synchronous typing listener");

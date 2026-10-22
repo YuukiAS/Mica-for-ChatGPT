@@ -3,17 +3,18 @@
   const COLORS = new Set(["yellow", "mint", "blue", "pink"]);
   const MAX_TEXT_LENGTH = 1_000_000;
 
-  function buildModel(answerDocument, records = []) {
+  function buildModel(answerDocument, records = [], options = {}) {
     if (!answerDocument?.durable || answerDocument.generationState !== "SETTLED") return failure("answer_not_settled");
     if (!Array.isArray(answerDocument.orderedBlocks) || answerDocument.orderedBlocks.length === 0) return failure("answer_empty");
     if (answerDocument.orderedBlocks.some((block) => ["opaque_interactive", "unknown_block"].includes(block?.kind))) {
       return failure("unsupported_answer_structure");
     }
 
+    const exportOptions = sanitizeOptions(options);
     const state = { text: "", units: [] };
     const blocks = answerDocument.orderedBlocks.map((block) => serializeBlock(block, state));
     if (state.text.length > MAX_TEXT_LENGTH) return failure("answer_too_large");
-    const highlights = resolveHighlights(records, answerDocument, state.text);
+    const highlights = resolveHighlights(exportOptions.includeHighlights ? records : [], answerDocument, state.text);
     return {
       ok: true,
       model: {
@@ -28,19 +29,22 @@
         plainText: state.text,
         highlights: highlights.resolved,
         unresolvedHighlightCount: highlights.unresolved,
+        pageSize: exportOptions.pageSize,
+        includeHighlights: exportOptions.includeHighlights,
         mathFallback: "visible-tex-source",
         localOnly: true
       }
     };
   }
 
-  function buildConversationModel(bundle, records = []) {
+  function buildConversationModel(bundle, records = [], options = {}) {
     const checked = globalThis.MicaConversationExport?.validateBundle?.(bundle);
     if (!checked?.ok) return failure(checked?.reason || "conversation_completeness_unproven");
+    const exportOptions = sanitizeOptions(options);
     const state = { text: "", blocks: [], highlights: [], unresolved: 0, order: 0 };
     const counts = { user: 0, assistant: 0 };
     for (const entry of checked.bundle.entries) {
-      const built = buildModel(entry.document, entry.role === "assistant" ? records : []);
+      const built = buildModel(entry.document, entry.role === "assistant" ? records : [], exportOptions);
       if (!built.ok) return failure(`conversation_turn_failed:${built.reason}`);
       counts[entry.role] += 1;
       if (state.text) state.text += "\n\n";
@@ -76,6 +80,8 @@
         plainText: state.text,
         highlights: state.highlights,
         unresolvedHighlightCount: state.unresolved,
+        pageSize: exportOptions.pageSize,
+        includeHighlights: exportOptions.includeHighlights,
         mathFallback: "visible-tex-source",
         turnCount: checked.bundle.entries.length,
         answerCount: counts.assistant,
@@ -91,6 +97,13 @@
     if (Array.isArray(block.items)) shifted.items = block.items.map((item) => item.map((unit) => shiftUnit(unit, offset)));
     if (Array.isArray(block.rows)) shifted.rows = block.rows.map((row) => row.map((cell) => cell.map((unit) => shiftUnit(unit, offset))));
     return shifted;
+  }
+
+  function sanitizeOptions(options) {
+    return {
+      pageSize: options?.pageSize === "Letter" ? "Letter" : "A4",
+      includeHighlights: options?.includeHighlights !== false
+    };
   }
 
   function shiftUnit(unit, offset) {

@@ -1,6 +1,6 @@
 # Mica 功能收敛 V1
 
-Mica `0.5.6` 是一次后端功能收敛候选，不是正式发布。它在 `codex/mica-product-system-rebuild` 的 Foundation、Low Memory、Highlighter 和 PDF 基础上，新增统一设置模型、AnswerDocument 驱动的 Markdown/Notion 序列化、完整会话导出、高亮记录迁移、有边界的断流恢复状态机、按站点授权的普通网页高亮运行时、共用高亮交互策略，以及受当前站点合同约束的恢复控件和建议工作控制器。当前用户明确禁止启动浏览器和操作真实 ChatGPT，因此本轮只把纯 Node、静态构建、存储合同和验收器控制集能够证明的部分标为已验证；真实页面交互、PDF 查看器和 Notion 原生公式均保留明确缺口。
+Mica `0.5.7` 是一次后端功能收敛候选，不是正式发布。它在 `codex/mica-product-system-rebuild` 的 Foundation、Low Memory、Highlighter 和 PDF 基础上，新增统一设置模型、AnswerDocument 驱动的 Markdown/Notion 序列化、完整会话导出、高亮记录迁移、有边界的断流恢复状态机、按站点授权的普通网页高亮运行时、共用高亮交互策略，以及受当前站点合同约束的恢复控件、建议工作控制器和单回答 Mica actions 后端。当前用户明确禁止启动浏览器和操作真实 ChatGPT，因此本轮只把纯 Node、静态构建、存储合同和验收器控制集能够证明的部分标为已验证；真实页面交互、PDF 查看器和 Notion 原生公式均保留明确缺口。
 
 配套机器矩阵位于 [`MICA_FUNCTIONAL_CONVERGENCE_V1.json`](MICA_FUNCTIONAL_CONVERGENCE_V1.json)。它是当前功能状态的唯一机器可读来源，README 和 ROADMAP 只做面向读者的摘要。
 
@@ -22,6 +22,9 @@ ChatGPTAdapter
      -> Highlighter anchors
      -> Markdown / Notion serializer
      -> PDF export model
+  -> EXACT settled answer action target
+     -> AnswerActionsController（每条回答最多一个入口）
+        -> Markdown / Notion / PDF 用户动作
 
 Low Memory validated graph
   -> 不含正文的完整性证明
@@ -48,7 +51,7 @@ RecoveryStateMachine（纯状态与安全策略）
 
 `MicaSettingsModel` 将旧的扁平设置迁移到版本化 schema，并同时保留兼容字段。总开关不会删除子功能偏好。数值会被限制在安全范围内，`consequentialActionAutoReplay` 永远为 `false`，不能通过导入设置绕过。
 
-设置页已经覆盖通用、高亮、复制与导出、低内存、可靠性、界面和故障排查。高亮记录与设置都可本地导入、导出和清理。高亮设置新增明确的默认颜色、受约束快捷键以及“选区工具条 / 快捷键 / 两者同时”三种模式；旧版中没有实际生效的 `selection` 默认值会迁移为 `both`，保留原有工具条同时启用快捷键。页面运行效果本轮未做浏览器验收，因此设置页整体仍是 `IMPLEMENTED_UNVERIFIED`。
+设置页已经覆盖通用、高亮、复制与导出、低内存、可靠性、界面和故障排查。高亮记录与设置都可本地导入、导出和清理。高亮设置新增明确的默认颜色、受约束快捷键以及“选区工具条 / 快捷键 / 两者同时”三种模式；旧版中没有实际生效的 `selection` 默认值会迁移为 `both`，保留原有工具条同时启用快捷键。导出设置也不再只是保存值：默认格式会决定回答菜单首项，Notion disabled 会移除对应动作，A4/Letter 与 PDF 高亮开关会进入单回答和完整会话 PDF 模型。页面运行效果本轮未做浏览器验收，因此设置页整体仍是 `IMPLEMENTED_UNVERIFIED`。
 
 ### Markdown 与 Notion 数据路径
 
@@ -61,11 +64,19 @@ Notion 有两条清楚区分的路径：
 
 要求中的中文五公式样本已经进入纯 Node 回归，并检查五个行内公式的数量和顺序。
 
+### 单回答动作入口
+
+`MicaAnswerActionsController` 把回答级 Markdown、Notion 和 PDF 后端收束到一个 `Mica actions` 入口，不在普通页面上并排增加三个常驻按钮。控制器不维护 ChatGPT selector，也不创建自己的 observer 或轮询；内容脚本已有的结构 observer 只负责调度，真正的 turn、settled 状态、原生 Copy 身份和插入位置都由 `ChatGPTAdapter` 给出。
+
+入口只在唯一 `EXACT` 目标上挂载，每条回答最多一个。菜单按设置只列出当前可用动作，并把默认格式排在首位。点击动作前还会重新取得同一 turn 的精确目标；streaming、重复 Copy、目标歧义、route change、remount、功能关闭或合同失效都会关闭菜单并移除 Mica 节点。触发器和菜单拒绝非可信点击，Escape、外部点击和失效都会收起菜单。
+
+纯 Node fixture 已覆盖这些合同，也确认控制器没有 typing listener、轮询、第二个 observer 或页面 selector。页面自行写入 `data-mica-fixture` 也不能取得权限，测试合同还必须带有扩展隔离世界中的 authority。当前真实 ChatGPT 的 action-cluster placement 仍未得到精确证据，因此 live adapter 返回 `MISSING / current_site_contract_unproven`，运行时保持原生，不会把 fixture 结构当作实站结构。
+
 ### 完整会话导出
 
 完整会话导出不再接受调用方传入的 `completeSelection=true`。Low Memory 在裁剪客户端历史前，从已经通过全图校验的当前分支生成可见 turn 数量和角色顺序哈希；用户选择加载完整历史时，这份不含正文的证明会按 tab 保存在 `chrome.storage.session`，并在 reload 后继续使用。
 
-导出协调器随后核对 conversation 身份、精确 turn 数量、角色顺序、唯一且连续的 turn 身份，以及每个用户/助手文档的 settled 与 durable 状态。任何局部窗口、过期会话、重复 ID、角色顺序变化、streaming 回答或空文档都会 fail closed。验证通过后，Markdown 保留用户与助手交替顺序；整段 PDF 复用单回答模型，并把逻辑高亮偏移到合并后的全文坐标。弹窗提供 `Copy Markdown` 和 `Export PDF` 两个入口，但真实 clipboard、full-history reload 和 PDF viewer 本轮没有打开，因此该能力仍是 `IMPLEMENTED_UNVERIFIED`。
+导出协调器随后核对 conversation 身份、精确 turn 数量、角色顺序、唯一且连续的 turn 身份，以及每个用户/助手文档的 settled 与 durable 状态。任何局部窗口、过期会话、重复 ID、角色顺序变化、streaming 回答或空文档都会 fail closed。验证通过后，Markdown 保留用户与助手交替顺序；整段 PDF 复用单回答模型，并把逻辑高亮偏移到合并后的全文坐标。PDF 模型现在明确携带 A4/Letter 与 include-highlights 决策；关闭高亮后不会留下已解析或未解析的高亮计数。导出页为两种纸张分别声明打印 page rule。弹窗提供 `Copy Markdown` 和 `Export PDF` 两个入口，但真实 clipboard、full-history reload 和 PDF viewer 本轮没有打开，因此该能力仍是 `IMPLEMENTED_UNVERIFIED`。
 
 ### 高亮记录
 
@@ -115,11 +126,12 @@ Developer QA 报告新增有界目标结构采集。它只在用户导出报告�
 | MFC-020 | 本轮 §4/§7 | 稳定回答可复制为 Markdown | `IMPLEMENTED_VERIFIED` | convergence core | 实际剪贴板仍需浏览器 |
 | MFC-021 | Issue #10、本轮 §7 | Notion rich clipboard 保留公式语义 | `IMPLEMENTED_UNVERIFIED` | MIME/结构模型 | 真实 Notion paste |
 | MFC-022 | Issue #10、本轮 §7 | 确定性 Notion 导入文件 | `IMPLEMENTED_VERIFIED` | convergence core | 真实导入结果 |
+| MFC-025 | 冻结 UI、产品系统、本轮 §4/§7 | 每条回答最多一个 Mica actions 入口 | `IMPLEMENTED_UNVERIFIED` | answer actions + target-surface + static gate | 当前实站 placement、焦点与 handoff |
 | MFC-100 | Issue #1、重建分支 | 长对话客户端数据窗口化 | `IMPLEMENTED_UNVERIFIED` | 既有证据 + 本轮后台纯测试 | 当前构建浏览器回归 |
 | MFC-200 | Issue #9、Milestone B | ChatGPT 正文与公式高亮 | `IMPLEMENTED_UNVERIFIED` | 既有 fixture 证据 | 当前构建浏览器回归 |
 | MFC-202 | Issue #9、本轮 §5 | 普通网页高亮 | `IMPLEMENTED_UNVERIFIED` | 锚点与动态注册 fixture | 可选站点权限 + 文章页 |
 | MFC-203 | 本轮 §5.2/§11.2 | 默认颜色、快捷键和工具条行为真正生效 | `IMPLEMENTED_VERIFIED` | interaction policy + convergence core + static hot-path | 真实键盘、IME 与页面选择仍归 MFC-200/202 |
-| MFC-220 | Milestone B、本轮 §6 | 回答 PDF 与高亮继承 | `IMPLEMENTED_UNVERIFIED` | 既有 fixture 证据 | 当前构建 PDF viewer |
+| MFC-220 | Milestone B、本轮 §6 | 回答 PDF、A4/Letter 与可选高亮 | `IMPLEMENTED_UNVERIFIED` | conversation export + 既有 fixture | 当前构建 PDF viewer |
 | MFC-221 | 本轮 §6.1 | 完整会话 Markdown/PDF 导出 | `IMPLEMENTED_UNVERIFIED` | completeness fixture + 后台存储 + validator gate | full-history reload、clipboard、PDF viewer |
 | MFC-300 | 本轮 §8/§11 | 版本化设置和安全上限 | `IMPLEMENTED_VERIFIED` | convergence core | 设置页渲染 |
 | MFC-400 | Issue #4、本轮 §8 | 60 秒无进展状态机 | `IMPLEMENTED_VERIFIED` | convergence core | 真实断流流程 |
@@ -130,7 +142,7 @@ Developer QA 报告新增有界目标结构采集。它只在用户导出报告�
 | MFC-405 | 本轮 §4/§8 | Reliability 只通过 adapter 观察页面结构 | `IMPLEMENTED_VERIFIED` | adapter recovery + controller + static selector gate | lifecycle/tool 真实合同仍为 PARTIAL |
 | MFC-410 | Issues #5/#6 | 输入框与连接器旧故障收敛 | `BLOCKED_BY_REAL_EXTERNAL_DEPENDENCY` | 历史证据存在 | 失败页精确 DOM/AX 合同 |
 | MFC-420 | 历史任务 | Hide suggested work | `IMPLEMENTED_UNVERIFIED` | adapter fixture + 可逆控制器 + 静态门禁 | 当前真实目标结构与页面效果 |
-| MFC-620 | 本轮 §13 | 验收器拒绝伪完整性结论 | `IMPLEMENTED_VERIFIED` | validator 1.9.0 preflight | 完整浏览器候选 run |
+| MFC-620 | 本轮 §13 | 验收器拒绝伪完整性结论 | `IMPLEMENTED_VERIFIED` | validator 1.10.0 preflight | 完整浏览器候选 run |
 
 完整字段、模块归属、成功行为和未解决差距见 JSON 矩阵。
 
@@ -143,6 +155,7 @@ npm run build
 node scripts/highlight-interaction-policy-fixture.mjs
 node scripts/chatgpt-adapter-recovery-fixture.mjs
 node scripts/target-surface-backend-fixture.mjs
+node scripts/answer-actions-controller-fixture.mjs
 node scripts/convergence-core-fixture.mjs
 node scripts/conversation-export-fixture.mjs
 node scripts/recovery-action-policy-fixture.mjs
@@ -156,7 +169,7 @@ npm run test:build
 npm run acceptance:preflight
 ```
 
-`highlight-interaction-policy-fixture.mjs` 覆盖快捷键规范化、危险组合拒绝、三种交互模式、默认颜色路由以及 repeat/IME 保护。`chatgpt-adapter-recovery-fixture.mjs` 覆盖 property-backed composer、敏感/有副作用上下文、无正文进展签名、工具安全分流和 reload fail-closed；controller fixture 另用会抛错的伪 selector 证明 controller 没有绕过 adapter。`target-surface-backend-fixture.mjs` 汇总 adapter、恢复控件和 suggested-work 三组 fixture，覆盖唯一合同、歧义 fail-open、动作前重验证、composer 空值、toggle、remount、原状态恢复、无轮询及无正文诊断。`convergence-core-fixture.mjs` 覆盖设置迁移和安全上限、Markdown/Notion 序列化、五公式样本、高亮记录导入导出，以及可靠性关键状态。`conversation-export-fixture.mjs` 另行覆盖完整性证明、turn/role 身份绑定、整段 Markdown/PDF、高亮偏移，以及对 partial、stale、streaming 和伪造输入的拒绝。controller、ledger 与 Worker fixture 再验证实际执行边界、重启去重、并发写入、50 条历史上限和存储失败 fail-closed。Acceptance validator `1.9.0` 已把 target-surface backend 加入 `functional-convergence` profile；预检接受 10 个 known-good，并拒绝全部 44 个 known-bad。它们都不替代真实 ChatGPT、系统剪贴板、Notion、PDF viewer 或实际设置页渲染。
+`highlight-interaction-policy-fixture.mjs` 覆盖快捷键规范化、危险组合拒绝、三种交互模式、默认颜色路由以及 repeat/IME 保护。`chatgpt-adapter-recovery-fixture.mjs` 覆盖 property-backed composer、敏感/有副作用上下文、无正文进展签名、工具安全分流和 reload fail-closed；controller fixture 另用会抛错的伪 selector 证明 controller 没有绕过 adapter。`target-surface-backend-fixture.mjs` 汇总 adapter、恢复控件、suggested-work 和 answer actions 四组 fixture，覆盖唯一合同、歧义 fail-open、动作前重验证、composer 空值、可信手势、toggle、remount、原状态恢复、无轮询及无正文诊断。`answer-actions-controller-fixture.mjs` 还单独验证菜单动作、默认排序、streaming、重复 Copy 和未知 live contract。`convergence-core-fixture.mjs` 覆盖设置迁移和安全上限、Markdown/Notion 序列化、五公式样本、高亮记录导入导出，以及可靠性关键状态。`conversation-export-fixture.mjs` 另行覆盖完整性证明、turn/role 身份绑定、整段 Markdown/PDF、高亮偏移、A4/Letter、PDF 高亮开关，以及对 partial、stale、streaming 和伪造输入的拒绝。controller、ledger 与 Worker fixture 再验证实际执行边界、重启去重、并发写入、50 条历史上限和存储失败 fail-closed。Acceptance validator `1.10.0` 已把 answer-action 不变量并入 `functional-convergence` 的 target-surface gate；预检接受 10 个 known-good，并拒绝全部 45 个 known-bad。它们都不替代真实 ChatGPT、系统剪贴板、Notion、PDF viewer 或实际设置页渲染。
 
 ## 明确保留的差距
 
@@ -166,9 +179,10 @@ npm run acceptance:preflight
 - 整段 conversation 的 full-history reload、系统剪贴板和 PDF viewer 验收；
 - Notion 一次粘贴后的原生可编辑公式；
 - 真实 ChatGPT 原生 Stop、assistant retry 和确认未提交 resend 的控件合同与实际动作验收；
+- 单回答 `Mica actions` 的当前真实 action-cluster placement、键盘焦点、系统剪贴板和 PDF handoff；
 - 历史 Composer / Connector 修复在当前真实页面上的精确收敛；
 - Hide suggested work 的当前 ChatGPT 结构合同与页面验收；
-- 当前 `0.5.6` 的浏览器、真实 ChatGPT、PDF viewer 和 Notion 验收；
+- 当前 `0.5.7` 的浏览器、真实 ChatGPT、PDF viewer 和 Notion 验收；
 - `functional-convergence` profile 的完整浏览器候选物化与 candidate run。
 
-这些缺口不会阻止源码和开发构建继续存在，但会阻止把 `0.5.6` 称为发布候选或声称全功能验收通过。
+这些缺口不会阻止源码和开发构建继续存在，但会阻止把 `0.5.7` 称为发布候选或声称全功能验收通过。

@@ -8,8 +8,9 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const adapter = run("scripts/target-surface-adapter-fixture.mjs");
 const suggestedWork = run("scripts/suggested-work-controller-fixture.mjs");
 const recoveryControls = run("scripts/recovery-control-adapter-fixture.mjs");
+const answerActions = run("scripts/answer-actions-controller-fixture.mjs");
 
-for (const result of [adapter, suggestedWork, recoveryControls]) assert.equal(result.passed, true);
+for (const result of [adapter, suggestedWork, recoveryControls, answerActions]) assert.equal(result.passed, true);
 
 const output = {
   schemaVersion: 1,
@@ -34,8 +35,21 @@ const output = {
   retryFallbackSupported: recoveryControls.retryFallbackSupported,
   confirmedUnsentResendSupported: recoveryControls.confirmedUnsentResendSupported,
   unknownLiveContractFailsOpen: recoveryControls.unknownLiveContractFailsOpen,
+  answerActionExactAdapterTarget: answerActions.exactAdapterTargetRequired,
+  singleAnswerActionEntry: answerActions.singleEntryPerAnswer,
+  compactAnswerActionMenu: answerActions.compactMenuActions,
+  answerActionDefaultOrdering: answerActions.defaultActionOrdering,
+  untrustedAnswerActionRejected: answerActions.untrustedGestureRejected,
+  streamingAnswerActionFailsOpen: answerActions.streamingAnswerFailsOpen,
+  ambiguousAnswerActionFailsOpen: answerActions.ambiguousNativeCopyFailsOpen,
+  answerActionRemountReconciled: answerActions.remountReconciled,
+  answerActionToggleRemovesUi: answerActions.toggleRemovesUi,
+  pageWritableAnswerActionMarkerRejected: answerActions.pageWritableFixtureMarkerRejected,
+  answerActionNoPollingOrTypingListener: answerActions.noPollingObserverOrTypingListener,
+  currentSiteAnswerActionContractFailsOpen: answerActions.currentSiteWithoutContractFailsOpen,
   realSuggestedWorkContractIncluded: false,
-  realRecoveryControlContractIncluded: false
+  realRecoveryControlContractIncluded: false,
+  realAnswerActionContractIncluded: false
 };
 
 const evidenceDir = path.join(root, "results", "mica-product-system-rebuild", "convergence-evidence");

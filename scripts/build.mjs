@@ -64,6 +64,7 @@ const manifest = {
         "recovery-controller.js",
         "recovery-control-adapter.js",
         "suggested-work-controller.js",
+        "answer-actions-controller.js",
         "content.js"
       ],
       run_at: "document_idle"
@@ -103,6 +104,7 @@ const recoveryController = render(await readFile(path.join(srcDir, "reliability"
 const recoveryControlAdapter = render(await readFile(path.join(srcDir, "reliability", "recovery-control-adapter.ts"), "utf8"));
 const recoveryLedger = render(await readFile(path.join(srcDir, "reliability", "recovery-ledger.ts"), "utf8"));
 const suggestedWorkController = render(await readFile(path.join(srcDir, "features", "suggested-work-controller.ts"), "utf8"));
+const answerActionsController = render(await readFile(path.join(srcDir, "features", "answer-actions-controller.ts"), "utf8"));
 const lowMemoryCore = render(await readFile(path.join(srcDir, "low-memory", "low-memory-core.ts"), "utf8"));
 const lowMemoryPage = render(await readFile(path.join(srcDir, "low-memory", "low-memory-page.ts"), "utf8"));
 const lowMemoryConfig = render(await readFile(path.join(srcDir, "low-memory", "low-memory-config.ts"), "utf8"));
@@ -131,6 +133,7 @@ await writeFile(path.join(outDir, "recovery-controller.js"), recoveryController)
 await writeFile(path.join(outDir, "recovery-control-adapter.js"), recoveryControlAdapter);
 await writeFile(path.join(outDir, "recovery-ledger.js"), recoveryLedger);
 await writeFile(path.join(outDir, "suggested-work-controller.js"), suggestedWorkController);
+await writeFile(path.join(outDir, "answer-actions-controller.js"), answerActionsController);
 await writeFile(path.join(outDir, "low-memory-core.js"), lowMemoryCore);
 await writeFile(path.join(outDir, "low-memory-page.js"), lowMemoryPage);
 await writeFile(path.join(outDir, "low-memory-config.js"), lowMemoryConfig);

@@ -1,6 +1,6 @@
 {
   "name": "mica-for-chatgpt",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "private": true,
   "description": "Local Chromium extension for a calmer, more capable ChatGPT workspace.",
   "type": "module",
@@ -20,6 +20,7 @@
     "test:highlight-interaction": "node scripts/build.mjs && node scripts/highlight-interaction-policy-fixture.mjs",
     "test:adapter-recovery": "node scripts/build.mjs && node scripts/chatgpt-adapter-recovery-fixture.mjs && node scripts/recovery-controller-fixture.mjs",
     "test:target-surfaces": "node scripts/build.mjs && node scripts/target-surface-backend-fixture.mjs",
+    "test:answer-actions": "node scripts/build.mjs && node scripts/answer-actions-controller-fixture.mjs && node scripts/conversation-export-fixture.mjs && node scripts/validate-build.mjs",
     "test:highlighter:stress": "node scripts/highlighter-stress.mjs",
     "test:pdf": "node scripts/pdf-export-fixture.mjs",
     "test:pdf-background": "node scripts/pdf-background-fixture.mjs",

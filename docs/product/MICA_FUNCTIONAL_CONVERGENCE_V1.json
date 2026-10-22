@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "updatedAt": "2026-10-22",
   "candidate": {
-    "version": "0.5.6",
-    "buildLabel": "functional-convergence.7",
+    "version": "0.5.7",
+    "buildLabel": "functional-convergence.8",
     "branch": "codex/mica-functional-convergence",
     "releaseReady": false,
     "browserExecutionAllowedThisRun": false
@@ -83,8 +83,8 @@
       "automatedVerification": ["convergence-core-fixture"],
       "realAcceptance": "Clipboard action from an exact settled answer",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Serializer backend and user-gesture toolbar action are in the build.",
-      "gap": "Actual Clipboard API behavior was not browser-tested."
+      "result": "Serializer backend, trusted-gesture selection route and proof-gated one-answer action menu backend are in the build.",
+      "gap": "Actual Clipboard API behavior and current-site action-cluster placement were not browser-tested."
     },
     {
       "id": "MFC-021",
@@ -143,6 +143,20 @@
       "gap": "The user explicitly prohibited opening a browser in this run."
     },
     {
+      "id": "MFC-025",
+      "source": ["Foundation UI freeze section 8", "MICA_PRODUCT_SYSTEM_V1 section 4B", "goal sections 4 and 7"],
+      "userProblem": "Expose answer export through one compact Mica entry without adding three permanent buttons or guessing the target answer.",
+      "existingImplementation": false,
+      "module": "ChatGPTAdapter, answer-actions-controller and content export orchestration",
+      "iterationAction": "new",
+      "successBehavior": "Each settled assistant answer gets at most one Mica actions entry only beside a unique EXACT native action cluster; its menu contains only available actions and fails open on streaming, ambiguity, remount or missing contract.",
+      "automatedVerification": ["answer-actions-controller-fixture", "target-surface-backend-fixture", "static build validation", "acceptance preflight"],
+      "realAcceptance": "Current authenticated ChatGPT action cluster, keyboard/focus and clipboard/PDF handoff",
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "result": "The adapter-owned target resolver, isolated fixture authority, one-entry Shadow DOM menu, trusted-gesture gate, action-time revalidation, settings-driven action list/default order, remount cleanup and privacy-safe status are in dist/mica-dev.",
+      "gap": "The current-site action-cluster contract remains unproven, so the live path intentionally injects nothing until exact real evidence is accepted."
+    },
+    {
       "id": "MFC-100",
       "source": ["issue 1", "Milestone A"],
       "userProblem": "Reduce client-side history retained for long conversations without mutating server history.",
@@ -154,7 +168,7 @@
       "realAcceptance": "Current candidate on target low-memory device",
       "status": "IMPLEMENTED_UNVERIFIED",
       "result": "Data-plane code is retained; background settings migration was updated.",
-      "gap": "The current 0.5.6 runtime was not exercised in a browser."
+      "gap": "The current 0.5.7 runtime was not exercised in a browser."
     },
     {
       "id": "MFC-200",
@@ -219,11 +233,11 @@
       "existingImplementation": true,
       "module": "extension/src/features/pdf-export and extension/pdf",
       "iterationAction": "retain",
-      "successBehavior": "PDF model consumes AnswerDocument and highlight anchors, not webpage pixel coordinates.",
-      "automatedVerification": ["existing PDF fixture evidence", "static build validation"],
+      "successBehavior": "PDF model consumes AnswerDocument and logical highlight anchors, applies A4 or Letter page size, and honors the include-highlights setting without webpage pixel coordinates.",
+      "automatedVerification": ["conversation-export-fixture", "existing PDF fixture evidence", "static build validation"],
       "realAcceptance": "Actual PDF viewer visual, selection, search and copy checks",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "Single-answer PDF pipeline remains in the build.",
+      "result": "Single-answer and conversation PDF models now consume the persisted page-size and include-highlights settings; the export page maps A4 and Letter to explicit print page rules.",
       "gap": "No PDF was generated or opened in this browser-free run."
     },
     {
@@ -265,7 +279,7 @@
       "automatedVerification": ["static build validation"],
       "realAcceptance": "Chrome and Edge rendering, focus, zoom and immediate-effect checks",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "Options UI and manifest wiring are in dist/mica-dev, including default color, validated shortcut input and an explicit toolbar/shortcut behavior selector.",
+      "result": "Options UI and manifest wiring are in dist/mica-dev. Default color, shortcut, toolbar behavior, answer-menu default format, Notion availability, PDF page size and PDF highlight inclusion now all reach their runtime consumers.",
       "gap": "No browser rendering was permitted."
     },
     {
@@ -415,11 +429,11 @@
       "existingImplementation": true,
       "module": "scripts/release-config.mjs and dist/mica-dev",
       "iterationAction": "repair",
-      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.6.",
+      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.7.",
       "automatedVerification": ["npm run build", "npm run test:build"],
-      "realAcceptance": "Extension manager shows 0.5.6 after reload",
+      "realAcceptance": "Extension manager shows 0.5.7 after reload",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Runtime version is 0.5.6 with build label functional-convergence.7.",
+      "result": "Runtime version is 0.5.7 with build label functional-convergence.8.",
       "gap": "Extension manager display was not opened."
     },
     {
@@ -461,7 +475,7 @@
       "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "recovery-action-policy-fixture", "target-surface-backend-fixture", "acceptance preflight", "build validator"],
       "realAcceptance": "Full acceptance candidate run",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Validator 1.9.0 also binds target-surface-backend into the functional-convergence profile. Ten known-good controls pass and all 44 known-bad controls, including rehashed wrong-turn action authorization and forged live-contract fail-open evidence, are rejected.",
+      "result": "Validator 1.10.0 binds answer-action menu invariants into target-surface-backend. Ten known-good controls pass and all 45 known-bad controls, including a rehashed multi-button answer-action claim, are rejected.",
       "gap": "A complete browser-bound candidate bundle was not materialized or run in this no-browser iteration."
     }
   ]

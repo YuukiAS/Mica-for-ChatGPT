@@ -203,6 +203,11 @@ export async function runControlCorpus(repoRoot) {
       evidence(context.manifest, "target-surface-backend").measurement.unknownLiveContractFailsOpen = false;
       refreshRoot(context.manifest);
     }],
+    ["forged-answer-action-backend-rehash", async (context) => {
+      await mutateJsonArtifact(context, "target-surface-backend", (value) => { value.singleAnswerActionEntry = false; });
+      evidence(context.manifest, "target-surface-backend").measurement.singleAnswerActionEntry = false;
+      refreshRoot(context.manifest);
+    }],
     ["packaging-version-mismatch", async ({ bundleDir, manifest }) => {
       await writeFile(path.join(bundleDir, "artifacts", "version-report.json"), JSON.stringify({
         sourceVersion: "9.9.9",
@@ -681,8 +686,21 @@ function controlTargetSurfaceBackend() {
     retryFallbackSupported: true,
     confirmedUnsentResendSupported: true,
     unknownLiveContractFailsOpen: true,
+    answerActionExactAdapterTarget: true,
+    singleAnswerActionEntry: true,
+    compactAnswerActionMenu: true,
+    answerActionDefaultOrdering: true,
+    untrustedAnswerActionRejected: true,
+    streamingAnswerActionFailsOpen: true,
+    ambiguousAnswerActionFailsOpen: true,
+    answerActionRemountReconciled: true,
+    answerActionToggleRemovesUi: true,
+    pageWritableAnswerActionMarkerRejected: true,
+    answerActionNoPollingOrTypingListener: true,
+    currentSiteAnswerActionContractFailsOpen: true,
     realSuggestedWorkContractIncluded: false,
-    realRecoveryControlContractIncluded: false
+    realRecoveryControlContractIncluded: false,
+    realAnswerActionContractIncluded: false
   };
 }
 
