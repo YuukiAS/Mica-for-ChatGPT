@@ -43,6 +43,7 @@ assert.equal(record.anchor.pageKey, "https://example.com/article");
 assert.equal(record.anchor.origin, "https://example.com");
 assert.equal(record.anchor.textQuote, "alpha target");
 assert.equal(record.color, "mint");
+assert.deepEqual(JSON.parse(JSON.stringify(record.annotation)), { note: "", tags: [] });
 assert.equal("text" in record.anchor, false, "full page text must not be persisted");
 
 const exact = model.resolveRecord(record, { pageKey: "https://example.com/article?new=1", rootKey: "tag:article:0", text });

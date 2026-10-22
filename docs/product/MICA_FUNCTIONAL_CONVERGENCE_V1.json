@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "updatedAt": "2026-10-22",
   "candidate": {
-    "version": "0.5.9",
-    "buildLabel": "functional-convergence.10",
+    "version": "0.5.10",
+    "buildLabel": "functional-convergence.11",
     "branch": "codex/mica-functional-convergence",
     "releaseReady": false,
     "browserExecutionAllowedThisRun": false
@@ -168,7 +168,7 @@
       "realAcceptance": "Current candidate on target low-memory device",
       "status": "IMPLEMENTED_UNVERIFIED",
       "result": "Data-plane code is retained; background settings migration was updated.",
-      "gap": "The current 0.5.9 runtime was not exercised in a browser."
+      "gap": "The current 0.5.10 runtime was not exercised in a browser."
     },
     {
       "id": "MFC-200",
@@ -192,11 +192,11 @@
       "module": "highlight engine and options",
       "iterationAction": "new",
       "successBehavior": "Versioned JSON import/export sanitizes, bounds and merges records without uploading data.",
-      "automatedVerification": ["convergence-core-fixture", "static build validation"],
+      "automatedVerification": ["highlight-record-integrity-fixture", "convergence-core-fixture", "static build validation", "acceptance preflight"],
       "realAcceptance": "Settings page file picker and download",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Record schema import/export, merge, scoped filtering and clear operations are included.",
-      "gap": "Rendered options interactions were not browser-tested."
+      "result": "ChatGPT and general-web records now expose the same bounded note/tag annotation interface. Legacy records migrate to an empty annotation; imports and mutation helpers reconstruct allowlisted fields, reject oversized identities and source offsets, and exclude unknown top-level, anchor and annotation payloads from later export.",
+      "gap": "The annotation interface is backend-only in this candidate, and rendered Options file interactions were not browser-tested."
     },
     {
       "id": "MFC-202",
@@ -429,11 +429,11 @@
       "existingImplementation": true,
       "module": "scripts/release-config.mjs and dist/mica-dev",
       "iterationAction": "repair",
-      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.9.",
+      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.10.",
       "automatedVerification": ["npm run build", "npm run test:build"],
-      "realAcceptance": "Extension manager shows 0.5.9 after reload",
+      "realAcceptance": "Extension manager shows 0.5.10 after reload",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Runtime version is 0.5.9 with build label functional-convergence.10.",
+      "result": "Runtime version is 0.5.10 with build label functional-convergence.11.",
       "gap": "Extension manager display was not opened."
     },
     {
@@ -472,10 +472,10 @@
       "module": "acceptance validator, controls and functional-convergence profile",
       "iterationAction": "repair",
       "successBehavior": "Known-bad controls remain rejected and convergence requirements become formal candidate gates.",
-      "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "recovery-action-policy-fixture", "target-surface-backend-fixture", "acceptance preflight", "build validator"],
+      "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "recovery-action-policy-fixture", "target-surface-backend-fixture", "highlight-record-integrity-fixture", "acceptance preflight", "build validator"],
       "realAcceptance": "Full acceptance candidate run",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Validator 1.12.0 binds answer-action, export-fidelity and semantic-MathML invariants. The control corpus includes rehashed false structured-table and semantic-rendering claims in addition to existing target-surface and safety controls.",
+      "result": "Validator 1.13.0 binds answer-action, export-fidelity, semantic-MathML and highlight-record integrity invariants. The control corpus now rejects a rehashed false field-sanitization claim in addition to existing target-surface, table, semantic-rendering and safety controls.",
       "gap": "A complete browser-bound candidate bundle was not materialized or run in this no-browser iteration."
     }
   ]

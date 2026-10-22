@@ -4,6 +4,8 @@
   const COLORS = Object.freeze(["yellow", "mint", "blue", "pink"]);
   const MAX_RECORDS = 500;
   const MAX_PAGE_TEXT = 1_000_000;
+  const MAX_SOURCE_OFFSET = 10_000_000;
+  const ANNOTATION_LIMITS = Object.freeze({ noteChars: 2000, tags: 16, tagChars: 64 });
   const ROOT_KEY = /^(?:id:[A-Za-z][\w:.-]{0,127}|role:(?:main|article):\d{1,4}|tag:(?:main|article):\d{1,4}|body)$/;
 
   function normalizePageKey(value) {
@@ -41,6 +43,7 @@
       id: `web-highlight-${hashText(`${createdAt}:${stableStringify(anchor)}`)}`,
       color: COLORS.includes(input.color) ? input.color : COLORS[0],
       anchor,
+      annotation: sanitizeAnnotation(input.annotation),
       status: "active",
       unresolvedReason: null,
       createdAt,
@@ -64,16 +67,26 @@
   }
 
   function withColor(record, color) {
-    if (!validRecord(record) || !COLORS.includes(color)) return null;
-    return { ...record, color, updatedAt: new Date().toISOString() };
+    const sanitized = sanitizeRecords([record])[0];
+    if (!sanitized || !COLORS.includes(color)) return null;
+    return { ...sanitized, color, updatedAt: new Date().toISOString() };
   }
 
   function withResolution(record, resolution) {
-    if (!validRecord(record)) return null;
+    const sanitized = sanitizeRecords([record])[0];
+    if (!sanitized) return null;
     const status = resolution?.status === "resolved" ? "active" : "unresolved";
     const unresolvedReason = status === "active" ? null : String(resolution?.reason || "anchor_unresolved").slice(0, 100);
-    if (record.status === status && record.unresolvedReason === unresolvedReason) return record;
-    return { ...record, status, unresolvedReason, updatedAt: new Date().toISOString() };
+    if (sanitized.status === status && sanitized.unresolvedReason === unresolvedReason) return sanitized;
+    return { ...sanitized, status, unresolvedReason, updatedAt: new Date().toISOString() };
+  }
+
+  function withAnnotation(record, annotation) {
+    const sanitized = sanitizeRecords([record])[0];
+    if (!sanitized) return null;
+    const next = sanitizeAnnotation(annotation);
+    if (stableStringify(sanitized.annotation) === stableStringify(next)) return sanitized;
+    return { ...sanitized, annotation: next, updatedAt: new Date().toISOString() };
   }
 
   function sanitizeRecords(value) {
@@ -96,6 +109,7 @@
           suffix: String(candidate.anchor.suffix || "").slice(0, 64),
           sourceSpan: { start: candidate.anchor.sourceSpan.start, end: candidate.anchor.sourceSpan.end }
         },
+        annotation: sanitizeAnnotation(candidate.annotation),
         status: candidate.status === "unresolved" ? "unresolved" : "active",
         unresolvedReason: candidate.status === "unresolved" ? String(candidate.unresolvedReason || "anchor_unresolved").slice(0, 100) : null,
         createdAt: validTimestamp(candidate.createdAt) || new Date(0).toISOString(),
@@ -147,7 +161,26 @@
       && typeof anchor?.prefix === "string" && anchor.prefix.length <= 64
       && typeof anchor?.suffix === "string" && anchor.suffix.length <= 64
       && Number.isInteger(anchor?.sourceSpan?.start) && Number.isInteger(anchor?.sourceSpan?.end)
-      && anchor.sourceSpan.start >= 0 && anchor.sourceSpan.end > anchor.sourceSpan.start;
+      && anchor.sourceSpan.start >= 0 && anchor.sourceSpan.end > anchor.sourceSpan.start
+      && anchor.sourceSpan.end <= MAX_SOURCE_OFFSET;
+  }
+
+  function sanitizeAnnotation(value = {}) {
+    const note = typeof value?.note === "string"
+      ? value.note.replace(/\r\n?/g, "\n").slice(0, ANNOTATION_LIMITS.noteChars)
+      : "";
+    const tags = [];
+    const seen = new Set();
+    for (const candidate of Array.isArray(value?.tags) ? value.tags : []) {
+      if (typeof candidate !== "string") continue;
+      const tag = candidate.trim().replace(/\s+/g, " ").slice(0, ANNOTATION_LIMITS.tagChars);
+      const key = tag.toLocaleLowerCase();
+      if (!tag || seen.has(key)) continue;
+      seen.add(key);
+      tags.push(tag);
+      if (tags.length >= ANNOTATION_LIMITS.tags) break;
+    }
+    return { note, tags };
   }
 
   function validRootKey(value) {
@@ -205,11 +238,13 @@
     colors: COLORS,
     maxRecords: MAX_RECORDS,
     maxPageText: MAX_PAGE_TEXT,
+    annotationLimits: ANNOTATION_LIMITS,
     normalizePageKey,
     createRecord,
     resolveRecord,
     withColor,
     withResolution,
+    withAnnotation,
     sanitizeRecords,
     recordsForPage,
     mergeRecords,

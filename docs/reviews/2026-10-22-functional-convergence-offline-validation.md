@@ -1,18 +1,26 @@
-# 0.5.9 功能收敛离线验证
+# 0.5.10 功能收敛离线验证
 
-`0.5.9` 补上了 PDF 数学输出中的后端断点。`AnswerDocument` 不再只保存公式的原始 TeX 和渲染文本；遇到可识别的 KaTeX、MathJax 或原生 MathML 时，它会提取有边界的安全 MathML AST。PDF model 再次验证这棵树，打印页通过 MathML 命名空间 DOM 重建公式。没有可靠语义树、树不安全，或局部高亮无法精确映射时，仍保留可见 TeX 降级。
+`0.5.10` 收紧了高亮记录的本地数据边界。ChatGPT 与普通网页记录现在都有同一组有界备注/标签字段，旧记录会迁移为空 annotation；导入、换色和状态变更不再展开外部对象，而是重新构造白名单字段。未知 prompt、token、整页文本、原始 DOM 和 annotation 私有字段不会继续进入存储或导出。`0.5.9` 已建立的安全 MathML PDF 路径保持不变。
 
 这仍是浏览器外的后端候选。本轮没有启动任何浏览器，也没有访问真实 ChatGPT、普通文章页、Notion 或 PDF 查看器。这里的 PASS 只证明离线合同、fail-open 行为、构建一致性和验收器抗伪造能力，不代表真实站点或查看器验收通过。
 
 ## 当前候选
 
 - 分支：`codex/mica-functional-convergence`
-- 版本：`0.5.9`
-- 构建标签：`functional-convergence.10`
+- 版本：`0.5.10`
+- 构建标签：`functional-convergence.11`
 - 固定开发路径：`dist/mica-dev`
 - 需求矩阵：33 项，其中 14 项 `IMPLEMENTED_VERIFIED`、14 项 `IMPLEMENTED_UNVERIFIED`、4 项 `BLOCKED_BY_REAL_EXTERNAL_DEPENDENCY`、1 项 `SUPERSEDED`
 
 ## 本轮主要推进
+
+### 高亮记录完整性
+
+ChatGPT 与普通网页模型都新增 `withAnnotation()`。备注最多 2,000 字符；标签最多 16 个，每个最多 64 字符，并会清理首尾空白、压缩内部空格和按大小写不敏感去重。当前只提供后端接口，没有新增备注编辑 UI，也没有增加云同步或外部服务。
+
+旧 schema v1 记录缺少 annotation 时会迁移为 `{ note: "", tags: [] }`。ChatGPT 导入路径原先会展开未知顶层和锚点字段，现在改为逐项重建允许字段；两类模型的换色、resolution 和 annotation helper 都会先重新清洗记录。超长记录身份、不合理 source offset 以及完全无效的导入会被拒绝。
+
+新的纯 Node fixture 向两类记录注入顶层 prompt/token、整页正文、原始 DOM、未知锚点和未知 annotation 字段，再验证本地记录、变更 helper 和 JSON 导出都不含这些字段。该 fixture 不读取真实页面内容，也不启动浏览器。
 
 ### 单回答 Mica actions
 
@@ -40,18 +48,18 @@ MathML 提取只接受明确的 presentation MathML 标签和有限属性，并�
 
 ### 验收器
 
-验收器升到 `1.12.0`。`conversation-export-completeness` gate 除完整性证明、表格结构和链接安全外，还绑定 MathML 捕获、模型传递、命名空间 DOM 重建、非法树拒绝、资源预算以及局部高亮降级。控制语料增加一份重新哈希的伪语义渲染结果；生产 validator 必须拒绝它。原有单回答入口、安全动作和实站默认失败约束保持不变。
+验收器升到 `1.13.0`。新增 `highlight-record-integrity` gate，把旧记录迁移、备注/标签预算、未知字段剥离、helper 再清洗、超大身份与 source offset 拒绝、两类 round trip 和本地边界绑定到独立证据文件。控制语料新增重新哈希的伪字段清洗结果；生产 validator 必须拒绝它。原有完整会话、MathML、单回答入口、安全动作和实站默认失败约束保持不变。
 
 ## 已运行
 
 | 验证 | 结果 | 用时 | 覆盖范围 |
 | --- | --- | ---: | --- |
-| `npm run build` | PASS | 1.065 s | 生成版本一致的 `0.5.9` 到固定路径 `dist/mica-dev` |
-| `node scripts/conversation-export-fixture.mjs` | PASS | 0.192 s | KaTeX 与非 `HTMLElement` 原生 MathML 捕获、双重过滤、打印页重建、局部高亮降级、过深树拒绝，以及原有表格和完整会话导出合同 |
-| `npm run test:answer-actions` | PASS | 1.368 s | 最终代码的重建、单回答入口、导出专项与静态构建门禁 |
-| `npm run test:convergence-core` | PASS | 2.699 s | 最终代码的全部非浏览器收敛回归，包括 target surfaces、导出、Reliability、普通网页模型和后台注册 |
-| `npm run test:build` | PASS | 1.044 s | 版本、必需文件、MathML 安全边界、selector 边界、隐私和 typing hot path |
-| `npm run acceptance:preflight` | PASS | 6.199 s | validator `1.12.0` 接受 10/10 正例，拒绝 47/47 反例，包括伪造 MathML 语义渲染结果 |
+| `npm run test:highlight-record-integrity` | PASS | 0.963 s | 构建后验证两类 annotation、旧记录迁移、预算、字段白名单、helper 再清洗和导出隐私边界 |
+| `node scripts/convergence-core-fixture.mjs` + `node scripts/general-web-core-fixture.mjs` | PASS | 0.303 s | 受影响的既有 ChatGPT/普通网页模型回归 |
+| `npm run test:convergence-core` | PASS | 3.104 s | 最终代码的全部非浏览器收敛回归，包括高亮记录、target surfaces、导出、Reliability、普通网页模型和后台注册 |
+| `npm run test:build` | PASS | 0.936 s | 版本、必需文件、annotation 接口、白名单导入、selector 边界、隐私和 typing hot path |
+| `npm run build` | PASS | 0.915 s | 生成版本一致的 `0.5.10` 到固定路径 `dist/mica-dev` |
+| `npm run acceptance:preflight` | PASS | 5.848 s | validator `1.13.0` 接受 11/11 正例，拒绝 48/48 反例，包括伪造字段清洗结果 |
 
 ## 未运行
 
@@ -69,6 +77,6 @@ MathML 提取只接受明确的 presentation MathML 标签和有限属性，并�
 
 ## 结论边界
 
-`0.5.9` 已把 PDF 数学从统一的“可见 TeX”推进为“安全 MathML 优先、明确 TeX 降级”。离线 fixture 与验收器证明了数据提取、模型传递、安全过滤和 DOM 重建合同，但没有证明具体浏览器的 MathML 排版质量，也没有证明保存后的 PDF 能正确搜索、选择和复制公式。
+`0.5.10` 已把高亮记录从“能导入导出”推进为“有统一 annotation 扩展位、只保留白名单字段、所有变更 helper 都重新清洗”。离线 fixture 与验收器证明了本地数据模型和防伪合同，但没有证明备注/标签编辑界面，因为本候选尚未提供该 UI；也没有改变既有浏览器、PDF 或真实站点验收结论。
 
-这些缺口不是本轮整体阻塞：源码、`dist/mica-dev`、机器矩阵和离线门禁都可继续推进；它们只阻止把 `0.5.9` 称为发布候选或声称真实 PDF、ChatGPT 与 Notion 已经完成验收。
+这些缺口不是本轮整体阻塞：源码、`dist/mica-dev`、机器矩阵和离线门禁都可继续推进；它们只阻止把 `0.5.10` 称为发布候选或声称真实 PDF、ChatGPT、普通网页与 Notion 已经完成验收。

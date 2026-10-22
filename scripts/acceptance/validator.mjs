@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-export const VALIDATOR_VERSION = "1.12.0";
+export const VALIDATOR_VERSION = "1.13.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 const PLACEMENT_PROOF_OBSERVATION_IDS = [
   "copy-inside-assistant-turn",
@@ -28,8 +28,8 @@ const ACCEPTANCE_PROFILES = {
   "milestone-a": [...FOUNDATION_GATES, "low-memory-benefit"],
   "milestone-b": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection"],
   "release-0.3.0": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection"],
-  "functional-convergence": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "target-surface-backend"],
-  "all-controls": [...FOUNDATION_GATES, "copy-serialization", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "target-surface-backend", "low-memory-benefit", "highlight-remount", "pdf-selection"]
+  "functional-convergence": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "target-surface-backend", "highlight-record-integrity"],
+  "all-controls": [...FOUNDATION_GATES, "copy-serialization", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "target-surface-backend", "highlight-record-integrity", "low-memory-benefit", "highlight-remount", "pdf-selection"]
 };
 
 const EVIDENCE_CLASSES = new Set([
@@ -467,6 +467,37 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
     return;
   }
 
+  if (kind === "highlight-record-integrity") {
+    const measured = await readBoundJson("highlight-record-integrity");
+    if (record.subject?.surface !== "highlight-record-integrity") fail("wrong highlight record integrity target");
+    if (!sameJson(m, measured)) fail("highlight record integrity measurement differs from the bound fixture evidence");
+    for (const field of [
+      "passed",
+      "unifiedAnnotationContract",
+      "legacyRecordsMigrated",
+      "notesBounded",
+      "tagsBounded",
+      "tagsNormalizedAndDeduplicated",
+      "unknownTopLevelFieldsStripped",
+      "unknownAnchorFieldsStripped",
+      "unknownAnnotationFieldsStripped",
+      "mutationHelpersResanitize",
+      "oversizedIdentityRejected",
+      "oversizedSourceOffsetsRejected",
+      "chatgptImportExportRoundTrip",
+      "generalWebImportExportRoundTrip",
+      "unknownSensitiveFieldsExcluded",
+      "localOnlyPureModel",
+      "backendInterfaceOnly"
+    ]) {
+      if (m[field] !== true) fail(`highlight record integrity invariant ${field} failed`);
+    }
+    if (m.externalServiceAdded !== false || m.fullDocumentContentPersisted !== false) {
+      fail("highlight record integrity evidence overclaimed its storage boundary");
+    }
+    return;
+  }
+
   if (kind === "copy-placement") {
     const contract = await readBoundJson("chatgpt-contract");
     const bootstrap = await readBoundJson("current-chatgpt-bootstrap");
@@ -798,6 +829,7 @@ export async function computeValidatorTreeHash(repoRoot) {
     "scripts/recovery-action-policy-fixture.mjs",
     "scripts/recovery-ledger-fixture.mjs",
     "scripts/target-surface-backend-fixture.mjs",
+    "scripts/highlight-record-integrity-fixture.mjs",
     "scripts/target-surface-adapter-fixture.mjs",
     "scripts/suggested-work-controller-fixture.mjs",
     "scripts/recovery-control-adapter-fixture.mjs",

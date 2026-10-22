@@ -112,7 +112,7 @@ assert.equal(notionImport.nativeEquationStatus, "IMPORT_REQUIRES_REAL_TARGET_VAL
 
 const highlightRecord = {
   schemaVersion: 1,
-  id: "highlight-fixture",
+  id: "highlight-deadbeef",
   color: "yellow",
   status: "active",
   unresolvedReason: null,
@@ -122,6 +122,7 @@ const highlightRecord = {
 };
 const highlightExport = highlighter.exportJson([highlightRecord]);
 assert.equal(highlighter.importJson(highlightExport).records.length, 1);
+assert.deepEqual(JSON.parse(JSON.stringify(highlighter.importJson(highlightExport).records[0].annotation)), { note: "", tags: [] });
 assert.equal(highlighter.importJson("not-json").ok, false);
 assert.equal(highlighter.mergeRecords([highlightRecord], [{ ...highlightRecord, color: "blue" }])[0].color, "blue");
 assert.equal(highlighter.recordsForScope([highlightRecord], { conversationId: "conversation-fixture" }).length, 1);

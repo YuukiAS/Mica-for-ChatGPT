@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "validatorVersion": "1.12.0",
+  "validatorVersion": "1.13.0",
   "evidenceSchemaVersion": 1,
   "controlsUseProductionValidators": true,
   "gates": [
@@ -48,6 +48,11 @@
       "id": "target-surface-backend",
       "validatorKind": "target-surface-backend",
       "candidateEvidenceClasses": ["SYNTHETIC_FIXTURE", "LOCAL_REAL_BROWSER", "CURRENT_CHATGPT_READ_ONLY"]
+    },
+    {
+      "id": "highlight-record-integrity",
+      "validatorKind": "highlight-record-integrity",
+      "candidateEvidenceClasses": ["SYNTHETIC_FIXTURE", "LOCAL_REAL_BROWSER"]
     },
     {
       "id": "copy-placement",

@@ -22,6 +22,7 @@ const ALL_GATES = [
   "recovery-deduplication",
   "recovery-action-safety",
   "target-surface-backend",
+  "highlight-record-integrity",
   "copy-placement",
   "core-flow-regression",
   "send-lifecycle-safety",
@@ -41,6 +42,7 @@ export async function runControlCorpus(repoRoot) {
     ["known-good-recovery-deduplication", async (context) => { context.requestedGateIds = ["recovery-deduplication"]; }],
     ["known-good-recovery-action-safety", async (context) => { context.requestedGateIds = ["recovery-action-safety"]; }],
     ["known-good-target-surface-backend", async (context) => { context.requestedGateIds = ["target-surface-backend"]; }],
+    ["known-good-highlight-record-integrity", async (context) => { context.requestedGateIds = ["highlight-record-integrity"]; }],
     ["known-good-adapter-contract", async (context) => { context.requestedGateIds = ["adapter-contract"]; }],
     ["known-good-low-memory-fixture", async (context) => { context.requestedGateIds = ["low-memory-benefit"]; }],
     ["known-good-highlighter-fixture", async (context) => { context.requestedGateIds = ["highlight-remount"]; }],
@@ -218,6 +220,11 @@ export async function runControlCorpus(repoRoot) {
       evidence(context.manifest, "target-surface-backend").measurement.singleAnswerActionEntry = false;
       refreshRoot(context.manifest);
     }],
+    ["forged-highlight-record-sanitization-rehash", async (context) => {
+      await mutateJsonArtifact(context, "highlight-record-integrity", (value) => { value.unknownTopLevelFieldsStripped = false; });
+      evidence(context.manifest, "highlight-record-integrity").measurement.unknownTopLevelFieldsStripped = false;
+      refreshRoot(context.manifest);
+    }],
     ["packaging-version-mismatch", async ({ bundleDir, manifest }) => {
       await writeFile(path.join(bundleDir, "artifacts", "version-report.json"), JSON.stringify({
         sourceVersion: "9.9.9",
@@ -312,6 +319,7 @@ async function createGoodBundle(repoRoot) {
     ["recovery-ledger", "artifacts/recovery-ledger.json", "application/json", JSON.stringify(controlRecoveryLedger())],
     ["recovery-actions", "artifacts/recovery-actions.json", "application/json", JSON.stringify(controlRecoveryActions())],
     ["target-surface-backend", "artifacts/target-surface-backend.json", "application/json", JSON.stringify(controlTargetSurfaceBackend())],
+    ["highlight-record-integrity", "artifacts/highlight-record-integrity.json", "application/json", JSON.stringify(controlHighlightRecordIntegrity())],
     ["built-manifest", "artifacts/built-manifest.json", "application/json", JSON.stringify({ version: "0.0.0" })],
     ["version-report", "artifacts/version-report.json", "application/json", JSON.stringify({
       sourceVersion: "0.0.0",
@@ -464,6 +472,7 @@ async function createGoodBundle(repoRoot) {
     record("recovery-deduplication", { surface: "recovery-service-worker-ledger" }, ["recovery-ledger"], controlRecoveryLedger()),
     record("recovery-action-safety", { surface: "recovery-action-policy" }, ["recovery-actions"], controlRecoveryActions()),
     record("target-surface-backend", { surface: "target-surface-backend" }, ["target-surface-backend"], controlTargetSurfaceBackend()),
+    record("highlight-record-integrity", { surface: "highlight-record-integrity" }, ["highlight-record-integrity"], controlHighlightRecordIntegrity()),
     record("copy-placement", { surface: "assistant-action-cluster" }, ["chatgpt-contract", "current-chatgpt-bootstrap"], {
       actionInjected: false,
       capabilityStatus: "UNKNOWN",
@@ -727,6 +736,32 @@ function controlTargetSurfaceBackend() {
     realSuggestedWorkContractIncluded: false,
     realRecoveryControlContractIncluded: false,
     realAnswerActionContractIncluded: false
+  };
+}
+
+function controlHighlightRecordIntegrity() {
+  return {
+    schemaVersion: 1,
+    subject: "highlight-record-integrity",
+    passed: true,
+    unifiedAnnotationContract: true,
+    legacyRecordsMigrated: true,
+    notesBounded: true,
+    tagsBounded: true,
+    tagsNormalizedAndDeduplicated: true,
+    unknownTopLevelFieldsStripped: true,
+    unknownAnchorFieldsStripped: true,
+    unknownAnnotationFieldsStripped: true,
+    mutationHelpersResanitize: true,
+    oversizedIdentityRejected: true,
+    oversizedSourceOffsetsRejected: true,
+    chatgptImportExportRoundTrip: true,
+    generalWebImportExportRoundTrip: true,
+    unknownSensitiveFieldsExcluded: true,
+    localOnlyPureModel: true,
+    backendInterfaceOnly: true,
+    externalServiceAdded: false,
+    fullDocumentContentPersisted: false
   };
 }
 

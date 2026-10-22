@@ -150,12 +150,15 @@ for (const token of [
   "sourceVersion",
   "textQuote",
   "mathTeX",
+  "annotationLimits",
+  "withAnnotation",
   "exportJson",
   "importJson",
   "mergeRecords",
   "recordsForScope"
 ]) assert(highlightEngine.includes(token), `HighlightEngine missing ${token}`);
-for (const token of ["MicaGeneralWebHighlightModel", "micaGeneralWebHighlightsV1", "quote_ambiguous", "root_mismatch", "recordsForPage", "mergeRecords"]) assert(generalWebModel.includes(token), `general web model missing ${token}`);
+assert(!highlightEngine.includes("...candidate"), "HighlightEngine import must reconstruct allowlisted fields");
+for (const token of ["MicaGeneralWebHighlightModel", "micaGeneralWebHighlightsV1", "quote_ambiguous", "root_mismatch", "annotationLimits", "withAnnotation", "recordsForPage", "mergeRecords"]) assert(generalWebModel.includes(token), `general web model missing ${token}`);
 for (const token of ["MicaHighlightInteractionPolicy", "selectionToolbar", "shortcutHighlight", "matchesShortcut", "defaultColor", "event?.repeat", "event?.isComposing"]) assert(highlightInteractionPolicy.includes(token), `highlight interaction policy missing ${token}`);
 for (const token of ["CSS.highlights", "new Highlight", "handleShortcutKeydown", "applyDefaultShortcutHighlight", "requestAnimationFrame", "MutationObserver", "requestIdleCallback", "Clear page", "generalWebOrigins", "indexRoot"]) assert(generalWebHighlighter.includes(token), `general web runtime missing ${token}`);
 

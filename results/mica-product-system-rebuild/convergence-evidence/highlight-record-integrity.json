@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "subject": "highlight-record-integrity",
+  "passed": true,
+  "unifiedAnnotationContract": true,
+  "legacyRecordsMigrated": true,
+  "notesBounded": true,
+  "tagsBounded": true,
+  "tagsNormalizedAndDeduplicated": true,
+  "unknownTopLevelFieldsStripped": true,
+  "unknownAnchorFieldsStripped": true,
+  "unknownAnnotationFieldsStripped": true,
+  "mutationHelpersResanitize": true,
+  "oversizedIdentityRejected": true,
+  "oversizedSourceOffsetsRejected": true,
+  "chatgptImportExportRoundTrip": true,
+  "generalWebImportExportRoundTrip": true,
+  "unknownSensitiveFieldsExcluded": true,
+  "localOnlyPureModel": true,
+  "backendInterfaceOnly": true,
+  "externalServiceAdded": false,
+  "fullDocumentContentPersisted": false
+}

@@ -7,6 +7,7 @@
     {"id": "known-good-recovery-deduplication", "expected": "ACCEPT"},
     {"id": "known-good-recovery-action-safety", "expected": "ACCEPT"},
     {"id": "known-good-target-surface-backend", "expected": "ACCEPT"},
+    {"id": "known-good-highlight-record-integrity", "expected": "ACCEPT"},
     {"id": "known-good-adapter-contract", "expected": "ACCEPT"},
     {"id": "known-good-low-memory-fixture", "expected": "ACCEPT"},
     {"id": "known-good-highlighter-fixture", "expected": "ACCEPT"},
@@ -58,6 +59,7 @@
     {"id": "forged-recovery-action-safety-rehash", "expected": "REJECT"},
     {"id": "forged-target-surface-backend-rehash", "expected": "REJECT"},
     {"id": "forged-answer-action-backend-rehash", "expected": "REJECT"},
+    {"id": "forged-highlight-record-sanitization-rehash", "expected": "REJECT"},
     {"id": "packaging-version-mismatch", "expected": "REJECT"},
     {"id": "omitted-release-gate", "expected": "REJECT"}
   ]
