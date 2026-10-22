@@ -1,6 +1,7 @@
 (() => {
   const model = globalThis.MicaGeneralWebHighlightModel;
   const settingsModel = globalThis.MicaSettingsModel;
+  const interactionPolicy = globalThis.MicaHighlightInteractionPolicy;
   const SETTINGS_KEY = settingsModel?.storageKey || "micaSettings";
   const STORE_KEY = model?.storeKey || "micaGeneralWebHighlightsV1";
   const HIGHLIGHT_NAMES = Object.freeze({
@@ -16,13 +17,14 @@
   let toolbarHost = null;
   let selectedRecordId = null;
   let pendingSelectionFrame = 0;
+  let pendingShortcutFrame = 0;
   let pendingRenderHandle = 0;
   let pendingRenderKind = null;
   let pageObserver = null;
-  let shortcut = parseShortcut("Alt+Shift+H");
+  let interaction = interactionPolicy?.fromSettings?.(settings?.highlighter) || null;
   let resolvedById = new Map();
 
-  if (!model || !settingsModel || !globalThis.CSS?.highlights || typeof globalThis.Highlight !== "function") return;
+  if (!model || !settingsModel || !interactionPolicy || !globalThis.CSS?.highlights || typeof globalThis.Highlight !== "function") return;
   if (["chatgpt.com", "chat.openai.com"].includes(location.hostname)) return;
 
   chrome.storage.onChanged.addListener(handleStorageChanged);
@@ -43,7 +45,7 @@
   function reconcileActivation() {
     const originAllowed = settings?.highlighter?.generalWebOrigins?.includes(location.origin);
     const shouldActivate = !!(settings?.enabled && settings?.features?.generalWebHighlighter && settings?.highlighter?.generalWebEnabled && originAllowed);
-    shortcut = parseShortcut(settings?.highlighter?.shortcut || "Alt+Shift+H");
+    interaction = interactionPolicy.fromSettings(settings?.highlighter);
     if (shouldActivate && !active) activate();
     if (!shouldActivate && active) deactivate();
   }
@@ -74,6 +76,8 @@
     pageObserver = null;
     if (pendingSelectionFrame) cancelAnimationFrame(pendingSelectionFrame);
     pendingSelectionFrame = 0;
+    if (pendingShortcutFrame) cancelAnimationFrame(pendingShortcutFrame);
+    pendingShortcutFrame = 0;
     cancelScheduledRender();
     hideToolbar();
     clearCustomHighlights();
@@ -81,13 +85,16 @@
   }
 
   function handleShortcutKeydown(event) {
-    if (!active || event.defaultPrevented || isEditableTarget(event.target)) return;
-    if (!shortcut || event.key.toLowerCase() !== shortcut.key || event.altKey !== shortcut.alt || event.ctrlKey !== shortcut.ctrl || event.metaKey !== shortcut.meta || event.shiftKey !== shortcut.shift) return;
-    requestAnimationFrame(showToolbarForSelection);
+    if (!active || pendingShortcutFrame || event.defaultPrevented || isEditableTarget(event.target)) return;
+    if (!interactionPolicy.matchesShortcut(event, interaction)) return;
+    pendingShortcutFrame = requestAnimationFrame(() => {
+      pendingShortcutFrame = 0;
+      applyDefaultShortcutHighlight();
+    });
   }
 
   function scheduleSelectionToolbar(event) {
-    if (!active || event.button !== 0 || event.target?.closest?.("[data-mica-ui]")) return;
+    if (!active || !interaction?.selectionToolbar || event.button !== 0 || event.target?.closest?.("[data-mica-ui]")) return;
     if (pendingSelectionFrame) cancelAnimationFrame(pendingSelectionFrame);
     pendingSelectionFrame = requestAnimationFrame(() => {
       pendingSelectionFrame = 0;
@@ -101,6 +108,11 @@
     selectedRecordId = findOverlappingRecord(snapshot)?.id || null;
     const rect = snapshot.range.getBoundingClientRect();
     showToolbar(rect.left + rect.width / 2, rect.bottom + 8, selectedRecordId);
+  }
+
+  function applyDefaultShortcutHighlight() {
+    hideToolbar();
+    void applyColor(interaction.defaultColor);
   }
 
   function handlePageClick(event) {
@@ -366,13 +378,6 @@
 
   function indexAmong(list, target) {
     return Math.max(0, Array.prototype.indexOf.call(list, target));
-  }
-
-  function parseShortcut(value) {
-    const parts = String(value || "").split("+").map((part) => part.trim()).filter(Boolean);
-    const key = parts.at(-1)?.toLowerCase();
-    if (!key || key.length !== 1) return null;
-    return { key, alt: parts.includes("Alt"), ctrl: parts.includes("Ctrl"), meta: parts.includes("Meta"), shift: parts.includes("Shift") };
   }
 
   function isEditableTarget(target) {

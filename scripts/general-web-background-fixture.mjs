@@ -15,12 +15,12 @@ const permissionRemoved = events();
 const session = {};
 const storage = {
   micaSettings: {
-    schemaVersion: 5,
+    schemaVersion: 6,
     enabled: true,
     theme: "system",
     language: "auto",
     features: { highlighter: true, copyExport: true, lowMemory: false, reliability: true, hideSuggestedWork: false, generalWebHighlighter: true },
-    highlighter: { defaultColor: "yellow", shortcut: "Alt+Shift+H", toolbarBehavior: "selection", generalWebEnabled: true, generalWebOrigins: ["https://example.com", "https://denied.example"] },
+    highlighter: { defaultColor: "yellow", shortcut: "Alt+Shift+H", toolbarBehavior: "both", generalWebEnabled: true, generalWebOrigins: ["https://example.com", "https://denied.example"] },
     export: { defaultFormat: "markdown", markdownFlavor: "gfm", inlineMathDelimiter: "dollar", displayMathDelimiter: "double-dollar", pdfPageSize: "A4", pdfIncludeHighlights: true, notionMode: "clipboard" },
     lowMemory: { keepRecentTurns: 40, activationThreshold: 80 },
     reliability: { enabled: true }
@@ -60,7 +60,7 @@ await settle();
 const script = registered.get("mica-general-web-highlighter-v1");
 assert.ok(script, "granted site did not receive dynamic registration");
 assert.deepEqual([...script.matches], ["https://example.com/*"]);
-assert.deepEqual([...script.js], ["settings-model.js", "general-web-model.js", "general-web-highlighter.js"]);
+assert.deepEqual([...script.js], ["highlight-interaction-policy.js", "settings-model.js", "general-web-model.js", "general-web-highlighter.js"]);
 assert.equal(script.world, "ISOLATED");
 assert.equal(script.persistAcrossSessions, true);
 assert.equal(registered.has("mica-low-memory-main-v3"), false, "general web fixture unexpectedly enabled Low Memory");

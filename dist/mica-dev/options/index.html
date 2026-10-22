@@ -25,7 +25,8 @@
           <header><div><h2>Reading & highlighting</h2><p>Answer highlighting and local anchor storage.</p></div><button type="button" data-reset="highlighter">Reset section</button></header>
           <label class="row"><span><strong>ChatGPT highlighter</strong></span><input id="feature-highlighter" type="checkbox"></label>
           <label class="row"><span><strong>Default color</strong></span><select id="highlight-color"><option value="yellow">Yellow</option><option value="mint">Mint</option><option value="blue">Blue</option><option value="pink">Pink</option></select></label>
-          <label class="row"><span><strong>Shortcut</strong><small>Stored for the configurable command surface.</small></span><input id="highlight-shortcut" type="text" maxlength="64"></label>
+          <label class="row"><span><strong>Shortcut</strong><small>Use a letter or number with Alt, Ctrl, or Meta, for example Alt+Shift+H.</small></span><input id="highlight-shortcut" type="text" maxlength="64"></label>
+          <label class="row"><span><strong>Toolbar & shortcut behavior</strong><small>The shortcut applies the default color without opening the toolbar.</small></span><select id="highlight-toolbar-behavior"><option value="both">Selection toolbar and shortcut</option><option value="selection">Selection toolbar only</option><option value="shortcut">Shortcut only</option></select></label>
           <label class="row"><span><strong>General web highlighting</strong><small>Master switch for websites you allow individually below.</small></span><input id="general-web" type="checkbox"></label>
           <div class="site-access">
             <label for="general-web-origin"><strong>Allow one website</strong><small>Enter a site URL or exact origin. Mica requests access only after you select Add site.</small></label>
@@ -100,6 +101,7 @@
         <footer class="save-bar"><span id="status" role="status" aria-live="polite">Settings are stored locally.</span><button id="save" class="primary" type="submit">Save settings</button></footer>
       </form>
     </main>
+    <script src="../highlight-interaction-policy.js"></script>
     <script src="../settings-model.js"></script>
     <script src="../highlight-engine.js"></script>
     <script src="../general-web-model.js"></script>

@@ -11,6 +11,7 @@
   const answerSerializer = globalThis.MicaAnswerSerializer;
   const conversationExport = globalThis.MicaConversationExport;
   const highlightEngine = globalThis.MicaHighlightEngine;
+  const highlightInteractionPolicy = globalThis.MicaHighlightInteractionPolicy;
   const pdfExport = globalThis.MicaPdfExport;
   const recoveryController = globalThis.MicaRecoveryController;
   let settings = { ...DEFAULT_SETTINGS };
@@ -27,6 +28,8 @@
   let highlightFrame = 0;
   let renderedHighlights = new Map();
   let highlighterReady = false;
+  let highlightInteraction = defaultHighlightInteraction();
+  let highlightShortcutFrame = 0;
 
   if (!adapter || !answerDocument || !isSupportedPage()) return;
 
@@ -34,6 +37,7 @@
 
   async function initialize() {
     settings = await readSettings();
+    refreshHighlightInteraction();
     const tabMode = await globalThis.MicaLowMemoryConfig?.getTabMode?.();
     if (tabMode?.mode === "full_history_bypass") {
       lowMemoryStatus = {
@@ -318,6 +322,7 @@
     const modelFlat = settingsModel && productSettings ? settingsModel.toLegacyFlat(productSettings) : {};
     const next = sanitizeSettings({ ...settings, ...(value || {}), ...modelFlat });
     settings = next;
+    refreshHighlightInteraction();
     if (persist) await writeSettings();
     const registration = await globalThis.MicaLowMemoryConfig?.syncRegistration?.();
     const isLowMemoryEnabled = settings.enabled && settings.lowMemory;
@@ -474,10 +479,7 @@
   }
 
   function safeToReload() {
-    const composer = adapter.findComposer(document)?.element;
-    const value = composer instanceof HTMLTextAreaElement ? composer.value : composer?.textContent || "";
-    const sensitive = document.querySelector("[role='dialog'], [data-is-streaming='true'], [data-testid*='stop' i], [aria-label*='Stop generating' i], [aria-label*='停止生成']");
-    return !String(value).trim() && !sensitive;
+    return adapter.inspectReloadSafety?.(document)?.safe === true;
   }
 
   async function initializeHighlighter() {
@@ -489,7 +491,16 @@
     highlighterReady = supportsCssHighlights();
     addEventListener("pointerup", handleHighlightPointerUp, { passive: true, capture: true });
     addEventListener("keyup", handleHighlightKeyUp, { passive: true, capture: true });
+    addEventListener("keydown", handleHighlightShortcutKeydown, { passive: true, capture: true });
     if (settings.enabled) scheduleHighlightReconcile();
+  }
+
+  function defaultHighlightInteraction() {
+    return Object.freeze({ defaultColor: "yellow", toolbarBehavior: "selection", shortcut: null, selectionToolbar: true, shortcutHighlight: false });
+  }
+
+  function refreshHighlightInteraction() {
+    highlightInteraction = highlightInteractionPolicy?.fromSettings?.(productSettings?.highlighter) || defaultHighlightInteraction();
   }
 
   function supportsCssHighlights() {
@@ -521,19 +532,42 @@
     const point = { x: event.clientX, y: event.clientY };
     requestAnimationFrame(() => {
       const selection = getSelection();
-      if (selection?.rangeCount === 1 && !selection.isCollapsed) inspectHighlightSelection();
+      if (selection?.rangeCount === 1 && !selection.isCollapsed) {
+        if (highlightInteraction.selectionToolbar) inspectHighlightSelection();
+        else hideHighlightToolbar();
+      }
       else inspectExistingHighlightAtPoint(point);
     });
   }
 
   function handleHighlightKeyUp(event) {
-    if (!settings.enabled || !settings.highlighter || !highlighterReady) return;
+    if (!settings.enabled || !settings.highlighter || !highlighterReady || !highlightInteraction.selectionToolbar) return;
     if (!event.shiftKey || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
     if (isEditableTarget(event.target)) return;
     requestAnimationFrame(() => inspectHighlightSelection(true));
   }
 
-  function inspectHighlightSelection(focusToolbar = false) {
+  function handleHighlightShortcutKeydown(event) {
+    if (!settings.enabled || !settings.highlighter || !highlighterReady || highlightShortcutFrame || isEditableTarget(event.target)) return;
+    if (!highlightInteractionPolicy?.matchesShortcut?.(event, highlightInteraction)) return;
+    highlightShortcutFrame = requestAnimationFrame(() => {
+      highlightShortcutFrame = 0;
+      applyDefaultHighlightShortcut();
+    });
+  }
+
+  function applyDefaultHighlightShortcut() {
+    const inspected = inspectHighlightSelection(false, false);
+    if (!inspected.ok) return;
+    const prepared = pendingHighlight;
+    pendingHighlight = null;
+    const selection = getSelection();
+    void createHighlightRecord(prepared?.documentModel, prepared?.snapshot, highlightInteraction.defaultColor).then((created) => {
+      if (created) selection?.removeAllRanges();
+    });
+  }
+
+  function inspectHighlightSelection(focusToolbar = false, showToolbar = true) {
     hideHighlightToolbar();
     const selection = getSelection();
     if (!selection || selection.rangeCount !== 1 || selection.isCollapsed) return { ok: false, reason: "no_selection" };
@@ -553,7 +587,7 @@
     const rect = visibleRangeRect(range);
     if (!rect) return { ok: false, reason: "selection_not_visible" };
     pendingHighlight = { turn: startTurn, documentModel, snapshot };
-    showHighlightToolbar(rect, null, focusToolbar);
+    if (showToolbar) showHighlightToolbar(rect, null, focusToolbar);
     return {
       ok: true,
       turnId: documentModel.turnId,
@@ -586,6 +620,9 @@
     highlightToolbar.toggleAttribute("data-editing", !!recordId);
     const deleteButton = highlightToolbar.shadowRoot.querySelector("[data-action='delete']");
     deleteButton.hidden = !recordId;
+    for (const button of highlightToolbar.shadowRoot.querySelectorAll("[data-color]")) {
+      button.toggleAttribute("data-default", button.dataset.color === highlightInteraction.defaultColor);
+    }
     if (!highlightToolbar.isConnected) document.documentElement.append(highlightToolbar);
     const toolbarWidth = Math.min(highlightToolbar.getBoundingClientRect().width || 520, innerWidth - 24);
     highlightToolbar.style.left = `${Math.max(12, Math.min(innerWidth - toolbarWidth - 12, rect.left + rect.width / 2 - toolbarWidth / 2))}px`;
@@ -640,8 +677,12 @@
   }
 
   async function createHighlightFromPending(color) {
-    if (!highlightEngine || !pendingHighlight?.documentModel || !pendingHighlight?.snapshot) return false;
-    const record = highlightEngine.createRecord(pendingHighlight.documentModel, pendingHighlight.snapshot, color);
+    return createHighlightRecord(pendingHighlight?.documentModel, pendingHighlight?.snapshot, color);
+  }
+
+  async function createHighlightRecord(documentModel, snapshot, color) {
+    if (!highlightEngine || !documentModel || !snapshot) return false;
+    const record = highlightEngine.createRecord(documentModel, snapshot, color);
     if (!record) return false;
     highlightRecords = [...highlightRecords.filter((item) => item.id !== record.id), record].slice(-highlightEngine.maxRecords);
     await persistHighlightRecords();

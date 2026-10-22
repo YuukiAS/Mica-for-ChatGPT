@@ -51,6 +51,7 @@ const manifest = {
     {
       matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
       js: [
+        "highlight-interaction-policy.js",
         "settings-model.js",
         "chatgpt-adapter.js",
         "answer-document.js",
@@ -83,6 +84,7 @@ const replacements = {
 const render = (source) => Object.entries(replacements).reduce((value, [key, replacement]) => value.replaceAll(key, replacement), source);
 
 const content = render(await readFile(path.join(srcDir, "content.ts"), "utf8"));
+const highlightInteractionPolicy = render(await readFile(path.join(srcDir, "features", "highlighter", "highlight-interaction-policy.ts"), "utf8"));
 const chatgptAdapter = render(await readFile(path.join(srcDir, "core", "chatgpt-adapter.ts"), "utf8"));
 const answerDocument = render(await readFile(path.join(srcDir, "core", "answer-document.ts"), "utf8"));
 const conversationExport = render(await readFile(path.join(srcDir, "features", "export", "conversation-export.ts"), "utf8"));
@@ -101,7 +103,7 @@ const lowMemoryCore = render(await readFile(path.join(srcDir, "low-memory", "low
 const lowMemoryPage = render(await readFile(path.join(srcDir, "low-memory", "low-memory-page.ts"), "utf8"));
 const lowMemoryConfig = render(await readFile(path.join(srcDir, "low-memory", "low-memory-config.ts"), "utf8"));
 const lowMemoryBackgroundCore = render(await readFile(path.join(srcDir, "low-memory", "low-memory-background.ts"), "utf8"));
-const lowMemoryBackground = `${settingsModel}\n${recoveryActionPolicy}\n${recoveryStateMachine}\n${recoveryLedger}\n${lowMemoryBackgroundCore}\n${generalWebBackground}`;
+const lowMemoryBackground = `${highlightInteractionPolicy}\n${settingsModel}\n${recoveryActionPolicy}\n${recoveryStateMachine}\n${recoveryLedger}\n${lowMemoryBackgroundCore}\n${generalWebBackground}`;
 const popup = render(await readFile(path.join(popupDir, "popup.ts"), "utf8"));
 const options = render(await readFile(path.join(optionsDir, "options.ts"), "utf8"));
 const troubleshooting = render(await readFile(path.join(popupDir, "troubleshooting.ts"), "utf8"));
@@ -109,6 +111,7 @@ const qa = render(await readFile(path.join(popupDir, "qa.ts"), "utf8"));
 const pdfExportPage = render(await readFile(path.join(root, "extension", "pdf", "pdf-export-page.ts"), "utf8"));
 
 await writeFile(path.join(outDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+await writeFile(path.join(outDir, "highlight-interaction-policy.js"), highlightInteractionPolicy);
 await writeFile(path.join(outDir, "chatgpt-adapter.js"), chatgptAdapter);
 await writeFile(path.join(outDir, "answer-document.js"), answerDocument);
 await writeFile(path.join(outDir, "conversation-export.js"), conversationExport);

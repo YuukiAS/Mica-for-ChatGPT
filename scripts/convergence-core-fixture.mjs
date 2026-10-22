@@ -10,13 +10,14 @@ const dist = path.join(root, "dist", DEV_DIST_DIR_NAME);
 const context = vm.createContext({ console, structuredClone, setTimeout, clearTimeout });
 context.globalThis = context;
 
-for (const file of ["settings-model.js", "answer-serializer.js", "highlight-engine.js", "recovery-action-policy.js", "recovery-state-machine.js"]) {
+for (const file of ["highlight-interaction-policy.js", "settings-model.js", "answer-serializer.js", "highlight-engine.js", "recovery-action-policy.js", "recovery-state-machine.js"]) {
   vm.runInContext(await readFile(path.join(dist, file), "utf8"), context, { filename: file });
 }
 
 const settingsModel = context.MicaSettingsModel;
 const serializer = context.MicaAnswerSerializer;
 const highlighter = context.MicaHighlightEngine;
+const highlightInteraction = context.MicaHighlightInteractionPolicy;
 const recoveryActionPolicy = context.MicaRecoveryActionPolicy;
 const recovery = context.MicaRecoveryStateMachine;
 
@@ -47,6 +48,12 @@ assert.equal(migrated.reliability.consequentialActionAutoReplay, false);
 assert.equal(settingsModel.toStorageRecord(migrated).enabled, false);
 assert.equal(settingsModel.importJson(settingsModel.exportJson(migrated)).ok, true);
 assert.equal(settingsModel.importJson("not-json").ok, false);
+assert.equal(migrated.highlighter.toolbarBehavior, "both", "pre-v6 selection default must migrate to selection plus shortcut");
+assert.equal(settingsModel.patch(migrated, { highlighter: { shortcut: "control+shift+k" } }).highlighter.shortcut, "Ctrl+Shift+K");
+assert.equal(settingsModel.patch(migrated, { highlighter: { shortcut: "Shift+Enter" } }).highlighter.shortcut, "Alt+Shift+H");
+const highlightControls = highlightInteraction.fromSettings(migrated.highlighter);
+assert.equal(highlightControls.selectionToolbar, true);
+assert.equal(highlightControls.shortcutHighlight, true);
 
 const answer = {
   durable: true,
@@ -294,6 +301,6 @@ console.log(JSON.stringify({
   passed: true,
   settings: { schemaVersion: migrated.schemaVersion, bounded: true, consequentialReplayLocked: true },
   export: { markdown: true, notionEquationCount: 5, notionNativeStatus: notion.nativeEquationStatus, notionImportFallback: true, conversationCompletenessGate: true },
-  highlighterRecords: { exportImport: true, merge: true, scopedFiltering: true },
+  highlighterRecords: { exportImport: true, merge: true, scopedFiltering: true, configurableInteraction: true },
   reliability: { normalProgressPreserved: true, firstReload: true, secondReload: true, reloadLimit: true, submissionABC: true, consequentialReplayBlocked: true, tabIsolation: true, privacySafeSnapshot: true, actionClaimIdentity: true, backendFailureFailsManual: true, exactNativeStopAuthorization: true, nativeStopThenSecondReload: true, stopSettlementCancelsReload: true, staleAndWrongTurnEvidenceRejected: true, exactAssistantRetryAuthorization: true, confirmedUnsentResendAuthorization: true, recoveredProgressCancelsAction: true, lateCommitCancelsResend: true, actionSettingsConsumed: true }
 }, null, 2));

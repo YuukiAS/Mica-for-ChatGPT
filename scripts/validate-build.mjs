@@ -42,7 +42,7 @@ assert(JSON.stringify([...manifest.optional_host_permissions].sort()) === JSON.s
 assert(manifest.background?.service_worker === "low-memory-background.js", "Low Memory registration service worker missing");
 assert(manifest.options_ui?.page === "options/index.html" && manifest.options_ui?.open_in_tab === true, "settings page registration missing");
 assert(JSON.stringify(manifest.content_scripts?.[0]?.js) === JSON.stringify(["low-memory-config.js"]) && manifest.content_scripts?.[0]?.run_at === "document_start", "Low Memory config bridge order drifted");
-assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["settings-model.js", "chatgpt-adapter.js", "answer-document.js", "conversation-export.js", "answer-serializer.js", "highlight-engine.js", "pdf-export-model.js", "recovery-action-policy.js", "recovery-state-machine.js", "recovery-controller.js", "content.js"]), "functional convergence content-script order drifted");
+assert(JSON.stringify(manifest.content_scripts?.[1]?.js) === JSON.stringify(["highlight-interaction-policy.js", "settings-model.js", "chatgpt-adapter.js", "answer-document.js", "conversation-export.js", "answer-serializer.js", "highlight-engine.js", "pdf-export-model.js", "recovery-action-policy.js", "recovery-state-machine.js", "recovery-controller.js", "content.js"]), "functional convergence content-script order drifted");
 assert(!manifest.content_scripts.some((entry) => entry.world === "MAIN"), "Low Memory MAIN scripts must be extension-controlled dynamic registrations");
 
 for (const size of [16, 32, 48, 128]) {
@@ -56,6 +56,7 @@ for (const size of ICON_SIZES) {
 
 const contractSource = await readFile(path.join(root, "contracts", "chatgpt", "current.json"));
 const contractHash = createHash("sha256").update(contractSource).digest("hex");
+const highlightInteractionPolicy = await readFile(path.join(distDir, "highlight-interaction-policy.js"), "utf8");
 const adapter = await readFile(path.join(distDir, "chatgpt-adapter.js"), "utf8");
 const answerDocument = await readFile(path.join(distDir, "answer-document.js"), "utf8");
 const conversationExport = await readFile(path.join(distDir, "conversation-export.js"), "utf8");
@@ -81,7 +82,7 @@ const qa = await readFile(path.join(distDir, "popup", "qa.js"), "utf8");
 const pdfExportPage = await readFile(path.join(distDir, "pdf", "pdf-export-page.js"), "utf8");
 
 for (const text of [adapter, content]) assert(text.includes(contractHash), "built current ChatGPT contract hash drifted");
-for (const text of [adapter, answerDocument, conversationExport, settingsModel, answerSerializer, highlightEngine, generalWebModel, generalWebHighlighter, pdfExportModel, recoveryActionPolicy, recoveryStateMachine, recoveryController, recoveryLedger, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, options, troubleshooting, qa, pdfExportPage]) {
+for (const text of [highlightInteractionPolicy, adapter, answerDocument, conversationExport, settingsModel, answerSerializer, highlightEngine, generalWebModel, generalWebHighlighter, pdfExportModel, recoveryActionPolicy, recoveryStateMachine, recoveryController, recoveryLedger, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, options, troubleshooting, qa, pdfExportPage]) {
   assert(!/__MICA_(?:VERSION|VERSION_NAME|BUILD_LABEL|CHATGPT_CONTRACT_HASH|DEV_BUILD)__/.test(text), "unresolved build placeholder remains");
   new Function(text);
 }
@@ -91,6 +92,9 @@ for (const token of [
   "conversation-turn-section-role-v1",
   "native-copy-button-parent-v1",
   "prompt-textarea-contenteditable-v1",
+  "inspectComposerRecovery",
+  "inspectTurnRecovery",
+  "inspectReloadSafety",
   "failOpen"
 ]) assert(adapter.includes(token), `adapter missing ${token}`);
 
@@ -111,7 +115,8 @@ for (const token of ["generalWebOrigins", "normalizeWebOrigin", "toMatchPattern"
 for (const token of ["MicaAnswerSerializer", "serializeMarkdown", "serializeNotion", "serializeNotionImport", "conversation_completeness_unproven", "notion_native_equations_require_real_target_validation"]) assert(answerSerializer.includes(token), `answer serializer missing ${token}`);
 for (const token of ["MicaRecoveryActionPolicy", "EXACT", "native_stop", "assistant_retry", "confirmed_resend", "action_evidence_expired", "action_identity_mismatch", "consequential_or_unknown_action"]) assert(recoveryActionPolicy.includes(token), `recovery action policy missing ${token}`);
 for (const token of ["MicaRecoveryStateMachine", "A_COMMITTED", "B_NOT_COMMITTED", "C_UNKNOWN", "reload_limit_reached", "consequential_or_unknown_action", "ACTION_EVIDENCE", "NATIVE_STOP_SETTLING", "actionClaim", "recovery_backend_unavailable", "rawConversationIdIncluded: false"]) assert(recoveryStateMachine.includes(token), `recovery state machine missing ${token}`);
-for (const token of ["MicaRecoveryController", "MICA_RELIABILITY_CONTEXT", "MICA_RELIABILITY_CLAIM_ACTION", "MICA_RELIABILITY_APPEND_HISTORY", "chrome.storage.session", "trusted_submit", "submitActionEvidence", "executeRecoveryAction", "draftIncluded: false"]) assert(recoveryController.includes(token), `recovery controller missing ${token}`);
+for (const token of ["MicaRecoveryController", "MICA_RELIABILITY_CONTEXT", "MICA_RELIABILITY_CLAIM_ACTION", "MICA_RELIABILITY_APPEND_HISTORY", "chrome.storage.session", "trusted_submit", "inspectComposerRecovery", "inspectTurnRecovery", "submitActionEvidence", "executeRecoveryAction", "draftIncluded: false"]) assert(recoveryController.includes(token), `recovery controller missing ${token}`);
+assert(!/querySelector(?:All)?\s*\(/.test(recoveryController), "recovery controller bypassed ChatGPTAdapter with direct page selectors");
 for (const token of ["MicaRecoveryLedger", "micaRecoveryActionClaimsV1", "native_stop", "confirmed_resend", "already_claimed", "claim_identity_conflict", "history_duplicate", "rawConversationIdIncluded: false"]) assert(recoveryLedger.includes(token), `recovery ledger missing ${token}`);
 
 for (const token of [
@@ -128,7 +133,8 @@ for (const token of [
   "recordsForScope"
 ]) assert(highlightEngine.includes(token), `HighlightEngine missing ${token}`);
 for (const token of ["MicaGeneralWebHighlightModel", "micaGeneralWebHighlightsV1", "quote_ambiguous", "root_mismatch", "recordsForPage", "mergeRecords"]) assert(generalWebModel.includes(token), `general web model missing ${token}`);
-for (const token of ["CSS.highlights", "new Highlight", "handleShortcutKeydown", "requestAnimationFrame", "MutationObserver", "requestIdleCallback", "Clear page", "generalWebOrigins", "indexRoot"]) assert(generalWebHighlighter.includes(token), `general web runtime missing ${token}`);
+for (const token of ["MicaHighlightInteractionPolicy", "selectionToolbar", "shortcutHighlight", "matchesShortcut", "defaultColor", "event?.repeat", "event?.isComposing"]) assert(highlightInteractionPolicy.includes(token), `highlight interaction policy missing ${token}`);
+for (const token of ["CSS.highlights", "new Highlight", "handleShortcutKeydown", "applyDefaultShortcutHighlight", "requestAnimationFrame", "MutationObserver", "requestIdleCallback", "Clear page", "generalWebOrigins", "indexRoot"]) assert(generalWebHighlighter.includes(token), `general web runtime missing ${token}`);
 
 for (const token of ["captureHighlightSelection", "resolveHighlightAnchor", "unique_quote_context", "extractRawMathSources"]) {
   assert(answerDocument.includes(token), `AnswerDocument highlight mapping missing ${token}`);
@@ -153,7 +159,7 @@ for (const token of [
   "rawDomIncluded: false"
 ]) assert(content.includes(token), `content runtime missing ${token}`);
 for (const token of ["collectConversationBundle", "conversationExportStatus", "completenessProof", "MicaConversationExport"]) assert(content.includes(token), `conversation export runtime missing ${token}`);
-for (const token of ["data-mica-ui", "highlight-toolbar", "Copy Markdown", "Copy for Notion", "event.isTrusted", "CSS.highlights", "permanentToolbar: false"]) {
+for (const token of ["data-mica-ui", "highlight-toolbar", "Copy Markdown", "Copy for Notion", "event.isTrusted", "CSS.highlights", "handleHighlightShortcutKeydown", "applyDefaultHighlightShortcut", "permanentToolbar: false"]) {
   assert(content.includes(token), `Highlighter runtime missing ${token}`);
 }
 for (const token of ["MicaPdfExport", "buildConversationModel", "unsupported_answer_structure", "visible-tex-source", "localOnly: true"]) assert(pdfExportModel.includes(token), `PDF export model missing ${token}`);
@@ -178,12 +184,14 @@ for (const token of ["chrome.scripting.registerContentScripts", "world: \"MAIN\"
 for (const token of ["MICA_RELIABILITY_CLAIM_ACTION", "MICA_RELIABILITY_APPEND_HISTORY", "claimRecoveryAction", "appendRecoveryHistory", "clearTabClaims"]) {
   assert(lowMemoryBackground.includes(token), `recovery background ledger integration missing ${token}`);
 }
-for (const token of ["MicaGeneralWebBackground", "mica-general-web-highlighter-v1", "MICA_GENERAL_WEB_SYNC", "world: \"ISOLATED\"", "chrome.permissions", "onRemoved", "general-web-highlighter.js"]) {
+for (const token of ["MicaGeneralWebBackground", "mica-general-web-highlighter-v1", "MICA_GENERAL_WEB_SYNC", "world: \"ISOLATED\"", "chrome.permissions", "onRemoved", "highlight-interaction-policy.js", "general-web-highlighter.js"]) {
   assert(lowMemoryBackground.includes(token), `general web background controller missing ${token}`);
 }
 
 const reportBody = extractFunctionBody(content, "buildSanitizedQaReport");
 assert(!/innerText|textContent|innerHTML|outerHTML/.test(reportBody), "sanitized QA report must not read conversation text/HTML");
+const safeReloadBody = extractFunctionBody(content, "safeToReload");
+assert(safeReloadBody.includes("adapter.inspectReloadSafety") && !/querySelector|textContent|\.value/.test(safeReloadBody), "reload safety must be owned by ChatGPTAdapter");
 for (const text of [settingsModel, conversationExport, answerSerializer, highlightEngine, pdfExportModel, recoveryActionPolicy, recoveryStateMachine, recoveryController, recoveryLedger, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground]) {
   assert(!/addEventListener\(["'](?:beforeinput|input|keydown|compositionstart|compositionupdate|compositionend)/.test(text), "runtime added a typing hot-path listener");
 }
@@ -192,9 +200,9 @@ const generalWebKeydownBody = extractFunctionBody(generalWebHighlighter, "handle
 for (const token of ["querySelector", "querySelectorAll", "createTreeWalker", "cloneNode", "getComputedStyle", "getBoundingClientRect", "textContent", "innerText", "chrome.storage", "setTimeout", "indexRoot"]) {
   assert(!generalWebKeydownBody.includes(token), `general web shortcut hot path includes heavy work: ${token}`);
 }
-for (const token of ["isEditableTarget", "requestAnimationFrame", "event.key.toLowerCase()"] ) assert(generalWebKeydownBody.includes(token), `general web shortcut hot path missing guard: ${token}`);
+for (const token of ["isEditableTarget", "matchesShortcut", "requestAnimationFrame"] ) assert(generalWebKeydownBody.includes(token), `general web shortcut hot path missing guard: ${token}`);
 assert(!/addEventListener\(["'](?:beforeinput|input|compositionstart|compositionupdate|compositionend)/.test(content), "content runtime added a typing hot-path listener");
-assert(!/(?:document|globalThis|window)\.addEventListener\(["']keydown/.test(content), "content runtime added a global keydown hot-path listener");
+assert((content.match(/\n\s+addEventListener\("keydown", handleHighlightShortcutKeydown/g) || []).length === 1, "content runtime must register exactly one bounded highlight shortcut listener");
 const highlightKeyUpBody = extractFunctionBody(content, "handleHighlightKeyUp");
 for (const token of ["querySelector", "querySelectorAll", "cloneNode", "getComputedStyle", "getBoundingClientRect", "textContent", "innerText", "chrome.storage", "setTimeout", "listTurns"]) {
   assert(!highlightKeyUpBody.includes(token), `Highlighter keyboard hot path includes heavy work: ${token}`);
@@ -202,6 +210,16 @@ for (const token of ["querySelector", "querySelectorAll", "cloneNode", "getCompu
 for (const token of ["!event.shiftKey", "isEditableTarget", "requestAnimationFrame"]) {
   assert(highlightKeyUpBody.includes(token), `Highlighter keyboard hot path missing guard: ${token}`);
 }
+const highlightShortcutBody = extractFunctionBody(content, "handleHighlightShortcutKeydown");
+for (const token of ["querySelector", "querySelectorAll", "createTreeWalker", "cloneNode", "getComputedStyle", "getBoundingClientRect", "textContent", "innerText", "chrome.storage", "setTimeout", "listTurns", "inspectHighlightSelection"]) {
+  assert(!highlightShortcutBody.includes(token), `ChatGPT highlight shortcut hot path includes heavy work: ${token}`);
+}
+for (const token of ["isEditableTarget", "matchesShortcut", "requestAnimationFrame"]) assert(highlightShortcutBody.includes(token), `ChatGPT highlight shortcut hot path missing guard: ${token}`);
+const shortcutMatcherBody = extractFunctionBody(highlightInteractionPolicy, "matchesShortcut");
+for (const token of ["querySelector", "querySelectorAll", "createTreeWalker", "cloneNode", "getComputedStyle", "getBoundingClientRect", "textContent", "innerText", "chrome.storage", "setTimeout"]) {
+  assert(!shortcutMatcherBody.includes(token), `shared shortcut matcher includes heavy work: ${token}`);
+}
+for (const token of ["defaultPrevented", "repeat", "isComposing", "event.key", "altKey", "ctrlKey", "metaKey", "shiftKey"]) assert(shortcutMatcherBody.includes(token), `shared shortcut matcher missing guard: ${token}`);
 assert(!/Range\.prototype|Selection\.prototype/.test(`${answerDocument}\n${highlightEngine}\n${content}`), "Highlighter must not patch global Range/Selection prototypes");
 
 const normalHtml = await readFile(path.join(distDir, "popup", "index.html"), "utf8");
@@ -210,11 +228,11 @@ for (const token of ["Mica", "Enable Mica", "Checking this page…", "Low memory
 }
 
 const optionsHtml = await readFile(path.join(distDir, "options", "index.html"), "utf8");
-for (const token of ["General", "Reading & highlighting", "Allow one website", "Add site", "Copy & export", "Performance", "Reliability", "Allow native Stop when verified", "Maximum recovery cycles per turn", "Maximum confirmed-unsent resends", "Maximum assistant retries", "Recover read-only tools", "Hide suggested work", "Export highlights", "Import highlights", "Clear all highlights", "Export settings", "Restore all defaults", "Save settings"]) {
+for (const token of ["General", "Reading & highlighting", "Toolbar & shortcut behavior", "Selection toolbar and shortcut", "Shortcut only", "Allow one website", "Add site", "Copy & export", "Performance", "Reliability", "Allow native Stop when verified", "Maximum recovery cycles per turn", "Maximum confirmed-unsent resends", "Maximum assistant retries", "Recover read-only tools", "Hide suggested work", "Export highlights", "Import highlights", "Clear all highlights", "Export settings", "Restore all defaults", "Save settings"]) {
   assert(optionsHtml.includes(token), `settings page missing ${token}`);
 }
-assert(optionsHtml.indexOf("../settings-model.js") < optionsHtml.indexOf("../highlight-engine.js") && optionsHtml.indexOf("../highlight-engine.js") < optionsHtml.indexOf("../general-web-model.js") && optionsHtml.indexOf("../general-web-model.js") < optionsHtml.indexOf("options.js"), "settings dependency script order drifted");
-for (const token of ["MicaSettingsModel", "MicaHighlightEngine", "MicaGeneralWebHighlightModel", "autoStopEnabled", "maxRecoveryCyclesPerTurn", "maxAutoNewMessageResends", "maxAutoAssistantRetries", "consequentialActionAutoReplay: false", "micaRecoveryHistoryV1", "chrome.permissions.request", "MICA_GENERAL_WEB_SYNC", "generalWebRecords", "mergeRecords", "mica-highlights.json"]) assert(options.includes(token), `settings runtime missing ${token}`);
+assert(optionsHtml.indexOf("../highlight-interaction-policy.js") < optionsHtml.indexOf("../settings-model.js") && optionsHtml.indexOf("../settings-model.js") < optionsHtml.indexOf("../highlight-engine.js") && optionsHtml.indexOf("../highlight-engine.js") < optionsHtml.indexOf("../general-web-model.js") && optionsHtml.indexOf("../general-web-model.js") < optionsHtml.indexOf("options.js"), "settings dependency script order drifted");
+for (const token of ["MicaSettingsModel", "MicaHighlightEngine", "MicaGeneralWebHighlightModel", "highlight-toolbar-behavior", "toolbarBehavior", "autoStopEnabled", "maxRecoveryCyclesPerTurn", "maxAutoNewMessageResends", "maxAutoAssistantRetries", "consequentialActionAutoReplay: false", "micaRecoveryHistoryV1", "chrome.permissions.request", "MICA_GENERAL_WEB_SYNC", "generalWebRecords", "mergeRecords", "mica-highlights.json"]) assert(options.includes(token), `settings runtime missing ${token}`);
 for (const forbidden of ["Start diagnostics", "Stop diagnostics", "Copy report", "mounted", "selector", "Surface Atlas"]) {
   assert(!normalHtml.includes(forbidden), `normal popup exposes internal diagnostic copy: ${forbidden}`);
 }

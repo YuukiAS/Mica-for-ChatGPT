@@ -40,16 +40,17 @@
 
   function handleSubmit(event) {
     if (!configured || !event.isTrusted) return;
-    const composer = adapter.findComposer(document)?.element;
-    const form = composer?.closest("form");
+    const observation = adapter.inspectComposerRecovery(document);
+    const composer = observation.composer?.element;
+    const form = observation.form;
     if (!composer || (form && event.target !== form)) return;
-    const value = composerValue(composer);
+    const value = observation.value;
     if (!value.trim()) return;
     recordSendIntent(value, {
       source: "trusted_submit",
-      sensitiveContext: hasSensitiveContext(form),
-      consequentialAction: hasConsequentialContext(form),
-      toolSafety: hasSensitiveContext(form) ? "unknown" : "none"
+      sensitiveContext: observation.sensitiveContext,
+      consequentialAction: observation.consequentialAction,
+      toolSafety: observation.toolSafety
     });
   }
 
@@ -109,9 +110,10 @@
       const assistants = turns.filter((turn) => turn.role === "assistant" && (!baseline.has(turn.turnId) || turn.turnId === state.assistantTurnId));
       const assistant = assistants.at(-1);
       if (assistant) {
-        const signature = answerProgressSignature(assistant);
-        const generationState = adapter.generationStateForTurn(assistant);
-        const toolSafety = toolSafetyForTurn(assistant);
+        const observation = adapter.inspectTurnRecovery(assistant);
+        const signature = observation.progressSignature;
+        const generationState = observation.generationState;
+        const toolSafety = observation.toolSafety;
         if (toolSafety !== "none" && signature && signature !== state.progressSignature) {
           state = machine.transition(state, { type: "TOOL_PROGRESS", turnId: assistant.turnId, progressSignature: signature, toolSafety }, config);
           if (isTerminal(state.phase)) {
@@ -324,8 +326,9 @@
 
   function restoreDraft(event) {
     if (!event?.isTrusted || state?.submissionStatus !== machine.submission.NOT_COMMITTED || !draft) return false;
-    const composer = adapter.findComposer(document)?.element;
-    if (!composer || composerValue(composer).trim()) return false;
+    const observation = adapter.inspectComposerRecovery(document);
+    const composer = observation.composer?.element;
+    if (!composer || observation.value.trim()) return false;
     setComposerValue(composer, draft);
     clearManualDraft();
     return true;
@@ -375,27 +378,8 @@
     return safe ? { ...safe, draftIncluded: false, configured, tabScoped: tabId > 0 } : null;
   }
 
-  function answerProgressSignature(turn) {
-    const text = String(turn?.answerRoot?.textContent || "").replace(/\s+/g, " ").trim();
-    const toolStages = turn?.element?.querySelectorAll?.("[data-testid*='tool'],[data-testid*='search'],[data-mica-tool-stage]")?.length || 0;
-    return text || toolStages ? `${fingerprint(text)}:stages=${toolStages}` : null;
-  }
-
-  function toolSafetyForTurn(turn) {
-    const root = turn?.element;
-    if (!root?.querySelector) return "none";
-    if (root.querySelector("[data-mica-tool-safety='consequential'],[data-testid*='write'],[data-testid*='purchase'],[data-testid*='delete'],[data-testid*='send-email']")) return "consequential";
-    if (root.querySelector("[data-mica-tool-safety='read-only']")) return "read_only";
-    if (root.querySelector("[data-testid*='tool'],[data-testid*='search'],[data-mica-tool-stage]")) return "unknown";
-    return "none";
-  }
-
   function currentConversationKey() {
     return String(getConversationKey() || "unknown").slice(0, 300);
-  }
-
-  function composerValue(composer) {
-    return composer instanceof HTMLTextAreaElement || composer instanceof HTMLInputElement ? composer.value : composer.textContent || "";
   }
 
   function setComposerValue(composer, value) {
@@ -404,14 +388,6 @@
     else composer.textContent = value;
     composer.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: null }));
     composer.focus();
-  }
-
-  function hasSensitiveContext(form) {
-    return !!form?.querySelector("[data-testid*='attachment'],[data-testid*='file'],[data-testid*='connector'],[data-testid*='tool'],[aria-label*='connector' i],[aria-label*='连接器']");
-  }
-
-  function hasConsequentialContext(form) {
-    return !!form?.querySelector("[data-mica-consequential='true'],[data-testid*='write'],[data-testid*='purchase'],[data-testid*='delete'],[data-testid*='send-email']");
   }
 
   function isTerminal(phase) {

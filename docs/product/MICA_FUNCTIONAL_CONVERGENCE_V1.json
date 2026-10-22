@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "updatedAt": "2026-10-22",
   "candidate": {
-    "version": "0.5.4",
-    "buildLabel": "functional-convergence.5",
+    "version": "0.5.5",
+    "buildLabel": "functional-convergence.6",
     "branch": "codex/mica-functional-convergence",
     "releaseReady": false,
     "browserExecutionAllowedThisRun": false
@@ -38,10 +38,10 @@
       "module": "extension/src/core/chatgpt-adapter.ts",
       "iterationAction": "retain",
       "successBehavior": "ChatGPTAdapter remains the only AnswerDocument producer and unknown structures fail open.",
-      "automatedVerification": ["npm run build", "npm run test:build"],
+      "automatedVerification": ["chatgpt-adapter-recovery-fixture", "npm run build", "npm run test:build"],
       "realAcceptance": "Current authenticated ChatGPT capability contract",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "New export and reliability modules consume adapter output instead of adding answer selectors.",
+      "result": "Export, highlighter, reload safety and reliability observation consume adapter output instead of adding competing ChatGPT selectors.",
       "gap": "No browser or real ChatGPT execution was permitted in this run."
     },
     {
@@ -154,7 +154,7 @@
       "realAcceptance": "Current candidate on target low-memory device",
       "status": "IMPLEMENTED_UNVERIFIED",
       "result": "Data-plane code is retained; background settings migration was updated.",
-      "gap": "The current 0.5.4 runtime was not exercised in a browser."
+      "gap": "The current 0.5.5 runtime was not exercised in a browser."
     },
     {
       "id": "MFC-200",
@@ -164,11 +164,11 @@
       "module": "extension/src/features/highlighter",
       "iterationAction": "retain",
       "successBehavior": "Selection-owned toolbar creates four-color anchors and ambiguous matches remain unresolved.",
-      "automatedVerification": ["existing highlighter fixture evidence", "static build validation"],
+      "automatedVerification": ["existing highlighter fixture evidence", "highlight-interaction-policy-fixture", "static build validation"],
       "realAcceptance": "Current ChatGPT answer selection and remount",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "CSS Custom Highlight architecture is retained and now shares copy/export actions.",
-      "gap": "No browser fixture was run after AnswerDocument changes."
+      "result": "CSS Custom Highlight architecture is retained, shares copy/export actions, and consumes the settings-backed interaction policy for selection and shortcut paths.",
+      "gap": "The new interaction wiring and prior AnswerDocument changes were not browser-tested."
     },
     {
       "id": "MFC-201",
@@ -197,6 +197,20 @@
       "status": "IMPLEMENTED_UNVERIFIED",
       "result": "Per-origin permission requests, permission-filtered dynamic registration, four-color CSS highlights, local anchors, edit/delete/clear, shortcut and combined backup are in the development build.",
       "gap": "No browser was opened, so permission prompts, representative article DOMs, CSS Highlight rendering and interaction lifecycle remain unverified."
+    },
+    {
+      "id": "MFC-203",
+      "source": ["goal sections 5.2 and 11.2"],
+      "userProblem": "Make default highlight color, shortcut and toolbar behavior configurable and actually consumed by both highlighter runtimes.",
+      "existingImplementation": false,
+      "module": "highlight interaction policy, ChatGPT/general-web runtimes and options",
+      "iterationAction": "new",
+      "successBehavior": "One validated policy routes selection-toolbar behavior and a guarded shortcut that applies the configured default color without synchronous DOM work in the keydown path.",
+      "automatedVerification": ["highlight-interaction-policy-fixture", "convergence-core-fixture", "static typing-hot-path validation"],
+      "realAcceptance": "ChatGPT and representative article selection, keyboard and IME interaction",
+      "status": "IMPLEMENTED_VERIFIED",
+      "result": "Schema v6, the Options control, shared policy, both content runtimes and pure fixtures agree on selection-only, shortcut-only and combined behavior. Invalid or modifier-poor shortcuts fail closed; repeat and composition events are ignored.",
+      "gap": "Browser rendering and real keyboard event behavior remain covered by MFC-200 and MFC-202 rather than claimed here."
     },
     {
       "id": "MFC-220",
@@ -237,7 +251,7 @@
       "automatedVerification": ["convergence-core-fixture"],
       "realAcceptance": "Settings persistence across extension reload",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Schema version 4 covers all requested groups and locks consequential replay off.",
+      "result": "Schema version 6 covers all requested groups, migrates the formerly inert highlighter interaction default, and locks consequential replay off.",
       "gap": "Browser persistence is tracked under MFC-301."
     },
     {
@@ -251,7 +265,7 @@
       "automatedVerification": ["static build validation"],
       "realAcceptance": "Chrome and Edge rendering, focus, zoom and immediate-effect checks",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "Options UI and manifest wiring are in dist/mica-dev.",
+      "result": "Options UI and manifest wiring are in dist/mica-dev, including default color, validated shortcut input and an explicit toolbar/shortcut behavior selector.",
       "gap": "No browser rendering was permitted."
     },
     {
@@ -276,10 +290,10 @@
       "module": "extension/src/reliability/recovery-controller.ts",
       "iterationAction": "new",
       "successBehavior": "Trusted submit starts observation; session snapshot survives reload; exact user turn and assistant progress settle or cancel recovery.",
-      "automatedVerification": ["static hot-path validation", "state-machine regression"],
+      "automatedVerification": ["chatgpt-adapter-recovery-fixture", "recovery-controller-fixture", "static hot-path validation", "state-machine regression"],
       "realAcceptance": "Real ChatGPT ghost send and interrupted-generation cases",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "Controller, tab isolation, session storage and conservative reload path are in the build.",
+      "result": "Controller, tab isolation, session storage and conservative reload path are in the build; page-structure observations are delegated to ChatGPTAdapter.",
       "gap": "DOM lifecycle and location reload behavior were not browser-tested."
     },
     {
@@ -323,6 +337,20 @@
       "status": "IMPLEMENTED_VERIFIED",
       "result": "The browser-independent backend authorizes native Stop, assistant retry and confirmed-unsent resend once, rejects stale or mismatched evidence and unsafe tools, applies settle/backoff rules, and keeps content out of claims.",
       "gap": "The real native-control adapter is intentionally absent; MFC-402 remains MISSING until exact live evidence is available."
+    },
+    {
+      "id": "MFC-405",
+      "source": ["goal section 4", "goal sections 8.1 through 8.7"],
+      "userProblem": "Keep reliability and reload safety from creating a second, drifting ChatGPT DOM selector architecture.",
+      "existingImplementation": false,
+      "module": "ChatGPTAdapter and recovery controller",
+      "iterationAction": "repair",
+      "successBehavior": "Composer context, assistant progress, tool safety and reload safety are observed only through the adapter; the controller owns state but no page selectors.",
+      "automatedVerification": ["chatgpt-adapter-recovery-fixture", "recovery-controller-fixture", "static build validation"],
+      "realAcceptance": "Current authenticated ChatGPT lifecycle and tool markers",
+      "status": "IMPLEMENTED_VERIFIED",
+      "result": "Adapter methods now return bounded recovery observations, hash progress without exposing answer text, classify uncertain tools conservatively, and fail reload safety closed when the composer is unavailable. Static validation rejects direct querySelector usage in the recovery controller and content reload gate.",
+      "gap": "Live observations remain PARTIAL because the current lifecycle/tool contract is UNKNOWN; this architecture result does not satisfy MFC-402 or the real-only MFC-410 acceptance."
     },
     {
       "id": "MFC-410",
@@ -387,11 +415,11 @@
       "existingImplementation": true,
       "module": "scripts/release-config.mjs and dist/mica-dev",
       "iterationAction": "repair",
-      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.4.",
+      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.5.",
       "automatedVerification": ["npm run build", "npm run test:build"],
-      "realAcceptance": "Extension manager shows 0.5.4 after reload",
+      "realAcceptance": "Extension manager shows 0.5.5 after reload",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Runtime version is 0.5.4 with build label functional-convergence.5.",
+      "result": "Runtime version is 0.5.5 with build label functional-convergence.6.",
       "gap": "Extension manager display was not opened."
     },
     {

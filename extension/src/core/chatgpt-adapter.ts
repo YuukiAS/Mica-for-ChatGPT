@@ -11,6 +11,11 @@
     "#prompt-textarea[role='textbox'][contenteditable='true']",
     "textarea#mobile-composer-prompt"
   ];
+  const TOOL_STAGE_SELECTOR = "[data-testid*='tool'],[data-testid*='search'],[data-mica-tool-stage]";
+  const READ_ONLY_TOOL_SELECTOR = "[data-mica-tool-safety='read-only']";
+  const CONSEQUENTIAL_SELECTOR = "[data-mica-tool-safety='consequential'],[data-mica-consequential='true'],[data-testid*='write'],[data-testid*='purchase'],[data-testid*='delete'],[data-testid*='send-email']";
+  const SENSITIVE_COMPOSER_SELECTOR = "[data-testid*='attachment'],[data-testid*='file'],[data-testid*='connector'],[data-testid*='tool'],[aria-label*='connector' i],[aria-label*='连接器']";
+  const ACTIVE_LIFECYCLE_SELECTOR = "[role='dialog'],[data-is-streaming='true'],[data-testid*='stop' i],[aria-label*='Stop generating' i],[aria-label*='停止生成']";
   const SUPPORTED_HOSTS = new Set(["chatgpt.com", "chat.openai.com"]);
 
   function isFixture(doc) {
@@ -121,8 +126,71 @@
     return turn.answerRoot instanceof HTMLElement && normalizeVisibleText(turn.answerRoot.textContent || "") ? "SETTLED" : null;
   }
 
+  function inspectComposerRecovery(doc = document) {
+    const composer = findComposer(doc);
+    if (!composer?.element) {
+      return { composer: null, form: null, value: "", sensitiveContext: true, consequentialAction: false, toolSafety: "unknown", evidenceClass: "MISSING", reason: "composer_unavailable" };
+    }
+    const form = composer.element.closest("form");
+    const scope = form || composer.element.parentElement || composer.element;
+    const consequentialAction = !!scope.querySelector?.(CONSEQUENTIAL_SELECTOR);
+    const sensitiveContext = consequentialAction || !!scope.querySelector?.(SENSITIVE_COMPOSER_SELECTOR);
+    return {
+      composer,
+      form,
+      value: composerValue(composer.element),
+      sensitiveContext,
+      consequentialAction,
+      toolSafety: consequentialAction ? "consequential" : sensitiveContext ? "unknown" : "none",
+      evidenceClass: isFixture(doc) ? "EXACT" : "PARTIAL",
+      reason: null
+    };
+  }
+
+  function inspectTurnRecovery(turn) {
+    if (!turn || turn.role !== "assistant" || !(turn.element instanceof HTMLElement) || !(turn.answerRoot instanceof HTMLElement)) {
+      return { progressSignature: null, generationState: null, toolSafety: "unknown", toolStageCount: 0, evidenceClass: "MISSING", reason: "assistant_turn_unavailable" };
+    }
+    const text = normalizeVisibleText(turn.answerRoot.textContent || "");
+    const toolStageCount = turn.element.querySelectorAll(TOOL_STAGE_SELECTOR).length;
+    const consequential = !!turn.element.querySelector(CONSEQUENTIAL_SELECTOR);
+    const readOnly = !!turn.element.querySelector(READ_ONLY_TOOL_SELECTOR);
+    const toolSafety = consequential ? "consequential" : readOnly ? "read_only" : toolStageCount ? "unknown" : "none";
+    return {
+      progressSignature: text || toolStageCount ? `${fingerprint(text)}:stages=${toolStageCount}` : null,
+      generationState: generationStateForTurn(turn),
+      toolSafety,
+      toolStageCount,
+      evidenceClass: isFixture(turn.element.ownerDocument) ? "EXACT" : "PARTIAL",
+      reason: null
+    };
+  }
+
+  function inspectReloadSafety(doc = document) {
+    if (!isSupportedDocument(doc)) return { safe: false, reason: "unsupported_document", evidenceClass: "MISSING" };
+    const composerContext = inspectComposerRecovery(doc);
+    if (!composerContext.composer) return { safe: false, reason: composerContext.reason, evidenceClass: composerContext.evidenceClass };
+    if (composerContext.value.trim()) return { safe: false, reason: "composer_not_empty", evidenceClass: composerContext.evidenceClass };
+    if (doc.querySelector(ACTIVE_LIFECYCLE_SELECTOR)) return { safe: false, reason: "active_dialog_or_stream", evidenceClass: isFixture(doc) ? "EXACT" : "PARTIAL" };
+    return { safe: true, reason: "empty_composer_no_active_lifecycle_marker", evidenceClass: isFixture(doc) ? "EXACT" : "PARTIAL" };
+  }
+
+  function composerValue(composer) {
+    return composer instanceof HTMLTextAreaElement || composer instanceof HTMLInputElement ? composer.value : composer?.textContent || "";
+  }
+
   function normalizeVisibleText(value) {
     return String(value).replace(/\s+/g, " ").trim();
+  }
+
+  function fingerprint(value) {
+    const normalized = normalizeVisibleText(value);
+    let hash = 2166136261;
+    for (let index = 0; index < normalized.length; index += 1) {
+      hash ^= normalized.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return `fnv1a:${(hash >>> 0).toString(16).padStart(8, "0")}:${normalized.length}`;
   }
 
   function inspect(doc = document) {
@@ -211,6 +279,9 @@
     resolveTurnFromNode,
     findComposer,
     findAssistantActionCluster,
-    generationStateForTurn
+    generationStateForTurn,
+    inspectComposerRecovery,
+    inspectTurnRecovery,
+    inspectReloadSafety
   });
 })();

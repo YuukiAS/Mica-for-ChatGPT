@@ -1,7 +1,8 @@
 (() => {
-  const SCHEMA_VERSION = 5;
+  const SCHEMA_VERSION = 6;
   const STORAGE_KEY = "micaSettings";
   const COLORS = Object.freeze(["yellow", "mint", "blue", "pink"]);
+  const highlightInteractionPolicy = globalThis.MicaHighlightInteractionPolicy;
   const DEFAULTS = deepFreeze({
     schemaVersion: SCHEMA_VERSION,
     enabled: true,
@@ -18,7 +19,7 @@
     highlighter: {
       defaultColor: "yellow",
       shortcut: "Alt+Shift+H",
-      toolbarBehavior: "selection",
+      toolbarBehavior: "both",
       generalWebEnabled: false,
       generalWebOrigins: []
     },
@@ -83,6 +84,9 @@
     if (typeof flat.hideSuggestedWork === "boolean") next.features.hideSuggestedWork = flat.hideSuggestedWork;
     if (Number.isFinite(Number(flat.lowMemoryKeepCount))) next.lowMemory.keepRecentTurns = Number(flat.lowMemoryKeepCount);
     if (Number.isFinite(Number(flat.lowMemoryThreshold))) next.lowMemory.activationThreshold = Number(flat.lowMemoryThreshold);
+    if (Number(source.schemaVersion || 0) < 6 && source.highlighter?.toolbarBehavior === "selection") {
+      next.highlighter.toolbarBehavior = "both";
+    }
     next.schemaVersion = SCHEMA_VERSION;
     return next;
   }
@@ -104,7 +108,7 @@
       },
       highlighter: {
         defaultColor: oneOf(input.highlighter?.defaultColor, COLORS, DEFAULTS.highlighter.defaultColor),
-        shortcut: boundedString(input.highlighter?.shortcut, 64, DEFAULTS.highlighter.shortcut),
+        shortcut: sanitizeShortcut(input.highlighter?.shortcut),
         toolbarBehavior: oneOf(input.highlighter?.toolbarBehavior, ["selection", "shortcut", "both"], DEFAULTS.highlighter.toolbarBehavior),
         generalWebEnabled: bool(input.highlighter?.generalWebEnabled, DEFAULTS.highlighter.generalWebEnabled),
         generalWebOrigins: sanitizeWebOrigins(input.highlighter?.generalWebOrigins)
@@ -226,6 +230,12 @@
 
   function bool(value, fallback) {
     return typeof value === "boolean" ? value : fallback;
+  }
+
+  function sanitizeShortcut(value) {
+    const bounded = boundedString(value, 64, DEFAULTS.highlighter.shortcut);
+    if (!highlightInteractionPolicy?.parseShortcut) return bounded;
+    return highlightInteractionPolicy.parseShortcut(bounded)?.label || DEFAULTS.highlighter.shortcut;
   }
 
   function oneOf(value, allowed, fallback) {

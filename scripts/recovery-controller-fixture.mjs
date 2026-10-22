@@ -13,6 +13,7 @@ let copiedDraft = "";
 let lastNotice = null;
 let claimCount = 0;
 let claimAvailable = true;
+let adapterRecoveryObservations = 0;
 const executedActions = [];
 let nextTimerId = 1;
 let nextFrameId = 1;
@@ -86,8 +87,18 @@ for (const file of ["settings-model.js", "recovery-action-policy.js", "recovery-
 const turns = [];
 const adapter = {
   listTurns() { return turns; },
-  findComposer() { return null; },
-  generationStateForTurn(turn) { return turn.generationState; }
+  inspectComposerRecovery() { return { composer: null, form: null, value: "", sensitiveContext: true, consequentialAction: false, toolSafety: "unknown", evidenceClass: "MISSING" }; },
+  inspectTurnRecovery(turn) {
+    adapterRecoveryObservations += 1;
+    const text = String(turn.answerRoot?.textContent || "").trim();
+    const toolSafety = turn.toolSafety || "none";
+    return {
+      progressSignature: text || toolSafety !== "none" ? `fixture:${text}:tool=${toolSafety}` : null,
+      generationState: turn.generationState,
+      toolSafety,
+      evidenceClass: "EXACT"
+    };
+  }
 };
 const controller = context.MicaRecoveryController;
 const phases = context.MicaRecoveryStateMachine.phases;
@@ -181,10 +192,11 @@ turns.push({
   role: "assistant",
   turnId: "assistant-2",
   generationState: "STREAMING",
+  toolSafety: "unknown",
   answerRoot: { textContent: "" },
   element: {
-    querySelectorAll() { return [{}]; },
-    querySelector(selector) { return selector.includes("data-testid*='tool'") ? {} : null; }
+    querySelectorAll() { throw new Error("controller bypassed adapter for tool stages"); },
+    querySelector() { throw new Error("controller bypassed adapter for tool safety"); }
   }
 });
 controller.reconcile();
@@ -350,6 +362,7 @@ console.log(JSON.stringify({
   nativeStopSettlementAvoidedSecondReload: true,
   exactAssistantRetryExecutedAfterBackoff: executedActions.filter((action) => action.type === "assistant_retry").length === 1,
   backoffPendingActionRetained: true,
+  adapterOwnedRecoveryObservation: adapterRecoveryObservations > 0,
   reloadCount
 }, null, 2));
 

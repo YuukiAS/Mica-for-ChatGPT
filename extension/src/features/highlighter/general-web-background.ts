@@ -1,7 +1,7 @@
 (() => {
   const SCRIPT_ID = "mica-general-web-highlighter-v1";
   const SETTINGS_KEY = globalThis.MicaSettingsModel?.storageKey || "micaSettings";
-  const SCRIPT_FILES = Object.freeze(["settings-model.js", "general-web-model.js", "general-web-highlighter.js"]);
+  const SCRIPT_FILES = Object.freeze(["highlight-interaction-policy.js", "settings-model.js", "general-web-model.js", "general-web-highlighter.js"]);
   let syncQueue = Promise.resolve();
 
   chrome.runtime.onInstalled.addListener(() => { void syncRegistration(); });

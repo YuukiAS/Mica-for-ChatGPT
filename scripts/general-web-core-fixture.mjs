@@ -9,6 +9,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dist = path.join(root, "dist", DEV_DIST_DIR_NAME);
 const context = vm.createContext({ URL, Date, console });
 context.globalThis = context;
+vm.runInContext(await readFile(path.join(dist, "highlight-interaction-policy.js"), "utf8"), context);
 vm.runInContext(await readFile(path.join(dist, "settings-model.js"), "utf8"), context);
 vm.runInContext(await readFile(path.join(dist, "general-web-model.js"), "utf8"), context);
 
@@ -20,7 +21,7 @@ const migrated = settings.fromStorage({
     highlighter: { ...settings.defaults().highlighter, generalWebOrigins: ["https://example.com/path?q=1", "https://example.com/other", "javascript:alert(1)", "https://chatgpt.com/c/nope"] }
   }
 });
-assert.equal(migrated.schemaVersion, 5);
+assert.equal(migrated.schemaVersion, 6);
 assert.deepEqual([...migrated.highlighter.generalWebOrigins], ["https://example.com"]);
 assert.equal(settings.normalizeWebOrigin("http://localhost:8080/article"), "http://localhost:8080");
 assert.equal(settings.normalizeWebOrigin("https://chatgpt.com/c/blocked"), null);
