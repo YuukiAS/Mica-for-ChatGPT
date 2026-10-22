@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "updatedAt": "2026-10-22",
   "candidate": {
-    "version": "0.5.10",
-    "buildLabel": "functional-convergence.11",
+    "version": "0.5.11",
+    "buildLabel": "functional-convergence.12",
     "branch": "codex/mica-functional-convergence",
     "releaseReady": false,
     "browserExecutionAllowedThisRun": false
@@ -66,7 +66,7 @@
       "module": "AnswerDocument and answer serializer",
       "iterationAction": "retain",
       "successBehavior": "Serialization rejects any document that is not durable and SETTLED.",
-      "automatedVerification": ["convergence-core-fixture"],
+      "automatedVerification": ["convergence-core-fixture", "local-import-integrity-fixture", "acceptance preflight"],
       "realAcceptance": "none for model contract",
       "status": "IMPLEMENTED_VERIFIED",
       "result": "All new serializers share the durable settled gate.",
@@ -168,7 +168,7 @@
       "realAcceptance": "Current candidate on target low-memory device",
       "status": "IMPLEMENTED_UNVERIFIED",
       "result": "Data-plane code is retained; background settings migration was updated.",
-      "gap": "The current 0.5.10 runtime was not exercised in a browser."
+      "gap": "The current 0.5.11 runtime was not exercised in a browser."
     },
     {
       "id": "MFC-200",
@@ -265,7 +265,7 @@
       "automatedVerification": ["convergence-core-fixture"],
       "realAcceptance": "Settings persistence across extension reload",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Schema version 6 covers all requested groups, migrates the formerly inert highlighter interaction default, and locks consequential replay off.",
+      "result": "Schema version 6 covers all requested groups, migrates the formerly inert highlighter interaction default, locks consequential replay off, rejects future schema versions and enforces a 256 KiB serialized import budget.",
       "gap": "Browser persistence is tracked under MFC-301."
     },
     {
@@ -276,10 +276,10 @@
       "module": "extension/options",
       "iterationAction": "new",
       "successBehavior": "Settings validate, reset by section, import/export locally and update open Mica pages.",
-      "automatedVerification": ["static build validation"],
+      "automatedVerification": ["local-import-integrity-fixture", "static build validation", "acceptance preflight"],
       "realAcceptance": "Chrome and Edge rendering, focus, zoom and immediate-effect checks",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "Options UI and manifest wiring are in dist/mica-dev. Default color, shortcut, toolbar behavior, answer-menu default format, Notion availability, PDF page size and PDF highlight inclusion now all reach their runtime consumers.",
+      "result": "Options UI and manifest wiring are in dist/mica-dev. Import files are size-checked before File.text(), combined highlight backups require an exact v2 envelope, each record family has a source-count budget, mixed legacy families fail closed, and existing single-family backups remain compatible. Default color, shortcut, toolbar behavior, answer-menu default format, Notion availability, PDF page size and PDF highlight inclusion reach their runtime consumers.",
       "gap": "No browser rendering was permitted."
     },
     {
@@ -429,11 +429,11 @@
       "existingImplementation": true,
       "module": "scripts/release-config.mjs and dist/mica-dev",
       "iterationAction": "repair",
-      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.10.",
+      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.11.",
       "automatedVerification": ["npm run build", "npm run test:build"],
-      "realAcceptance": "Extension manager shows 0.5.10 after reload",
+      "realAcceptance": "Extension manager shows 0.5.11 after reload",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Runtime version is 0.5.10 with build label functional-convergence.11.",
+      "result": "Runtime version is 0.5.11 with build label functional-convergence.12.",
       "gap": "Extension manager display was not opened."
     },
     {
@@ -472,10 +472,10 @@
       "module": "acceptance validator, controls and functional-convergence profile",
       "iterationAction": "repair",
       "successBehavior": "Known-bad controls remain rejected and convergence requirements become formal candidate gates.",
-      "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "recovery-action-policy-fixture", "target-surface-backend-fixture", "highlight-record-integrity-fixture", "acceptance preflight", "build validator"],
+      "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "recovery-action-policy-fixture", "target-surface-backend-fixture", "highlight-record-integrity-fixture", "local-import-integrity-fixture", "acceptance preflight", "build validator"],
       "realAcceptance": "Full acceptance candidate run",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Validator 1.13.0 binds answer-action, export-fidelity, semantic-MathML and highlight-record integrity invariants. The control corpus now rejects a rehashed false field-sanitization claim in addition to existing target-surface, table, semantic-rendering and safety controls.",
+      "result": "Validator 1.14.0 binds answer-action, export-fidelity, semantic-MathML, highlight-record and local-import integrity invariants. The control corpus rejects rehashed false field-sanitization and import-budget claims in addition to existing target-surface, table, semantic-rendering and safety controls.",
       "gap": "A complete browser-bound candidate bundle was not materialized or run in this no-browser iteration."
     }
   ]

@@ -1,6 +1,7 @@
 const model = globalThis.MicaSettingsModel;
 const highlightEngine = globalThis.MicaHighlightEngine;
 const generalWebModel = globalThis.MicaGeneralWebHighlightModel;
+const importModel = globalThis.MicaLocalImportModel;
 const form = document.getElementById("settings-form");
 const statusNode = document.getElementById("status");
 let settings = model.defaults();
@@ -92,8 +93,10 @@ function exportSettings() {
 async function importSettings(event) {
   const file = event.target.files?.[0];
   if (!file) return;
-  const imported = model.importJson(await file.text());
+  const loaded = await importModel.readFile(file, "settings");
   event.target.value = "";
+  if (!loaded.ok) return showStatus(importFailureMessage(loaded, "settings"));
+  const imported = model.importJson(loaded.text);
   if (!imported.ok) return showStatus("Import failed: invalid Mica settings JSON.");
   settings = imported.settings;
   render(settings);
@@ -107,12 +110,7 @@ async function clearRecoveryHistory() {
 
 async function exportHighlights() {
   const stored = await getStorage({ [highlightEngine.storeKey]: [], [generalWebModel.storeKey]: [] });
-  const payload = {
-    schemaVersion: 2,
-    exportedAt: new Date().toISOString(),
-    chatgptRecords: highlightEngine.sanitizeRecords(stored[highlightEngine.storeKey]),
-    generalWebRecords: generalWebModel.sanitizeRecords(stored[generalWebModel.storeKey])
-  };
+  const payload = importModel.createHighlightBackup(stored[highlightEngine.storeKey], stored[generalWebModel.storeKey]);
   const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], { type: "application/json" });
   downloadBlob(blob, "mica-highlights.json");
   showStatus("Highlights exported. The file stays on this device unless you share it.");
@@ -121,9 +119,10 @@ async function exportHighlights() {
 async function importHighlights(event) {
   const file = event.target.files?.[0];
   if (!file) return;
-  const source = await file.text();
+  const loaded = await importModel.readFile(file, "highlights");
   event.target.value = "";
-  const imported = parseHighlightImport(source);
+  if (!loaded.ok) return showStatus(importFailureMessage(loaded, "highlight"));
+  const imported = importModel.parseHighlightBackup(loaded.text);
   if (!imported.ok) return showStatus("Import failed. Choose a valid Mica highlights file.");
   const stored = await getStorage({ [highlightEngine.storeKey]: [], [generalWebModel.storeKey]: [] });
   const next = {};
@@ -199,33 +198,6 @@ function renderGeneralWebOrigins(origins) {
   }
 }
 
-function parseHighlightImport(source) {
-  try {
-    const parsed = JSON.parse(String(source || ""));
-    if (Array.isArray(parsed?.chatgptRecords) || Array.isArray(parsed?.generalWebRecords)) {
-      const chatgptSource = Array.isArray(parsed.chatgptRecords) ? parsed.chatgptRecords : [];
-      const webSource = Array.isArray(parsed.generalWebRecords) ? parsed.generalWebRecords : [];
-      const chatgptRecords = highlightEngine.sanitizeRecords(chatgptSource);
-      const generalWebRecords = generalWebModel.sanitizeRecords(webSource);
-      return { ok: true, chatgptRecords, generalWebRecords, importedCount: chatgptRecords.length + generalWebRecords.length, rejectedCount: chatgptSource.length + webSource.length - chatgptRecords.length - generalWebRecords.length };
-    }
-    const records = Array.isArray(parsed) ? parsed : parsed?.records;
-    if (!Array.isArray(records)) return { ok: false };
-    const isGeneralWeb = records.some((record) => String(record?.id || "").startsWith("web-highlight-"));
-    const imported = isGeneralWeb ? generalWebModel.importJson(source) : highlightEngine.importJson(source);
-    if (!imported.ok) return { ok: false };
-    return {
-      ok: true,
-      chatgptRecords: isGeneralWeb ? null : imported.records,
-      generalWebRecords: isGeneralWeb ? imported.records : null,
-      importedCount: imported.records.length,
-      rejectedCount: imported.rejectedCount
-    };
-  } catch (_error) {
-    return { ok: false };
-  }
-}
-
 function requestOrigins(origins) {
   return new Promise((resolve) => chrome.permissions.request({ origins }, (granted) => resolve(!chrome.runtime.lastError && !!granted)));
 }
@@ -256,4 +228,17 @@ function setStorage(value) {
 
 function showStatus(message) {
   statusNode.textContent = message;
+}
+
+function formatBytes(value) {
+  const bytes = Number(value || 0);
+  return bytes < 1024 * 1024
+    ? `${Math.round(bytes / 1024)} KiB`
+    : `${Math.round(bytes / (1024 * 1024) * 10) / 10} MiB`;
+}
+
+function importFailureMessage(result, label) {
+  return result.reason?.endsWith("_too_large")
+    ? `Import failed: ${label} files must be at most ${formatBytes(result.limitBytes)}.`
+    : `Import failed: the ${label} file could not be read.`;
 }

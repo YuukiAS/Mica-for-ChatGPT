@@ -1,18 +1,24 @@
-# 0.5.10 功能收敛离线验证
+# 0.5.11 功能收敛离线验证
 
-`0.5.10` 收紧了高亮记录的本地数据边界。ChatGPT 与普通网页记录现在都有同一组有界备注/标签字段，旧记录会迁移为空 annotation；导入、换色和状态变更不再展开外部对象，而是重新构造白名单字段。未知 prompt、token、整页文本、原始 DOM 和 annotation 私有字段不会继续进入存储或导出。`0.5.9` 已建立的安全 MathML PDF 路径保持不变。
+`0.5.11` 补齐了设置和高亮备份的本地导入边界。文件会在读取正文前检查体积，设置导入拒绝未来 schema，高亮组合备份使用精确的 v2 envelope 和分类型记录上限；旧的单类高亮文件继续兼容，混装文件则默认拒绝。`0.5.10` 已完成的高亮字段白名单和 annotation 清洗、`0.5.9` 已建立的安全 MathML PDF 路径保持不变。
 
 这仍是浏览器外的后端候选。本轮没有启动任何浏览器，也没有访问真实 ChatGPT、普通文章页、Notion 或 PDF 查看器。这里的 PASS 只证明离线合同、fail-open 行为、构建一致性和验收器抗伪造能力，不代表真实站点或查看器验收通过。
 
 ## 当前候选
 
 - 分支：`codex/mica-functional-convergence`
-- 版本：`0.5.10`
-- 构建标签：`functional-convergence.11`
+- 版本：`0.5.11`
+- 构建标签：`functional-convergence.12`
 - 固定开发路径：`dist/mica-dev`
 - 需求矩阵：33 项，其中 14 项 `IMPLEMENTED_VERIFIED`、14 项 `IMPLEMENTED_UNVERIFIED`、4 项 `BLOCKED_BY_REAL_EXTERNAL_DEPENDENCY`、1 项 `SUPERSEDED`
 
 ## 本轮主要推进
+
+### 本地导入边界
+
+设置 JSON 最多接受 256 KiB，高亮组合备份最多接受 40 MiB。Options 页面通过统一的 `MicaLocalImportModel.readFile()` 读取文件；体积超限时不会调用 `File.text()`。各高亮模型还会在解析后限制源数组为最多 1,000 条，避免小体积、超多空对象的输入拖入无界清洗循环。
+
+组合高亮备份只接受 `schemaVersion`、`exportedAt`、`chatgptRecords` 和 `generalWebRecords` 这 4 个字段，版本必须为 2。未知字段、无效时间戳、未来版本和缺少任一记录数组都会失败。旧 ChatGPT 或普通网页单类备份仍可导入，但同一旧文件混装两种记录会被拒绝，避免按首个 ID 猜测类型。合并规则固定为：导入记录覆盖现有同 ID 记录；导入文件内部重复 ID 时，第一条有效记录生效。
 
 ### 高亮记录完整性
 
@@ -48,18 +54,18 @@ MathML 提取只接受明确的 presentation MathML 标签和有限属性，并�
 
 ### 验收器
 
-验收器升到 `1.13.0`。新增 `highlight-record-integrity` gate，把旧记录迁移、备注/标签预算、未知字段剥离、helper 再清洗、超大身份与 source offset 拒绝、两类 round trip 和本地边界绑定到独立证据文件。控制语料新增重新哈希的伪字段清洗结果；生产 validator 必须拒绝它。原有完整会话、MathML、单回答入口、安全动作和实站默认失败约束保持不变。
+验收器升到 `1.14.0`。新增 `local-import-integrity` gate，把读取前体积检查、未来 schema 拒绝、精确组合 envelope、记录数量预算、旧文件兼容和确定性冲突规则绑定到独立证据文件。控制语料新增重新哈希的伪导入预算结果；生产 validator 必须拒绝它。原有高亮字段清洗、完整会话、MathML、单回答入口、安全动作和实站默认失败约束保持不变。
 
 ## 已运行
 
 | 验证 | 结果 | 用时 | 覆盖范围 |
 | --- | --- | ---: | --- |
-| `npm run test:highlight-record-integrity` | PASS | 0.963 s | 构建后验证两类 annotation、旧记录迁移、预算、字段白名单、helper 再清洗和导出隐私边界 |
-| `node scripts/convergence-core-fixture.mjs` + `node scripts/general-web-core-fixture.mjs` | PASS | 0.303 s | 受影响的既有 ChatGPT/普通网页模型回归 |
-| `npm run test:convergence-core` | PASS | 3.104 s | 最终代码的全部非浏览器收敛回归，包括高亮记录、target surfaces、导出、Reliability、普通网页模型和后台注册 |
-| `npm run test:build` | PASS | 0.936 s | 版本、必需文件、annotation 接口、白名单导入、selector 边界、隐私和 typing hot path |
-| `npm run build` | PASS | 0.915 s | 生成版本一致的 `0.5.10` 到固定路径 `dist/mica-dev` |
-| `npm run acceptance:preflight` | PASS | 5.848 s | validator `1.13.0` 接受 11/11 正例，拒绝 48/48 反例，包括伪造字段清洗结果 |
+| `npm run test:local-import-integrity` | PASS | 0.979 s | 构建后验证读取前预算、schema/envelope、两类记录上限、旧文件兼容、混装拒绝与冲突规则 |
+| `node scripts/convergence-core-fixture.mjs` + `node scripts/highlight-record-integrity-fixture.mjs` | PASS | 0.274 s | 受影响的既有设置与高亮记录回归 |
+| `npm run test:convergence-core` | PASS | 2.590 s | 最终代码的全部非浏览器收敛回归；首步重建版本一致的 `dist/mica-dev` |
+| `npm run test:build` | PASS | 0.781 s | 版本、必需文件、本地导入模型、selector 边界、隐私和 typing hot path |
+| `npm run build` | PASS | 0.824 s | 生成版本一致的 `0.5.11` 到固定路径 `dist/mica-dev` |
+| `npm run acceptance:preflight` | PASS | 5.430 s | validator `1.14.0` 接受 12/12 正例，拒绝 49/49 反例，包括伪造导入预算结果 |
 
 ## 未运行
 
@@ -77,6 +83,6 @@ MathML 提取只接受明确的 presentation MathML 标签和有限属性，并�
 
 ## 结论边界
 
-`0.5.10` 已把高亮记录从“能导入导出”推进为“有统一 annotation 扩展位、只保留白名单字段、所有变更 helper 都重新清洗”。离线 fixture 与验收器证明了本地数据模型和防伪合同，但没有证明备注/标签编辑界面，因为本候选尚未提供该 UI；也没有改变既有浏览器、PDF 或真实站点验收结论。
+`0.5.11` 已把本地导入从“选择文件后直接读取和解析”推进为“读取前限额、解析后限量、版本与 envelope 明确、旧格式兼容但不猜测混装类型”。离线 fixture 与验收器证明了这些本地边界，但没有运行实际文件选择器，也没有改变既有浏览器、PDF 或真实站点验收结论。
 
-这些缺口不是本轮整体阻塞：源码、`dist/mica-dev`、机器矩阵和离线门禁都可继续推进；它们只阻止把 `0.5.10` 称为发布候选或声称真实 PDF、ChatGPT、普通网页与 Notion 已经完成验收。
+这些缺口不是本轮整体阻塞：源码、`dist/mica-dev`、机器矩阵和离线门禁都可继续推进；它们只阻止把 `0.5.11` 称为发布候选或声称真实 PDF、ChatGPT、普通网页与 Notion 已经完成验收。

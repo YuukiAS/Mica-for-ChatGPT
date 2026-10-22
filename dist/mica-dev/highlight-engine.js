@@ -3,6 +3,8 @@
   const STORE_KEY = "micaHighlightsV1";
   const COLORS = Object.freeze(["yellow", "mint", "blue", "pink"]);
   const MAX_RECORDS = 500;
+  const MAX_IMPORT_CHARS = 32 * 1024 * 1024;
+  const MAX_IMPORT_SOURCE_RECORDS = 1000;
   const MAX_SOURCE_OFFSET = 10_000_000;
   const ANNOTATION_LIMITS = Object.freeze({ noteChars: 2000, tags: 16, tagChars: 64 });
 
@@ -113,10 +115,13 @@
   }
 
   function importJson(text) {
+    const serialized = typeof text === "string" ? text : String(text || "");
+    if (serialized.length > MAX_IMPORT_CHARS) return { ok: false, reason: "highlight_import_too_large" };
     try {
-      const parsed = JSON.parse(String(text || ""));
+      const parsed = JSON.parse(serialized);
       const source = Array.isArray(parsed) ? parsed : parsed?.records;
       if (!Array.isArray(source)) return { ok: false, reason: "highlight_records_missing" };
+      if (source.length > MAX_IMPORT_SOURCE_RECORDS) return { ok: false, reason: "highlight_record_count_exceeded" };
       const records = sanitizeRecords(source);
       if (source.length > 0 && records.length === 0) return { ok: false, reason: "highlight_records_invalid" };
       return { ok: true, records, rejectedCount: Math.max(0, source.length - records.length) };
@@ -229,6 +234,8 @@
     storeKey: STORE_KEY,
     colors: COLORS,
     maxRecords: MAX_RECORDS,
+    maxImportChars: MAX_IMPORT_CHARS,
+    maxImportSourceRecords: MAX_IMPORT_SOURCE_RECORDS,
     annotationLimits: ANNOTATION_LIMITS,
     createRecord,
     resolveRecord,

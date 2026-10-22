@@ -64,6 +64,7 @@ const settingsModel = await readFile(path.join(distDir, "settings-model.js"), "u
 const answerSerializer = await readFile(path.join(distDir, "answer-serializer.js"), "utf8");
 const highlightEngine = await readFile(path.join(distDir, "highlight-engine.js"), "utf8");
 const generalWebModel = await readFile(path.join(distDir, "general-web-model.js"), "utf8");
+const localImportModel = await readFile(path.join(distDir, "local-import-model.js"), "utf8");
 const generalWebHighlighter = await readFile(path.join(distDir, "general-web-highlighter.js"), "utf8");
 const pdfExportModel = await readFile(path.join(distDir, "pdf-export-model.js"), "utf8");
 const recoveryActionPolicy = await readFile(path.join(distDir, "recovery-action-policy.js"), "utf8");
@@ -86,7 +87,7 @@ const pdfExportPage = await readFile(path.join(distDir, "pdf", "pdf-export-page.
 const pdfExportCss = await readFile(path.join(distDir, "pdf", "pdf-export.css"), "utf8");
 
 for (const text of [adapter, content]) assert(text.includes(contractHash), "built current ChatGPT contract hash drifted");
-for (const text of [highlightInteractionPolicy, adapter, answerDocument, conversationExport, settingsModel, answerSerializer, highlightEngine, generalWebModel, generalWebHighlighter, pdfExportModel, recoveryActionPolicy, recoveryStateMachine, recoveryController, recoveryControlAdapter, recoveryLedger, suggestedWorkController, answerActionsController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, options, troubleshooting, qa, pdfExportPage]) {
+for (const text of [highlightInteractionPolicy, adapter, answerDocument, conversationExport, settingsModel, answerSerializer, highlightEngine, generalWebModel, localImportModel, generalWebHighlighter, pdfExportModel, recoveryActionPolicy, recoveryStateMachine, recoveryController, recoveryControlAdapter, recoveryLedger, suggestedWorkController, answerActionsController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, options, troubleshooting, qa, pdfExportPage]) {
   assert(!/__MICA_(?:VERSION|VERSION_NAME|BUILD_LABEL|CHATGPT_CONTRACT_HASH|DEV_BUILD)__/.test(text), "unresolved build placeholder remains");
   new Function(text);
 }
@@ -264,8 +265,9 @@ const optionsHtml = await readFile(path.join(distDir, "options", "index.html"), 
 for (const token of ["General", "Reading & highlighting", "Toolbar & shortcut behavior", "Selection toolbar and shortcut", "Shortcut only", "Allow one website", "Add site", "Copy & export", "Performance", "Reliability", "Allow native Stop when verified", "Maximum recovery cycles per turn", "Maximum confirmed-unsent resends", "Maximum assistant retries", "Recover read-only tools", "Hide suggested work", "Export highlights", "Import highlights", "Clear all highlights", "Export settings", "Restore all defaults", "Save settings"]) {
   assert(optionsHtml.includes(token), `settings page missing ${token}`);
 }
-assert(optionsHtml.indexOf("../highlight-interaction-policy.js") < optionsHtml.indexOf("../settings-model.js") && optionsHtml.indexOf("../settings-model.js") < optionsHtml.indexOf("../highlight-engine.js") && optionsHtml.indexOf("../highlight-engine.js") < optionsHtml.indexOf("../general-web-model.js") && optionsHtml.indexOf("../general-web-model.js") < optionsHtml.indexOf("options.js"), "settings dependency script order drifted");
-for (const token of ["MicaSettingsModel", "MicaHighlightEngine", "MicaGeneralWebHighlightModel", "highlight-toolbar-behavior", "toolbarBehavior", "autoStopEnabled", "maxRecoveryCyclesPerTurn", "maxAutoNewMessageResends", "maxAutoAssistantRetries", "consequentialActionAutoReplay: false", "micaRecoveryHistoryV1", "chrome.permissions.request", "MICA_GENERAL_WEB_SYNC", "generalWebRecords", "mergeRecords", "mica-highlights.json"]) assert(options.includes(token), `settings runtime missing ${token}`);
+assert(optionsHtml.indexOf("../highlight-interaction-policy.js") < optionsHtml.indexOf("../settings-model.js") && optionsHtml.indexOf("../settings-model.js") < optionsHtml.indexOf("../highlight-engine.js") && optionsHtml.indexOf("../highlight-engine.js") < optionsHtml.indexOf("../general-web-model.js") && optionsHtml.indexOf("../general-web-model.js") < optionsHtml.indexOf("../local-import-model.js") && optionsHtml.indexOf("../local-import-model.js") < optionsHtml.indexOf("options.js"), "settings dependency script order drifted");
+for (const token of ["MicaSettingsModel", "MicaHighlightEngine", "MicaGeneralWebHighlightModel", "MicaLocalImportModel", "highlight-toolbar-behavior", "toolbarBehavior", "autoStopEnabled", "maxRecoveryCyclesPerTurn", "maxAutoNewMessageResends", "maxAutoAssistantRetries", "consequentialActionAutoReplay: false", "micaRecoveryHistoryV1", "chrome.permissions.request", "MICA_GENERAL_WEB_SYNC", "generalWebRecords", "mergeRecords", "mica-highlights.json", "readFile", "parseHighlightBackup"]) assert(options.includes(token), `settings runtime missing ${token}`);
+for (const token of ["HIGHLIGHT_BACKUP_SCHEMA_VERSION", "SETTINGS_FILE_BYTES", "HIGHLIGHT_FILE_BYTES", "exactKeys", "legacy_highlight_families_mixed", "highlight_backup_record_count_exceeded"]) assert(localImportModel.includes(token), `local import model missing ${token}`);
 for (const forbidden of ["Start diagnostics", "Stop diagnostics", "Copy report", "mounted", "selector", "Surface Atlas"]) {
   assert(!normalHtml.includes(forbidden), `normal popup exposes internal diagnostic copy: ${forbidden}`);
 }

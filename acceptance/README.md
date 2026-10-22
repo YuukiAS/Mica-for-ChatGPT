@@ -44,7 +44,7 @@ the production validator, CLI, control runner, schemas and contracts.
 - `release-0.3.0`: the full Milestone B set. Low Memory cannot be omitted.
 - `functional-convergence`: the full Milestone B set plus complete-conversation
   export, recovery-deduplication, recovery-action-safety, target-surface-backend
-  and highlight-record-integrity gates. The export gate binds a versioned
+  highlight-record-integrity and local-import-integrity gates. The export gate binds a versioned
   fixture to exact completeness proof, turn/role identity, settled-only
   documents, Markdown/PDF assembly, structured table-cell math, bounded MathML
   capture/model/rendering, explicit partial-highlight fallback, PDF inline
@@ -63,7 +63,11 @@ the production validator, CLI, control runner, schemas and contracts.
   record gate binds legacy migration, bounded notes/tags, allowlisted field
   reconstruction, oversized identity rejection, mutation-helper re-sanitizing
   and exclusion of unknown payloads from later export; it does not claim a
-  browser-rendered note/tag editor.
+  browser-rendered note/tag editor. The local-import gate binds pre-read file
+  budgets, future-schema rejection, the exact combined-backup envelope,
+  per-family source-record limits, legacy single-family compatibility and a
+  deterministic duplicate-ID conflict rule; it does not claim that a browser
+  file picker was exercised.
 
 The profile-to-gate mapping is enforced by the validator, so shortening a
 bundle's `requiredGates` cannot manufacture a PASS.

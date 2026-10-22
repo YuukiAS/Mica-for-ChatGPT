@@ -1,6 +1,7 @@
 (() => {
   const SCHEMA_VERSION = 6;
   const STORAGE_KEY = "micaSettings";
+  const MAX_IMPORT_CHARS = 256 * 1024;
   const COLORS = Object.freeze(["yellow", "mint", "blue", "pink"]);
   const highlightInteractionPolicy = globalThis.MicaHighlightInteractionPolicy;
   const DEFAULTS = deepFreeze({
@@ -199,9 +200,15 @@
   }
 
   function importJson(text) {
+    const source = typeof text === "string" ? text : String(text || "");
+    if (source.length > MAX_IMPORT_CHARS) return { ok: false, reason: "settings_import_too_large" };
     try {
-      const parsed = JSON.parse(String(text || ""));
+      const parsed = JSON.parse(source);
       if (!isRecord(parsed)) return { ok: false, reason: "settings_not_an_object" };
+      if (parsed.schemaVersion !== undefined
+        && (!Number.isInteger(parsed.schemaVersion) || parsed.schemaVersion < 1 || parsed.schemaVersion > SCHEMA_VERSION)) {
+        return { ok: false, reason: "settings_schema_unsupported" };
+      }
       return { ok: true, settings: sanitize(parsed) };
     } catch (_error) {
       return { ok: false, reason: "settings_invalid_json" };
@@ -289,6 +296,7 @@
   globalThis.MicaSettingsModel = Object.freeze({
     schemaVersion: SCHEMA_VERSION,
     storageKey: STORAGE_KEY,
+    maxImportChars: MAX_IMPORT_CHARS,
     colors: COLORS,
     defaults,
     fromStorage,

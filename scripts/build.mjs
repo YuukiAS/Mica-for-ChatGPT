@@ -95,6 +95,7 @@ const settingsModel = render(await readFile(path.join(srcDir, "settings", "setti
 const answerSerializer = render(await readFile(path.join(srcDir, "features", "export", "answer-serializer.ts"), "utf8"));
 const highlightEngine = render(await readFile(path.join(srcDir, "features", "highlighter", "highlight-engine.ts"), "utf8"));
 const generalWebModel = render(await readFile(path.join(srcDir, "features", "highlighter", "general-web-model.ts"), "utf8"));
+const localImportModel = render(await readFile(path.join(srcDir, "settings", "local-import-model.ts"), "utf8"));
 const generalWebHighlighter = render(await readFile(path.join(srcDir, "features", "highlighter", "general-web-highlighter.ts"), "utf8"));
 const generalWebBackground = render(await readFile(path.join(srcDir, "features", "highlighter", "general-web-background.ts"), "utf8"));
 const pdfExportModel = render(await readFile(path.join(srcDir, "features", "pdf", "pdf-export-model.ts"), "utf8"));
@@ -125,6 +126,7 @@ await writeFile(path.join(outDir, "settings-model.js"), settingsModel);
 await writeFile(path.join(outDir, "answer-serializer.js"), answerSerializer);
 await writeFile(path.join(outDir, "highlight-engine.js"), highlightEngine);
 await writeFile(path.join(outDir, "general-web-model.js"), generalWebModel);
+await writeFile(path.join(outDir, "local-import-model.js"), localImportModel);
 await writeFile(path.join(outDir, "general-web-highlighter.js"), generalWebHighlighter);
 await writeFile(path.join(outDir, "pdf-export-model.js"), pdfExportModel);
 await writeFile(path.join(outDir, "recovery-action-policy.js"), recoveryActionPolicy);

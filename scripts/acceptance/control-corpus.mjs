@@ -23,6 +23,7 @@ const ALL_GATES = [
   "recovery-action-safety",
   "target-surface-backend",
   "highlight-record-integrity",
+  "local-import-integrity",
   "copy-placement",
   "core-flow-regression",
   "send-lifecycle-safety",
@@ -43,6 +44,7 @@ export async function runControlCorpus(repoRoot) {
     ["known-good-recovery-action-safety", async (context) => { context.requestedGateIds = ["recovery-action-safety"]; }],
     ["known-good-target-surface-backend", async (context) => { context.requestedGateIds = ["target-surface-backend"]; }],
     ["known-good-highlight-record-integrity", async (context) => { context.requestedGateIds = ["highlight-record-integrity"]; }],
+    ["known-good-local-import-integrity", async (context) => { context.requestedGateIds = ["local-import-integrity"]; }],
     ["known-good-adapter-contract", async (context) => { context.requestedGateIds = ["adapter-contract"]; }],
     ["known-good-low-memory-fixture", async (context) => { context.requestedGateIds = ["low-memory-benefit"]; }],
     ["known-good-highlighter-fixture", async (context) => { context.requestedGateIds = ["highlight-remount"]; }],
@@ -225,6 +227,11 @@ export async function runControlCorpus(repoRoot) {
       evidence(context.manifest, "highlight-record-integrity").measurement.unknownTopLevelFieldsStripped = false;
       refreshRoot(context.manifest);
     }],
+    ["forged-local-import-budget-rehash", async (context) => {
+      await mutateJsonArtifact(context, "local-import-integrity", (value) => { value.highlightFileBudgetEnforced = false; });
+      evidence(context.manifest, "local-import-integrity").measurement.highlightFileBudgetEnforced = false;
+      refreshRoot(context.manifest);
+    }],
     ["packaging-version-mismatch", async ({ bundleDir, manifest }) => {
       await writeFile(path.join(bundleDir, "artifacts", "version-report.json"), JSON.stringify({
         sourceVersion: "9.9.9",
@@ -320,6 +327,7 @@ async function createGoodBundle(repoRoot) {
     ["recovery-actions", "artifacts/recovery-actions.json", "application/json", JSON.stringify(controlRecoveryActions())],
     ["target-surface-backend", "artifacts/target-surface-backend.json", "application/json", JSON.stringify(controlTargetSurfaceBackend())],
     ["highlight-record-integrity", "artifacts/highlight-record-integrity.json", "application/json", JSON.stringify(controlHighlightRecordIntegrity())],
+    ["local-import-integrity", "artifacts/local-import-integrity.json", "application/json", JSON.stringify(controlLocalImportIntegrity())],
     ["built-manifest", "artifacts/built-manifest.json", "application/json", JSON.stringify({ version: "0.0.0" })],
     ["version-report", "artifacts/version-report.json", "application/json", JSON.stringify({
       sourceVersion: "0.0.0",
@@ -473,6 +481,7 @@ async function createGoodBundle(repoRoot) {
     record("recovery-action-safety", { surface: "recovery-action-policy" }, ["recovery-actions"], controlRecoveryActions()),
     record("target-surface-backend", { surface: "target-surface-backend" }, ["target-surface-backend"], controlTargetSurfaceBackend()),
     record("highlight-record-integrity", { surface: "highlight-record-integrity" }, ["highlight-record-integrity"], controlHighlightRecordIntegrity()),
+    record("local-import-integrity", { surface: "local-import-integrity" }, ["local-import-integrity"], controlLocalImportIntegrity()),
     record("copy-placement", { surface: "assistant-action-cluster" }, ["chatgpt-contract", "current-chatgpt-bootstrap"], {
       actionInjected: false,
       capabilityStatus: "UNKNOWN",
@@ -762,6 +771,30 @@ function controlHighlightRecordIntegrity() {
     backendInterfaceOnly: true,
     externalServiceAdded: false,
     fullDocumentContentPersisted: false
+  };
+}
+
+function controlLocalImportIntegrity() {
+  return {
+    schemaVersion: 1,
+    subject: "local-import-integrity",
+    passed: true,
+    settingsTextBudgetEnforced: true,
+    settingsFileBudgetEnforced: true,
+    futureSettingsSchemaRejected: true,
+    legacySettingsAccepted: true,
+    highlightFileBudgetEnforced: true,
+    perFamilyRecordBudgetsEnforced: true,
+    exactCombinedEnvelopeRequired: true,
+    futureHighlightSchemaRejected: true,
+    combinedRoundTrip: true,
+    legacyFamilyImportsPreserved: true,
+    mixedLegacyFamiliesRejected: true,
+    deterministicConflictRule: "incoming_over_current_first_incoming_duplicate_wins",
+    readBeforeBudgetCheck: false,
+    unknownEnvelopeFieldsAccepted: false,
+    externalServiceAdded: false,
+    unboundedConversationContentImported: false
   };
 }
 
