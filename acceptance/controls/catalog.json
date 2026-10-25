@@ -50,6 +50,7 @@
     {"id": "low-memory-dom-only-rehash", "expected": "REJECT"},
     {"id": "low-memory-cherry-picked-sample-rehash", "expected": "REJECT"},
     {"id": "low-memory-features-disabled-rehash", "expected": "REJECT"},
+    {"id": "low-memory-stale-runtime-rehash", "expected": "REJECT"},
     {"id": "lost-highlight-after-remount", "expected": "REJECT"},
     {"id": "highlight-ambiguous-wrong-attachment-rehash", "expected": "REJECT"},
     {"id": "highlight-prototype-patch-rehash", "expected": "REJECT"},

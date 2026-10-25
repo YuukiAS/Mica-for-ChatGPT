@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-export const VALIDATOR_VERSION = "1.20.0";
+export const VALIDATOR_VERSION = "1.21.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 const PLACEMENT_PROOF_OBSERVATION_IDS = [
   "copy-inside-assistant-turn",
@@ -748,6 +748,7 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
     if (!latencyWithinBudget(m.B.typingP95Ms, m.C.typingP95Ms)) fail("typing latency materially regressed");
     if (!latencyWithinBudget(m.B.scrollP95Ms, m.C.scrollP95Ms)) fail("scroll latency materially regressed");
     if (!m.B.fullExtensionRuntimeLoaded || !m.C.fullExtensionRuntimeLoaded || !m.B.runtimeVersion || m.B.runtimeVersion !== m.C.runtimeVersion) fail("B/C did not execute the same complete installed extension runtime");
+    if (m.B.runtimeVersion !== manifest.candidate?.version) fail("low-memory pressure runtime version does not match the candidate version");
     if (m.C.longTaskTotalMs > Math.max(m.B.longTaskTotalMs * 1.2, m.B.longTaskTotalMs + 5)) fail("long-task time materially regressed");
     if (m.C.frameP95Ms > Math.max(m.B.frameP95Ms * 1.2, m.B.frameP95Ms + 2)) fail("frame latency materially regressed");
     if (m.C.bootstrapLongTaskMaxMs > 500) fail("Low Memory bootstrap produced an excessive long task");

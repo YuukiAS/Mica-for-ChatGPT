@@ -134,7 +134,7 @@ Developer QA 报告新增有界目标结构采集。它只在用户导出报告�
 | 编号 | 来源 | 用户结果 | 当前状态 | 自动证据 | 真实验收 |
 | --- | --- | --- | --- | --- | --- |
 | MFC-010 | 冻结产品系统 | 所有回答能力共享一个解析入口 | `IMPLEMENTED_UNVERIFIED` | build/static | 真实 ChatGPT contract |
-| MFC-013 | 本轮 §12、产品系统 §5 | 离线核查兼容性并隔离单项结构漂移 | `IMPLEMENTED_VERIFIED` | compatibility fixture + validator 1.20.0 | 当前 Developer QA 导出仍待实站运行 |
+| MFC-013 | 本轮 §12、产品系统 §5 | 离线核查兼容性并隔离单项结构漂移 | `IMPLEMENTED_VERIFIED` | compatibility fixture + validator 1.21.0 | 当前 Developer QA 导出仍待实站运行 |
 | MFC-020 | 本轮 §4/§7 | 稳定回答可复制为 Markdown | `IMPLEMENTED_VERIFIED` | 真实扩展右键 + 实际剪贴板 | 登录态页面一次确认 |
 | MFC-021 | Issue #10、本轮 §7 | Notion rich clipboard 保留公式语义 | `IMPLEMENTED_UNVERIFIED` | MIME/结构模型 | 真实 Notion paste |
 | MFC-022 | Issue #10、本轮 §7 | 确定性 Notion 导入文件 | `IMPLEMENTED_VERIFIED` | convergence core | 真实导入结果 |
@@ -155,7 +155,7 @@ Developer QA 报告新增有界目标结构采集。它只在用户导出报告�
 | MFC-405 | 本轮 §4/§8 | Reliability 只通过 adapter 观察页面结构 | `IMPLEMENTED_VERIFIED` | adapter recovery + controller + static selector gate | lifecycle/tool 真实合同仍为 PARTIAL |
 | MFC-410 | Issues #5/#6 | 输入框与连接器旧故障收敛 | `BLOCKED_BY_REAL_EXTERNAL_DEPENDENCY` | 历史证据存在 | 失败页精确 DOM/AX 合同 |
 | MFC-420 | 历史任务 | Hide suggested work | `IMPLEMENTED_UNVERIFIED` | adapter fixture + 可逆控制器 + 静态门禁 | 当前真实目标结构与页面效果 |
-| MFC-620 | 本轮 §13 | 验收器拒绝伪完整性结论 | `IMPLEMENTED_VERIFIED` | validator 1.20.0；14 good / 63 bad | functional-convergence candidate 20/20 PASS |
+| MFC-620 | 本轮 §13 | 验收器拒绝伪完整性结论 | `IMPLEMENTED_VERIFIED` | validator 1.21.0；14 good / 64 bad | functional-convergence candidate 20/20 PASS |
 
 完整字段、模块归属、成功行为和未解决差距见 JSON 矩阵。
 
@@ -188,7 +188,7 @@ npm run test:e2e:stress
 npm run acceptance:preflight
 ```
 
-类别 1–3 的聚焦测试继续覆盖设置、序列化、锚点、恢复安全、页面数据面和 PDF.js 选择。类别 4 的 `test:extension` 加载正式 `dist/mica-dev`，覆盖实际 Manifest、content scripts、Service Worker、storage、动态注册、可信右键/鼠标/剪贴板、popup、Options、PDF 页面和 Worker 重启。Acceptance validator `1.20.0` 新增 `installed-extension-e2e` gate，并允许 `UNKNOWN`、`NONE`、无观察项且明确 fail-open 的合同能力保持未观察状态；完整扩展 PDF 还必须同时包含当前版本可解析的高亮，并把内容变化前的旧锚点保持为 unresolved。它绑定安装冒烟、完整扩展 E2E、Low Memory lifecycle、六张视觉基准和实际 PDF。预检接受 14 个 known-good，并拒绝 63 个 known-bad。详细分类、历史故障和人工触发规则见 [`../testing/MICA_EXTENSION_TEST_COVERAGE.md`](../testing/MICA_EXTENSION_TEST_COVERAGE.md)。
+类别 1–3 的聚焦测试继续覆盖设置、序列化、锚点、恢复安全、页面数据面和 PDF.js 选择。类别 4 的 `test:extension` 加载正式 `dist/mica-dev`，覆盖实际 Manifest、content scripts、Service Worker、storage、动态注册、可信右键/鼠标/剪贴板、popup、Options、PDF 页面和 Worker 重启。Acceptance validator `1.21.0` 新增 `installed-extension-e2e` gate，并允许 `UNKNOWN`、`NONE`、无观察项且明确 fail-open 的合同能力保持未观察状态；完整扩展 PDF 还必须同时包含当前版本可解析的高亮，并把内容变化前的旧锚点保持为 unresolved，Low Memory 压力证据的运行时版本也必须与候选一致。它绑定安装冒烟、完整扩展 E2E、Low Memory lifecycle、六张视觉基准和实际 PDF。预检接受 14 个 known-good，并拒绝 64 个 known-bad。详细分类、历史故障和人工触发规则见 [`../testing/MICA_EXTENSION_TEST_COVERAGE.md`](../testing/MICA_EXTENSION_TEST_COVERAGE.md)。
 
 ## 明确保留的差距
 

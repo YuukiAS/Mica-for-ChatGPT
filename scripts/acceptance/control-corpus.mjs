@@ -198,6 +198,16 @@ export async function runControlCorpus(repoRoot) {
       evidence(context.manifest, "low-memory-benefit").measurement.C.enabledCapabilities = ["foundation"];
       refreshRoot(context.manifest);
     }],
+    ["low-memory-stale-runtime-rehash", async (context) => {
+      await mutateLowMemoryPressure(context, (value) => {
+        value.B.runtimeVersion = "0.4.99";
+        value.C.runtimeVersion = "0.4.99";
+      });
+      const measurement = evidence(context.manifest, "low-memory-benefit").measurement;
+      measurement.B.runtimeVersion = "0.4.99";
+      measurement.C.runtimeVersion = "0.4.99";
+      refreshRoot(context.manifest);
+    }],
     ["lost-highlight-after-remount", async ({ manifest }) => { evidence(manifest, "highlight-remount").measurement.restoredAfterRemount = false; refreshRoot(manifest); }],
     ["highlight-ambiguous-wrong-attachment-rehash", async (context) => mutateHighlighter(context, (value) => { value.ambiguous.status.renderedCount = 1; })],
     ["highlight-prototype-patch-rehash", async (context) => mutateHighlighter(context, (value) => { value.invariants.noGlobalRangePatch = false; })],
@@ -718,7 +728,7 @@ function controlPressureState(variant, processMemoryMb, heapMb, retainedContentM
     bootstrapLongTaskCount: 1, bootstrapLongTaskTotalMs: 120, bootstrapLongTaskMaxMs: 120,
     layoutCount: 12, recalcStyleCount: 18, mappingNodes, samples: 5,
     fullExtensionRuntimeLoaded: installed,
-    runtimeVersion: installed ? "0.3.0" : null,
+    runtimeVersion: installed ? "0.0.0" : null,
     lowMemoryEnabled: variant.endsWith("-on"),
     enabledCapabilities: installed ? ["foundation", "highlighter", "pdf", "copy-export", "reliability-backend"] : [],
     nonLowMemoryFeatureFlagsHash: installed ? "f".repeat(64) : null,
