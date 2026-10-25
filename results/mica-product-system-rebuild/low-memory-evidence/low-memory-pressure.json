@@ -1,13 +1,17 @@
 {
   "passed": true,
-  "generatedAt": "2026-10-12T14:02:00.898Z",
+  "generatedAt": "2026-10-25T16:07:39.976Z",
   "targetEnvironment": {
-    "class": "local-edge-v8-old-space-pressure",
-    "executionSurface": "local-isolated-edge",
-    "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+    "class": "local-playwright-chromium-v8-old-space-pressure",
+    "executionSurface": "local-isolated-playwright-chromium",
+    "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "playwrightModules": "C:\\Users\\humc2\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\node_modules",
     "rendererOldSpaceLimitMb": 256,
     "physicalMemoryGb": null,
-    "boundary": "local Chromium renderer constrained with a 256 MB V8 old-space limit; OS process memory is measured across the fresh browser process tree"
+    "normalEdgeProfileUsed": false,
+    "authenticatedChatGptUsed": false,
+    "realChatGptRequests": 0,
+    "boundary": "isolated Playwright Chromium constrained with a 256 MB V8 old-space limit; every unmatched network request is aborted and OS process memory is measured across the fresh browser process tree"
   },
   "pressureFixture": {
     "memoryLimitMb": 256,
@@ -24,15 +28,15 @@
   },
   "A": {
     "variant": "mica-absent-or-disabled",
-    "processMemoryMb": 567.422,
+    "processMemoryMb": 531.734,
     "processMemoryRangeMb": [
-      561.91,
-      568.637
+      529.844,
+      539.02
     ],
-    "heapMb": 101.31,
+    "heapMb": 101.332,
     "heapRangeMb": [
-      101.31,
-      101.31
+      101.332,
+      101.332
     ],
     "retainedContentMb": 100,
     "mountedTurnCount": 12,
@@ -42,10 +46,10 @@
       0.01,
       0.01
     ],
-    "scrollP95Ms": 0.1,
+    "scrollP95Ms": 0.01,
     "scrollRangeMs": [
       0.01,
-      0.1
+      0.01
     ],
     "mappingNodes": 801,
     "frameP95Ms": 16.9,
@@ -61,19 +65,59 @@
     "runtimeVersion": null,
     "registrationProof": null,
     "windowingStatus": null,
+    "lowMemoryEnabled": false,
+    "enabledCapabilities": [],
+    "nonLowMemoryFeatureFlagsHash": null,
+    "sampleSeries": {
+      "processMemoryMb": [
+        539.02,
+        531.734,
+        529.844
+      ],
+      "heapMb": [
+        101.332,
+        101.332,
+        101.332
+      ],
+      "retainedContentMb": [
+        100,
+        100,
+        100
+      ],
+      "mountedTurnCount": [
+        12,
+        12,
+        12
+      ],
+      "mutationCount": [
+        62,
+        62,
+        62
+      ],
+      "typingP95Ms": [
+        0.01,
+        0.01,
+        0.01
+      ],
+      "scrollP95Ms": [
+        0.01,
+        0.01,
+        0.01
+      ]
+    },
     "samples": 3
   },
   "B": {
     "variant": "mica-installed-low-memory-off",
-    "processMemoryMb": 643.117,
+    "processMemoryMb": 516.988,
     "processMemoryRangeMb": [
-      636.355,
-      645.18
+      508.914,
+      521.465
     ],
-    "heapMb": 101.685,
+    "heapMb": 101.858,
     "heapRangeMb": [
-      101.685,
-      101.685
+      101.858,
+      101.858
     ],
     "retainedContentMb": 100,
     "mountedTurnCount": 12,
@@ -83,13 +127,13 @@
       0.01,
       0.01
     ],
-    "scrollP95Ms": 0.1,
+    "scrollP95Ms": 0.01,
     "scrollRangeMs": [
       0.01,
-      0.1
+      0.01
     ],
     "mappingNodes": 801,
-    "frameP95Ms": 16.8,
+    "frameP95Ms": 16.9,
     "longTaskCount": 0,
     "longTaskTotalMs": 0,
     "longTaskMaxMs": 0,
@@ -97,9 +141,9 @@
     "bootstrapLongTaskTotalMs": 0,
     "bootstrapLongTaskMaxMs": 0,
     "layoutCount": 1,
-    "recalcStyleCount": 2,
+    "recalcStyleCount": 1,
     "fullExtensionRuntimeLoaded": true,
-    "runtimeVersion": "0.3.0",
+    "runtimeVersion": "0.5.14",
     "registrationProof": {
       "synced": {
         "ok": true,
@@ -109,19 +153,65 @@
       "scripts": []
     },
     "windowingStatus": null,
+    "lowMemoryEnabled": false,
+    "enabledCapabilities": [
+      "foundation",
+      "highlighter",
+      "pdf",
+      "copy-export",
+      "reliability-backend"
+    ],
+    "nonLowMemoryFeatureFlagsHash": "27c25d2584c3a8dd9f6c70201eda604e3b67218c169613d097d6e4450aefcad6",
+    "sampleSeries": {
+      "processMemoryMb": [
+        508.914,
+        516.988,
+        521.465
+      ],
+      "heapMb": [
+        101.858,
+        101.858,
+        101.858
+      ],
+      "retainedContentMb": [
+        100,
+        100,
+        100
+      ],
+      "mountedTurnCount": [
+        12,
+        12,
+        12
+      ],
+      "mutationCount": [
+        62,
+        62,
+        62
+      ],
+      "typingP95Ms": [
+        0.01,
+        0.01,
+        0.01
+      ],
+      "scrollP95Ms": [
+        0.01,
+        0.01,
+        0.01
+      ]
+    },
     "samples": 3
   },
   "C": {
     "variant": "mica-installed-low-memory-on",
-    "processMemoryMb": 626.672,
+    "processMemoryMb": 502.988,
     "processMemoryRangeMb": [
-      615.02,
-      627.035
+      496.023,
+      514.363
     ],
-    "heapMb": 6.402,
+    "heapMb": 6.591,
     "heapRangeMb": [
-      6.402,
-      6.402
+      6.591,
+      6.591
     ],
     "retainedContentMb": 5,
     "mountedTurnCount": 12,
@@ -131,13 +221,13 @@
       0.01,
       0.01
     ],
-    "scrollP95Ms": 0.1,
+    "scrollP95Ms": 0.01,
     "scrollRangeMs": [
       0.01,
-      0.1
+      0.01
     ],
     "mappingNodes": 41,
-    "frameP95Ms": 16.9,
+    "frameP95Ms": 17,
     "longTaskCount": 0,
     "longTaskTotalMs": 0,
     "longTaskMaxMs": 0,
@@ -147,7 +237,7 @@
     "layoutCount": 2,
     "recalcStyleCount": 3,
     "fullExtensionRuntimeLoaded": true,
-    "runtimeVersion": "0.3.0",
+    "runtimeVersion": "0.5.14",
     "registrationProof": {
       "synced": {
         "ok": true,
@@ -181,6 +271,14 @@
       "active": true,
       "keptTurns": 40,
       "totalTurns": 800,
+      "completenessProof": {
+        "schemaVersion": 1,
+        "expectedTurnCount": 800,
+        "roleSequenceHash": "c8ca5c4b",
+        "source": "validated-conversation-graph",
+        "conversationId": "conversation-1219b973",
+        "capturedAt": "2026-10-25T16:07:20.785Z"
+      },
       "removedTurns": 760,
       "keptNodes": 41,
       "totalNodes": 801,
@@ -193,7 +291,53 @@
       "serverMutation": false,
       "reactManagedInteractiveNodesDetached": false,
       "contentUpload": false,
-      "updatedAt": "2026-10-12T14:01:36.020Z"
+      "updatedAt": "2026-10-25T16:07:20.785Z"
+    },
+    "lowMemoryEnabled": true,
+    "enabledCapabilities": [
+      "foundation",
+      "highlighter",
+      "pdf",
+      "copy-export",
+      "reliability-backend"
+    ],
+    "nonLowMemoryFeatureFlagsHash": "27c25d2584c3a8dd9f6c70201eda604e3b67218c169613d097d6e4450aefcad6",
+    "sampleSeries": {
+      "processMemoryMb": [
+        514.363,
+        496.023,
+        502.988
+      ],
+      "heapMb": [
+        6.591,
+        6.591,
+        6.591
+      ],
+      "retainedContentMb": [
+        5,
+        5,
+        5
+      ],
+      "mountedTurnCount": [
+        12,
+        12,
+        12
+      ],
+      "mutationCount": [
+        62,
+        62,
+        62
+      ],
+      "typingP95Ms": [
+        0.01,
+        0.01,
+        0.01
+      ],
+      "scrollP95Ms": [
+        0.01,
+        0.01,
+        0.01
+      ]
     },
     "samples": 3
   },
@@ -203,239 +347,19 @@
         "sample": 1,
         "state": "off",
         "variant": "mica-absent-or-disabled",
-        "processMemoryMb": 561.91,
-        "heapMb": 101.31049346923828,
+        "processMemoryMb": 539.02,
+        "heapMb": 101.33197021484375,
         "layoutCount": 1,
         "recalcStyleCount": 1,
         "fullExtensionRuntime": null,
         "registrationProof": null,
+        "unexpectedRequestCount": 0,
         "mappingNodes": 801,
         "retainedContentMb": 100,
         "mountedTurnCount": 12,
         "mutationCount": 62,
         "typingP95Ms": 0.01,
         "scrollP95Ms": 0.01,
-        "frameP95Ms": 16.800000071525574,
-        "longTaskCount": 0,
-        "longTaskTotalMs": 0,
-        "longTaskMaxMs": 0,
-        "bootstrapLongTaskCount": 0,
-        "bootstrapLongTaskTotalMs": 0,
-        "bootstrapLongTaskMaxMs": 0,
-        "status": null,
-        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0"
-      },
-      {
-        "sample": 2,
-        "state": "off",
-        "variant": "mica-absent-or-disabled",
-        "processMemoryMb": 568.637,
-        "heapMb": 101.31049346923828,
-        "layoutCount": 1,
-        "recalcStyleCount": 1,
-        "fullExtensionRuntime": null,
-        "registrationProof": null,
-        "mappingNodes": 801,
-        "retainedContentMb": 100,
-        "mountedTurnCount": 12,
-        "mutationCount": 62,
-        "typingP95Ms": 0.01,
-        "scrollP95Ms": 0.10000002384185791,
-        "frameP95Ms": 16.899999976158142,
-        "longTaskCount": 0,
-        "longTaskTotalMs": 0,
-        "longTaskMaxMs": 0,
-        "bootstrapLongTaskCount": 0,
-        "bootstrapLongTaskTotalMs": 0,
-        "bootstrapLongTaskMaxMs": 0,
-        "status": null,
-        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0"
-      },
-      {
-        "sample": 3,
-        "state": "off",
-        "variant": "mica-absent-or-disabled",
-        "processMemoryMb": 567.422,
-        "heapMb": 101.31049346923828,
-        "layoutCount": 1,
-        "recalcStyleCount": 1,
-        "fullExtensionRuntime": null,
-        "registrationProof": null,
-        "mappingNodes": 801,
-        "retainedContentMb": 100,
-        "mountedTurnCount": 12,
-        "mutationCount": 62,
-        "typingP95Ms": 0.01,
-        "scrollP95Ms": 0.09999990463256836,
-        "frameP95Ms": 16.899999976158142,
-        "longTaskCount": 0,
-        "longTaskTotalMs": 0,
-        "longTaskMaxMs": 0,
-        "bootstrapLongTaskCount": 0,
-        "bootstrapLongTaskTotalMs": 0,
-        "bootstrapLongTaskMaxMs": 0,
-        "status": null,
-        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0"
-      }
-    ],
-    "B": [
-      {
-        "sample": 1,
-        "state": "off",
-        "variant": "mica-installed-low-memory-off",
-        "processMemoryMb": 643.117,
-        "heapMb": 101.68460083007812,
-        "layoutCount": 1,
-        "recalcStyleCount": 2,
-        "fullExtensionRuntime": {
-          "loaded": true,
-          "version": "0.3.0",
-          "lowMemoryEnabled": false
-        },
-        "registrationProof": {
-          "synced": {
-            "ok": true,
-            "registered": false,
-            "failOpen": false
-          },
-          "scripts": []
-        },
-        "mappingNodes": 801,
-        "retainedContentMb": 100,
-        "mountedTurnCount": 12,
-        "mutationCount": 62,
-        "typingP95Ms": 0.01,
-        "scrollP95Ms": 0.09999990463256836,
-        "frameP95Ms": 16.799999952316284,
-        "longTaskCount": 0,
-        "longTaskTotalMs": 0,
-        "longTaskMaxMs": 0,
-        "bootstrapLongTaskCount": 0,
-        "bootstrapLongTaskTotalMs": 0,
-        "bootstrapLongTaskMaxMs": 0,
-        "status": null,
-        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0"
-      },
-      {
-        "sample": 2,
-        "state": "off",
-        "variant": "mica-installed-low-memory-off",
-        "processMemoryMb": 645.18,
-        "heapMb": 101.6845703125,
-        "layoutCount": 1,
-        "recalcStyleCount": 2,
-        "fullExtensionRuntime": {
-          "loaded": true,
-          "version": "0.3.0",
-          "lowMemoryEnabled": false
-        },
-        "registrationProof": {
-          "synced": {
-            "ok": true,
-            "registered": false,
-            "failOpen": false
-          },
-          "scripts": []
-        },
-        "mappingNodes": 801,
-        "retainedContentMb": 100,
-        "mountedTurnCount": 12,
-        "mutationCount": 62,
-        "typingP95Ms": 0.01,
-        "scrollP95Ms": 0.09999990463256836,
-        "frameP95Ms": 17.100000023841858,
-        "longTaskCount": 0,
-        "longTaskTotalMs": 0,
-        "longTaskMaxMs": 0,
-        "bootstrapLongTaskCount": 0,
-        "bootstrapLongTaskTotalMs": 0,
-        "bootstrapLongTaskMaxMs": 0,
-        "status": null,
-        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0"
-      },
-      {
-        "sample": 3,
-        "state": "off",
-        "variant": "mica-installed-low-memory-off",
-        "processMemoryMb": 636.355,
-        "heapMb": 101.68460083007812,
-        "layoutCount": 1,
-        "recalcStyleCount": 2,
-        "fullExtensionRuntime": {
-          "loaded": true,
-          "version": "0.3.0",
-          "lowMemoryEnabled": false
-        },
-        "registrationProof": {
-          "synced": {
-            "ok": true,
-            "registered": false,
-            "failOpen": false
-          },
-          "scripts": []
-        },
-        "mappingNodes": 801,
-        "retainedContentMb": 100,
-        "mountedTurnCount": 12,
-        "mutationCount": 62,
-        "typingP95Ms": 0.01,
-        "scrollP95Ms": 0.01,
-        "frameP95Ms": 16.800000071525574,
-        "longTaskCount": 0,
-        "longTaskTotalMs": 0,
-        "longTaskMaxMs": 0,
-        "bootstrapLongTaskCount": 0,
-        "bootstrapLongTaskTotalMs": 0,
-        "bootstrapLongTaskMaxMs": 0,
-        "status": null,
-        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0"
-      }
-    ],
-    "C": [
-      {
-        "sample": 1,
-        "state": "on",
-        "variant": "mica-installed-low-memory-on",
-        "processMemoryMb": 626.672,
-        "heapMb": 6.401763916015625,
-        "layoutCount": 2,
-        "recalcStyleCount": 3,
-        "fullExtensionRuntime": {
-          "loaded": true,
-          "version": "0.3.0",
-          "lowMemoryEnabled": true
-        },
-        "registrationProof": {
-          "synced": {
-            "ok": true,
-            "registered": true,
-            "failOpen": false
-          },
-          "scripts": [
-            {
-              "allFrames": false,
-              "id": "mica-low-memory-main-v3",
-              "js": [
-                "low-memory-core.js",
-                "low-memory-page.js"
-              ],
-              "matchOriginAsFallback": false,
-              "matches": [
-                "https://chat.openai.com/*",
-                "https://chatgpt.com/*"
-              ],
-              "persistAcrossSessions": true,
-              "runAt": "document_start",
-              "world": "MAIN"
-            }
-          ]
-        },
-        "mappingNodes": 41,
-        "retainedContentMb": 5,
-        "mountedTurnCount": 12,
-        "mutationCount": 62,
-        "typingP95Ms": 0.01,
-        "scrollP95Ms": 0.10000002384185791,
         "frameP95Ms": 16.90000009536743,
         "longTaskCount": 0,
         "longTaskTotalMs": 0,
@@ -443,116 +367,192 @@
         "bootstrapLongTaskCount": 0,
         "bootstrapLongTaskTotalMs": 0,
         "bootstrapLongTaskMaxMs": 0,
-        "status": {
-          "schemaVersion": 2,
-          "state": "active",
-          "reason": "windowed",
-          "source": "react-router-stream",
-          "active": true,
-          "keptTurns": 40,
-          "totalTurns": 800,
-          "removedTurns": 760,
-          "keptNodes": 41,
-          "totalNodes": 801,
-          "bytesBefore": 52598044,
-          "bytesAfter": 2629540,
-          "bytesRemoved": 49968504,
-          "recentTurnLimit": 40,
-          "actualTruncation": true,
-          "truncatedRepresentation": "client-history-window",
-          "serverMutation": false,
-          "reactManagedInteractiveNodesDetached": false,
-          "contentUpload": false,
-          "updatedAt": "2026-10-12T14:01:36.020Z"
-        },
-        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0"
+        "status": null,
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
       },
       {
         "sample": 2,
-        "state": "on",
-        "variant": "mica-installed-low-memory-on",
-        "processMemoryMb": 627.035,
-        "heapMb": 6.401611328125,
-        "layoutCount": 2,
-        "recalcStyleCount": 3,
-        "fullExtensionRuntime": {
-          "loaded": true,
-          "version": "0.3.0",
-          "lowMemoryEnabled": true
-        },
-        "registrationProof": {
-          "synced": {
-            "ok": true,
-            "registered": true,
-            "failOpen": false
-          },
-          "scripts": [
-            {
-              "allFrames": false,
-              "id": "mica-low-memory-main-v3",
-              "js": [
-                "low-memory-core.js",
-                "low-memory-page.js"
-              ],
-              "matchOriginAsFallback": false,
-              "matches": [
-                "https://chat.openai.com/*",
-                "https://chatgpt.com/*"
-              ],
-              "persistAcrossSessions": true,
-              "runAt": "document_start",
-              "world": "MAIN"
-            }
-          ]
-        },
-        "mappingNodes": 41,
-        "retainedContentMb": 5,
+        "state": "off",
+        "variant": "mica-absent-or-disabled",
+        "processMemoryMb": 531.734,
+        "heapMb": 101.33197021484375,
+        "layoutCount": 1,
+        "recalcStyleCount": 1,
+        "fullExtensionRuntime": null,
+        "registrationProof": null,
+        "unexpectedRequestCount": 0,
+        "mappingNodes": 801,
+        "retainedContentMb": 100,
         "mountedTurnCount": 12,
         "mutationCount": 62,
         "typingP95Ms": 0.01,
         "scrollP95Ms": 0.01,
-        "frameP95Ms": 16.799999952316284,
+        "frameP95Ms": 16.800000190734863,
         "longTaskCount": 0,
         "longTaskTotalMs": 0,
         "longTaskMaxMs": 0,
         "bootstrapLongTaskCount": 0,
         "bootstrapLongTaskTotalMs": 0,
         "bootstrapLongTaskMaxMs": 0,
-        "status": {
-          "schemaVersion": 2,
-          "state": "active",
-          "reason": "windowed",
-          "source": "react-router-stream",
-          "active": true,
-          "keptTurns": 40,
-          "totalTurns": 800,
-          "removedTurns": 760,
-          "keptNodes": 41,
-          "totalNodes": 801,
-          "bytesBefore": 52598044,
-          "bytesAfter": 2629540,
-          "bytesRemoved": 49968504,
-          "recentTurnLimit": 40,
-          "actualTruncation": true,
-          "truncatedRepresentation": "client-history-window",
-          "serverMutation": false,
-          "reactManagedInteractiveNodesDetached": false,
-          "contentUpload": false,
-          "updatedAt": "2026-10-12T14:01:44.399Z"
-        },
-        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0"
+        "status": null,
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
       },
       {
         "sample": 3,
+        "state": "off",
+        "variant": "mica-absent-or-disabled",
+        "processMemoryMb": 529.844,
+        "heapMb": 101.33197021484375,
+        "layoutCount": 1,
+        "recalcStyleCount": 1,
+        "fullExtensionRuntime": null,
+        "registrationProof": null,
+        "unexpectedRequestCount": 0,
+        "mappingNodes": 801,
+        "retainedContentMb": 100,
+        "mountedTurnCount": 12,
+        "mutationCount": 62,
+        "typingP95Ms": 0.01,
+        "scrollP95Ms": 0.01,
+        "frameP95Ms": 16.899999618530273,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "bootstrapLongTaskCount": 0,
+        "bootstrapLongTaskTotalMs": 0,
+        "bootstrapLongTaskMaxMs": 0,
+        "status": null,
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+      }
+    ],
+    "B": [
+      {
+        "sample": 1,
+        "state": "off",
+        "variant": "mica-installed-low-memory-off",
+        "processMemoryMb": 508.914,
+        "heapMb": 101.85752868652344,
+        "layoutCount": 1,
+        "recalcStyleCount": 1,
+        "fullExtensionRuntime": {
+          "loaded": true,
+          "version": "0.5.14",
+          "lowMemoryEnabled": false
+        },
+        "registrationProof": {
+          "synced": {
+            "ok": true,
+            "registered": false,
+            "failOpen": false
+          },
+          "scripts": []
+        },
+        "unexpectedRequestCount": 0,
+        "mappingNodes": 801,
+        "retainedContentMb": 100,
+        "mountedTurnCount": 12,
+        "mutationCount": 62,
+        "typingP95Ms": 0.01,
+        "scrollP95Ms": 0.01,
+        "frameP95Ms": 16.90000009536743,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "bootstrapLongTaskCount": 0,
+        "bootstrapLongTaskTotalMs": 0,
+        "bootstrapLongTaskMaxMs": 0,
+        "status": null,
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+      },
+      {
+        "sample": 2,
+        "state": "off",
+        "variant": "mica-installed-low-memory-off",
+        "processMemoryMb": 516.988,
+        "heapMb": 101.85752868652344,
+        "layoutCount": 1,
+        "recalcStyleCount": 1,
+        "fullExtensionRuntime": {
+          "loaded": true,
+          "version": "0.5.14",
+          "lowMemoryEnabled": false
+        },
+        "registrationProof": {
+          "synced": {
+            "ok": true,
+            "registered": false,
+            "failOpen": false
+          },
+          "scripts": []
+        },
+        "unexpectedRequestCount": 0,
+        "mappingNodes": 801,
+        "retainedContentMb": 100,
+        "mountedTurnCount": 12,
+        "mutationCount": 62,
+        "typingP95Ms": 0.01,
+        "scrollP95Ms": 0.01,
+        "frameP95Ms": 17,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "bootstrapLongTaskCount": 0,
+        "bootstrapLongTaskTotalMs": 0,
+        "bootstrapLongTaskMaxMs": 0,
+        "status": null,
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+      },
+      {
+        "sample": 3,
+        "state": "off",
+        "variant": "mica-installed-low-memory-off",
+        "processMemoryMb": 521.465,
+        "heapMb": 101.85752868652344,
+        "layoutCount": 1,
+        "recalcStyleCount": 1,
+        "fullExtensionRuntime": {
+          "loaded": true,
+          "version": "0.5.14",
+          "lowMemoryEnabled": false
+        },
+        "registrationProof": {
+          "synced": {
+            "ok": true,
+            "registered": false,
+            "failOpen": false
+          },
+          "scripts": []
+        },
+        "unexpectedRequestCount": 0,
+        "mappingNodes": 801,
+        "retainedContentMb": 100,
+        "mountedTurnCount": 12,
+        "mutationCount": 62,
+        "typingP95Ms": 0.01,
+        "scrollP95Ms": 0.01,
+        "frameP95Ms": 16.800000190734863,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "bootstrapLongTaskCount": 0,
+        "bootstrapLongTaskTotalMs": 0,
+        "bootstrapLongTaskMaxMs": 0,
+        "status": null,
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+      }
+    ],
+    "C": [
+      {
+        "sample": 1,
         "state": "on",
         "variant": "mica-installed-low-memory-on",
-        "processMemoryMb": 615.02,
-        "heapMb": 6.401611328125,
+        "processMemoryMb": 514.363,
+        "heapMb": 6.590831756591797,
         "layoutCount": 2,
         "recalcStyleCount": 3,
         "fullExtensionRuntime": {
           "loaded": true,
-          "version": "0.3.0",
+          "version": "0.5.14",
           "lowMemoryEnabled": true
         },
         "registrationProof": {
@@ -580,12 +580,13 @@
             }
           ]
         },
+        "unexpectedRequestCount": 0,
         "mappingNodes": 41,
         "retainedContentMb": 5,
         "mountedTurnCount": 12,
         "mutationCount": 62,
         "typingP95Ms": 0.01,
-        "scrollP95Ms": 0.10000002384185791,
+        "scrollP95Ms": 0.01,
         "frameP95Ms": 17,
         "longTaskCount": 0,
         "longTaskTotalMs": 0,
@@ -601,6 +602,14 @@
           "active": true,
           "keptTurns": 40,
           "totalTurns": 800,
+          "completenessProof": {
+            "schemaVersion": 1,
+            "expectedTurnCount": 800,
+            "roleSequenceHash": "c8ca5c4b",
+            "source": "validated-conversation-graph",
+            "conversationId": "conversation-1219b973",
+            "capturedAt": "2026-10-25T16:07:20.785Z"
+          },
           "removedTurns": 760,
           "keptNodes": 41,
           "totalNodes": 801,
@@ -613,14 +622,244 @@
           "serverMutation": false,
           "reactManagedInteractiveNodesDetached": false,
           "contentUpload": false,
-          "updatedAt": "2026-10-12T14:01:53.299Z"
+          "updatedAt": "2026-10-25T16:07:20.785Z"
         },
-        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0"
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+      },
+      {
+        "sample": 2,
+        "state": "on",
+        "variant": "mica-installed-low-memory-on",
+        "processMemoryMb": 496.023,
+        "heapMb": 6.590778350830078,
+        "layoutCount": 2,
+        "recalcStyleCount": 3,
+        "fullExtensionRuntime": {
+          "loaded": true,
+          "version": "0.5.14",
+          "lowMemoryEnabled": true
+        },
+        "registrationProof": {
+          "synced": {
+            "ok": true,
+            "registered": true,
+            "failOpen": false
+          },
+          "scripts": [
+            {
+              "allFrames": false,
+              "id": "mica-low-memory-main-v3",
+              "js": [
+                "low-memory-core.js",
+                "low-memory-page.js"
+              ],
+              "matchOriginAsFallback": false,
+              "matches": [
+                "https://chat.openai.com/*",
+                "https://chatgpt.com/*"
+              ],
+              "persistAcrossSessions": true,
+              "runAt": "document_start",
+              "world": "MAIN"
+            }
+          ]
+        },
+        "unexpectedRequestCount": 0,
+        "mappingNodes": 41,
+        "retainedContentMb": 5,
+        "mountedTurnCount": 12,
+        "mutationCount": 62,
+        "typingP95Ms": 0.01,
+        "scrollP95Ms": 0.01,
+        "frameP95Ms": 17.59999990463257,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "bootstrapLongTaskCount": 0,
+        "bootstrapLongTaskTotalMs": 0,
+        "bootstrapLongTaskMaxMs": 0,
+        "status": {
+          "schemaVersion": 2,
+          "state": "active",
+          "reason": "windowed",
+          "source": "react-router-stream",
+          "active": true,
+          "keptTurns": 40,
+          "totalTurns": 800,
+          "completenessProof": {
+            "schemaVersion": 1,
+            "expectedTurnCount": 800,
+            "roleSequenceHash": "c8ca5c4b",
+            "source": "validated-conversation-graph",
+            "conversationId": "conversation-1219b973",
+            "capturedAt": "2026-10-25T16:07:27.609Z"
+          },
+          "removedTurns": 760,
+          "keptNodes": 41,
+          "totalNodes": 801,
+          "bytesBefore": 52598044,
+          "bytesAfter": 2629540,
+          "bytesRemoved": 49968504,
+          "recentTurnLimit": 40,
+          "actualTruncation": true,
+          "truncatedRepresentation": "client-history-window",
+          "serverMutation": false,
+          "reactManagedInteractiveNodesDetached": false,
+          "contentUpload": false,
+          "updatedAt": "2026-10-25T16:07:27.609Z"
+        },
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+      },
+      {
+        "sample": 3,
+        "state": "on",
+        "variant": "mica-installed-low-memory-on",
+        "processMemoryMb": 502.988,
+        "heapMb": 6.590961456298828,
+        "layoutCount": 2,
+        "recalcStyleCount": 3,
+        "fullExtensionRuntime": {
+          "loaded": true,
+          "version": "0.5.14",
+          "lowMemoryEnabled": true
+        },
+        "registrationProof": {
+          "synced": {
+            "ok": true,
+            "registered": true,
+            "failOpen": false
+          },
+          "scripts": [
+            {
+              "allFrames": false,
+              "id": "mica-low-memory-main-v3",
+              "js": [
+                "low-memory-core.js",
+                "low-memory-page.js"
+              ],
+              "matchOriginAsFallback": false,
+              "matches": [
+                "https://chat.openai.com/*",
+                "https://chatgpt.com/*"
+              ],
+              "persistAcrossSessions": true,
+              "runAt": "document_start",
+              "world": "MAIN"
+            }
+          ]
+        },
+        "unexpectedRequestCount": 0,
+        "mappingNodes": 41,
+        "retainedContentMb": 5,
+        "mountedTurnCount": 12,
+        "mutationCount": 62,
+        "typingP95Ms": 0.01,
+        "scrollP95Ms": 0.01,
+        "frameP95Ms": 17,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "bootstrapLongTaskCount": 0,
+        "bootstrapLongTaskTotalMs": 0,
+        "bootstrapLongTaskMaxMs": 0,
+        "status": {
+          "schemaVersion": 2,
+          "state": "active",
+          "reason": "windowed",
+          "source": "react-router-stream",
+          "active": true,
+          "keptTurns": 40,
+          "totalTurns": 800,
+          "completenessProof": {
+            "schemaVersion": 1,
+            "expectedTurnCount": 800,
+            "roleSequenceHash": "c8ca5c4b",
+            "source": "validated-conversation-graph",
+            "conversationId": "conversation-1219b973",
+            "capturedAt": "2026-10-25T16:07:34.294Z"
+          },
+          "removedTurns": 760,
+          "keptNodes": 41,
+          "totalNodes": 801,
+          "bytesBefore": 52598044,
+          "bytesAfter": 2629540,
+          "bytesRemoved": 49968504,
+          "recentTurnLimit": 40,
+          "actualTruncation": true,
+          "truncatedRepresentation": "client-history-window",
+          "serverMutation": false,
+          "reactManagedInteractiveNodesDetached": false,
+          "contentUpload": false,
+          "updatedAt": "2026-10-25T16:07:34.294Z"
+        },
+        "browserBuild": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
       }
     ]
   },
   "actualTruncation": true,
   "truncatedRepresentation": "client-history-window",
   "reactManagedInteractiveNodesDetached": false,
-  "serverMutation": false
+  "serverMutation": false,
+  "checks": [
+    {
+      "id": "three_samples",
+      "passed": true,
+      "message": "pressure evidence requires three samples"
+    },
+    {
+      "id": "heap_reduction_15_percent",
+      "passed": true,
+      "message": "Low Memory did not reduce JS heap by 15%"
+    },
+    {
+      "id": "retained_content_reduction_15_percent",
+      "passed": true,
+      "message": "Low Memory did not reduce retained content by 15%"
+    },
+    {
+      "id": "mounted_dom_budget",
+      "passed": true,
+      "message": "mounted DOM regressed"
+    },
+    {
+      "id": "typing_latency_budget",
+      "passed": true,
+      "message": "typing latency regressed"
+    },
+    {
+      "id": "scroll_latency_budget",
+      "passed": true,
+      "message": "scroll latency regressed"
+    },
+    {
+      "id": "full_extension_runtime",
+      "passed": true,
+      "message": "B/C did not run the complete installed extension runtime"
+    },
+    {
+      "id": "control_registration_state",
+      "passed": true,
+      "message": "B/C registration state did not match the requested Low Memory setting"
+    },
+    {
+      "id": "network_guard",
+      "passed": true,
+      "message": "pressure fixture attempted an unmatched network request"
+    },
+    {
+      "id": "long_task_budget",
+      "passed": true,
+      "message": "long-task time regressed"
+    },
+    {
+      "id": "frame_latency_budget",
+      "passed": true,
+      "message": "frame latency regressed"
+    },
+    {
+      "id": "actual_client_history_truncation",
+      "passed": true,
+      "message": "pressure fixture did not actually truncate client history"
+    }
+  ]
 }

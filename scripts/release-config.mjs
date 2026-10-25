@@ -1,6 +1,6 @@
-export const MACHINE_VERSION = "0.5.13";
-export const VERSION_NAME = "0.5.13";
-export const BUILD_LABEL = "functional-convergence.14";
+export const MACHINE_VERSION = "0.5.14";
+export const VERSION_NAME = "0.5.14";
+export const BUILD_LABEL = "product-delivery.1";
 export const DEV_BUILD = true;
 export const RELEASE_TAG = `v${VERSION_NAME}`;
 export const DEV_DIST_DIR_NAME = "mica-dev";
@@ -26,6 +26,7 @@ export const REQUIRED_EXTENSION_FILES = [
   "recovery-ledger.js",
   "suggested-work-controller.js",
   "answer-actions-controller.js",
+  "answer-context-menu-background.js",
   "low-memory-core.js",
   "low-memory-page.js",
   "low-memory-config.js",

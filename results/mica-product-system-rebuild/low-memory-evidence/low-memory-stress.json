@@ -6,241 +6,241 @@
     {
       "loop": 1,
       "script": "scripts/foundation-core-fixture-smoke.mjs",
-      "elapsedMs": 1117,
+      "elapsedMs": 940,
       "passed": true
     },
     {
       "loop": 1,
       "script": "scripts/foundation-core-flow-fixture.mjs",
-      "elapsedMs": 1799,
+      "elapsedMs": 1614,
       "passed": true
     },
     {
       "loop": 1,
       "script": "scripts/low-memory-fixture-smoke.mjs",
-      "elapsedMs": 1038,
+      "elapsedMs": 819,
       "passed": true
     },
     {
       "loop": 1,
       "script": "scripts/low-memory-page-fixture-smoke.mjs",
-      "elapsedMs": 2152,
-      "passed": true
-    },
-    {
-      "loop": 1,
-      "script": "scripts/popup-render-fixture.mjs",
-      "elapsedMs": 8405,
-      "passed": true
-    },
-    {
-      "loop": 2,
-      "script": "scripts/foundation-core-fixture-smoke.mjs",
-      "elapsedMs": 1082,
-      "passed": true
-    },
-    {
-      "loop": 2,
-      "script": "scripts/foundation-core-flow-fixture.mjs",
-      "elapsedMs": 1823,
-      "passed": true
-    },
-    {
-      "loop": 2,
-      "script": "scripts/low-memory-fixture-smoke.mjs",
-      "elapsedMs": 1072,
-      "passed": true
-    },
-    {
-      "loop": 2,
-      "script": "scripts/low-memory-page-fixture-smoke.mjs",
-      "elapsedMs": 2106,
-      "passed": true
-    },
-    {
-      "loop": 2,
-      "script": "scripts/popup-render-fixture.mjs",
-      "elapsedMs": 8111,
-      "passed": true
-    },
-    {
-      "loop": 3,
-      "script": "scripts/foundation-core-fixture-smoke.mjs",
-      "elapsedMs": 1143,
-      "passed": true
-    },
-    {
-      "loop": 3,
-      "script": "scripts/foundation-core-flow-fixture.mjs",
-      "elapsedMs": 1863,
-      "passed": true
-    },
-    {
-      "loop": 3,
-      "script": "scripts/low-memory-fixture-smoke.mjs",
-      "elapsedMs": 1072,
-      "passed": true
-    },
-    {
-      "loop": 3,
-      "script": "scripts/low-memory-page-fixture-smoke.mjs",
-      "elapsedMs": 2118,
-      "passed": true
-    },
-    {
-      "loop": 3,
-      "script": "scripts/popup-render-fixture.mjs",
-      "elapsedMs": 8322,
-      "passed": true
-    },
-    {
-      "loop": 4,
-      "script": "scripts/foundation-core-fixture-smoke.mjs",
-      "elapsedMs": 1108,
-      "passed": true
-    },
-    {
-      "loop": 4,
-      "script": "scripts/foundation-core-flow-fixture.mjs",
-      "elapsedMs": 1860,
-      "passed": true
-    },
-    {
-      "loop": 4,
-      "script": "scripts/low-memory-fixture-smoke.mjs",
-      "elapsedMs": 1081,
-      "passed": true
-    },
-    {
-      "loop": 4,
-      "script": "scripts/low-memory-page-fixture-smoke.mjs",
-      "elapsedMs": 2081,
-      "passed": true
-    },
-    {
-      "loop": 4,
-      "script": "scripts/popup-render-fixture.mjs",
-      "elapsedMs": 8417,
-      "passed": true
-    },
-    {
-      "loop": 5,
-      "script": "scripts/foundation-core-fixture-smoke.mjs",
-      "elapsedMs": 1143,
-      "passed": true
-    },
-    {
-      "loop": 5,
-      "script": "scripts/foundation-core-flow-fixture.mjs",
-      "elapsedMs": 1892,
-      "passed": true
-    },
-    {
-      "loop": 5,
-      "script": "scripts/low-memory-fixture-smoke.mjs",
-      "elapsedMs": 1125,
-      "passed": true
-    },
-    {
-      "loop": 5,
-      "script": "scripts/low-memory-page-fixture-smoke.mjs",
-      "elapsedMs": 2174,
-      "passed": true
-    },
-    {
-      "loop": 5,
-      "script": "scripts/popup-render-fixture.mjs",
-      "elapsedMs": 8607,
-      "passed": true
-    },
-    {
-      "loop": 6,
-      "script": "scripts/foundation-core-fixture-smoke.mjs",
-      "elapsedMs": 1164,
-      "passed": true
-    },
-    {
-      "loop": 6,
-      "script": "scripts/foundation-core-flow-fixture.mjs",
-      "elapsedMs": 1859,
-      "passed": true
-    },
-    {
-      "loop": 6,
-      "script": "scripts/low-memory-fixture-smoke.mjs",
-      "elapsedMs": 1005,
-      "passed": true
-    },
-    {
-      "loop": 6,
-      "script": "scripts/low-memory-page-fixture-smoke.mjs",
-      "elapsedMs": 1990,
-      "passed": true
-    },
-    {
-      "loop": 6,
-      "script": "scripts/popup-render-fixture.mjs",
-      "elapsedMs": 8397,
-      "passed": true
-    },
-    {
-      "loop": 7,
-      "script": "scripts/foundation-core-fixture-smoke.mjs",
-      "elapsedMs": 1144,
-      "passed": true
-    },
-    {
-      "loop": 7,
-      "script": "scripts/foundation-core-flow-fixture.mjs",
-      "elapsedMs": 1883,
-      "passed": true
-    },
-    {
-      "loop": 7,
-      "script": "scripts/low-memory-fixture-smoke.mjs",
-      "elapsedMs": 1040,
-      "passed": true
-    },
-    {
-      "loop": 7,
-      "script": "scripts/low-memory-page-fixture-smoke.mjs",
-      "elapsedMs": 2132,
-      "passed": true
-    },
-    {
-      "loop": 7,
-      "script": "scripts/popup-render-fixture.mjs",
-      "elapsedMs": 8475,
-      "passed": true
-    },
-    {
-      "loop": 8,
-      "script": "scripts/foundation-core-fixture-smoke.mjs",
-      "elapsedMs": 1056,
-      "passed": true
-    },
-    {
-      "loop": 8,
-      "script": "scripts/foundation-core-flow-fixture.mjs",
       "elapsedMs": 1852,
       "passed": true
     },
     {
+      "loop": 1,
+      "script": "scripts/popup-render-fixture.mjs",
+      "elapsedMs": 7099,
+      "passed": true
+    },
+    {
+      "loop": 2,
+      "script": "scripts/foundation-core-fixture-smoke.mjs",
+      "elapsedMs": 855,
+      "passed": true
+    },
+    {
+      "loop": 2,
+      "script": "scripts/foundation-core-flow-fixture.mjs",
+      "elapsedMs": 1615,
+      "passed": true
+    },
+    {
+      "loop": 2,
+      "script": "scripts/low-memory-fixture-smoke.mjs",
+      "elapsedMs": 802,
+      "passed": true
+    },
+    {
+      "loop": 2,
+      "script": "scripts/low-memory-page-fixture-smoke.mjs",
+      "elapsedMs": 1734,
+      "passed": true
+    },
+    {
+      "loop": 2,
+      "script": "scripts/popup-render-fixture.mjs",
+      "elapsedMs": 7063,
+      "passed": true
+    },
+    {
+      "loop": 3,
+      "script": "scripts/foundation-core-fixture-smoke.mjs",
+      "elapsedMs": 872,
+      "passed": true
+    },
+    {
+      "loop": 3,
+      "script": "scripts/foundation-core-flow-fixture.mjs",
+      "elapsedMs": 1611,
+      "passed": true
+    },
+    {
+      "loop": 3,
+      "script": "scripts/low-memory-fixture-smoke.mjs",
+      "elapsedMs": 872,
+      "passed": true
+    },
+    {
+      "loop": 3,
+      "script": "scripts/low-memory-page-fixture-smoke.mjs",
+      "elapsedMs": 1796,
+      "passed": true
+    },
+    {
+      "loop": 3,
+      "script": "scripts/popup-render-fixture.mjs",
+      "elapsedMs": 7208,
+      "passed": true
+    },
+    {
+      "loop": 4,
+      "script": "scripts/foundation-core-fixture-smoke.mjs",
+      "elapsedMs": 890,
+      "passed": true
+    },
+    {
+      "loop": 4,
+      "script": "scripts/foundation-core-flow-fixture.mjs",
+      "elapsedMs": 1599,
+      "passed": true
+    },
+    {
+      "loop": 4,
+      "script": "scripts/low-memory-fixture-smoke.mjs",
+      "elapsedMs": 828,
+      "passed": true
+    },
+    {
+      "loop": 4,
+      "script": "scripts/low-memory-page-fixture-smoke.mjs",
+      "elapsedMs": 1757,
+      "passed": true
+    },
+    {
+      "loop": 4,
+      "script": "scripts/popup-render-fixture.mjs",
+      "elapsedMs": 7069,
+      "passed": true
+    },
+    {
+      "loop": 5,
+      "script": "scripts/foundation-core-fixture-smoke.mjs",
+      "elapsedMs": 879,
+      "passed": true
+    },
+    {
+      "loop": 5,
+      "script": "scripts/foundation-core-flow-fixture.mjs",
+      "elapsedMs": 1628,
+      "passed": true
+    },
+    {
+      "loop": 5,
+      "script": "scripts/low-memory-fixture-smoke.mjs",
+      "elapsedMs": 832,
+      "passed": true
+    },
+    {
+      "loop": 5,
+      "script": "scripts/low-memory-page-fixture-smoke.mjs",
+      "elapsedMs": 1700,
+      "passed": true
+    },
+    {
+      "loop": 5,
+      "script": "scripts/popup-render-fixture.mjs",
+      "elapsedMs": 7197,
+      "passed": true
+    },
+    {
+      "loop": 6,
+      "script": "scripts/foundation-core-fixture-smoke.mjs",
+      "elapsedMs": 899,
+      "passed": true
+    },
+    {
+      "loop": 6,
+      "script": "scripts/foundation-core-flow-fixture.mjs",
+      "elapsedMs": 1624,
+      "passed": true
+    },
+    {
+      "loop": 6,
+      "script": "scripts/low-memory-fixture-smoke.mjs",
+      "elapsedMs": 815,
+      "passed": true
+    },
+    {
+      "loop": 6,
+      "script": "scripts/low-memory-page-fixture-smoke.mjs",
+      "elapsedMs": 1711,
+      "passed": true
+    },
+    {
+      "loop": 6,
+      "script": "scripts/popup-render-fixture.mjs",
+      "elapsedMs": 7136,
+      "passed": true
+    },
+    {
+      "loop": 7,
+      "script": "scripts/foundation-core-fixture-smoke.mjs",
+      "elapsedMs": 880,
+      "passed": true
+    },
+    {
+      "loop": 7,
+      "script": "scripts/foundation-core-flow-fixture.mjs",
+      "elapsedMs": 1616,
+      "passed": true
+    },
+    {
+      "loop": 7,
+      "script": "scripts/low-memory-fixture-smoke.mjs",
+      "elapsedMs": 812,
+      "passed": true
+    },
+    {
+      "loop": 7,
+      "script": "scripts/low-memory-page-fixture-smoke.mjs",
+      "elapsedMs": 1706,
+      "passed": true
+    },
+    {
+      "loop": 7,
+      "script": "scripts/popup-render-fixture.mjs",
+      "elapsedMs": 7084,
+      "passed": true
+    },
+    {
+      "loop": 8,
+      "script": "scripts/foundation-core-fixture-smoke.mjs",
+      "elapsedMs": 864,
+      "passed": true
+    },
+    {
+      "loop": 8,
+      "script": "scripts/foundation-core-flow-fixture.mjs",
+      "elapsedMs": 1636,
+      "passed": true
+    },
+    {
       "loop": 8,
       "script": "scripts/low-memory-fixture-smoke.mjs",
-      "elapsedMs": 1055,
+      "elapsedMs": 821,
       "passed": true
     },
     {
       "loop": 8,
       "script": "scripts/low-memory-page-fixture-smoke.mjs",
-      "elapsedMs": 2080,
+      "elapsedMs": 1749,
       "passed": true
     },
     {
       "loop": 8,
       "script": "scripts/popup-render-fixture.mjs",
-      "elapsedMs": 8232,
+      "elapsedMs": 7121,
       "passed": true
     }
   ]

@@ -165,6 +165,37 @@
     return matches.length === 1 ? matches[0] : null;
   }
 
+  function inspectAnswerContextTarget(node, doc = document) {
+    const element = node instanceof Element ? node : node?.parentElement;
+    if (!(element instanceof Element) || !isSupportedDocument(doc)) {
+      return answerContextObservation("MISSING", "unsupported_context_target");
+    }
+    const inspection = inspectTurnCandidates(doc);
+    if (inspection.invalid.length > 0) return answerContextObservation("AMBIGUOUS", "turn_contract_ambiguous");
+    const turnIds = inspection.turns.map((turn) => turn.turnId);
+    if (new Set(turnIds).size !== turnIds.length) return answerContextObservation("AMBIGUOUS", "turn_identity_ambiguous");
+    const matches = inspection.turns.filter((turn) => turn.role === "assistant"
+      && turn.answerRoot instanceof HTMLElement
+      && turn.answerRoot.contains(element));
+    if (matches.length !== 1) {
+      return answerContextObservation(matches.length > 1 ? "AMBIGUOUS" : "MISSING", matches.length > 1 ? "answer_context_not_unique" : "not_an_assistant_answer");
+    }
+    const turn = matches[0];
+    if (generationStateForTurn(turn) !== "SETTLED") return answerContextObservation("MISSING", "answer_not_settled");
+    return answerContextObservation("EXACT", "trusted_context_target", turn);
+  }
+
+  function answerContextObservation(evidenceClass, reason, turn = null) {
+    return {
+      evidenceClass,
+      reason,
+      turnId: turn?.turnId || null,
+      turn,
+      variantId: turn ? `${turn.variantId}:answer-context-v1` : "unproven-v1",
+      textIncluded: false
+    };
+  }
+
   function generationStateForTurn(turn) {
     if (!turn || turn.role !== "assistant" || !(turn.element instanceof HTMLElement)) return null;
     if (isFixture(turn.element.ownerDocument)) {
@@ -578,6 +609,7 @@
     inspect,
     listTurns,
     resolveTurnFromNode,
+    inspectAnswerContextTarget,
     findComposer,
     findAssistantActionCluster,
     inspectAnswerActionTargets,

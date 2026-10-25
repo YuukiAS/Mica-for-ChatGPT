@@ -13,7 +13,8 @@
     {"id": "known-good-adapter-contract", "expected": "ACCEPT"},
     {"id": "known-good-low-memory-fixture", "expected": "ACCEPT"},
     {"id": "known-good-highlighter-fixture", "expected": "ACCEPT"},
-    {"id": "known-good-selectable-math-pdf", "expected": "ACCEPT"}
+    {"id": "known-good-selectable-math-pdf", "expected": "ACCEPT"},
+    {"id": "known-good-installed-extension-e2e", "expected": "ACCEPT"}
   ],
   "knownBad": [
     {"id": "missing-evidence", "expected": "REJECT"},
@@ -58,6 +59,9 @@
     {"id": "pdf-extraction-only-rehash", "expected": "REJECT"},
     {"id": "pdf-duplicate-viewer-screenshots", "expected": "REJECT"},
     {"id": "pdf-forged-consumer-rehash", "expected": "REJECT"},
+    {"id": "installed-extension-service-worker-bypassed", "expected": "REJECT"},
+    {"id": "installed-extension-visual-auto-accepted-rehash", "expected": "REJECT"},
+    {"id": "installed-extension-real-network-used-rehash", "expected": "REJECT"},
     {"id": "stale-chatgpt-contract", "expected": "REJECT"},
     {"id": "control-bundle-presented-as-candidate", "expected": "REJECT"},
     {"id": "copy-serialization-output-mismatch", "expected": "REJECT"},

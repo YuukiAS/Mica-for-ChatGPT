@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "validatorVersion": "1.17.0",
+  "validatorVersion": "1.18.0",
   "evidenceSchemaVersion": 1,
   "controlsUseProductionValidators": true,
   "gates": [
@@ -93,6 +93,11 @@
       "id": "pdf-selection",
       "validatorKind": "pdf-selection",
       "candidateEvidenceClasses": ["ACTUAL_PDF_VIEWER"]
+    },
+    {
+      "id": "installed-extension-e2e",
+      "validatorKind": "installed-extension-e2e",
+      "candidateEvidenceClasses": ["LOCAL_REAL_BROWSER"]
     },
     {
       "id": "privacy",

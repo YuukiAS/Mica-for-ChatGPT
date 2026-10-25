@@ -1,6 +1,6 @@
 # Mica Roadmap
 
-Mica 以 2026-10-12 的冻结产品系统为基础继续推进。Foundation、Low Memory、Highlighter 和 PDF 的既有成果仍是架构底座；当前 `0.5.13` 功能收敛候选已加入统一设置、Markdown/Notion 数据路径、完整会话导出、严格清洗并预留备注/标签的高亮记录后端、高级 Reliability 后端、按站点授权的普通网页高亮、共用高亮交互策略，以及受当前站点合同约束的恢复控件、建议工作控制器和单回答 Mica actions 后端。各项状态以 [`product/MICA_FUNCTIONAL_CONVERGENCE_V1.md`](product/MICA_FUNCTIONAL_CONVERGENCE_V1.md) 为准，历史候选证据不自动等于当前构建已完成真实验收。
+Mica 以 2026-10-12 的冻结产品系统为基础继续推进。当前 `0.5.14` 候选在 Foundation、Low Memory、Highlighter、PDF、Copy、Settings 和 Reliability 后端之上，加入真实安装扩展的统一自动回归：正式 Manifest V3、content scripts、Service Worker、storage、动态注册、popup、Options、剪贴板和 PDF 页面都在隔离 Chromium 中运行。测试拒绝所有未匹配网络请求，不接触用户 Edge profile 或真实 ChatGPT。各项状态以 [`product/MICA_FUNCTIONAL_CONVERGENCE_V1.md`](product/MICA_FUNCTIONAL_CONVERGENCE_V1.md) 为准，测试分类见 [`testing/MICA_EXTENSION_TEST_COVERAGE.md`](testing/MICA_EXTENSION_TEST_COVERAGE.md)。
 
 ## Foundation（内部关口）
 
@@ -39,14 +39,14 @@ ChatGPT 原生 virtualization 只是基线。`content-visibility`、DOM 数量�
 
 ## 功能收敛阶段 — Copy / Settings / Reliability
 
-当前 `0.5.13` 后端候选已经加入：
+当前 `0.5.14` 候选已经加入：
 
 - 版本化设置 schema 和统一 Options 页面；
 - AnswerDocument 驱动的 Markdown、Notion rich clipboard 和 Notion import file；
 - 表格单元格的结构化 inline 模型，使其中的公式、强调、行内代码、链接和引用能够进入 Markdown、Notion 与 PDF，而不是被压平成纯文本；
 - PDF print model 的富文本语义和链接安全层：保留强调、删除线、行内代码、引用及允许的 `http(s)` / `mailto` 链接，拒绝危险 scheme；
 - PDF 数学语义链：从页面已有 MathML 中提取有界安全 AST，经模型传递后用命名空间 DOM 重建；不受支持的树和无法精确映射的局部公式高亮显式回退到可见 TeX；
-- 由 adapter 唯一 `EXACT` 目标驱动的单回答 `Mica actions` 菜单；菜单按设置排序和裁剪可用动作，streaming、歧义和 remount 都会 fail-open；
+- 由 adapter 唯一 `EXACT` 目标驱动的单回答 `Mica actions` 菜单，以及在实站 placement 未证明时按可信右键回答归属工作的浏览器菜单 fallback；两条路径都在 streaming、歧义和 remount 时 fail-open；
 - 以完整历史计数、角色顺序、conversation 身份和 settled turn 为硬门槛的整段 Markdown/PDF 导出；
 - 真正消费 A4/Letter、PDF 高亮包含开关和默认导出动作顺序的导出路径；
 - 高亮记录导入、导出、合并和清理；ChatGPT 与普通网页记录共用同一备注/标签预算，导入和变更 helper 都只重建允许字段；
@@ -60,17 +60,17 @@ ChatGPT 原生 virtualization 只是基线。`content-visibility`、DOM 数量�
 - 由 ChatGPTAdapter 统一提供 composer、assistant 进展、工具安全与 reload 安全观察，controller 不再直接查询页面结构；
 - 对已提交、未提交、未知提交状态以及只读/有副作用工具的安全分流。
 
-这些代码已经进入固定开发路径，但浏览器集成仍需当前构建回归。真实 Notion 原生公式、PDF viewer、真实 ChatGPT 断流和设置页渲染在完成对应验收前保持未验证。
+这些代码已经进入固定开发路径。当前构建已通过真实安装扩展 E2E、Low Memory 生命周期、六张视觉基准和实际 PDF 检查；登录态 ChatGPT、目标低内存设备、真实 Notion 原生公式与真实断流控件仍保持未验证。
 
 ## 仍未完成
 
 - 普通网页权限提示、文章页绘制、编辑和跨刷新恢复的实际浏览器验收；
-- 完整 conversation 的 full-history reload、剪贴板和 PDF 产品路径浏览器验收；
+- 登录态 conversation 的 full-history reload、系统剪贴板和桌面 PDF 查看器最终确认；
 - Notion 一次粘贴后的原生可编辑公式；
 - 真实 ChatGPT 原生 Stop、assistant retry 和确认未提交 resend 的控件合同与实际执行验收；
 - Composer / Connector 历史真实故障在当前页面结构上的精确收敛；
 - Hide suggested work 的当前真实结构合同与页面验收；
-- 单回答 `Mica actions` 在当前真实 ChatGPT 操作区中的精确 placement、键盘焦点和实际 clipboard/PDF handoff；
-- `functional-convergence` 完整候选的浏览器证据物化与正式 candidate run。
+- 单回答 `Mica actions` 在当前真实 ChatGPT 操作区中的精确 placement；已验证右键 fallback 在此之前提供安全入口；
+- `functional-convergence` 完整候选的最终证据物化与 candidate run。
 
-本轮禁止启动浏览器，因此上述真实目标验证留作明确缺口，不会被本地模型或旧截图冒充。隐私、最小权限、typing hot path、浏览器测试边界、fail-open 和版本一致性规则始终有效。
+本轮只运行隔离 Playwright Chromium，没有打开用户日常浏览器或真实 ChatGPT。剩余真实目标验证集中到最后一次人工验收，不会被模拟宿主或旧截图冒充。今后普通补丁默认由类别 1–4 自动化闭环；只有登录态结构漂移、新的高风险交互、Low Memory 数据语义/资源边界或系统集成证据失效时，才重新考虑人工验收。

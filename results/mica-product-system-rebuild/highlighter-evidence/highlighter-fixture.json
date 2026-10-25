@@ -7,14 +7,14 @@
   "selection": {
     "ok": true,
     "turnId": "conversation-turn-2",
-    "sourceVersion": "settled-64d3392e",
+    "sourceVersion": "settled-c64a137e",
     "quoteLength": 33,
     "mathTeX": [
       "x+1"
     ],
     "structuralHint": {
-      "startBlockId": "block-039a6e63",
-      "endBlockId": "block-039a6e63",
+      "startBlockId": "block-d1113ebb",
+      "endBlockId": "block-d1113ebb",
       "startKind": "paragraph",
       "endKind": "paragraph",
       "startOrder": 0,
@@ -29,6 +29,7 @@
   "initial": {
     "status": {
       "supported": true,
+      "enabled": true,
       "localOnly": true,
       "recordCount": 0,
       "renderedCount": 0,
@@ -56,14 +57,14 @@
     "result": {
       "ok": true,
       "turnId": "conversation-turn-2",
-      "sourceVersion": "settled-64d3392e",
+      "sourceVersion": "settled-c64a137e",
       "quoteLength": 33,
       "mathTeX": [
         "x+1"
       ],
       "structuralHint": {
-        "startBlockId": "block-039a6e63",
-        "endBlockId": "block-039a6e63",
+        "startBlockId": "block-d1113ebb",
+        "endBlockId": "block-d1113ebb",
         "startKind": "paragraph",
         "endKind": "paragraph",
         "startOrder": 0,
@@ -76,6 +77,7 @@
   "created": {
     "status": {
       "supported": true,
+      "enabled": true,
       "localOnly": true,
       "recordCount": 1,
       "renderedCount": 1,
@@ -85,14 +87,14 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-e18504e3",
+        "id": "highlight-1e07880e",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
           "turnId": "conversation-turn-2",
           "documentId": "answer-2c91005c",
-          "sourceVersion": "settled-64d3392e",
-          "blockId": "block-039a6e63",
+          "sourceVersion": "settled-c64a137e",
+          "blockId": "block-d1113ebb",
           "textQuote": "Before x+1 after stable sentence.",
           "prefix": "",
           "suffix": "\nconst excluded = true;",
@@ -101,8 +103,8 @@
             "end": 33
           },
           "structuralHint": {
-            "startBlockId": "block-039a6e63",
-            "endBlockId": "block-039a6e63",
+            "startBlockId": "block-d1113ebb",
+            "endBlockId": "block-d1113ebb",
             "startKind": "paragraph",
             "endKind": "paragraph",
             "startOrder": 0,
@@ -112,16 +114,21 @@
             "x+1"
           ]
         },
+        "annotation": {
+          "note": "",
+          "tags": []
+        },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-12T13:57:46.191Z",
-        "updatedAt": "2026-10-12T13:57:46.191Z"
+        "createdAt": "2026-10-25T16:11:26.157Z",
+        "updatedAt": "2026-10-25T16:11:26.157Z"
       }
     ]
   },
   "refreshed": {
     "status": {
       "supported": true,
+      "enabled": true,
       "localOnly": true,
       "recordCount": 1,
       "renderedCount": 1,
@@ -131,14 +138,14 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-e18504e3",
+        "id": "highlight-1e07880e",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
           "turnId": "conversation-turn-2",
           "documentId": "answer-2c91005c",
-          "sourceVersion": "settled-64d3392e",
-          "blockId": "block-039a6e63",
+          "sourceVersion": "settled-c64a137e",
+          "blockId": "block-d1113ebb",
           "textQuote": "Before x+1 after stable sentence.",
           "prefix": "",
           "suffix": "\nconst excluded = true;",
@@ -147,8 +154,8 @@
             "end": 33
           },
           "structuralHint": {
-            "startBlockId": "block-039a6e63",
-            "endBlockId": "block-039a6e63",
+            "startBlockId": "block-d1113ebb",
+            "endBlockId": "block-d1113ebb",
             "startKind": "paragraph",
             "endKind": "paragraph",
             "startOrder": 0,
@@ -158,16 +165,21 @@
             "x+1"
           ]
         },
+        "annotation": {
+          "note": "",
+          "tags": []
+        },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-12T13:57:46.191Z",
-        "updatedAt": "2026-10-12T13:57:46.191Z"
+        "createdAt": "2026-10-25T16:11:26.157Z",
+        "updatedAt": "2026-10-25T16:11:26.157Z"
       }
     ]
   },
   "remounted": {
     "status": {
       "supported": true,
+      "enabled": true,
       "localOnly": true,
       "recordCount": 1,
       "renderedCount": 1,
@@ -177,14 +189,14 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-e18504e3",
+        "id": "highlight-1e07880e",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
           "turnId": "conversation-turn-2",
           "documentId": "answer-2c91005c",
-          "sourceVersion": "settled-64d3392e",
-          "blockId": "block-039a6e63",
+          "sourceVersion": "settled-c64a137e",
+          "blockId": "block-d1113ebb",
           "textQuote": "Before x+1 after stable sentence.",
           "prefix": "",
           "suffix": "\nconst excluded = true;",
@@ -193,8 +205,8 @@
             "end": 33
           },
           "structuralHint": {
-            "startBlockId": "block-039a6e63",
-            "endBlockId": "block-039a6e63",
+            "startBlockId": "block-d1113ebb",
+            "endBlockId": "block-d1113ebb",
             "startKind": "paragraph",
             "endKind": "paragraph",
             "startOrder": 0,
@@ -204,16 +216,21 @@
             "x+1"
           ]
         },
+        "annotation": {
+          "note": "",
+          "tags": []
+        },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-12T13:57:46.191Z",
-        "updatedAt": "2026-10-12T13:57:46.191Z"
+        "createdAt": "2026-10-25T16:11:26.157Z",
+        "updatedAt": "2026-10-25T16:11:26.157Z"
       }
     ]
   },
   "mathReformatted": {
     "status": {
       "supported": true,
+      "enabled": true,
       "localOnly": true,
       "recordCount": 1,
       "renderedCount": 1,
@@ -223,14 +240,14 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-e18504e3",
+        "id": "highlight-1e07880e",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
           "turnId": "conversation-turn-2",
           "documentId": "answer-2c91005c",
-          "sourceVersion": "settled-64d3392e",
-          "blockId": "block-039a6e63",
+          "sourceVersion": "settled-c64a137e",
+          "blockId": "block-d1113ebb",
           "textQuote": "Before x+1 after stable sentence.",
           "prefix": "",
           "suffix": "\nconst excluded = true;",
@@ -239,8 +256,8 @@
             "end": 33
           },
           "structuralHint": {
-            "startBlockId": "block-039a6e63",
-            "endBlockId": "block-039a6e63",
+            "startBlockId": "block-d1113ebb",
+            "endBlockId": "block-d1113ebb",
             "startKind": "paragraph",
             "endKind": "paragraph",
             "startOrder": 0,
@@ -250,16 +267,21 @@
             "x+1"
           ]
         },
+        "annotation": {
+          "note": "",
+          "tags": []
+        },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-12T13:57:46.191Z",
-        "updatedAt": "2026-10-12T13:57:46.191Z"
+        "createdAt": "2026-10-25T16:11:26.157Z",
+        "updatedAt": "2026-10-25T16:11:26.157Z"
       }
     ]
   },
   "ambiguous": {
     "status": {
       "supported": true,
+      "enabled": true,
       "localOnly": true,
       "recordCount": 1,
       "renderedCount": 0,
@@ -269,14 +291,14 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-e18504e3",
+        "id": "highlight-1e07880e",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
           "turnId": "conversation-turn-2",
           "documentId": "answer-2c91005c",
-          "sourceVersion": "settled-64d3392e",
-          "blockId": "block-039a6e63",
+          "sourceVersion": "settled-c64a137e",
+          "blockId": "block-d1113ebb",
           "textQuote": "Before x+1 after stable sentence.",
           "prefix": "",
           "suffix": "\nconst excluded = true;",
@@ -285,8 +307,8 @@
             "end": 33
           },
           "structuralHint": {
-            "startBlockId": "block-039a6e63",
-            "endBlockId": "block-039a6e63",
+            "startBlockId": "block-d1113ebb",
+            "endBlockId": "block-d1113ebb",
             "startKind": "paragraph",
             "endKind": "paragraph",
             "startOrder": 0,
@@ -296,16 +318,21 @@
             "x+1"
           ]
         },
+        "annotation": {
+          "note": "",
+          "tags": []
+        },
         "status": "unresolved",
         "unresolvedReason": "ambiguous_anchor",
-        "createdAt": "2026-10-12T13:57:46.191Z",
-        "updatedAt": "2026-10-12T13:57:46.281Z"
+        "createdAt": "2026-10-25T16:11:26.157Z",
+        "updatedAt": "2026-10-25T16:11:26.237Z"
       }
     ]
   },
   "deletedSource": {
     "status": {
       "supported": true,
+      "enabled": true,
       "localOnly": true,
       "recordCount": 1,
       "renderedCount": 0,
@@ -315,14 +342,14 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-e18504e3",
+        "id": "highlight-1e07880e",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
           "turnId": "conversation-turn-2",
           "documentId": "answer-2c91005c",
-          "sourceVersion": "settled-64d3392e",
-          "blockId": "block-039a6e63",
+          "sourceVersion": "settled-c64a137e",
+          "blockId": "block-d1113ebb",
           "textQuote": "Before x+1 after stable sentence.",
           "prefix": "",
           "suffix": "\nconst excluded = true;",
@@ -331,8 +358,8 @@
             "end": 33
           },
           "structuralHint": {
-            "startBlockId": "block-039a6e63",
-            "endBlockId": "block-039a6e63",
+            "startBlockId": "block-d1113ebb",
+            "endBlockId": "block-d1113ebb",
             "startKind": "paragraph",
             "endKind": "paragraph",
             "startOrder": 0,
@@ -342,16 +369,21 @@
             "x+1"
           ]
         },
+        "annotation": {
+          "note": "",
+          "tags": []
+        },
         "status": "unresolved",
         "unresolvedReason": "source_missing",
-        "createdAt": "2026-10-12T13:57:46.191Z",
-        "updatedAt": "2026-10-12T13:57:46.287Z"
+        "createdAt": "2026-10-25T16:11:26.157Z",
+        "updatedAt": "2026-10-25T16:11:26.242Z"
       }
     ]
   },
   "recolored": {
     "status": {
       "supported": true,
+      "enabled": true,
       "localOnly": true,
       "recordCount": 1,
       "renderedCount": 1,
@@ -361,14 +393,14 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-e18504e3",
+        "id": "highlight-1e07880e",
         "color": "mint",
         "anchor": {
           "conversationId": "conversation-8f42df23",
           "turnId": "conversation-turn-2",
           "documentId": "answer-2c91005c",
-          "sourceVersion": "settled-64d3392e",
-          "blockId": "block-039a6e63",
+          "sourceVersion": "settled-c64a137e",
+          "blockId": "block-d1113ebb",
           "textQuote": "Before x+1 after stable sentence.",
           "prefix": "",
           "suffix": "\nconst excluded = true;",
@@ -377,8 +409,8 @@
             "end": 33
           },
           "structuralHint": {
-            "startBlockId": "block-039a6e63",
-            "endBlockId": "block-039a6e63",
+            "startBlockId": "block-d1113ebb",
+            "endBlockId": "block-d1113ebb",
             "startKind": "paragraph",
             "endKind": "paragraph",
             "startOrder": 0,
@@ -388,16 +420,33 @@
             "x+1"
           ]
         },
+        "annotation": {
+          "note": "",
+          "tags": []
+        },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-12T13:57:46.191Z",
-        "updatedAt": "2026-10-12T13:57:46.454Z"
+        "createdAt": "2026-10-25T16:11:26.157Z",
+        "updatedAt": "2026-10-25T16:11:26.387Z"
       }
     ]
   },
   "removed": {
     "status": {
       "supported": true,
+      "enabled": true,
+      "localOnly": true,
+      "recordCount": 0,
+      "renderedCount": 0,
+      "unresolvedCount": 0,
+      "permanentToolbar": false
+    },
+    "records": []
+  },
+  "clearedAnswer": {
+    "status": {
+      "supported": true,
+      "enabled": true,
       "localOnly": true,
       "recordCount": 0,
       "renderedCount": 0,
@@ -427,15 +476,15 @@
   "screenshots": {
     "selectionLight": {
       "path": "results/mica-product-system-rebuild/highlighter-evidence/highlighter-selection-light.png",
-      "sha256": "da9960230983fc10f1357f720458b2e25e3c7ebe83089234bbc9f93bc19aa512"
+      "sha256": "3f87dcf62bfbf14406f25ae6b8e96d4924f47a13022b8ef1179fec803976e903"
     },
     "activeLight": {
       "path": "results/mica-product-system-rebuild/highlighter-evidence/highlighter-active-light.png",
-      "sha256": "d67d22875accaa9871c5ce99cf8d6f68469e0e228edc2f83a31b7492a6ca3d00"
+      "sha256": "620a1dbfc50e4cdf720b372b8d0d0b9b86da8155c844448fc2b2ca31fe1bc40a"
     },
     "editDark": {
       "path": "results/mica-product-system-rebuild/highlighter-evidence/highlighter-edit-dark.png",
-      "sha256": "f6a170a09cf163d98583ba60f21ba49f8392c4628835b4f0f535b40b099cdfd6"
+      "sha256": "1d49b7117293f57837a603943f0fd3e3965839a10938cbc0a55506bb9287bb8a"
     }
   },
   "invariants": {
@@ -451,6 +500,7 @@
     "sourceDeletionFailOpen": true,
     "colorOwnership": true,
     "deleteOwnership": true,
+    "clearAnswerOwnership": true,
     "pdfExportHandoff": true
   }
 }

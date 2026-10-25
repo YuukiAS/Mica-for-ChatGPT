@@ -1,0 +1,15 @@
+{
+  "schema": "mica.extension-visual-baseline.v1",
+  "approvedAt": "2026-10-25",
+  "approvedVersion": "0.5.14",
+  "browser": "Chromium 151",
+  "review": "Manually inspected for overflow, clipping, theme contrast, fixed-surface placement, and content integrity before baseline creation.",
+  "screenshots": {
+    "options-light": "5e357cf9eb589bd052c8228a43395bf90db62332bf7bf7826a6262fe7d91a1d1",
+    "highlights-light": "3dfab3d83f8db5e2d44b27c62f4c8a736e7374bee33493134f2359ecf23ee233",
+    "highlights-dark": "176fc90d123e89b4b509618c725086f28600dd4f250f913e10f4f4a4cd74bebc",
+    "popup-320-light": "0c4a014ca923604d03f43ee074c5dfca0eb10f5c39ff7b0a9d024120d560a8cc",
+    "popup-368-dark": "14dbf54ec13139e62ab56f5e2bf059aac20a83b41d0219b6ef44b38a37d29d9f",
+    "popup-400-light": "d4c53b1ecdf85d23d41ab8987609b425e5f5c27bb2189ac70d842a160db95aea"
+  }
+}

@@ -33,6 +33,7 @@
   let highlighterReady = false;
   let highlightInteraction = defaultHighlightInteraction();
   let highlightShortcutFrame = 0;
+  let pendingAnswerContext = null;
 
   if (!adapter || !answerDocument || !isSupportedPage()) return;
 
@@ -53,6 +54,7 @@
     setupStorageSignals();
     setupNavigationSignals();
     setupLowMemorySignals();
+    setupAnswerContextMenu();
     if (settings.enabled) setupObserver();
     await initializeHighlighter();
     await recoveryController?.configure?.({
@@ -139,6 +141,7 @@
 
   function setupNavigationSignals() {
     const onNavigation = () => {
+      clearAnswerContext();
       recoveryController?.onContextChanged?.();
       scheduleRefresh();
       scheduleHighlightReconcile();
@@ -315,6 +318,10 @@
         void exportConversationPdf().then(sendResponse);
         return true;
       }
+      if (message?.type === "MICA_RUN_ANSWER_CONTEXT_ACTION") {
+        void performAnswerContextAction(message).then((ok) => sendResponse({ ok, localOnly: true }));
+        return true;
+      }
       if (message?.type === "MICA_LOAD_FULL_HISTORY") {
         void requestFullHistory("popup", RECOVERY_AUTH.popup).then(sendResponse);
         return true;
@@ -376,6 +383,7 @@
       actions: availableAnswerActions(),
       defaultAction: defaultAnswerAction()
     });
+    if (!settings.enabled || !settings.copyExport) clearAnswerContext();
     reconcileHistoryControl();
   }
 
@@ -812,11 +820,56 @@
       ? observation.targets.filter((target) => target.turnId === request.turnId && target.evidenceClass === "EXACT")
       : [];
     if (matches.length !== 1) return false;
-    const documentModel = getAnswerDocument(request.turnId);
+    return performResolvedAnswerAction(request.turnId, request.action);
+  }
+
+  function setupAnswerContextMenu() {
+    document.addEventListener("contextmenu", handleAnswerContextMenu, true);
+  }
+
+  function handleAnswerContextMenu(event) {
+    if (!event.isTrusted || !settings.enabled || !settings.copyExport) return clearAnswerContext();
+    const observation = adapter.inspectAnswerContextTarget?.(event.target, document);
+    if (observation?.evidenceClass !== "EXACT" || !observation.turn?.answerRoot) return clearAnswerContext();
+    const observedAt = Date.now();
+    pendingAnswerContext = {
+      turnId: observation.turnId,
+      observedAt,
+      target: event.target,
+      answerRoot: observation.turn.answerRoot
+    };
+    publishAnswerContext({ turnId: observation.turnId, observedAt, evidenceClass: "EXACT", textIncluded: false });
+  }
+
+  function clearAnswerContext() {
+    pendingAnswerContext = null;
+    publishAnswerContext(null);
+  }
+
+  function publishAnswerContext(context) {
+    try {
+      chrome.runtime?.sendMessage?.({ type: "MICA_ANSWER_CONTEXT", context }, () => { void chrome.runtime.lastError; });
+    } catch (_error) { /* fail open */ }
+  }
+
+  async function performAnswerContextAction(request) {
+    const pending = pendingAnswerContext;
+    pendingAnswerContext = null;
+    if (!settings.enabled || !settings.copyExport || request?.evidenceClass !== "EXACT" || !pending) return false;
+    if (request.turnId !== pending.turnId || Number(request.observedAt) !== pending.observedAt) return false;
+    if (Date.now() - pending.observedAt > 15_000 || pending.observedAt > Date.now() + 1_000) return false;
+    if (!(pending.answerRoot instanceof HTMLElement) || !pending.answerRoot.isConnected) return false;
+    const observation = adapter.inspectAnswerContextTarget?.(pending.target, document);
+    if (observation?.evidenceClass !== "EXACT" || observation.turnId !== pending.turnId || observation.turn?.answerRoot !== pending.answerRoot) return false;
+    return performResolvedAnswerAction(pending.turnId, request.action);
+  }
+
+  async function performResolvedAnswerAction(turnId, action) {
+    const documentModel = getAnswerDocument(turnId);
     if (!documentModel?.durable) return false;
-    if (request.action === "pdf") return openPdfDocument(documentModel);
-    if (request.action === "notion" && productSettings?.export?.notionMode === "disabled") return false;
-    if (request.action === "markdown" || request.action === "notion") return copyAnswerDocument(documentModel, request.action);
+    if (action === "pdf") return openPdfDocument(documentModel);
+    if (action === "notion" && productSettings?.export?.notionMode === "disabled") return false;
+    if (action === "markdown" || action === "notion") return copyAnswerDocument(documentModel, action);
     return false;
   }
 

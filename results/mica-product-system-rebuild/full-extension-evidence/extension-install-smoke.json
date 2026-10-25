@@ -1,0 +1,36 @@
+{
+  "schema": "mica.full-extension-install.v1",
+  "passed": true,
+  "generatedAt": "2026-10-25T16:08:46.261Z",
+  "candidate": {
+    "version": "0.5.14",
+    "buildLabel": "product-delivery.1"
+  },
+  "browser": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "playwrightModules": "C:\\Users\\humc2\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\node_modules"
+  },
+  "extension": {
+    "id": "pbobclpandaapfidfhenpljngjkhilon",
+    "manifestVersion": 3,
+    "serviceWorker": "chrome-extension://pbobclpandaapfidfhenpljngjkhilon/low-memory-background.js",
+    "actualContentScript": true,
+    "actualServiceWorker": true,
+    "actualStorage": true,
+    "contextMenusReady": true,
+    "dynamicRegistrations": []
+  },
+  "userPath": {
+    "trustedRightClickReachedWorker": true,
+    "trustedSelectionToolbarCopy": true,
+    "realClipboardReadback": true
+  },
+  "privacy": {
+    "normalBrowserProfileUsed": false,
+    "authenticatedChatGptUsed": false,
+    "realChatGptRequestCount": 0,
+    "conversationTextIncludedInBackgroundContext": false
+  },
+  "screenshot": "results/mica-product-system-rebuild/full-extension-evidence/installed-extension-answer.png",
+  "pageErrors": []
+}

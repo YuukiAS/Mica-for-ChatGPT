@@ -57,13 +57,21 @@
     "bytesRemoved": 11536,
     "recentTurnLimit": 40,
     "actualTruncation": true,
+    "completenessProof": {
+      "schemaVersion": 1,
+      "expectedTurnCount": 119,
+      "roleSequenceHash": "a219c963",
+      "source": "validated-conversation-graph",
+      "conversationId": "conversation-adb8c1d6",
+      "capturedAt": "2026-10-25T16:11:00.542Z"
+    },
     "telemetryTrust": "page_untrusted",
     "recoveryAuthorization": "extension_ui_or_trusted_user_gesture",
     "truncatedRepresentation": "client-history-window",
     "serverMutation": false,
     "reactManagedInteractiveNodesDetached": false,
     "contentUpload": false,
-    "updatedAt": "2026-10-12T13:59:49.434Z"
+    "updatedAt": "2026-10-25T16:11:00.542Z"
   },
   "windowedGraphFlows": {
     "tool": true,

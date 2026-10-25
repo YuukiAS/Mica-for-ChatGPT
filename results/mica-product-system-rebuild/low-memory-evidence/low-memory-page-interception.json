@@ -19,13 +19,21 @@
       "bytesRemoved": 17352,
       "recentTurnLimit": 40,
       "actualTruncation": true,
+      "completenessProof": {
+        "schemaVersion": 1,
+        "expectedTurnCount": 160,
+        "roleSequenceHash": "bc203b0b",
+        "source": "validated-conversation-graph",
+        "conversationId": "conversation-1219b973",
+        "capturedAt": "2026-10-25T16:11:03.182Z"
+      },
       "telemetryTrust": "page_untrusted",
       "recoveryAuthorization": "extension_ui_or_trusted_user_gesture",
       "truncatedRepresentation": "client-history-window",
       "serverMutation": false,
       "reactManagedInteractiveNodesDetached": false,
       "contentUpload": false,
-      "updatedAt": "2026-10-12T13:59:52.515Z"
+      "updatedAt": "2026-10-25T16:11:03.182Z"
     },
     "siteLocalConfigPresent": false
   },
@@ -89,13 +97,14 @@
       "bytesRemoved": 0,
       "recentTurnLimit": 40,
       "actualTruncation": false,
+      "completenessProof": null,
       "telemetryTrust": "page_untrusted",
       "recoveryAuthorization": "extension_ui_or_trusted_user_gesture",
       "truncatedRepresentation": "client-history-window",
       "serverMutation": false,
       "reactManagedInteractiveNodesDetached": false,
       "contentUpload": false,
-      "updatedAt": "2026-10-12T13:59:52.813Z"
+      "updatedAt": "2026-10-25T16:11:03.440Z"
     },
     "buttonLabel": "Resume Low Memory",
     "userAction": "trusted_keyboard",
@@ -125,13 +134,21 @@
       "bytesRemoved": 17352,
       "recentTurnLimit": 40,
       "actualTruncation": true,
+      "completenessProof": {
+        "schemaVersion": 1,
+        "expectedTurnCount": 160,
+        "roleSequenceHash": "bc203b0b",
+        "source": "validated-conversation-graph",
+        "conversationId": "conversation-1219b973",
+        "capturedAt": "2026-10-25T16:11:03.655Z"
+      },
       "telemetryTrust": "page_untrusted",
       "recoveryAuthorization": "extension_ui_or_trusted_user_gesture",
       "truncatedRepresentation": "client-history-window",
       "serverMutation": false,
       "reactManagedInteractiveNodesDetached": false,
       "contentUpload": false,
-      "updatedAt": "2026-10-12T13:59:53.055Z"
+      "updatedAt": "2026-10-25T16:11:03.655Z"
     },
     "controlRetained": true,
     "buttonLabel": "Restore full history",
@@ -140,6 +157,10 @@
     "settings": {
       "enabled": true,
       "lowMemory": false,
+      "highlighter": true,
+      "copyExport": true,
+      "reliability": true,
+      "hideSuggestedWork": false,
       "lowMemoryKeepCount": 40,
       "lowMemoryThreshold": 80
     },
@@ -165,13 +186,14 @@
       "bytesRemoved": 0,
       "recentTurnLimit": 40,
       "actualTruncation": false,
+      "completenessProof": null,
       "telemetryTrust": "page_untrusted",
       "recoveryAuthorization": "extension_ui_or_trusted_user_gesture",
       "truncatedRepresentation": "client-history-window",
       "serverMutation": false,
       "reactManagedInteractiveNodesDetached": false,
       "contentUpload": false,
-      "updatedAt": "2026-10-12T13:59:53.318Z"
+      "updatedAt": "2026-10-25T16:11:03.872Z"
     }
   },
   "history": {

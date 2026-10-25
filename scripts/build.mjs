@@ -37,7 +37,7 @@ const manifest = {
       128: "icons/icon128.png"
     }
   },
-  permissions: ["storage", "activeTab", "scripting", "clipboardWrite"],
+  permissions: ["storage", "activeTab", "scripting", "clipboardWrite", "contextMenus"],
   host_permissions: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
   optional_host_permissions: ["http://*/*", "https://*/*"],
   background: { service_worker: "low-memory-background.js" },
@@ -106,11 +106,12 @@ const recoveryControlAdapter = render(await readFile(path.join(srcDir, "reliabil
 const recoveryLedger = render(await readFile(path.join(srcDir, "reliability", "recovery-ledger.ts"), "utf8"));
 const suggestedWorkController = render(await readFile(path.join(srcDir, "features", "suggested-work-controller.ts"), "utf8"));
 const answerActionsController = render(await readFile(path.join(srcDir, "features", "answer-actions-controller.ts"), "utf8"));
+const answerContextMenuBackground = render(await readFile(path.join(srcDir, "features", "answer-context-menu-background.ts"), "utf8"));
 const lowMemoryCore = render(await readFile(path.join(srcDir, "low-memory", "low-memory-core.ts"), "utf8"));
 const lowMemoryPage = render(await readFile(path.join(srcDir, "low-memory", "low-memory-page.ts"), "utf8"));
 const lowMemoryConfig = render(await readFile(path.join(srcDir, "low-memory", "low-memory-config.ts"), "utf8"));
 const lowMemoryBackgroundCore = render(await readFile(path.join(srcDir, "low-memory", "low-memory-background.ts"), "utf8"));
-const lowMemoryBackground = `${highlightInteractionPolicy}\n${settingsModel}\n${recoveryActionPolicy}\n${recoveryStateMachine}\n${recoveryLedger}\n${lowMemoryBackgroundCore}\n${generalWebBackground}`;
+const lowMemoryBackground = `${highlightInteractionPolicy}\n${settingsModel}\n${recoveryActionPolicy}\n${recoveryStateMachine}\n${recoveryLedger}\n${lowMemoryBackgroundCore}\n${answerContextMenuBackground}\n${generalWebBackground}`;
 const popup = render(await readFile(path.join(popupDir, "popup.ts"), "utf8"));
 const options = render(await readFile(path.join(optionsDir, "options.ts"), "utf8"));
 const troubleshooting = render(await readFile(path.join(popupDir, "troubleshooting.ts"), "utf8"));
@@ -136,6 +137,7 @@ await writeFile(path.join(outDir, "recovery-control-adapter.js"), recoveryContro
 await writeFile(path.join(outDir, "recovery-ledger.js"), recoveryLedger);
 await writeFile(path.join(outDir, "suggested-work-controller.js"), suggestedWorkController);
 await writeFile(path.join(outDir, "answer-actions-controller.js"), answerActionsController);
+await writeFile(path.join(outDir, "answer-context-menu-background.js"), answerContextMenuBackground);
 await writeFile(path.join(outDir, "low-memory-core.js"), lowMemoryCore);
 await writeFile(path.join(outDir, "low-memory-page.js"), lowMemoryPage);
 await writeFile(path.join(outDir, "low-memory-config.js"), lowMemoryConfig);

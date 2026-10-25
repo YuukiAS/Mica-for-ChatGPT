@@ -1,0 +1,166 @@
+{
+  "schema": "mica.full-extension-e2e.v1",
+  "passed": true,
+  "generatedAt": "2026-10-25T16:09:05.149Z",
+  "candidate": {
+    "version": "0.5.14",
+    "buildLabel": "product-delivery.1"
+  },
+  "execution": {
+    "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "playwrightModules": "C:\\Users\\humc2\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\node_modules",
+    "extensionId": "pbobclpandaapfidfhenpljngjkhilon",
+    "serviceWorker": "chrome-extension://pbobclpandaapfidfhenpljngjkhilon/low-memory-background.js",
+    "actualManifest": true,
+    "actualContentScripts": true,
+    "actualServiceWorker": true,
+    "actualStorage": true,
+    "networkGuard": "deny-unmatched",
+    "unexpectedRequestCount": 0
+  },
+  "copy": {
+    "realPointerSelection": true,
+    "realClipboardReadback": true,
+    "targetAnswerOnly": true,
+    "richStructurePreserved": true
+  },
+  "highlighter": {
+    "actualPointerSelection": true,
+    "visibleCssHighlights": true,
+    "fourColors": true,
+    "recolor": true,
+    "deleteOne": true,
+    "clearExactAnswer": true,
+    "refreshRestore": true,
+    "hostRemountRestore": true,
+    "equivalentMathReformatRestore": true,
+    "duplicateTextFailOpen": true,
+    "sourceDeletionFailOpen": true,
+    "branchIsolation": true,
+    "conversationIsolation": true,
+    "persistedShortcutDefaultColor": true
+  },
+  "pdf": {
+    "actualUserExportClick": true,
+    "actualServiceWorkerHandoff": true,
+    "actualSessionStorage": true,
+    "temporaryModelConsumed": true,
+    "actualExtensionPage": true,
+    "actualPdfFile": "output/pdf/mica-full-extension-export.pdf",
+    "pageCount": 3,
+    "independentTextExtraction": true,
+    "semanticMathMl": true,
+    "tableCodeChinese": true,
+    "screenshot": {
+      "path": "results/mica-product-system-rebuild/full-extension-evidence/pdf-export-page.png",
+      "sha256": "db2c02444ed8b080822df595923c408cfa4c52d95dece288dbf61121e168823f",
+      "width": 1280,
+      "height": 900,
+      "baseline": false
+    }
+  },
+  "popupAndSettings": {
+    "actualChromeExtensionPage": true,
+    "actualActiveTabMessaging": true,
+    "settingsPersistence": true,
+    "settingsNavigation": true,
+    "widths": [
+      320,
+      368,
+      400
+    ],
+    "lightDark": true,
+    "noHorizontalOverflow": true,
+    "accessibleControls": true,
+    "unsupportedPageFailOpen": true
+  },
+  "lifecycle": {
+    "stateDrivenHost": true,
+    "fullDomRemounts": true,
+    "streamingLifecycle": true,
+    "composerVariantRemount": true,
+    "staleDraftNotRestored": true,
+    "readOnlyToolStage": true,
+    "virtualizedUnmountRemount": true,
+    "routeAndConversationSwitch": true
+  },
+  "workerRestart": {
+    "actualWorkerStopped": true,
+    "actualWorkerRestarted": true,
+    "settingsRecovered": true
+  },
+  "visual": {
+    "status": "MATCH",
+    "baseline": "tests/mica-extension-visual-baseline.json",
+    "browser": "Chromium 151",
+    "approvedVersion": "0.5.14",
+    "mismatches": [],
+    "current": {
+      "options-light": "5e357cf9eb589bd052c8228a43395bf90db62332bf7bf7826a6262fe7d91a1d1",
+      "highlights-light": "3dfab3d83f8db5e2d44b27c62f4c8a736e7374bee33493134f2359ecf23ee233",
+      "highlights-dark": "176fc90d123e89b4b509618c725086f28600dd4f250f913e10f4f4a4cd74bebc",
+      "popup-320-light": "0c4a014ca923604d03f43ee074c5dfca0eb10f5c39ff7b0a9d024120d560a8cc",
+      "popup-368-dark": "14dbf54ec13139e62ab56f5e2bf059aac20a83b41d0219b6ef44b38a37d29d9f",
+      "popup-400-light": "d4c53b1ecdf85d23d41ab8987609b425e5f5c27bb2189ac70d842a160db95aea"
+    }
+  },
+  "privacy": {
+    "normalEdgeProfileUsed": false,
+    "authenticatedChatGptUsed": false,
+    "realChatGptRequests": 0,
+    "rawDomSaved": false,
+    "backgroundConversationTextIncluded": false
+  },
+  "pageErrors": [],
+  "screenshots": {
+    "options-light": {
+      "path": "results/mica-product-system-rebuild/full-extension-evidence/options-light.png",
+      "sha256": "5e357cf9eb589bd052c8228a43395bf90db62332bf7bf7826a6262fe7d91a1d1",
+      "width": 1280,
+      "height": 900,
+      "baseline": true
+    },
+    "highlights-light": {
+      "path": "results/mica-product-system-rebuild/full-extension-evidence/highlights-light.png",
+      "sha256": "3dfab3d83f8db5e2d44b27c62f4c8a736e7374bee33493134f2359ecf23ee233",
+      "width": 1280,
+      "height": 900,
+      "baseline": true
+    },
+    "highlights-dark": {
+      "path": "results/mica-product-system-rebuild/full-extension-evidence/highlights-dark.png",
+      "sha256": "176fc90d123e89b4b509618c725086f28600dd4f250f913e10f4f4a4cd74bebc",
+      "width": 1280,
+      "height": 900,
+      "baseline": true
+    },
+    "pdf-export-page": {
+      "path": "results/mica-product-system-rebuild/full-extension-evidence/pdf-export-page.png",
+      "sha256": "db2c02444ed8b080822df595923c408cfa4c52d95dece288dbf61121e168823f",
+      "width": 1280,
+      "height": 900,
+      "baseline": false
+    },
+    "popup-320-light": {
+      "path": "results/mica-product-system-rebuild/full-extension-evidence/popup-320-light.png",
+      "sha256": "0c4a014ca923604d03f43ee074c5dfca0eb10f5c39ff7b0a9d024120d560a8cc",
+      "width": 320,
+      "height": 760,
+      "baseline": true
+    },
+    "popup-368-dark": {
+      "path": "results/mica-product-system-rebuild/full-extension-evidence/popup-368-dark.png",
+      "sha256": "14dbf54ec13139e62ab56f5e2bf059aac20a83b41d0219b6ef44b38a37d29d9f",
+      "width": 368,
+      "height": 760,
+      "baseline": true
+    },
+    "popup-400-light": {
+      "path": "results/mica-product-system-rebuild/full-extension-evidence/popup-400-light.png",
+      "sha256": "d4c53b1ecdf85d23d41ab8987609b425e5f5c27bb2189ac70d842a160db95aea",
+      "width": 400,
+      "height": 760,
+      "baseline": true
+    }
+  }
+}

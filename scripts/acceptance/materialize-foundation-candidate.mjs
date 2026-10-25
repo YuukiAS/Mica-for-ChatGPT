@@ -8,6 +8,7 @@ import {
   computeEvidenceRootHash,
   computeFixtureSetHash,
   computeValidatorTreeHash,
+  deriveInstalledExtensionMeasurement,
   sha256File
 } from "./validator.mjs";
 
@@ -41,6 +42,7 @@ const lowMemoryDir = path.join(repoRoot, "results", "mica-product-system-rebuild
 const highlighterDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "highlighter-evidence");
 const pdfDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "pdf-evidence");
 const convergenceDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "convergence-evidence");
+const fullExtensionDir = path.join(repoRoot, "results", "mica-product-system-rebuild", "full-extension-evidence");
 
 const distTree = [];
 for (const file of await walkFiles(distDir)) {
@@ -99,7 +101,19 @@ if (includesHighlightPdf) {
     [path.join(pdfDir, "pdf-render-2.png"), "pdf-render-2.png"],
     [path.join(pdfDir, "pdf-export-preview.png"), "pdf-export-preview.png"],
     [path.join(pdfDir, "pdfjs-pointer-selection.png"), "pdfjs-pointer-selection.png"],
-    [path.join(pdfDir, "pdfjs-display-math-selection.png"), "pdfjs-display-math-selection.png"]
+    [path.join(pdfDir, "pdfjs-display-math-selection.png"), "pdfjs-display-math-selection.png"],
+    [path.join(fullExtensionDir, "extension-install-smoke.json"), "extension-install-smoke.json"],
+    [path.join(fullExtensionDir, "full-extension-e2e.json"), "full-extension-e2e.json"],
+    [path.join(lowMemoryDir, "low-memory-extension-lifecycle.json"), "low-memory-extension-lifecycle.json"],
+    [path.join(repoRoot, "tests", "mica-extension-visual-baseline.json"), "extension-visual-baseline.json"],
+    [path.join(fullExtensionDir, "installed-extension-answer.png"), "installed-extension-answer.png"],
+    [path.join(fullExtensionDir, "options-light.png"), "extension-options-light.png"],
+    [path.join(fullExtensionDir, "highlights-light.png"), "extension-highlights-light.png"],
+    [path.join(fullExtensionDir, "highlights-dark.png"), "extension-highlights-dark.png"],
+    [path.join(fullExtensionDir, "popup-320-light.png"), "extension-popup-320-light.png"],
+    [path.join(fullExtensionDir, "popup-368-dark.png"), "extension-popup-368-dark.png"],
+    [path.join(fullExtensionDir, "popup-400-light.png"), "extension-popup-400-light.png"],
+    [path.join(repoRoot, "output", "pdf", "mica-full-extension-export.pdf"), "mica-full-extension-export.pdf"]
   );
 }
 if (includesFunctionalConvergence) {
@@ -109,7 +123,8 @@ if (includesFunctionalConvergence) {
     [path.join(convergenceDir, "recovery-actions.json"), "recovery-actions.json"],
     [path.join(convergenceDir, "target-surface-backend.json"), "target-surface-backend.json"],
     [path.join(convergenceDir, "highlight-record-integrity.json"), "highlight-record-integrity.json"],
-    [path.join(convergenceDir, "local-import-integrity.json"), "local-import-integrity.json"]
+    [path.join(convergenceDir, "local-import-integrity.json"), "local-import-integrity.json"],
+    [path.join(convergenceDir, "chatgpt-ui-compatibility.json"), "chatgpt-ui-compatibility.json"]
   );
 }
 for (const [source, destination] of copies) await cp(source, path.join(bundleDir, "artifacts", destination));
@@ -156,7 +171,19 @@ if (includesHighlightPdf) {
     ["pdf-render-2", "pdf-render-2.png", "image/png"],
     ["pdf-preview", "pdf-export-preview.png", "image/png"],
     ["pdf-pointer-selection", "pdfjs-pointer-selection.png", "image/png"],
-    ["pdf-display-math-selection", "pdfjs-display-math-selection.png", "image/png"]
+    ["pdf-display-math-selection", "pdfjs-display-math-selection.png", "image/png"],
+    ["extension-install-smoke", "extension-install-smoke.json", "application/json"],
+    ["full-extension-e2e", "full-extension-e2e.json", "application/json"],
+    ["low-memory-extension-lifecycle", "low-memory-extension-lifecycle.json", "application/json"],
+    ["extension-visual-baseline", "extension-visual-baseline.json", "application/json"],
+    ["installed-extension-answer", "installed-extension-answer.png", "image/png"],
+    ["extension-options-light", "extension-options-light.png", "image/png"],
+    ["extension-highlights-light", "extension-highlights-light.png", "image/png"],
+    ["extension-highlights-dark", "extension-highlights-dark.png", "image/png"],
+    ["extension-popup-320-light", "extension-popup-320-light.png", "image/png"],
+    ["extension-popup-368-dark", "extension-popup-368-dark.png", "image/png"],
+    ["extension-popup-400-light", "extension-popup-400-light.png", "image/png"],
+    ["installed-extension-pdf", "mica-full-extension-export.pdf", "application/pdf"]
   );
 }
 if (includesFunctionalConvergence) {
@@ -166,7 +193,8 @@ if (includesFunctionalConvergence) {
     ["recovery-actions", "recovery-actions.json", "application/json"],
     ["target-surface-backend", "target-surface-backend.json", "application/json"],
     ["highlight-record-integrity", "highlight-record-integrity.json", "application/json"],
-    ["local-import-integrity", "local-import-integrity.json", "application/json"]
+    ["local-import-integrity", "local-import-integrity.json", "application/json"],
+    ["chatgpt-ui-compatibility", "chatgpt-ui-compatibility.json", "application/json"]
   );
 }
 const artifacts = [];
@@ -189,12 +217,17 @@ const highlighterFixture = includesHighlightPdf ? JSON.parse(await readFile(path
 const highlighterStress = includesHighlightPdf ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "highlighter-stress.json"), "utf8")) : null;
 const pdfFixture = includesHighlightPdf ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "pdf-export-fixture.json"), "utf8")) : null;
 const pdfBackground = includesHighlightPdf ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "pdf-background.json"), "utf8")) : null;
+const extensionInstallSmoke = includesHighlightPdf ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "extension-install-smoke.json"), "utf8")) : null;
+const fullExtensionE2e = includesHighlightPdf ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "full-extension-e2e.json"), "utf8")) : null;
+const lowMemoryExtensionLifecycle = includesHighlightPdf ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "low-memory-extension-lifecycle.json"), "utf8")) : null;
+const extensionVisualBaseline = includesHighlightPdf ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "extension-visual-baseline.json"), "utf8")) : null;
 const conversationExport = includesFunctionalConvergence ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "conversation-export.json"), "utf8")) : null;
 const recoveryLedger = includesFunctionalConvergence ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "recovery-ledger.json"), "utf8")) : null;
 const recoveryActions = includesFunctionalConvergence ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "recovery-actions.json"), "utf8")) : null;
 const targetSurfaceBackend = includesFunctionalConvergence ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "target-surface-backend.json"), "utf8")) : null;
 const highlightRecordIntegrity = includesFunctionalConvergence ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "highlight-record-integrity.json"), "utf8")) : null;
 const localImportIntegrity = includesFunctionalConvergence ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "local-import-integrity.json"), "utf8")) : null;
+const chatgptUiCompatibility = includesFunctionalConvergence ? JSON.parse(await readFile(path.join(bundleDir, "artifacts", "chatgpt-ui-compatibility.json"), "utf8")) : null;
 const contractHash = artifactHash("chatgpt-contract");
 const bootstrapHash = artifactHash("current-chatgpt-bootstrap");
 const distHash = artifactHash("dist-tree");
@@ -217,7 +250,7 @@ const requiredGates = [
   "packaging-version"
 ];
 if (includesLowMemory) requiredGates.splice(requiredGates.indexOf("privacy"), 0, "low-memory-benefit");
-if (includesHighlightPdf) requiredGates.splice(requiredGates.indexOf("privacy"), 0, "highlight-remount", "pdf-selection");
+if (includesHighlightPdf) requiredGates.splice(requiredGates.indexOf("privacy"), 0, "highlight-remount", "pdf-selection", "installed-extension-e2e");
 if (includesFunctionalConvergence) requiredGates.splice(requiredGates.indexOf("privacy"), 0, "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "target-surface-backend", "highlight-record-integrity", "local-import-integrity");
 
 const evidence = [
@@ -340,7 +373,12 @@ if (includesLowMemory) {
 if (includesHighlightPdf) {
   evidence.splice(evidence.findIndex((item) => item.gateId === "privacy"), 0,
     record("highlight-remount", "LOCAL_REAL_BROWSER", { surface: "local-real-browser" }, ["dist-tree", "highlighter-fixture", "highlighter-stress", "highlighter-selection-light", "highlighter-active-light", "highlighter-edit-dark"], deriveHighlighterMeasurement(highlighterFixture, highlighterStress)),
-    record("pdf-selection", "ACTUAL_PDF_VIEWER", { surface: "actual-pdf-viewer" }, ["pdf", "pdf-fixture", "pdf-background", "highlighter-fixture", "pdf-render-1", "pdf-render-2", "pdf-preview", "pdf-pointer-selection", "pdf-display-math-selection"], derivePdfMeasurement(pdfFixture, pdfBackground, highlighterFixture))
+    record("pdf-selection", "ACTUAL_PDF_VIEWER", { surface: "actual-pdf-viewer" }, ["pdf", "pdf-fixture", "pdf-background", "highlighter-fixture", "pdf-render-1", "pdf-render-2", "pdf-preview", "pdf-pointer-selection", "pdf-display-math-selection"], derivePdfMeasurement(pdfFixture, pdfBackground, highlighterFixture)),
+    record("installed-extension-e2e", "LOCAL_REAL_BROWSER", { surface: "actual-installed-extension" }, [
+      "dist-tree", "extension-install-smoke", "full-extension-e2e", "low-memory-extension-lifecycle", "extension-visual-baseline",
+      "installed-extension-answer", "extension-options-light", "extension-highlights-light", "extension-highlights-dark",
+      "extension-popup-320-light", "extension-popup-368-dark", "extension-popup-400-light", "installed-extension-pdf"
+    ], deriveInstalledExtensionMeasurement(extensionInstallSmoke, fullExtensionE2e, lowMemoryExtensionLifecycle, extensionVisualBaseline))
   );
 }
 if (includesFunctionalConvergence) {
@@ -350,7 +388,8 @@ if (includesFunctionalConvergence) {
     record("recovery-action-safety", "SYNTHETIC_FIXTURE", { surface: "recovery-action-policy" }, ["recovery-actions"], recoveryActions),
     record("target-surface-backend", "SYNTHETIC_FIXTURE", { surface: "target-surface-backend" }, ["target-surface-backend"], targetSurfaceBackend),
     record("highlight-record-integrity", "SYNTHETIC_FIXTURE", { surface: "highlight-record-integrity" }, ["highlight-record-integrity"], highlightRecordIntegrity),
-    record("local-import-integrity", "SYNTHETIC_FIXTURE", { surface: "local-import-integrity" }, ["local-import-integrity"], localImportIntegrity)
+    record("local-import-integrity", "SYNTHETIC_FIXTURE", { surface: "local-import-integrity" }, ["local-import-integrity"], localImportIntegrity),
+    record("chatgpt-ui-compatibility", "SYNTHETIC_FIXTURE", { surface: "chatgpt-ui-compatibility" }, ["chatgpt-ui-compatibility"], chatgptUiCompatibility)
   );
 }
 

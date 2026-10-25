@@ -7,6 +7,7 @@ import {
   computeEvidenceRootHash,
   computeFixtureSetHash,
   computeValidatorTreeHash,
+  deriveInstalledExtensionMeasurement,
   sha256File,
   sha256Text,
   validateBundle
@@ -31,6 +32,7 @@ const ALL_GATES = [
   "low-memory-benefit",
   "highlight-remount",
   "pdf-selection",
+  "installed-extension-e2e",
   "privacy",
   "packaging-version"
 ];
@@ -51,6 +53,7 @@ export async function runControlCorpus(repoRoot) {
     ["known-good-low-memory-fixture", async (context) => { context.requestedGateIds = ["low-memory-benefit"]; }],
     ["known-good-highlighter-fixture", async (context) => { context.requestedGateIds = ["highlight-remount"]; }],
     ["known-good-selectable-math-pdf", async (context) => { context.requestedGateIds = ["pdf-selection"]; }],
+    ["known-good-installed-extension-e2e", async (context) => { context.requestedGateIds = ["installed-extension-e2e"]; }],
     ["missing-evidence", async ({ manifest }) => { manifest.evidence = manifest.evidence.filter((item) => item.gateId !== "popup-render"); refreshRoot(manifest); }],
     ["tampered-artifact", async ({ bundleDir }) => { await writeFile(path.join(bundleDir, "artifacts", "dist.zip"), "tampered dist"); }],
     ["wrong-validator-version", async ({ manifest }) => { manifest.validator.version = "0.0.0"; }],
@@ -210,6 +213,19 @@ export async function runControlCorpus(repoRoot) {
       refreshRoot(manifest);
     }],
     ["pdf-forged-consumer-rehash", async (context) => mutateJsonArtifact(context, "pdf-background", (value) => { value.forgedConsumerRejected = false; })],
+    ["installed-extension-service-worker-bypassed", async ({ manifest }) => {
+      evidence(manifest, "installed-extension-e2e").measurement.install.actualServiceWorker = false;
+      refreshRoot(manifest);
+    }],
+    ["installed-extension-visual-auto-accepted-rehash", async (context) => {
+      await mutateJsonArtifact(context, "full-extension-e2e", (value) => { value.visual.current["popup-320-light"] = "0".repeat(64); });
+      await mutateJsonArtifact(context, "extension-visual-baseline", (value) => { value.screenshots["popup-320-light"] = "0".repeat(64); });
+    }],
+    ["installed-extension-real-network-used-rehash", async (context) => {
+      await mutateJsonArtifact(context, "full-extension-e2e", (value) => { value.privacy.realChatGptRequests = 1; });
+      evidence(context.manifest, "installed-extension-e2e").measurement.privacy.zeroRealChatGptRequests = false;
+      refreshRoot(context.manifest);
+    }],
     ["stale-chatgpt-contract", async ({ manifest }) => { evidence(manifest, "adapter-contract").measurement.capabilities[0].invalidatedBy = ["newer incompatible surface"]; refreshRoot(manifest); }],
     ["control-bundle-presented-as-candidate", async (context) => { context.expectedBundleKind = "candidate"; }],
     ["copy-serialization-output-mismatch", async ({ manifest }) => { evidence(manifest, "copy-serialization").measurement.cases[0].actualArtifactId = "copy-rich-actual"; refreshRoot(manifest); }],
@@ -330,6 +346,16 @@ async function createGoodBundle(repoRoot) {
   const artifactDir = path.join(bundleDir, "artifacts");
   await mkdir(artifactDir, { recursive: true });
 
+  const extensionVisualContents = {
+    "options-light": "control-extension-options-light",
+    "highlights-light": "control-extension-highlights-light",
+    "highlights-dark": "control-extension-highlights-dark",
+    "popup-320-light": "control-extension-popup-320-light",
+    "popup-368-dark": "control-extension-popup-368-dark",
+    "popup-400-light": "control-extension-popup-400-light"
+  };
+  const extensionVisualHashes = Object.fromEntries(Object.entries(extensionVisualContents).map(([name, content]) => [name, sha256Text(content)]));
+
   const artifactSources = [
     ["dist", "artifacts/dist.zip", "application/zip", "known-good-dist"],
     ["popup-light", "artifacts/popup-light.png", "image/png", "known-good-popup-light"],
@@ -402,15 +428,17 @@ async function createGoodBundle(repoRoot) {
       report: { privacy: { conversationTextIncluded: false, attachmentContentIncluded: false, requestBodyIncluded: false, authTokenIncluded: false, rawDomIncluded: false } }
     })],
     ["low-memory-pressure", "artifacts/low-memory-pressure.json", "application/json", JSON.stringify({
+      passed: true,
       A: controlPressureState("mica-absent-or-disabled", 1000, 500, 420, 241, false),
       B: controlPressureState("mica-installed-low-memory-off", 980, 490, 410, 241, true),
       C: controlPressureState("mica-installed-low-memory-on", 760, 350, 250, 41, true),
       pressureFixture: { memoryLimitMb: 2048, payloadMb: 420, turns: 240, workload: "current-chatgpt-derived-react-router-flat-graph-and-virtualized-turn-renderer", sourceArtifact: "current-chatgpt-surface/low-memory-data-plane-evidence.json" },
-      targetEnvironment: { class: "local-edge-v8-old-space-pressure", executionSurface: "local-isolated-edge", browserBuild: "control-browser-1", rendererOldSpaceLimitMb: 256, physicalMemoryGb: null },
+      targetEnvironment: { class: "local-playwright-chromium-v8-old-space-pressure", executionSurface: "local-isolated-playwright-chromium", browserBuild: "control-browser-1", playwrightModules: "control-playwright-modules", rendererOldSpaceLimitMb: 256, physicalMemoryGb: null, normalEdgeProfileUsed: false, authenticatedChatGptUsed: false, realChatGptRequests: 0 },
       actualTruncation: true,
       truncatedRepresentation: "client-history-window",
       reactManagedInteractiveNodesDetached: false,
-      serverMutation: false
+      serverMutation: false,
+      checks: [{ id: "control", passed: true, message: "control" }]
     })],
     ["low-memory-fixture", "artifacts/low-memory-fixture.json", "application/json", JSON.stringify({
       passed: true,
@@ -442,7 +470,19 @@ async function createGoodBundle(repoRoot) {
     ["highlighter-stress", "artifacts/highlighter-stress.json", "application/json", JSON.stringify(controlHighlighterStress())],
     ["highlighter-selection-light", "artifacts/highlighter-selection-light.png", "image/png", "known-good-highlighter-selection-light"],
     ["highlighter-active-light", "artifacts/highlighter-active-light.png", "image/png", "known-good-highlighter-active-light"],
-    ["highlighter-edit-dark", "artifacts/highlighter-edit-dark.png", "image/png", "known-good-highlighter-edit-dark"]
+    ["highlighter-edit-dark", "artifacts/highlighter-edit-dark.png", "image/png", "known-good-highlighter-edit-dark"],
+    ["extension-install-smoke", "artifacts/extension-install-smoke.json", "application/json", JSON.stringify(controlExtensionInstallSmoke())],
+    ["full-extension-e2e", "artifacts/full-extension-e2e.json", "application/json", JSON.stringify(controlFullExtensionE2e(extensionVisualHashes))],
+    ["low-memory-extension-lifecycle", "artifacts/low-memory-extension-lifecycle.json", "application/json", JSON.stringify(controlLowMemoryExtensionLifecycle())],
+    ["extension-visual-baseline", "artifacts/extension-visual-baseline.json", "application/json", JSON.stringify({ approvedVersion: "0.0.0", screenshots: extensionVisualHashes })],
+    ["installed-extension-answer", "artifacts/installed-extension-answer.png", "image/png", "control-installed-extension-answer"],
+    ["extension-options-light", "artifacts/extension-options-light.png", "image/png", extensionVisualContents["options-light"]],
+    ["extension-highlights-light", "artifacts/extension-highlights-light.png", "image/png", extensionVisualContents["highlights-light"]],
+    ["extension-highlights-dark", "artifacts/extension-highlights-dark.png", "image/png", extensionVisualContents["highlights-dark"]],
+    ["extension-popup-320-light", "artifacts/extension-popup-320-light.png", "image/png", extensionVisualContents["popup-320-light"]],
+    ["extension-popup-368-dark", "artifacts/extension-popup-368-dark.png", "image/png", extensionVisualContents["popup-368-dark"]],
+    ["extension-popup-400-light", "artifacts/extension-popup-400-light.png", "image/png", extensionVisualContents["popup-400-light"]],
+    ["installed-extension-pdf", "artifacts/mica-full-extension-export.pdf", "application/pdf", "%PDF-control-installed-extension"]
   ];
   for (const [, relative, , content] of artifactSources) {
     await writeFile(path.join(bundleDir, relative), content);
@@ -561,7 +601,7 @@ async function createGoodBundle(repoRoot) {
         { name: "long", totalTurns: 240, retainedRecentTurns: 40, mountedBefore: 236, mountedAfter: 40, modeApplied: true }
       ],
       pressureFixture: { memoryLimitMb: 2048, payloadMb: 420, turns: 240, workload: "current-chatgpt-derived-react-router-flat-graph-and-virtualized-turn-renderer", sourceArtifact: "current-chatgpt-surface/low-memory-data-plane-evidence.json" },
-      targetEnvironment: { class: "local-edge-v8-old-space-pressure", executionSurface: "local-isolated-edge", browserBuild: "control-browser-1", rendererOldSpaceLimitMb: 256, physicalMemoryGb: null },
+      targetEnvironment: { class: "local-playwright-chromium-v8-old-space-pressure", executionSurface: "local-isolated-playwright-chromium", browserBuild: "control-browser-1", playwrightModules: "control-playwright-modules", rendererOldSpaceLimitMb: 256, physicalMemoryGb: null, normalEdgeProfileUsed: false, authenticatedChatGptUsed: false, realChatGptRequests: 0 },
       actualTruncation: true,
       truncatedRepresentation: "client-history-window",
       reactManagedInteractiveNodesDetached: false,
@@ -575,6 +615,11 @@ async function createGoodBundle(repoRoot) {
     }, "TARGET_CLASS_ENVIRONMENT"),
     record("highlight-remount", { surface: "local-real-browser" }, ["dist", "highlighter-fixture", "highlighter-stress", "highlighter-selection-light", "highlighter-active-light", "highlighter-edit-dark"], controlHighlighterMeasurement()),
     record("pdf-selection", { surface: "actual-pdf-viewer" }, ["pdf", "pdf-fixture", "pdf-background", "highlighter-fixture", "pdf-render-1", "pdf-render-2", "pdf-preview", "pdf-pointer-selection", "pdf-display-math-selection"], controlPdfMeasurement()),
+    record("installed-extension-e2e", { surface: "actual-installed-extension" }, [
+      "dist", "extension-install-smoke", "full-extension-e2e", "low-memory-extension-lifecycle", "extension-visual-baseline",
+      "installed-extension-answer", "extension-options-light", "extension-highlights-light", "extension-highlights-dark",
+      "extension-popup-320-light", "extension-popup-368-dark", "extension-popup-400-light", "installed-extension-pdf"
+    ], deriveInstalledExtensionMeasurement(controlExtensionInstallSmoke(), controlFullExtensionE2e(extensionVisualHashes), controlLowMemoryExtensionLifecycle(), { approvedVersion: "0.0.0", screenshots: extensionVisualHashes }), "LOCAL_REAL_BROWSER"),
     record("privacy", { surface: "diagnostic-bundle" }, ["foundation-core", "foundation-flows", "privacy-report"], {
       conversationTextIncluded: false,
       attachmentContentIncluded: false,
@@ -601,7 +646,7 @@ async function createGoodBundle(repoRoot) {
     evidenceSchemaVersion: EVIDENCE_SCHEMA_VERSION,
     evidenceRootHash: computeEvidenceRootHash(artifacts, records),
     reportContext: { candidateCommit: commit, distHash },
-    requiredGates: ALL_GATES,
+    requiredGates: [...ALL_GATES],
     artifacts,
     evidence: records
   };
@@ -1101,5 +1146,64 @@ function controlPdfBackground() {
     forgedConsumerRejected: true,
     persistentConversationStorage: false,
     serverUpload: false
+  };
+}
+
+function controlExtensionInstallSmoke() {
+  return {
+    passed: true,
+    candidate: { version: "0.0.0", buildLabel: "acceptance-control" },
+    extension: { actualContentScript: true, actualServiceWorker: true, actualStorage: true, contextMenusReady: true },
+    userPath: { trustedRightClickReachedWorker: true, trustedSelectionToolbarCopy: true, realClipboardReadback: true },
+    privacy: { normalBrowserProfileUsed: false, authenticatedChatGptUsed: false, realChatGptRequestCount: 0, conversationTextIncludedInBackgroundContext: false },
+    pageErrors: []
+  };
+}
+
+function controlFullExtensionE2e(visualHashes) {
+  return {
+    passed: true,
+    candidate: { version: "0.0.0", buildLabel: "acceptance-control" },
+    execution: { actualManifest: true, actualContentScripts: true, actualServiceWorker: true, actualStorage: true, networkGuard: "deny-unmatched", unexpectedRequestCount: 0 },
+    copy: { realPointerSelection: true, realClipboardReadback: true, targetAnswerOnly: true, richStructurePreserved: true },
+    highlighter: {
+      actualPointerSelection: true, visibleCssHighlights: true, fourColors: true, recolor: true, deleteOne: true, clearExactAnswer: true,
+      refreshRestore: true, hostRemountRestore: true, equivalentMathReformatRestore: true, duplicateTextFailOpen: true,
+      sourceDeletionFailOpen: true, branchIsolation: true, conversationIsolation: true, persistedShortcutDefaultColor: true
+    },
+    pdf: {
+      actualUserExportClick: true, actualServiceWorkerHandoff: true, actualSessionStorage: true, temporaryModelConsumed: true,
+      actualExtensionPage: true, actualPdfFile: "output/pdf/mica-full-extension-export.pdf", pageCount: 3,
+      independentTextExtraction: true, semanticMathMl: true, tableCodeChinese: true
+    },
+    popupAndSettings: {
+      actualChromeExtensionPage: true, actualActiveTabMessaging: true, settingsPersistence: true, settingsNavigation: true,
+      widths: [320, 368, 400], lightDark: true, noHorizontalOverflow: true, accessibleControls: true, unsupportedPageFailOpen: true
+    },
+    lifecycle: {
+      stateDrivenHost: true, fullDomRemounts: true, streamingLifecycle: true, composerVariantRemount: true,
+      staleDraftNotRestored: true, readOnlyToolStage: true, virtualizedUnmountRemount: true, routeAndConversationSwitch: true
+    },
+    workerRestart: { actualWorkerStopped: true, actualWorkerRestarted: true, settingsRecovered: true },
+    visual: { status: "MATCH", mismatches: [], current: visualHashes },
+    privacy: { normalEdgeProfileUsed: false, authenticatedChatGptUsed: false, realChatGptRequests: 0, backgroundConversationTextIncluded: false },
+    pageErrors: []
+  };
+}
+
+function controlLowMemoryExtensionLifecycle() {
+  return {
+    passed: true,
+    candidate: { version: "0.0.0", buildLabel: "acceptance-control" },
+    execution: { actualMainWorldRegistration: true, actualPopupAction: true, unexpectedRequestCount: 0 },
+    lifecycle: {
+      dynamicDisableBeforeNavigation: true, dynamicEnableBeforeNavigation: true, registeredAtDocumentStart: true,
+      reactRouterStreamWindowed: true, originalMappingNodes: 121, windowedMappingNodes: 41, fullHistoryMappingNodes: 121,
+      actualClientHistoryTruncation: true, completenessProofPreserved: true, realPopupFullHistoryAction: true,
+      realPopupResumeAction: true, conversationNavigation: true, serviceWorkerRestart: true,
+      persistentRegistrationRecovered: true, dynamicDisableAfterNavigation: true, failOpenAfterDisable: true
+    },
+    privacy: { normalEdgeProfileUsed: false, authenticatedChatGptUsed: false, realChatGptRequests: 0, conversationTextStoredByBackground: false },
+    pageErrors: []
   };
 }

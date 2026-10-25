@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-22",
+  "updatedAt": "2026-10-25",
   "candidate": {
-    "version": "0.5.13",
-    "buildLabel": "functional-convergence.14",
+    "version": "0.5.14",
+    "buildLabel": "product-delivery.1",
     "branch": "codex/mica-functional-convergence",
     "releaseReady": false,
-    "browserExecutionAllowedThisRun": false
+    "browserExecutionAllowedThisRun": true
   },
   "statusVocabulary": [
     "IMPLEMENTED_VERIFIED",
@@ -38,11 +38,11 @@
       "module": "extension/src/core/chatgpt-adapter.ts",
       "iterationAction": "retain",
       "successBehavior": "ChatGPTAdapter remains the only AnswerDocument producer and unknown structures fail open.",
-      "automatedVerification": ["chatgpt-adapter-recovery-fixture", "npm run build", "npm run test:build"],
+      "automatedVerification": ["chatgpt-adapter-recovery-fixture", "full-extension-e2e", "npm run build", "npm run test:build"],
       "realAcceptance": "Current authenticated ChatGPT capability contract",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "Export, highlighter, reload safety and reliability observation consume adapter output instead of adding competing ChatGPT selectors.",
-      "gap": "No browser or real ChatGPT execution was permitted in this run."
+      "result": "Export, highlighter, reload safety and reliability observation consume adapter output instead of adding competing ChatGPT selectors. The real installed-extension path exercises those consumers against one state-driven host.",
+      "gap": "The current authenticated ChatGPT capability contract still requires the one final real-site acceptance pass."
     },
     {
       "id": "MFC-011",
@@ -56,7 +56,7 @@
       "realAcceptance": "Current ChatGPT answers including KaTeX and remounts",
       "status": "IMPLEMENTED_UNVERIFIED",
       "result": "Inline marks, inline-code runs and per-table-cell inline structure are retained. Supported KaTeX, MathJax or native MathML is reduced to a bounded allowlisted MathML AST; raw TeX remains available for identity and explicit fallback.",
-      "gap": "DOM parsing changes require browser fixture regression."
+      "gap": "The current installed-extension host covers structured answers, MathML and full remounts; authenticated current-site KaTeX variants remain final acceptance evidence."
     },
     {
       "id": "MFC-012",
@@ -84,7 +84,7 @@
       "realAcceptance": "One current Developer QA export followed by refresh and diff",
       "status": "IMPLEMENTED_VERIFIED",
       "result": "The three formal commands now run as offline Node tooling. Input is size-bounded and allowlisted; privacy or contract-hash mismatches fail closed; free-form evidence text is fingerprinted; supported-capability drift remains isolated; new or formerly unknown capabilities cannot self-promote from an exported report.",
-      "gap": "No current authenticated Developer QA report was ingested because this iteration prohibited browser and real ChatGPT interaction. Repository-baseline PASS is not current-site acceptance."
+      "gap": "No current authenticated Developer QA report was ingested because real ChatGPT interaction remains outside this run. Repository-baseline PASS is not current-site acceptance."
     },
     {
       "id": "MFC-020",
@@ -94,11 +94,11 @@
       "module": "extension/src/features/export/answer-serializer.ts",
       "iterationAction": "new",
       "successBehavior": "GFM or standard Markdown preserves supported AnswerDocument order, marks and chosen math delimiters.",
-      "automatedVerification": ["convergence-core-fixture"],
+      "automatedVerification": ["convergence-core-fixture", "extension-install-smoke", "full-extension-e2e"],
       "realAcceptance": "Clipboard action from an exact settled answer",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Serializer backend, trusted-gesture selection route and proof-gated one-answer action menu backend are in the build. Structured table cells preserve marks, links, inline code and raw TeX in GFM output.",
-      "gap": "Actual Clipboard API behavior and current-site action-cluster placement were not browser-tested."
+      "result": "The installed extension reaches the serializer through a trusted right-click answer context, writes the real browser clipboard, reads it back and proves target-only Markdown with headings, lists, tables, code and math.",
+      "gap": "Current-site inline action-cluster placement remains unproven; the verified context-menu fallback is used until the final authenticated pass."
     },
     {
       "id": "MFC-021",
@@ -161,14 +161,14 @@
       "source": ["Foundation UI freeze section 8", "MICA_PRODUCT_SYSTEM_V1 section 4B", "goal sections 4 and 7"],
       "userProblem": "Expose answer export through one compact Mica entry without adding three permanent buttons or guessing the target answer.",
       "existingImplementation": false,
-      "module": "ChatGPTAdapter, answer-actions-controller and content export orchestration",
+      "module": "ChatGPTAdapter, answer actions, browser context menu and content export orchestration",
       "iterationAction": "new",
-      "successBehavior": "Each settled assistant answer gets at most one Mica actions entry only beside a unique EXACT native action cluster; its menu contains only available actions and fails open on streaming, ambiguity, remount or missing contract.",
-      "automatedVerification": ["answer-actions-controller-fixture", "target-surface-backend-fixture", "static build validation", "acceptance preflight"],
-      "realAcceptance": "Current authenticated ChatGPT action cluster, keyboard/focus and clipboard/PDF handoff",
+      "successBehavior": "A unique settled assistant answer exposes compact Mica actions through an EXACT native cluster when proven, otherwise through a trusted right-click context bound to that exact answer; streaming, ambiguity, expiry, replay, remount or missing identity fail open.",
+      "automatedVerification": ["answer-actions-controller-fixture", "answer-context-menu-background-fixture", "answer-context-menu-fixture", "target-surface-backend-fixture", "static build validation", "acceptance preflight"],
+      "realAcceptance": "Current authenticated ChatGPT right-click menu and system clipboard/PDF handoff",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "The adapter-owned target resolver, isolated fixture authority, one-entry Shadow DOM menu, trusted-gesture gate, action-time revalidation, settings-driven action list/default order, remount cleanup and privacy-safe status are in dist/mica-dev.",
-      "gap": "The current-site action-cluster contract remains unproven, so the live path intentionally injects nothing until exact real evidence is accepted."
+      "result": "The existing native-cluster entry remains fail-open when placement is unproven. Version 0.5.14 adds a browser context-menu fallback that sends only turn identity, timestamp and evidence class, then revalidates the same settled answer before one non-replayable Markdown, Notion or PDF action. Isolated Chromium proved the trusted right-click, real serializer/clipboard path and PDF handoff.",
+      "gap": "The native browser menu itself and system clipboard still need one manual authenticated ChatGPT acceptance pass; current-site inline action-cluster placement remains unproven."
     },
     {
       "id": "MFC-100",
@@ -178,11 +178,11 @@
       "module": "extension/src/low-memory",
       "iterationAction": "retain",
       "successBehavior": "Recent-turn windowing, full-history restore and fail-open behavior remain available.",
-      "automatedVerification": ["low-memory-background-fixture", "existing accepted evidence"],
+      "automatedVerification": ["low-memory-background-fixture", "low-memory-fixture-smoke", "low-memory-page-fixture-smoke", "low-memory-extension-lifecycle", "low-memory-pressure"],
       "realAcceptance": "Current candidate on target low-memory device",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "Data-plane code is retained; background settings migration was updated.",
-      "gap": "The current 0.5.13 runtime was not exercised in a browser."
+      "result": "The current 0.5.14 data plane passes short/medium/long fixtures, actual MAIN-world document_start registration, 121 to 41 windowing, popup full-history restore to 121, resume to 41, service-worker restart recovery and a three-sample A/B/C pressure run with real extension B/C states.",
+      "gap": "A physical low-memory target and final manual authenticated long-conversation pass remain required."
     },
     {
       "id": "MFC-200",
@@ -192,11 +192,11 @@
       "module": "extension/src/features/highlighter",
       "iterationAction": "retain",
       "successBehavior": "Selection-owned toolbar creates four-color anchors, deletes one record or clears one exact answer scope, and ambiguous matches remain unresolved.",
-      "automatedVerification": ["existing highlighter fixture evidence", "highlight-interaction-policy-fixture", "highlight-record-integrity-fixture", "static build validation"],
+      "automatedVerification": ["current highlighter-fixture-smoke", "highlight-interaction-policy-fixture", "highlight-record-integrity-fixture", "full-extension-e2e", "static build validation"],
       "realAcceptance": "Current ChatGPT answer selection and remount",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "CSS Custom Highlight architecture is retained, shares copy/export actions, consumes the settings-backed interaction policy, and now exposes a trusted toolbar action that clears only records matching the current conversation and turn.",
-      "gap": "The new interaction wiring, answer-scoped clear button and prior AnswerDocument changes were not browser-tested."
+      "result": "Current isolated Chromium covers trusted selection, four-color anchors, prose-math selection, refresh, remount, math reformat, ambiguity/source deletion fail-open, recolor, delete and PDF handoff. The toolbar exposes answer-scoped clear without creating a permanent surface.",
+      "gap": "The answer-scoped clear click is covered in the installed extension; manual authenticated ChatGPT selection and remount remain final acceptance."
     },
     {
       "id": "MFC-201",
@@ -206,11 +206,11 @@
       "module": "highlight engine and options",
       "iterationAction": "new",
       "successBehavior": "Versioned JSON import/export sanitizes, bounds and merges records without uploading data; answer-scoped deletion requires exact conversation and turn identity.",
-      "automatedVerification": ["highlight-record-integrity-fixture", "convergence-core-fixture", "static build validation", "acceptance preflight"],
+      "automatedVerification": ["highlight-record-integrity-fixture", "convergence-core-fixture", "full-extension-e2e", "static build validation", "acceptance preflight"],
       "realAcceptance": "Settings page file picker and download",
       "status": "IMPLEMENTED_VERIFIED",
       "result": "ChatGPT and general-web records now expose the same bounded note/tag annotation interface. Legacy records migrate to an empty annotation; imports and mutation helpers reconstruct allowlisted fields, reject oversized identities and source offsets, and exclude unknown top-level, anchor and annotation payloads from later export. ChatGPT answer-scoped clear fails closed unless both conversationId and turnId are present, removes all versions of that answer, preserves other scopes, and resanitizes retained records.",
-      "gap": "The annotation interface is backend-only in this candidate; the answer-scoped toolbar action and rendered Options file interactions were not browser-tested."
+      "gap": "The annotation interface remains backend-only in this candidate; the answer-scoped toolbar clear and rendered Options settings are browser-tested, while note/tag editing UI is intentionally absent."
     },
     {
       "id": "MFC-202",
@@ -224,7 +224,7 @@
       "realAcceptance": "Representative article pages and permission lifecycle",
       "status": "IMPLEMENTED_UNVERIFIED",
       "result": "Per-origin permission requests, permission-filtered dynamic registration, four-color CSS highlights, local anchors, edit/delete/clear, shortcut and combined backup are in the development build.",
-      "gap": "No browser was opened, so permission prompts, representative article DOMs, CSS Highlight rendering and interaction lifecycle remain unverified."
+      "gap": "The installed-extension suite proves the shared settings and dynamic-registration substrate, but representative article permission prompts, CSS Highlight rendering and interaction lifecycle remain unverified."
     },
     {
       "id": "MFC-203",
@@ -238,7 +238,7 @@
       "realAcceptance": "ChatGPT and representative article selection, keyboard and IME interaction",
       "status": "IMPLEMENTED_VERIFIED",
       "result": "Schema v6, the Options control, shared policy, both content runtimes and pure fixtures agree on selection-only, shortcut-only and combined behavior. Invalid or modifier-poor shortcuts fail closed; repeat and composition events are ignored.",
-      "gap": "Browser rendering and real keyboard event behavior remain covered by MFC-200 and MFC-202 rather than claimed here."
+      "gap": "Installed-extension keyboard behavior is covered for ChatGPT under MFC-200; representative article behavior remains under MFC-202."
     },
     {
       "id": "MFC-220",
@@ -248,11 +248,11 @@
       "module": "extension/src/features/pdf-export and extension/pdf",
       "iterationAction": "retain",
       "successBehavior": "PDF model consumes AnswerDocument and logical highlight anchors, applies A4 or Letter page size, and honors the include-highlights setting without webpage pixel coordinates.",
-      "automatedVerification": ["conversation-export-fixture", "existing PDF fixture evidence", "static build validation"],
+      "automatedVerification": ["conversation-export-fixture", "full-extension-e2e", "current PDF.js browser fixture", "independent pdfplumber extraction", "static build validation"],
       "realAcceptance": "Actual PDF viewer visual, selection, search and copy checks",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "Single-answer and conversation PDF models consume page-size and include-highlights settings. A bounded MathML AST now flows from AnswerDocument through the PDF model to namespace-aware print DOM; unsupported or unsafe trees explicitly fall back to visible TeX. Table-cell formatting, citations and allowlisted links survive, unsafe href schemes are discarded, and cross-cell highlights use logical offsets rather than pixels.",
-      "gap": "No PDF was generated or opened in this browser-free run."
+      "result": "The installed extension exported a three-page A4 PDF through the real Service Worker, session storage and extension page. The focused PDF.js 5.6.205 fixture selected inline prose-math-prose and display math through trusted pointer input; pdfplumber independently extracted the same math text, while cross-math and cross-page highlights remained visible.",
+      "gap": "One manual viewer check on the user's preferred desktop PDF viewer remains useful but is not an automated release substitute."
     },
     {
       "id": "MFC-221",
@@ -262,11 +262,11 @@
       "module": "conversation export coordinator, answer serializer, PDF model, Low Memory completeness proof and popup",
       "iterationAction": "new",
       "successBehavior": "Conversation export proceeds only after completeness is proven.",
-      "automatedVerification": ["conversation-export-fixture", "low-memory-background-fixture", "acceptance preflight", "static build validation"],
+      "automatedVerification": ["conversation-export-fixture", "low-memory-background-fixture", "low-memory-extension-lifecycle", "acceptance preflight", "static build validation"],
       "realAcceptance": "Full-history selection and exported document review",
       "status": "IMPLEMENTED_UNVERIFIED",
       "result": "A validated conversation-graph proof survives the full-history reload, then binds exact turn count, role order, conversation identity and settled AnswerDocuments before Markdown or PDF export. The popup exposes both actions and partial Low Memory windows are rejected.",
-      "gap": "The full-history reload, popup clipboard path and resulting PDF still require one browser-bound acceptance pass."
+      "gap": "The real popup full-history and resume actions now pass in the installed extension. One authenticated complete-conversation export remains part of final acceptance."
     },
     {
       "id": "MFC-300",
@@ -290,11 +290,11 @@
       "module": "extension/options",
       "iterationAction": "new",
       "successBehavior": "Settings validate, reset by section, import/export locally and update open Mica pages.",
-      "automatedVerification": ["local-import-integrity-fixture", "static build validation", "acceptance preflight"],
+      "automatedVerification": ["local-import-integrity-fixture", "full-extension-e2e", "static build validation", "acceptance preflight"],
       "realAcceptance": "Chrome and Edge rendering, focus, zoom and immediate-effect checks",
-      "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "Options UI and manifest wiring are in dist/mica-dev. Import files are size-checked before File.text(), combined highlight backups require an exact v2 envelope, each record family has a source-count budget, mixed legacy families fail closed, and existing single-family backups remain compatible. Default color, shortcut, toolbar behavior, answer-menu default format, Notion availability, PDF page size and PDF highlight inclusion reach their runtime consumers.",
-      "gap": "No browser rendering was permitted."
+      "status": "IMPLEMENTED_VERIFIED",
+      "result": "The actual chrome-extension Options page persists settings, survives reload and is reached from the real popup. Import files are size-checked before File.text(), combined highlight backups require an exact v2 envelope, each record family has a source-count budget, mixed legacy families fail closed, and existing single-family backups remain compatible. Default color, shortcut, toolbar behavior, answer-menu default format, Notion availability, PDF page size and PDF highlight inclusion reach their runtime consumers.",
+      "gap": "Normal Edge rendering and current-site immediate effects remain part of the final manual boundary; isolated Chromium visual and persistence checks pass."
     },
     {
       "id": "MFC-400",
@@ -322,7 +322,7 @@
       "realAcceptance": "Real ChatGPT ghost send and interrupted-generation cases",
       "status": "IMPLEMENTED_UNVERIFIED",
       "result": "Controller, tab isolation, session storage and conservative reload path are in the build; page-structure observations are delegated to ChatGPTAdapter.",
-      "gap": "DOM lifecycle and location reload behavior were not browser-tested."
+      "gap": "The installed-extension host covers streaming, composer remount, tool-stage and route lifecycles, but real ChatGPT ghost-send and interrupted-generation reload behavior remains unverified."
     },
     {
       "id": "MFC-402",
@@ -350,7 +350,7 @@
       "realAcceptance": "Multiple tabs and actual reload",
       "status": "IMPLEMENTED_VERIFIED",
       "result": "The Service Worker serializes one-shot reload leases across restart, isolates tabs, expires stale claims, fails closed on storage loss, deduplicates bounded content-free history and clears tab claims. The controller cannot replace an active recovery draft with a parallel send intent.",
-      "gap": "Actual browser restart/reload remains part of final integration acceptance, not the backend contract proof."
+      "gap": "Actual Service Worker stop/restart and settings recovery are now browser-tested; multi-tab authenticated recovery remains final real-site evidence."
     },
     {
       "id": "MFC-404",
@@ -430,11 +430,11 @@
       "module": "extension/popup",
       "iterationAction": "repair",
       "successBehavior": "Popup keeps normal status surfaces, exposes proof-gated complete-conversation export and opens the unified settings page.",
-      "automatedVerification": ["static build validation"],
+      "automatedVerification": ["popup-render-fixture", "full-extension-e2e", "low-memory-extension-lifecycle", "static build validation"],
       "realAcceptance": "Popup rendering at required widths, zoom and themes",
-      "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "Settings and proof-gated complete-conversation Markdown/PDF actions are wired without restoring the old diagnostic matrix.",
-      "gap": "No rendered popup test was run in this browser-free iteration."
+      "status": "IMPLEMENTED_VERIFIED",
+      "result": "The actual chrome-extension popup is exercised at 320/368/400 widths in light and dark themes, navigates to the real Options page, sends active-tab messages, exposes Low Memory full-history/resume actions and fails open on an unsupported page. The focused renderer also covers 340 px and 100/125/150 percent scales.",
+      "gap": "The user's extension-manager reload and authenticated-page status are left to the one final manual acceptance."
     },
     {
       "id": "MFC-600",
@@ -443,26 +443,26 @@
       "existingImplementation": true,
       "module": "scripts/release-config.mjs and dist/mica-dev",
       "iterationAction": "repair",
-      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.13.",
+      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.14.",
       "automatedVerification": ["npm run build", "npm run test:build"],
-      "realAcceptance": "Extension manager shows 0.5.13 after reload",
+      "realAcceptance": "Extension manager shows 0.5.14 after reload",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Runtime version is 0.5.13 with build label functional-convergence.14.",
-      "gap": "Extension manager display was not opened."
+      "result": "Runtime version is 0.5.14 with build label product-delivery.1.",
+      "gap": "The installed Chromium manifest, popup and runtime report 0.5.14; the user's extension-manager display is left to the final reload step."
     },
     {
       "id": "MFC-610",
-      "source": ["goal sections 13 through 15", "direct user no-browser constraint"],
+      "source": ["goal sections 13 through 15", "2026-10-25 product-delivery continuation"],
       "userProblem": "Verify the integrated candidate in real browser, ChatGPT, PDF viewer and Notion targets.",
       "existingImplementation": false,
       "module": "acceptance",
       "iterationAction": "verify",
       "successBehavior": "One bounded final acceptance covers all current runtime integrations without automating the normal Edge profile.",
-      "automatedVerification": [],
+      "automatedVerification": ["npm test", "installed-extension-e2e", "isolated Chromium fixtures", "PDF.js viewer fixture", "acceptance preflight"],
       "realAcceptance": "Required",
-      "status": "BLOCKED_BY_REAL_EXTERNAL_DEPENDENCY",
-      "result": "No browser was opened and no real account was touched.",
-      "gap": "This run explicitly prohibits the required execution surface."
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "result": "Isolated Chromium, the built extension surfaces, trusted fixture interactions and the actual generated PDF are now exercised without touching the user's normal browser profile or sending real ChatGPT prompts.",
+      "gap": "Authenticated ChatGPT and physical low-memory-device checks remain manual final acceptance; Notion-native equations are deferred from the prioritized product-delivery scope."
     },
     {
       "id": "MFC-611",
@@ -489,8 +489,8 @@
       "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "recovery-action-policy-fixture", "target-surface-backend-fixture", "highlight-record-integrity-fixture", "local-import-integrity-fixture", "chatgpt-ui-compatibility-fixture", "acceptance preflight", "build validator"],
       "realAcceptance": "Full acceptance candidate run",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Validator 1.17.0 additionally binds complete repeated Low Memory sample series, the unchanged non-Low-Memory feature set, and fail-closed complete-conversation content. The control corpus accepts 13 known-good controls and rejects 59 known-bad controls, including stale identity, cherry-picked samples, DOM-only claims, disabled-feature gains and incomplete-content export claims.",
-      "gap": "A complete browser-bound candidate bundle was not materialized or run in this no-browser iteration."
+      "result": "Validator 1.18.0 adds an installed-extension-e2e gate binding the real Manifest V3 service worker, storage, trusted user paths, Low Memory lifecycle, six approved visual hashes, privacy/network boundaries and the actual PDF. The control corpus accepts 14 known-good controls and rejects 62 known-bad controls, including service-worker bypass, auto-accepted forged visuals and real ChatGPT network use.",
+      "gap": "The final functional-convergence candidate bundle must be materialized against the frozen commit and run before push readback."
     }
   ]
 }

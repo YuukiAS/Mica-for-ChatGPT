@@ -1,0 +1,45 @@
+{
+  "schema": "mica.low-memory-extension-lifecycle.v1",
+  "passed": true,
+  "generatedAt": "2026-10-25T16:09:17.325Z",
+  "candidate": {
+    "version": "0.5.14",
+    "buildLabel": "product-delivery.1"
+  },
+  "execution": {
+    "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "actualManifest": true,
+    "actualMainWorldRegistration": true,
+    "actualContentScript": true,
+    "actualServiceWorker": true,
+    "actualPopupAction": true,
+    "actualStorage": true,
+    "networkGuard": "deny-unmatched",
+    "unexpectedRequestCount": 0
+  },
+  "lifecycle": {
+    "dynamicDisableBeforeNavigation": true,
+    "dynamicEnableBeforeNavigation": true,
+    "registeredAtDocumentStart": true,
+    "reactRouterStreamWindowed": true,
+    "originalMappingNodes": 121,
+    "windowedMappingNodes": 41,
+    "fullHistoryMappingNodes": 121,
+    "actualClientHistoryTruncation": true,
+    "completenessProofPreserved": true,
+    "realPopupFullHistoryAction": true,
+    "realPopupResumeAction": true,
+    "conversationNavigation": true,
+    "serviceWorkerRestart": true,
+    "persistentRegistrationRecovered": true,
+    "dynamicDisableAfterNavigation": true,
+    "failOpenAfterDisable": true
+  },
+  "privacy": {
+    "normalEdgeProfileUsed": false,
+    "authenticatedChatGptUsed": false,
+    "realChatGptRequests": 0,
+    "conversationTextStoredByBackground": false
+  },
+  "pageErrors": []
+}

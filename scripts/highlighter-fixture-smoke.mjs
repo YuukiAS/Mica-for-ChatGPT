@@ -179,6 +179,17 @@ try {
   await page.waitForFunction(() => globalThis.__MICA_FOUNDATION_TEST__.getHighlighterStatus().recordCount === 0);
   const removed = await snapshot(page);
 
+  await selectWholeAnswer(page);
+  await toolbar.locator("button[data-color='yellow']").click();
+  await page.waitForFunction(() => globalThis.__MICA_FOUNDATION_TEST__.getHighlighterStatus().recordCount === 1);
+  await page.mouse.click(editPoint.x, editPoint.y);
+  await page.waitForSelector("[data-mica-ui='highlight-toolbar']");
+  const clearAnswerButton = toolbar.locator("button[data-action='clear-answer']");
+  assert(await clearAnswerButton.isVisible(), "answer-scoped clear action was not available for an existing highlight");
+  await clearAnswerButton.click();
+  await page.waitForFunction(() => globalThis.__MICA_FOUNDATION_TEST__.getHighlighterStatus().recordCount === 0);
+  const clearedAnswer = await snapshot(page);
+
   const branchResolution = await page.evaluate(() => {
     const runtime = globalThis.__MICA_FOUNDATION_TEST__;
     const original = runtime.getHighlightRecords()[0] || JSON.parse(sessionStorage.getItem("mica-fixture-last-record") || "null");
@@ -203,6 +214,7 @@ try {
     deletedSource,
     recolored,
     removed,
+    clearedAnswer,
     branchResolution,
     pdfExportHandoff,
     rawLatexSources: await page.evaluate(() => globalThis.MicaAnswerDocument.extractRawMathSources("prose \\(a+b\\) then $$c=d$$ end")),
@@ -224,6 +236,7 @@ try {
       sourceDeletionFailOpen: deletedSource.status.renderedCount === 0 && deletedSource.status.unresolvedCount === 1,
       colorOwnership: recolored.records[0]?.color === "mint",
       deleteOwnership: removed.records.length === 0,
+      clearAnswerOwnership: clearedAnswer.records.length === 0 && clearedAnswer.status.renderedCount === 0,
       pdfExportHandoff: pdfExportHandoff.trustedToolbarActionReachedBackground && pdfExportHandoff.localOnly
     }
   };

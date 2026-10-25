@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-export const VALIDATOR_VERSION = "1.17.0";
+export const VALIDATOR_VERSION = "1.18.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 const PLACEMENT_PROOF_OBSERVATION_IDS = [
   "copy-inside-assistant-turn",
@@ -26,10 +26,10 @@ const FOUNDATION_GATES = [
 const ACCEPTANCE_PROFILES = {
   foundation: FOUNDATION_GATES,
   "milestone-a": [...FOUNDATION_GATES, "low-memory-benefit"],
-  "milestone-b": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection"],
-  "release-0.3.0": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection"],
-  "functional-convergence": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "target-surface-backend", "highlight-record-integrity", "local-import-integrity", "chatgpt-ui-compatibility"],
-  "all-controls": [...FOUNDATION_GATES, "copy-serialization", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "target-surface-backend", "highlight-record-integrity", "local-import-integrity", "chatgpt-ui-compatibility", "low-memory-benefit", "highlight-remount", "pdf-selection"]
+  "milestone-b": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection", "installed-extension-e2e"],
+  "release-0.3.0": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection", "installed-extension-e2e"],
+  "functional-convergence": [...FOUNDATION_GATES, "low-memory-benefit", "highlight-remount", "pdf-selection", "installed-extension-e2e", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "target-surface-backend", "highlight-record-integrity", "local-import-integrity", "chatgpt-ui-compatibility"],
+  "all-controls": [...FOUNDATION_GATES, "copy-serialization", "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "target-surface-backend", "highlight-record-integrity", "local-import-integrity", "chatgpt-ui-compatibility", "low-memory-benefit", "highlight-remount", "pdf-selection", "installed-extension-e2e"]
 };
 
 const EVIDENCE_CLASSES = new Set([
@@ -652,6 +652,7 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
     const stress = await readBoundJson("low-memory-stress");
     const registration = await readBoundJson("low-memory-registration");
     const flows = await readBoundJson("foundation-flows");
+    if (pressure?.passed !== true || !Array.isArray(pressure?.checks) || pressure.checks.some((item) => item?.passed !== true)) fail("bound low-memory pressure evidence did not pass every check");
     for (const state of ["A", "B", "C"]) {
       if (!sameJson(m[state], pressure?.[state])) fail(`low-memory state ${state} differs from bound pressure evidence`);
     }
@@ -765,9 +766,13 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
     }
     if (record.evidenceClass === "TARGET_CLASS_ENVIRONMENT") {
       if (record.subject?.surface !== "local-constrained-target-class-environment"
-        || m.targetEnvironment?.class !== "local-edge-v8-old-space-pressure"
-        || m.targetEnvironment?.executionSurface !== "local-isolated-edge"
+        || m.targetEnvironment?.class !== "local-playwright-chromium-v8-old-space-pressure"
+        || m.targetEnvironment?.executionSurface !== "local-isolated-playwright-chromium"
         || !m.targetEnvironment?.browserBuild
+        || !m.targetEnvironment?.playwrightModules
+        || m.targetEnvironment?.normalEdgeProfileUsed !== false
+        || m.targetEnvironment?.authenticatedChatGptUsed !== false
+        || m.targetEnvironment?.realChatGptRequests !== 0
         || !finitePositive(m.targetEnvironment?.rendererOldSpaceLimitMb)
         || m.targetEnvironment?.physicalMemoryGb != null) {
         fail("target-class environment identity is missing or misclassified");
@@ -878,6 +883,69 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
     return;
   }
 
+  if (kind === "installed-extension-e2e") {
+    const install = await readBoundJson("extension-install-smoke");
+    const full = await readBoundJson("full-extension-e2e");
+    const lowMemory = await readBoundJson("low-memory-extension-lifecycle");
+    const baseline = await readBoundJson("extension-visual-baseline");
+    if (record.subject?.surface !== "actual-installed-extension") fail("wrong installed-extension surface target");
+    const expected = deriveInstalledExtensionMeasurement(install, full, lowMemory, baseline);
+    if (!sameJson(m, expected)) fail("installed-extension measurement differs from bound browser evidence");
+    if (!expected.passed
+      || !expected.install.actualContentScript
+      || !expected.install.actualServiceWorker
+      || !expected.install.actualStorage
+      || !expected.install.contextMenusReady
+      || !expected.install.trustedRightClickReachedWorker
+      || !expected.install.trustedSelectionToolbarCopy
+      || !expected.install.realClipboardReadback
+      || !expected.full.actualManifest
+      || !expected.full.actualContentScripts
+      || !expected.full.actualServiceWorker
+      || !expected.full.actualStorage
+      || !expected.full.copy
+      || !expected.full.highlighter
+      || !expected.full.pdf
+      || !expected.full.popupAndSettings
+      || !expected.full.lifecycle
+      || !expected.full.workerRestart
+      || !expected.full.visualMatch
+      || !expected.lowMemory.actualMainWorldRegistration
+      || !expected.lowMemory.actualPopupActions
+      || !expected.lowMemory.fullHistoryRestore
+      || !expected.lowMemory.serviceWorkerRestart
+      || !expected.lowMemory.dynamicFailOpen
+      || !expected.privacy.noNormalBrowserProfile
+      || !expected.privacy.noAuthenticatedChatGpt
+      || !expected.privacy.zeroRealChatGptRequests
+      || !expected.privacy.noBackgroundConversationText) {
+      fail("installed-extension execution, lifecycle, privacy, or visual invariant failed");
+    }
+    if (install?.candidate?.version !== manifest.candidate?.version || full?.candidate?.version !== manifest.candidate?.version || lowMemory?.candidate?.version !== manifest.candidate?.version) {
+      fail("installed-extension evidence version differs from candidate");
+    }
+    if (install?.candidate?.buildLabel !== manifest.candidate?.buildLabel || full?.candidate?.buildLabel !== manifest.candidate?.buildLabel || lowMemory?.candidate?.buildLabel !== manifest.candidate?.buildLabel) {
+      fail("installed-extension evidence build label differs from candidate");
+    }
+    const visualIds = Object.values(m.visualArtifacts || {});
+    if (visualIds.length !== 6 || !visualIds.every((id) => (record.artifactIds || []).includes(id) && artifacts.has(id))) {
+      fail("installed-extension visual artifacts are missing or unbound");
+    } else if (new Set(visualIds.map((id) => artifacts.get(id).sha256)).size !== visualIds.length) {
+      fail("installed-extension visual states reuse duplicate screenshots");
+    }
+    for (const [name, artifactId] of Object.entries(m.visualArtifacts || {})) {
+      const hash = artifacts.get(artifactId)?.sha256;
+      if (!hash || full?.visual?.current?.[name] !== hash || baseline?.screenshots?.[name] !== hash) fail(`installed-extension visual baseline mismatch for ${name}`);
+    }
+    const pdfArtifact = artifacts.get(m.pdfArtifactId);
+    if (!pdfArtifact || !(record.artifactIds || []).includes(m.pdfArtifactId) || full?.pdf?.actualPdfFile !== "output/pdf/mica-full-extension-export.pdf") {
+      fail("installed-extension PDF artifact is missing or unbound");
+    }
+    const installVisual = artifacts.get(m.installScreenshotArtifactId);
+    if (!installVisual || !(record.artifactIds || []).includes(m.installScreenshotArtifactId)) fail("installed-extension smoke screenshot is missing or unbound");
+    return;
+  }
+
   if (kind === "privacy") {
     const core = await readBoundJson("foundation-core");
     const flows = await readBoundJson("foundation-flows");
@@ -913,6 +981,62 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
   }
 
   fail(`unknown validator kind ${kind}`);
+}
+
+export function deriveInstalledExtensionMeasurement(install, full, lowMemory, baseline) {
+  const highlighter = full?.highlighter || {};
+  const pdf = full?.pdf || {};
+  const popup = full?.popupAndSettings || {};
+  const lifecycle = full?.lifecycle || {};
+  const low = lowMemory?.lifecycle || {};
+  return {
+    passed: install?.passed === true && full?.passed === true && lowMemory?.passed === true,
+    install: {
+      actualContentScript: install?.extension?.actualContentScript === true,
+      actualServiceWorker: install?.extension?.actualServiceWorker === true,
+      actualStorage: install?.extension?.actualStorage === true,
+      contextMenusReady: install?.extension?.contextMenusReady === true,
+      trustedRightClickReachedWorker: install?.userPath?.trustedRightClickReachedWorker === true,
+      trustedSelectionToolbarCopy: install?.userPath?.trustedSelectionToolbarCopy === true,
+      realClipboardReadback: install?.userPath?.realClipboardReadback === true
+    },
+    full: {
+      actualManifest: full?.execution?.actualManifest === true,
+      actualContentScripts: full?.execution?.actualContentScripts === true,
+      actualServiceWorker: full?.execution?.actualServiceWorker === true,
+      actualStorage: full?.execution?.actualStorage === true,
+      copy: full?.copy?.realPointerSelection === true && full?.copy?.realClipboardReadback === true && full?.copy?.targetAnswerOnly === true && full?.copy?.richStructurePreserved === true,
+      highlighter: ["actualPointerSelection", "visibleCssHighlights", "fourColors", "recolor", "deleteOne", "clearExactAnswer", "refreshRestore", "hostRemountRestore", "equivalentMathReformatRestore", "duplicateTextFailOpen", "sourceDeletionFailOpen", "branchIsolation", "conversationIsolation", "persistedShortcutDefaultColor"].every((key) => highlighter[key] === true),
+      pdf: pdf.actualUserExportClick === true && pdf.actualServiceWorkerHandoff === true && pdf.actualSessionStorage === true && pdf.temporaryModelConsumed === true && pdf.actualExtensionPage === true && pdf.pageCount >= 2 && pdf.independentTextExtraction === true && pdf.semanticMathMl === true && pdf.tableCodeChinese === true,
+      popupAndSettings: popup.actualChromeExtensionPage === true && popup.actualActiveTabMessaging === true && popup.settingsPersistence === true && popup.settingsNavigation === true && sameJson(popup.widths, [320, 368, 400]) && popup.lightDark === true && popup.noHorizontalOverflow === true && popup.accessibleControls === true && popup.unsupportedPageFailOpen === true,
+      lifecycle: ["stateDrivenHost", "fullDomRemounts", "streamingLifecycle", "composerVariantRemount", "staleDraftNotRestored", "readOnlyToolStage", "virtualizedUnmountRemount", "routeAndConversationSwitch"].every((key) => lifecycle[key] === true),
+      workerRestart: full?.workerRestart?.actualWorkerStopped === true && full?.workerRestart?.actualWorkerRestarted === true && full?.workerRestart?.settingsRecovered === true,
+      visualMatch: full?.visual?.status === "MATCH" && Array.isArray(full?.visual?.mismatches) && full.visual.mismatches.length === 0 && baseline?.approvedVersion === full?.candidate?.version
+    },
+    lowMemory: {
+      actualMainWorldRegistration: lowMemory?.execution?.actualMainWorldRegistration === true && low.registeredAtDocumentStart === true,
+      actualPopupActions: lowMemory?.execution?.actualPopupAction === true && low.realPopupFullHistoryAction === true && low.realPopupResumeAction === true,
+      fullHistoryRestore: low.actualClientHistoryTruncation === true && low.originalMappingNodes === 121 && low.windowedMappingNodes === 41 && low.fullHistoryMappingNodes === 121 && low.completenessProofPreserved === true,
+      serviceWorkerRestart: low.serviceWorkerRestart === true && low.persistentRegistrationRecovered === true,
+      dynamicFailOpen: low.dynamicDisableBeforeNavigation === true && low.dynamicEnableBeforeNavigation === true && low.dynamicDisableAfterNavigation === true && low.failOpenAfterDisable === true && low.conversationNavigation === true
+    },
+    privacy: {
+      noNormalBrowserProfile: install?.privacy?.normalBrowserProfileUsed === false && full?.privacy?.normalEdgeProfileUsed === false && lowMemory?.privacy?.normalEdgeProfileUsed === false,
+      noAuthenticatedChatGpt: install?.privacy?.authenticatedChatGptUsed === false && full?.privacy?.authenticatedChatGptUsed === false && lowMemory?.privacy?.authenticatedChatGptUsed === false,
+      zeroRealChatGptRequests: install?.privacy?.realChatGptRequestCount === 0 && full?.privacy?.realChatGptRequests === 0 && lowMemory?.privacy?.realChatGptRequests === 0 && full?.execution?.unexpectedRequestCount === 0 && lowMemory?.execution?.unexpectedRequestCount === 0,
+      noBackgroundConversationText: install?.privacy?.conversationTextIncludedInBackgroundContext === false && full?.privacy?.backgroundConversationTextIncluded === false && lowMemory?.privacy?.conversationTextStoredByBackground === false
+    },
+    visualArtifacts: {
+      "options-light": "extension-options-light",
+      "highlights-light": "extension-highlights-light",
+      "highlights-dark": "extension-highlights-dark",
+      "popup-320-light": "extension-popup-320-light",
+      "popup-368-dark": "extension-popup-368-dark",
+      "popup-400-light": "extension-popup-400-light"
+    },
+    pdfArtifactId: "installed-extension-pdf",
+    installScreenshotArtifactId: "installed-extension-answer"
+  };
 }
 
 async function readArtifactText(bundleDir, artifact) {

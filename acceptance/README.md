@@ -49,12 +49,12 @@ the production validator, CLI, control runner, schemas and contracts.
   placement safety, core flows, send safety,
   privacy and packaging/version consistency.
 - `milestone-a`: Foundation plus Low Memory.
-- `milestone-b`: Milestone A plus Highlighter remount and actual-viewer PDF
-  selection.
+- `milestone-b`: Milestone A plus Highlighter remount, actual-viewer PDF
+  selection and the installed-extension E2E gate.
 - `release-0.3.0`: the full Milestone B set. Low Memory cannot be omitted.
 - `functional-convergence`: the full Milestone B set plus complete-conversation
   export, recovery-deduplication, recovery-action-safety, target-surface-backend
-  highlight-record-integrity and local-import-integrity gates. The export gate binds a versioned
+  highlight-record-integrity, local-import-integrity and ChatGPT UI compatibility gates. The export gate binds a versioned
   fixture to exact completeness proof, turn/role identity, settled-only
   documents, Markdown/PDF assembly, structured table-cell math, bounded MathML
   capture/model/rendering, explicit partial-highlight fallback, PDF inline
@@ -78,6 +78,15 @@ the production validator, CLI, control runner, schemas and contracts.
   per-family source-record limits, legacy single-family compatibility and a
   deterministic duplicate-ID conflict rule; it does not claim that a browser
   file picker was exercised.
+
+The installed-extension gate loads the canonical `dist/mica-dev` Manifest V3
+build into an isolated Playwright Chromium profile. It binds the actual content
+scripts, Service Worker, storage, context menus, dynamic MAIN-world Low Memory
+registration, popup, Options, trusted pointer/clipboard path, PDF extension
+page, Worker restart, six approved screenshot hashes and the generated PDF.
+Every unmatched network request is rejected. This gate proves the offline
+high-fidelity product path; it does not promote the simulated host into current
+authenticated ChatGPT evidence.
 
 The profile-to-gate mapping is enforced by the validator, so shortening a
 bundle's `requiredGates` cannot manufacture a PASS.
@@ -110,7 +119,8 @@ change requires a validator version change and a fresh control run.
 ## Evidence boundary
 
 Synthetic controls prove validator behavior only. They do not satisfy
-candidate evidence classes for actual popup rendering, current ChatGPT
-placement, target-device Low Memory benefit or actual PDF viewer selection.
-Those gates require the minimum classes in `acceptance/contracts.json` and a
-fresh independent read-only review after validator PASS.
+candidate evidence classes for actual popup rendering, installed-extension
+execution, current ChatGPT placement, target-device Low Memory benefit or
+actual PDF viewer selection. Those gates require the minimum classes in
+`acceptance/contracts.json` and a fresh independent read-only review after
+validator PASS.

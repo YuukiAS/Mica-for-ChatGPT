@@ -2,11 +2,11 @@
   "passed": true,
   "model": {
     "documentId": "answer-4aa01ad9",
-    "sourceVersion": "settled-276a1ab5",
+    "sourceVersion": "settled-48a60493",
     "blockCount": 29,
     "resolvedHighlights": 2,
     "unresolvedHighlights": 0,
-    "mathFallback": "visible-tex-source",
+    "mathFallback": "visible-tex-source-when-semantic-mathml-unavailable",
     "baselineMathTeX": [
       "x+1"
     ],
@@ -14,8 +14,8 @@
   },
   "pdf": {
     "path": "output/pdf/mica-answer-export-sample.pdf",
-    "sha256": "fe6d7732790e7f6d698c2f19fdaf6e16fa2bc5f0e86fc341f355c46074d9d7e2",
-    "bytes": 72123,
+    "sha256": "5c7c3f69c537fec54e72455fb7289512170cab95da82327bdbf3ccfb4314e656",
+    "bytes": 72009,
     "pageCount": 2,
     "pdfInfo": {
       "Tagged": "yes",

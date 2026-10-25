@@ -8,10 +8,16 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = path.join(root, "dist", DEV_DIST_DIR_NAME);
 const packageMetadata = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
 const convergenceMatrix = JSON.parse(await readFile(path.join(root, "docs", "product", "MICA_FUNCTIONAL_CONVERGENCE_V1.json"), "utf8"));
+const extensionVisualBaseline = JSON.parse(await readFile(path.join(root, "tests", "mica-extension-visual-baseline.json"), "utf8"));
 
 assert(packageMetadata.version === MACHINE_VERSION, "package version must match release config");
 assert(convergenceMatrix.candidate?.version === MACHINE_VERSION, "convergence matrix version must match release config");
 assert(convergenceMatrix.candidate?.buildLabel === BUILD_LABEL, "convergence matrix build label must match release config");
+assert(extensionVisualBaseline.schema === "mica.extension-visual-baseline.v1", "extension visual baseline schema drifted");
+assert(extensionVisualBaseline.approvedVersion === MACHINE_VERSION, "extension visual baseline version must match release config");
+assert(extensionVisualBaseline.browser === "Chromium 151", "extension visual baseline browser drifted");
+assert(Object.keys(extensionVisualBaseline.screenshots || {}).length === 6, "extension visual baseline must bind six approved screenshots");
+assert(new Set(Object.values(extensionVisualBaseline.screenshots || {})).size === 6, "extension visual baseline screenshots must be unique");
 const requirementIds = new Set();
 for (const requirement of convergenceMatrix.requirements || []) {
   assert(/^MFC-\d{3}$/.test(requirement.id), "convergence requirement id is invalid");
@@ -23,6 +29,18 @@ for (const requirement of convergenceMatrix.requirements || []) {
   }
 }
 assert(requirementIds.size >= 20, "convergence matrix does not cover the minimum functional groups");
+
+for (const relative of [
+  "docs/testing/MICA_EXTENSION_TEST_COVERAGE.md",
+  "scripts/extension-browser-harness.mjs",
+  "scripts/extension-install-smoke.mjs",
+  "scripts/full-extension-e2e.mjs",
+  "scripts/low-memory-extension-lifecycle.mjs",
+  "scripts/answer-context-menu-background-fixture.mjs",
+  "scripts/answer-context-menu-fixture.mjs",
+  "tests/fixtures/mica-product-host.html",
+  "tests/fixtures/mica-low-memory-host.html"
+]) await assertFile(path.join(root, relative));
 
 for (const relative of REQUIRED_EXTENSION_FILES) await assertFile(path.join(distDir, relative));
 
@@ -36,6 +54,7 @@ assert(manifest.permissions?.includes("storage"), "storage permission missing");
 assert(manifest.permissions?.includes("activeTab"), "activeTab permission missing");
 assert(manifest.permissions?.includes("scripting"), "scripting permission missing");
 assert(manifest.permissions?.includes("clipboardWrite"), "clipboardWrite permission missing");
+assert(manifest.permissions?.includes("contextMenus"), "contextMenus permission missing");
 assert(!manifest.host_permissions?.some((host) => !/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(host)), "unexpected host permission");
 assert(JSON.stringify([...manifest.host_permissions].sort()) === JSON.stringify(["https://chat.openai.com/*", "https://chatgpt.com/*"]), "fixed ChatGPT host permissions drifted");
 assert(JSON.stringify([...manifest.optional_host_permissions].sort()) === JSON.stringify(["http://*/*", "https://*/*"]), "optional general-web host permissions missing");
@@ -74,6 +93,7 @@ const recoveryControlAdapter = await readFile(path.join(distDir, "recovery-contr
 const recoveryLedger = await readFile(path.join(distDir, "recovery-ledger.js"), "utf8");
 const suggestedWorkController = await readFile(path.join(distDir, "suggested-work-controller.js"), "utf8");
 const answerActionsController = await readFile(path.join(distDir, "answer-actions-controller.js"), "utf8");
+const answerContextMenuBackground = await readFile(path.join(distDir, "answer-context-menu-background.js"), "utf8");
 const content = await readFile(path.join(distDir, "content.js"), "utf8");
 const lowMemoryCore = await readFile(path.join(distDir, "low-memory-core.js"), "utf8");
 const lowMemoryPage = await readFile(path.join(distDir, "low-memory-page.js"), "utf8");
@@ -87,7 +107,7 @@ const pdfExportPage = await readFile(path.join(distDir, "pdf", "pdf-export-page.
 const pdfExportCss = await readFile(path.join(distDir, "pdf", "pdf-export.css"), "utf8");
 
 for (const text of [adapter, content]) assert(text.includes(contractHash), "built current ChatGPT contract hash drifted");
-for (const text of [highlightInteractionPolicy, adapter, answerDocument, conversationExport, settingsModel, answerSerializer, highlightEngine, generalWebModel, localImportModel, generalWebHighlighter, pdfExportModel, recoveryActionPolicy, recoveryStateMachine, recoveryController, recoveryControlAdapter, recoveryLedger, suggestedWorkController, answerActionsController, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, options, troubleshooting, qa, pdfExportPage]) {
+for (const text of [highlightInteractionPolicy, adapter, answerDocument, conversationExport, settingsModel, answerSerializer, highlightEngine, generalWebModel, localImportModel, generalWebHighlighter, pdfExportModel, recoveryActionPolicy, recoveryStateMachine, recoveryController, recoveryControlAdapter, recoveryLedger, suggestedWorkController, answerActionsController, answerContextMenuBackground, lowMemoryCore, lowMemoryPage, lowMemoryConfig, lowMemoryBackground, content, popup, options, troubleshooting, qa, pdfExportPage]) {
   assert(!/__MICA_(?:VERSION|VERSION_NAME|BUILD_LABEL|CHATGPT_CONTRACT_HASH|DEV_BUILD)__/.test(text), "unresolved build placeholder remains");
   new Function(text);
 }
@@ -102,6 +122,7 @@ for (const token of [
   "inspectReloadSafety",
   "inspectSuggestedWorkSurface",
   "inspectAnswerActionTargets",
+  "inspectAnswerContextTarget",
   "inspectRecoveryControl",
   "executeRecoveryControl",
   "inspectTargetSurfaceDiagnostics",
@@ -142,6 +163,7 @@ assert(!/querySelector(?:All)?\s*\(/.test(suggestedWorkController), "suggested-w
 for (const token of ["MicaAnswerActionsController", "Mica actions", "inspectAnswerActionTargets", "event.isTrusted", "aria-haspopup", "menuitem", "permanentButtonsPerAnswer: 1", "textIncluded: false"]) assert(answerActionsController.includes(token), `answer-actions controller missing ${token}`);
 assert(!/MutationObserver|setInterval|setTimeout/.test(answerActionsController), "answer-actions controller added polling or a competing observer");
 assert(!/querySelector(?:All)?\s*\(/.test(answerActionsController), "answer-actions controller bypassed ChatGPTAdapter with direct page selectors");
+for (const token of ["MicaAnswerContextMenuBackground", "Mica answer actions", "Copy answer as Markdown", "MICA_ANSWER_CONTEXT", "MICA_RUN_ANSWER_CONTEXT_ACTION", "CONTEXT_TTL_MS", "textIncluded: false"]) assert(answerContextMenuBackground.includes(token), `answer context menu background missing ${token}`);
 
 for (const token of [
   "MicaHighlightEngine",
@@ -187,6 +209,9 @@ for (const token of [
   "suggestedWork",
   "answerActions",
   "performAnswerAction",
+  "performAnswerContextAction",
+  "MICA_ANSWER_CONTEXT",
+  "MICA_RUN_ANSWER_CONTEXT_ACTION",
   "pdfExportOptions",
   `const VERSION = "${MACHINE_VERSION}"`,
   `const BUILD_LABEL = "${BUILD_LABEL}"`,

@@ -1,16 +1,15 @@
 import { execFileSync } from "node:child_process";
-import { createRequire } from "node:module";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { installNetworkGuard, loadPlaywright } from "./extension-browser-harness.mjs";
 import { DEV_DIST_DIR_NAME } from "./release-config.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = path.join(root, "dist", DEV_DIST_DIR_NAME);
-const bundledNodeModules = path.join(process.env.USERPROFILE || "C:\\Users\\humc2", ".cache", "codex-runtimes", "codex-primary-runtime", "dependencies", "node", "node_modules");
-const require = createRequire(import.meta.url);
-const { chromium } = require(path.join(bundledNodeModules, "playwright"));
+const { chromium, modulesDir: playwrightModules } = loadPlaywright();
 const SAMPLE_COUNT = Number(process.env.MICA_LOW_MEMORY_SAMPLES || 3);
 const TURNS = 800;
 const BYTES_PER_TURN = 65536;
@@ -27,15 +26,19 @@ for (const state of ["A", "B", "C"]) {
 
 const summarized = Object.fromEntries(Object.entries(raw).map(([state, samples]) => [state, summarize(variants[state].variant, samples)]));
 const output = {
-  passed: true,
+  passed: false,
   generatedAt: new Date().toISOString(),
   targetEnvironment: {
-    class: "local-edge-v8-old-space-pressure",
-    executionSurface: "local-isolated-edge",
+    class: "local-playwright-chromium-v8-old-space-pressure",
+    executionSurface: "local-isolated-playwright-chromium",
     browserBuild: raw.A[0].browserBuild,
+    playwrightModules,
     rendererOldSpaceLimitMb: 256,
     physicalMemoryGb: null,
-    boundary: "local Chromium renderer constrained with a 256 MB V8 old-space limit; OS process memory is measured across the fresh browser process tree"
+    normalEdgeProfileUsed: false,
+    authenticatedChatGptUsed: false,
+    realChatGptRequests: 0,
+    boundary: "isolated Playwright Chromium constrained with a 256 MB V8 old-space limit; every unmatched network request is aborted and OS process memory is measured across the fresh browser process tree"
   },
   pressureFixture: {
     memoryLimitMb: 256,
@@ -55,22 +58,27 @@ const output = {
   reactManagedInteractiveNodesDetached: false,
   serverMutation: false
 };
-
-assert(output.C.samples >= 3, "pressure evidence requires three samples");
-assert(gain(Math.min(output.A.heapMb, output.B.heapMb), output.C.heapMb) >= 0.15, "Low Memory did not reduce JS heap by 15%");
-assert(gain(output.B.retainedContentMb, output.C.retainedContentMb) >= 0.15, "Low Memory did not reduce retained content by 15%");
-assert(output.C.mountedTurnCount <= output.B.mountedTurnCount * 1.1, "mounted DOM regressed");
-assert(latencyWithinBudget(output.B.typingP95Ms, output.C.typingP95Ms), "typing latency regressed");
-assert(latencyWithinBudget(output.B.scrollP95Ms, output.C.scrollP95Ms), "scroll latency regressed");
-assert(output.B.fullExtensionRuntimeLoaded && output.C.fullExtensionRuntimeLoaded, "B/C did not run the complete installed extension runtime");
-assert(output.C.longTaskTotalMs <= Math.max(output.B.longTaskTotalMs * 1.2, output.B.longTaskTotalMs + 5), "long-task time regressed");
-assert(output.C.frameP95Ms <= Math.max(output.B.frameP95Ms * 1.2, output.B.frameP95Ms + 2), "frame latency regressed");
-assert(output.actualTruncation, "pressure fixture did not actually truncate client history");
+output.checks = [
+  check("three_samples", output.C.samples >= 3, "pressure evidence requires three samples"),
+  check("heap_reduction_15_percent", gain(Math.min(output.A.heapMb, output.B.heapMb), output.C.heapMb) >= 0.15, "Low Memory did not reduce JS heap by 15%"),
+  check("retained_content_reduction_15_percent", gain(output.B.retainedContentMb, output.C.retainedContentMb) >= 0.15, "Low Memory did not reduce retained content by 15%"),
+  check("mounted_dom_budget", output.C.mountedTurnCount <= output.B.mountedTurnCount * 1.1, "mounted DOM regressed"),
+  check("typing_latency_budget", latencyWithinBudget(output.B.typingP95Ms, output.C.typingP95Ms), "typing latency regressed"),
+  check("scroll_latency_budget", latencyWithinBudget(output.B.scrollP95Ms, output.C.scrollP95Ms), "scroll latency regressed"),
+  check("full_extension_runtime", output.B.fullExtensionRuntimeLoaded && output.C.fullExtensionRuntimeLoaded, "B/C did not run the complete installed extension runtime"),
+  check("control_registration_state", output.B.registrationProof?.synced?.registered === false && output.C.registrationProof?.synced?.registered === true, "B/C registration state did not match the requested Low Memory setting"),
+  check("network_guard", Object.values(raw).flat().every((sample) => sample.unexpectedRequestCount === 0), "pressure fixture attempted an unmatched network request"),
+  check("long_task_budget", output.C.longTaskTotalMs <= Math.max(output.B.longTaskTotalMs * 1.2, output.B.longTaskTotalMs + 5), "long-task time regressed"),
+  check("frame_latency_budget", output.C.frameP95Ms <= Math.max(output.B.frameP95Ms * 1.2, output.B.frameP95Ms + 2), "frame latency regressed"),
+  check("actual_client_history_truncation", output.actualTruncation, "pressure fixture did not actually truncate client history")
+];
+output.passed = output.checks.every((item) => item.passed);
 
 const evidenceDir = path.join(root, "results", "mica-product-system-rebuild", "low-memory-evidence");
 await mkdir(evidenceDir, { recursive: true });
 await writeFile(path.join(evidenceDir, "low-memory-pressure.json"), `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify(output, null, 2));
+if (!output.passed) throw new Error(`Low Memory pressure checks failed: ${output.checks.filter((item) => !item.passed).map((item) => item.id).join(", ")}`);
 
 async function runSample(state, variant, sample) {
   const launched = await launchMeasuredBrowser(variant);
@@ -79,11 +87,21 @@ async function runSample(state, variant, sample) {
     let worker = null;
     let runtimeProof = null;
     let registrationProof = null;
-    await launched.context.route("https://chatgpt.com/fixture", (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><html data-mica-fixture='true'><body><div id='native-window'></div><div id='prompt-textarea' role='textbox' contenteditable='true'></div></body></html>" }));
+    const unexpectedRequests = await installNetworkGuard(launched.context, new Map([["https://chatgpt.com/fixture", {
+      status: 200,
+      contentType: "text/html",
+      body: "<!doctype html><html data-mica-fixture='true'><body><div id='native-window'></div><div id='prompt-textarea' role='textbox' contenteditable='true'></div></body></html>"
+    }]]));
     if (variant.install) {
       worker = await waitForExtensionWorker(browser);
       registrationProof = await worker.evaluate(async (enabled) => {
-        await chrome.storage.local.set({ enabled: true, lowMemory: enabled, lowMemoryKeepCount: 40, lowMemoryThreshold: 80 });
+        const settings = globalThis.MicaSettingsModel.defaults();
+        settings.enabled = true;
+        settings.features.lowMemory = enabled;
+        settings.lowMemory.keepRecentTurns = 40;
+        settings.lowMemory.activationThreshold = 80;
+        await chrome.storage.local.clear();
+        await chrome.storage.local.set(globalThis.MicaSettingsModel.toStorageRecord(settings));
         const synced = await syncRegistration();
         const scripts = await chrome.scripting.getRegisteredContentScripts();
         return { synced, scripts };
@@ -237,6 +255,7 @@ async function runSample(state, variant, sample) {
       recalcStyleCount: (metrics.RecalcStyleCount || 0) - (beforeMetrics.RecalcStyleCount || 0),
       fullExtensionRuntime: runtimeProof,
       registrationProof,
+      unexpectedRequestCount: unexpectedRequests.length,
       ...result
     };
   } finally {
@@ -248,7 +267,6 @@ async function launchMeasuredBrowser(variant) {
   const profileDir = await mkdtemp(path.join(os.tmpdir(), "mica-pressure-profile-"));
   const extensionArgs = variant.install ? [`--disable-extensions-except=${distDir}`, `--load-extension=${distDir}`] : ["--disable-extensions"];
   const context = await chromium.launchPersistentContext(profileDir, {
-    channel: "msedge",
     headless: false,
     viewport: { width: 1000, height: 760 },
     ignoreDefaultArgs: variant.install ? ["--disable-extensions"] : [],
@@ -303,6 +321,8 @@ async function waitForContentRuntime(worker) {
 }
 
 function summarize(variant, samples) {
+  const metricKeys = ["processMemoryMb", "heapMb", "retainedContentMb", "mountedTurnCount", "mutationCount", "typingP95Ms", "scrollP95Ms"];
+  const installed = samples.some((item) => item.fullExtensionRuntime?.loaded === true);
   return {
     variant,
     processMemoryMb: median(samples.map((item) => item.processMemoryMb)),
@@ -330,6 +350,10 @@ function summarize(variant, samples) {
     runtimeVersion: samples.find((item) => item.fullExtensionRuntime?.version)?.fullExtensionRuntime?.version || null,
     registrationProof: samples[0]?.registrationProof || null,
     windowingStatus: samples[0]?.status || null,
+    lowMemoryEnabled: samples.every((item) => item.fullExtensionRuntime?.lowMemoryEnabled === true),
+    enabledCapabilities: installed ? ["foundation", "highlighter", "pdf", "copy-export", "reliability-backend"] : [],
+    nonLowMemoryFeatureFlagsHash: installed ? createHash("sha256").update(JSON.stringify({ highlighter: true, pdf: true, copyExport: true, reliabilityBackend: true })).digest("hex") : null,
+    sampleSeries: Object.fromEntries(metricKeys.map((key) => [key, samples.map((item) => round(item[key]))])),
     samples: samples.length
   };
 }
@@ -347,4 +371,5 @@ function range(values) { return [round(Math.min(...values)), round(Math.max(...v
 function round(value) { return Math.round(value * 1000) / 1000; }
 function gain(before, after) { return (before - after) / before; }
 function latencyWithinBudget(baseline, candidate) { return candidate <= Math.max(baseline * 1.1, baseline + 0.1); }
+function check(id, passed, message) { return { id, passed, message }; }
 function assert(condition, message) { if (!condition) throw new Error(message); }

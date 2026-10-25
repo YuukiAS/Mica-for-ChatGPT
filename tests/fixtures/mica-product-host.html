@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Mica product host</title>
+  <style>
+    :root{color-scheme:light dark;--bg:#fff;--panel:#f7f7f5;--text:#202123;--muted:#6b6f6d;--line:#dedfdc;--assistant:#fff;--user:#f2f2ef}
+    html[data-theme="dark"]{--bg:#171817;--panel:#212321;--text:#eceeeb;--muted:#aeb3af;--line:#414440;--assistant:#171817;--user:#292b29}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+    #host-shell{display:grid;grid-template-columns:minmax(0,1fr) 238px;height:100vh;min-height:560px}
+    #conversation-scroll{overflow:auto;padding:28px 24px 120px;scrollbar-gutter:stable}
+    #conversation{width:min(760px,100%);margin:auto}.turn{padding:18px 8px;border-bottom:1px solid var(--line)}
+    .turn[data-message-kind="user"]{background:var(--user);border-radius:18px;padding:14px 18px;margin:8px 0;border:0}.markdown{font-size:16px}.markdown h2{margin:.2em 0 .5em;font-size:1.32rem}.markdown p{margin:.65em 0}.markdown table{border-collapse:collapse;width:100%}.markdown th,.markdown td{border:1px solid var(--line);padding:7px 9px;text-align:left}.markdown pre{overflow:auto;padding:12px;border-radius:10px;background:var(--panel)}
+    .katex{white-space:nowrap}.katex-display{display:block;text-align:center;padding:10px;background:var(--panel);border-radius:10px}.katex-mathml{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(1px,1px,1px,1px)}
+    .answer-actions{display:flex;gap:4px;min-height:34px;align-items:center;margin-top:6px}.answer-actions button,.native-button{border:0;border-radius:8px;padding:7px 9px;background:transparent;color:var(--muted)}.answer-actions button:hover,.native-button:hover{background:var(--panel);color:var(--text)}
+    #composer-shell{position:fixed;left:max(24px,calc((100vw - 238px - 760px)/2));right:max(262px,calc((100vw - 238px - 760px)/2 + 238px));bottom:18px;padding:10px 12px;border:1px solid var(--line);border-radius:22px;background:var(--bg);box-shadow:0 8px 28px rgba(0,0,0,.12)}
+    #prompt-textarea,textarea#mobile-composer-prompt{display:block;width:100%;min-height:32px;max-height:120px;padding:6px;border:0;outline:0;resize:none;background:transparent;color:var(--text);font:inherit}
+    #test-controls{overflow:auto;border-left:1px solid var(--line);background:var(--panel);padding:16px}#test-controls h1{font-size:14px;margin:0 0 12px}#test-controls button{display:block;width:100%;margin:7px 0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);text-align:left}#host-status{font-size:12px;color:var(--muted);white-space:pre-wrap}
+    .tool-stage{padding:10px;border:1px dashed var(--line);border-radius:10px;color:var(--muted)}
+    @media(max-width:800px){#host-shell{grid-template-columns:1fr}#test-controls{display:none}#composer-shell{left:16px;right:16px}}
+  </style>
+</head>
+<body>
+  <div id="host-shell">
+    <main id="conversation-scroll" aria-label="Conversation"><div id="conversation"></div></main>
+    <aside id="test-controls" aria-label="Host lifecycle controls">
+      <h1>Deterministic host lifecycle</h1>
+      <button data-host-action="stream-start">Start stream</button>
+      <button data-host-action="stream-tick">Advance stream</button>
+      <button data-host-action="stream-finish">Finish stream</button>
+      <button data-host-action="remount">Remount answer</button>
+      <button data-host-action="edit">Edit answer</button>
+      <button data-host-action="math">Reformat math</button>
+      <button data-host-action="duplicate">Duplicate answer text</button>
+      <button data-host-action="remove-source">Remove source text</button>
+      <button data-host-action="long">Toggle long export</button>
+      <button data-host-action="branch">Switch branch</button>
+      <button data-host-action="conversation">Switch conversation</button>
+      <button data-host-action="composer">Remount composer</button>
+      <button data-host-action="tool">Toggle tool stage</button>
+      <button data-host-action="virtualize">Virtualize older turns</button>
+      <button data-host-action="theme">Toggle theme</button>
+      <output id="host-status"></output>
+    </aside>
+  </div>
+  <form id="composer-shell"><div id="composer-slot"></div></form>
+  <script>
+    (() => {
+      const state = {
+        conversation: "a", branch: 0, revision: 0, stream: 0, streaming: false,
+        composer: "contenteditable", composerRevision: 0, tool: false, virtualized: false, theme: "light", math: false, duplicate: false, sourceRemoved: false, long: false
+      };
+      const richAnswer = () => `
+        <h2>Reliable local export</h2>
+        ${state.sourceRemoved ? `<p id="primary-answer">Source text removed by host lifecycle.</p>` : `<p id="primary-answer">Before <span class="katex" data-tex="x+1"><span class="katex-mathml"><math><semantics><mrow><mi>x</mi><mo>+</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">x+1</annotation></semantics></math></span><span class="katex-html">${state.math ? "𝑥 ＋ 1" : "x + 1"}</span></span> after the formula remains continuous${state.revision ? " after editing" : ""}.</p>`}
+        ${state.duplicate ? `<p>Before <span class="katex" data-tex="x+1"><span class="katex-html">x + 1</span></span> after the formula remains continuous.</p>` : ""}
+        <ul><li>First list item</li><li>Second list item with <strong>emphasis</strong></li></ul>
+        <blockquote>Highlights remain part of the reading flow.</blockquote>
+        <table><thead><tr><th>Feature</th><th>Result</th></tr></thead><tbody><tr><td>复制</td><td><code>Markdown</code></td></tr><tr><td>公式</td><td><span class="katex" data-tex="a^2+b^2"><span class="katex-html">a² + b²</span></span></td></tr></tbody></table>
+        <pre><code class="language-js">const localOnly = true;</code></pre>
+        ${state.long ? Array.from({ length: 26 }, (_, index) => `<p>Section ${index + 1}: Stable highlighted context remains selectable across wrapped lines and printed pages while preserving local semantic ownership.</p>`).join("") : ""}
+        <div class="katex-display" data-tex="E=mc^2"><span class="katex-mathml"><math display="block"><semantics><mrow><mi>E</mi><mo>=</mo><mi>m</mi><msup><mi>c</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">E=mc^2</annotation></semantics></math></span><span class="katex-html">E=mc²</span></div>`;
+
+      function messages() {
+        const base = [];
+        for (let index = 1; index <= 18; index += 1) {
+          const assistant = index % 2 === 0;
+          const id = state.conversation === "a" ? index : index + 100;
+          const content = assistant
+            ? (index === 2 ? richAnswer() : `<p>Assistant response ${id} with stable content.</p>`)
+            : `<p>User prompt ${id}</p>`;
+          base.push({ id, assistant, content });
+        }
+        if (state.branch) base[1] = { id: 202, assistant: true, content: `<p id="alternate-answer">Alternate branch answer with unique ownership.</p>` };
+        if (state.streaming) base.push({ id: 900, assistant: true, content: `<p id="streaming-answer">Streaming answer ${"token ".repeat(state.stream + 1)}</p>` });
+        return state.virtualized ? base.slice(-8) : base;
+      }
+
+      function render() {
+        document.documentElement.dataset.theme = state.theme;
+        const root = document.getElementById("conversation");
+        root.replaceChildren(...messages().map(renderTurn));
+        renderComposer();
+        document.getElementById("host-status").textContent = JSON.stringify({ ...state, mountedTurns: root.children.length }, null, 2);
+        document.dispatchEvent(new CustomEvent("mica-host-render", { detail: { ...state } }));
+      }
+
+      function renderTurn(item) {
+        const section = document.createElement("section");
+        section.className = "turn";
+        section.dataset.testid = `conversation-turn-${item.id}`;
+        section.dataset.messageKind = item.assistant ? "assistant" : "user";
+        const role = document.createElement("div");
+        role.dataset.messageAuthorRole = item.assistant ? "assistant" : "user";
+        const content = document.createElement("div");
+        content.className = item.assistant ? "markdown prose" : "whitespace-pre-wrap";
+        content.innerHTML = item.content;
+        role.append(content);
+        section.append(role);
+        if (item.assistant) {
+          if (state.tool && item.id === 2) {
+            const tool = document.createElement("div"); tool.className = "tool-stage"; tool.dataset.micaToolStage = "search"; tool.dataset.micaToolSafety = "read-only"; tool.textContent = "Read-only search completed"; section.append(tool);
+          }
+          const actions = document.createElement("div"); actions.className = "answer-actions";
+          const copy = document.createElement("button"); copy.type = "button"; copy.dataset.testid = "copy-turn-action-button"; copy.setAttribute("aria-label", "Copy response"); copy.textContent = "Copy";
+          copy.addEventListener("click", () => navigator.clipboard.writeText(content.innerText));
+          actions.append(copy); section.append(actions);
+        }
+        return section;
+      }
+
+      function renderComposer() {
+        const slot = document.getElementById("composer-slot");
+        slot.replaceChildren();
+        if (state.composer === "textarea") {
+          const textarea = document.createElement("textarea"); textarea.id = "mobile-composer-prompt"; textarea.setAttribute("aria-label", "Message ChatGPT"); slot.append(textarea);
+        } else {
+          const editor = document.createElement("div"); editor.id = "prompt-textarea"; editor.contentEditable = "true"; editor.setAttribute("role", "textbox"); editor.setAttribute("aria-label", "Message ChatGPT"); slot.append(editor);
+        }
+        if (state.streaming) {
+          const stop = document.createElement("button"); stop.type = "button"; stop.className = "native-button"; stop.dataset.testid = "stop-button"; stop.setAttribute("aria-label", "Stop generating"); stop.textContent = "Stop"; slot.append(stop);
+        }
+      }
+
+      function act(name) {
+        if (name === "stream-start") { state.streaming = true; state.stream = 0; }
+        if (name === "stream-tick" && state.streaming) state.stream += 1;
+        if (name === "stream-finish") state.streaming = false;
+        if (name === "remount") state.revision += 0;
+        if (name === "edit") state.revision += 1;
+        if (name === "math") state.math = !state.math;
+        if (name === "duplicate") state.duplicate = !state.duplicate;
+        if (name === "remove-source") state.sourceRemoved = !state.sourceRemoved;
+        if (name === "long") state.long = !state.long;
+        if (name === "branch") state.branch = state.branch ? 0 : 1;
+        if (name === "conversation") { state.conversation = state.conversation === "a" ? "b" : "a"; history.pushState({}, "", `/c/simulated-${state.conversation}`); dispatchEvent(new PopStateEvent("popstate")); }
+        if (name === "composer") { state.composer = state.composer === "contenteditable" ? "textarea" : "contenteditable"; state.composerRevision += 1; }
+        if (name === "tool") state.tool = !state.tool;
+        if (name === "virtualize") state.virtualized = !state.virtualized;
+        if (name === "theme") state.theme = state.theme === "light" ? "dark" : "light";
+        render();
+      }
+
+      document.getElementById("test-controls").addEventListener("click", (event) => {
+        const action = event.target.closest("button")?.dataset.hostAction;
+        if (action) act(action);
+      });
+      globalThis.MicaProductHost = Object.freeze({ snapshot: () => structuredClone(state) });
+      render();
+    })();
+  </script>
+</body>
+</html>
