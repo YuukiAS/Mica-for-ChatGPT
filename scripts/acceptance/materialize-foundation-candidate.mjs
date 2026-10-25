@@ -251,7 +251,7 @@ const requiredGates = [
 ];
 if (includesLowMemory) requiredGates.splice(requiredGates.indexOf("privacy"), 0, "low-memory-benefit");
 if (includesHighlightPdf) requiredGates.splice(requiredGates.indexOf("privacy"), 0, "highlight-remount", "pdf-selection", "installed-extension-e2e");
-if (includesFunctionalConvergence) requiredGates.splice(requiredGates.indexOf("privacy"), 0, "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "target-surface-backend", "highlight-record-integrity", "local-import-integrity");
+if (includesFunctionalConvergence) requiredGates.splice(requiredGates.indexOf("privacy"), 0, "conversation-export-completeness", "recovery-deduplication", "recovery-action-safety", "target-surface-backend", "highlight-record-integrity", "local-import-integrity", "chatgpt-ui-compatibility");
 
 const evidence = [
   record("candidate-identity", "LOCAL_REAL_BROWSER", { surface: "built-extension" }, ["dist-tree", "built-manifest"], { commit, distHash }),
