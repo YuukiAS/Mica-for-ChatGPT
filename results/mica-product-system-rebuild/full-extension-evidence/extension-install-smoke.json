@@ -1,10 +1,10 @@
 {
   "schema": "mica.full-extension-install.v1",
   "passed": true,
-  "generatedAt": "2026-10-25T16:08:46.261Z",
+  "generatedAt": "2026-10-25T16:45:03.006Z",
   "candidate": {
-    "version": "0.5.14",
-    "buildLabel": "product-delivery.1"
+    "version": "0.5.15",
+    "buildLabel": "product-delivery.2"
   },
   "browser": {
     "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",

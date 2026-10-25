@@ -1,6 +1,6 @@
 # Mica 功能收敛 V1
 
-Mica `0.5.14` 是一次真实扩展驱动的功能收敛候选，不是正式发布。它在既有 Foundation、Low Memory、Highlighter、PDF、统一设置、Markdown/Notion 序列化、完整会话导出和 Reliability 后端之上，补齐正式 Manifest V3 构建的统一端到端路径，并在真实 ChatGPT action-cluster 尚无精确合同时提供回答右键菜单入口。隔离 Playwright Chromium 实际加载 `dist/mica-dev`，运行正式 content scripts、Service Worker、`chrome.storage`、动态脚本注册、popup、Options 和 PDF 页面；所有未匹配网络请求均被拒绝，不接触用户日常 Edge profile、登录态或真实 ChatGPT。四项核心功能已推进到只剩登录态 current-site 和物理低内存设备证据的边界；Notion 原生公式、普通网页高亮实站交互及真实断流控件继续按独立状态报告。
+Mica `0.5.15` 是一次真实扩展驱动的功能收敛候选，不是正式发布。它在既有 Foundation、Low Memory、Highlighter、PDF、统一设置、Markdown/Notion 序列化、完整会话导出和 Reliability 后端之上，补齐正式 Manifest V3 构建的统一端到端路径，并在真实 ChatGPT action-cluster 尚无精确合同时提供回答右键菜单入口。隔离 Playwright Chromium 实际加载 `dist/mica-dev`，运行正式 content scripts、Service Worker、`chrome.storage`、动态脚本注册、popup、Options 和 PDF 页面；所有未匹配网络请求均被拒绝，不接触用户日常 Edge profile、登录态或真实 ChatGPT。四项核心功能已推进到只剩登录态 current-site 和物理低内存设备证据的边界；Notion 原生公式、普通网页高亮实站交互及真实断流控件继续按独立状态报告。
 
 配套机器矩阵位于 [`MICA_FUNCTIONAL_CONVERGENCE_V1.json`](MICA_FUNCTIONAL_CONVERGENCE_V1.json)。它是当前功能状态的唯一机器可读来源，README 和 ROADMAP 只做面向读者的摘要。
 
@@ -70,7 +70,7 @@ Notion 有两条清楚区分的路径：
 
 入口只在唯一 `EXACT` 目标上挂载，每条回答最多一个。菜单按设置只列出当前可用动作，并把默认格式排在首位。点击动作前还会重新取得同一 turn 的精确目标；streaming、重复 Copy、目标歧义、route change、remount、功能关闭或合同失效都会关闭菜单并移除 Mica 节点。触发器和菜单拒绝非可信点击，Escape、外部点击和失效都会收起菜单。
 
-纯 Node fixture 已覆盖这些合同，也确认控制器没有 typing listener、轮询、第二个 observer 或页面 selector。页面自行写入 `data-mica-fixture` 也不能取得权限，测试合同还必须带有扩展隔离世界中的 authority。当前真实 ChatGPT 的 action-cluster placement 仍未得到精确证据，因此 live adapter 返回 `MISSING / current_site_contract_unproven`，运行时保持原生，不会把 fixture 结构当作实站结构。`0.5.14` 同时增加浏览器右键 fallback：只保存 turn identity、时间和证据级别，不向后台发送回答正文；用户动作前必须在 15 秒内重新解析同一 settled answer，且上下文只能消费一次。实际安装扩展已经通过可信右键、Service Worker 菜单、目标回答重验证和真实剪贴板读回。
+纯 Node fixture 已覆盖这些合同，也确认控制器没有 typing listener、轮询、第二个 observer 或页面 selector。页面自行写入 `data-mica-fixture` 也不能取得权限，测试合同还必须带有扩展隔离世界中的 authority。当前真实 ChatGPT 的 action-cluster placement 仍未得到精确证据，因此 live adapter 返回 `MISSING / current_site_contract_unproven`，运行时保持原生，不会把 fixture 结构当作实站结构。`0.5.15` 保留浏览器右键 fallback：只保存 turn identity、时间和证据级别，不向后台发送回答正文；用户动作前必须在 15 秒内重新解析同一 settled answer，且上下文只能消费一次。实际安装扩展已经通过可信右键、Service Worker 菜单、目标回答重验证和真实剪贴板读回。
 
 ### 完整会话导出
 
@@ -134,7 +134,7 @@ Developer QA 报告新增有界目标结构采集。它只在用户导出报告�
 | 编号 | 来源 | 用户结果 | 当前状态 | 自动证据 | 真实验收 |
 | --- | --- | --- | --- | --- | --- |
 | MFC-010 | 冻结产品系统 | 所有回答能力共享一个解析入口 | `IMPLEMENTED_UNVERIFIED` | build/static | 真实 ChatGPT contract |
-| MFC-013 | 本轮 §12、产品系统 §5 | 离线核查兼容性并隔离单项结构漂移 | `IMPLEMENTED_VERIFIED` | compatibility fixture + validator 1.19.0 | 当前 Developer QA 导出仍待实站运行 |
+| MFC-013 | 本轮 §12、产品系统 §5 | 离线核查兼容性并隔离单项结构漂移 | `IMPLEMENTED_VERIFIED` | compatibility fixture + validator 1.20.0 | 当前 Developer QA 导出仍待实站运行 |
 | MFC-020 | 本轮 §4/§7 | 稳定回答可复制为 Markdown | `IMPLEMENTED_VERIFIED` | 真实扩展右键 + 实际剪贴板 | 登录态页面一次确认 |
 | MFC-021 | Issue #10、本轮 §7 | Notion rich clipboard 保留公式语义 | `IMPLEMENTED_UNVERIFIED` | MIME/结构模型 | 真实 Notion paste |
 | MFC-022 | Issue #10、本轮 §7 | 确定性 Notion 导入文件 | `IMPLEMENTED_VERIFIED` | convergence core | 真实导入结果 |
@@ -155,7 +155,7 @@ Developer QA 报告新增有界目标结构采集。它只在用户导出报告�
 | MFC-405 | 本轮 §4/§8 | Reliability 只通过 adapter 观察页面结构 | `IMPLEMENTED_VERIFIED` | adapter recovery + controller + static selector gate | lifecycle/tool 真实合同仍为 PARTIAL |
 | MFC-410 | Issues #5/#6 | 输入框与连接器旧故障收敛 | `BLOCKED_BY_REAL_EXTERNAL_DEPENDENCY` | 历史证据存在 | 失败页精确 DOM/AX 合同 |
 | MFC-420 | 历史任务 | Hide suggested work | `IMPLEMENTED_UNVERIFIED` | adapter fixture + 可逆控制器 + 静态门禁 | 当前真实目标结构与页面效果 |
-| MFC-620 | 本轮 §13 | 验收器拒绝伪完整性结论 | `IMPLEMENTED_VERIFIED` | validator 1.19.0；14 good / 62 bad | functional-convergence candidate 20/20 PASS |
+| MFC-620 | 本轮 §13 | 验收器拒绝伪完整性结论 | `IMPLEMENTED_VERIFIED` | validator 1.20.0；14 good / 63 bad | functional-convergence candidate 20/20 PASS |
 
 完整字段、模块归属、成功行为和未解决差距见 JSON 矩阵。
 
@@ -188,7 +188,7 @@ npm run test:e2e:stress
 npm run acceptance:preflight
 ```
 
-类别 1–3 的聚焦测试继续覆盖设置、序列化、锚点、恢复安全、页面数据面和 PDF.js 选择。类别 4 的 `test:extension` 加载正式 `dist/mica-dev`，覆盖实际 Manifest、content scripts、Service Worker、storage、动态注册、可信右键/鼠标/剪贴板、popup、Options、PDF 页面和 Worker 重启。Acceptance validator `1.19.0` 新增 `installed-extension-e2e` gate，并允许 `UNKNOWN`、`NONE`、无观察项且明确 fail-open 的合同能力保持未观察状态；它绑定安装冒烟、完整扩展 E2E、Low Memory lifecycle、六张视觉基准和实际 PDF。预检接受 14 个 known-good，并拒绝 62 个 known-bad。详细分类、历史故障和人工触发规则见 [`../testing/MICA_EXTENSION_TEST_COVERAGE.md`](../testing/MICA_EXTENSION_TEST_COVERAGE.md)。
+类别 1–3 的聚焦测试继续覆盖设置、序列化、锚点、恢复安全、页面数据面和 PDF.js 选择。类别 4 的 `test:extension` 加载正式 `dist/mica-dev`，覆盖实际 Manifest、content scripts、Service Worker、storage、动态注册、可信右键/鼠标/剪贴板、popup、Options、PDF 页面和 Worker 重启。Acceptance validator `1.20.0` 新增 `installed-extension-e2e` gate，并允许 `UNKNOWN`、`NONE`、无观察项且明确 fail-open 的合同能力保持未观察状态；完整扩展 PDF 还必须同时包含当前版本可解析的高亮，并把内容变化前的旧锚点保持为 unresolved。它绑定安装冒烟、完整扩展 E2E、Low Memory lifecycle、六张视觉基准和实际 PDF。预检接受 14 个 known-good，并拒绝 63 个 known-bad。详细分类、历史故障和人工触发规则见 [`../testing/MICA_EXTENSION_TEST_COVERAGE.md`](../testing/MICA_EXTENSION_TEST_COVERAGE.md)。
 
 ## 明确保留的差距
 
@@ -201,7 +201,7 @@ npm run acceptance:preflight
 - 单回答 `Mica actions` 的当前真实 action-cluster placement；在 placement 未证明时使用已自动验证的右键 fallback；
 - 历史 Composer / Connector 修复在当前真实页面上的精确收敛；
 - Hide suggested work 的当前 ChatGPT 结构合同与页面验收；
-- 当前 `0.5.14` 的登录态 ChatGPT、目标低内存设备和 Notion 验收；
+- 当前 `0.5.15` 的登录态 ChatGPT、目标低内存设备和 Notion 验收；
 - `functional-convergence` profile 的最终 candidate 物化与运行。
 
-这些缺口不会阻止源码和开发构建继续存在。四项核心功能已经具备真实安装扩展的日常自动回归；在最后一次集中人工验收完成前，`0.5.14` 仍不能称为正式发布。
+这些缺口不会阻止源码和开发构建继续存在。四项核心功能已经具备真实安装扩展的日常自动回归；在最后一次集中人工验收完成前，`0.5.15` 仍不能称为正式发布。

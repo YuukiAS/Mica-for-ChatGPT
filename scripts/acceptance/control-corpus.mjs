@@ -226,6 +226,15 @@ export async function runControlCorpus(repoRoot) {
       evidence(context.manifest, "installed-extension-e2e").measurement.privacy.zeroRealChatGptRequests = false;
       refreshRoot(context.manifest);
     }],
+    ["installed-extension-pdf-highlight-dropped-rehash", async (context) => {
+      await mutateJsonArtifact(context, "full-extension-e2e", (value) => {
+        value.pdf.resolvedHighlightCount = 0;
+        value.pdf.renderedHighlightMarks = 0;
+        value.pdf.highlightVisibleInExportPage = false;
+      });
+      evidence(context.manifest, "installed-extension-e2e").measurement.full.pdf = false;
+      refreshRoot(context.manifest);
+    }],
     ["stale-chatgpt-contract", async ({ manifest }) => { evidence(manifest, "adapter-contract").measurement.capabilities[0].invalidatedBy = ["newer incompatible surface"]; refreshRoot(manifest); }],
     ["control-bundle-presented-as-candidate", async (context) => { context.expectedBundleKind = "candidate"; }],
     ["copy-serialization-output-mismatch", async ({ manifest }) => { evidence(manifest, "copy-serialization").measurement.cases[0].actualArtifactId = "copy-rich-actual"; refreshRoot(manifest); }],
@@ -1189,7 +1198,9 @@ function controlFullExtensionE2e(visualHashes) {
     pdf: {
       actualUserExportClick: true, actualServiceWorkerHandoff: true, actualSessionStorage: true, temporaryModelConsumed: true,
       actualExtensionPage: true, actualPdfFile: "output/pdf/mica-full-extension-export.pdf", pageCount: 3,
-      independentTextExtraction: true, semanticMathMl: true, tableCodeChinese: true
+      independentTextExtraction: true, semanticMathMl: true, tableCodeChinese: true,
+      installedHighlightRecordCountBeforeExport: 2, resolvedHighlightCount: 1, renderedHighlightMarks: 1,
+      highlightVisibleInExportPage: true, currentVersionHighlightResolved: true, sourceMutationFailOpen: true
     },
     popupAndSettings: {
       actualChromeExtensionPage: true, actualActiveTabMessaging: true, settingsPersistence: true, settingsNavigation: true,

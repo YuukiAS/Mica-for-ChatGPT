@@ -1,7 +1,7 @@
 (() => {
-  const VERSION = "0.5.14";
-  const VERSION_NAME = "0.5.14";
-  const BUILD_LABEL = "product-delivery.1";
+  const VERSION = "0.5.15";
+  const VERSION_NAME = "0.5.15";
+  const BUILD_LABEL = "product-delivery.2";
   const CONTRACT_HASH = "6a5aacc436288b2dfbabd7ec6725114acc34fc3d910faaa9db812c5c5f679d9b";
   const DEFAULT_SETTINGS = Object.freeze({ enabled: true, lowMemory: true, highlighter: true, copyExport: true, reliability: true, hideSuggestedWork: false, lowMemoryKeepCount: 40, lowMemoryThreshold: 80 });
   const RECOVERY_AUTH = Object.freeze({ popup: Symbol("popup"), settings: Symbol("settings"), trustedGesture: Symbol("trusted-gesture") });

@@ -1,6 +1,6 @@
 # Mica 真实扩展测试覆盖矩阵
 
-本文件记录 `0.5.14`（`product-delivery.1`）当前候选的自动化证据边界。它补充现有产品矩阵和验收器，不建立第二套验收框架。所有类别 4 自动化均加载 `dist/mica-dev` 的正式 Manifest V3 构建，使用独立 Playwright Chromium 用户目录，拒绝所有未匹配网络请求；不会接触用户日常 Edge profile、登录 Cookie、令牌或真实聊天数据。
+本文件记录 `0.5.15`（`product-delivery.2`）当前候选的自动化证据边界。它补充现有产品矩阵和验收器，不建立第二套验收框架。所有类别 4 自动化均加载 `dist/mica-dev` 的正式 Manifest V3 构建，使用独立 Playwright Chromium 用户目录，拒绝所有未匹配网络请求；不会接触用户日常 Edge profile、登录 Cookie、令牌或真实聊天数据。
 
 ## 六类实施路径
 
@@ -59,7 +59,7 @@ Low Memory 另有 `tests/fixtures/mica-low-memory-host.html`，在实际 documen
 
 ## 视觉与产物
 
-Chromium 151 下已人工查看并冻结六张 `0.5.14` 基准：Options 亮色、Highlighter 亮/暗色、Popup 320 亮色、368 暗色、400 亮色。自动比较状态为 `MATCH`，没有裁切、水平溢出、主题对比或固定表面位置问题。PDF 导出页另有实际截图，但不自动提升为基准；实际 PDF 为三页 A4，并由独立解析器复核文本与数学语义。
+Chromium 151 下已人工查看并冻结六张 `0.5.15` 基准：Options 亮色、Highlighter 亮/暗色、Popup 320 亮色、368 暗色、400 亮色。自动比较状态为 `MATCH`，没有裁切、水平溢出、主题对比或固定表面位置问题。PDF 导出页另有实际截图，但不自动提升为基准；实际 PDF 为三页 A4，含当前列表高亮，并由独立解析器复核文本与数学语义。
 
 基准文件为 `tests/mica-extension-visual-baseline.json`。截图哈希、浏览器版本、批准版本及实际 PDF 都由原 acceptance validator 的 `installed-extension-e2e` gate 绑定；失败时不会自动覆盖基准。
 

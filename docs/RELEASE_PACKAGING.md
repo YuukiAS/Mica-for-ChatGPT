@@ -36,18 +36,18 @@ icons/
 - 最好同时提供 SHA-256 校验值；
 - 不使用 GitHub Actions 自动发布，除非未来明确需要。当前优先使用本地构建 + `gh release`，避免消耗 Actions 额度。
 
-## 当前 v0.1 状态
+## 当前 0.5.15 候选状态
 
-当前 `dist/mica-dev/` 已经可以通过 `Load unpacked` 安装，但 P0 尚未在目标 8 GB MacBook Neo 上完成真实性能验收。因此不应把它表述为“稳定版”。
+当前 `dist/mica-dev/` 已经可以通过 `Load unpacked` 安装。0.5.15 已通过实际安装扩展的隔离 Chromium 回归、Low Memory A/B/C 压测、PDF.js 指针选择、视觉基准和完整候选验收；登录态 ChatGPT 与目标物理低内存设备仍需一次集中确认。因此它是预发布候选，不是稳定版。
 
-当前 diagnostics、状态文案修正、v0.x working icon、已知安全提示自动 dismiss、低干扰 overlay、native-safe mounted-turn probe 与 guided composer diagnostics 已合入当前测试 build：
+当前候选包含单回答右键复制入口、ChatGPT 高亮、保留高亮和可选择数学文字层的 PDF，以及最近 40 条消息的 Low Memory 数据窗口。候选包名为：
 
 ```text
-v0.1.4
-mica-for-chatgpt-v0.1.4.zip
+v0.5.15
+mica-for-chatgpt-v0.5.15.zip
 ```
 
-Chrome manifest 的机器版本与用户可见版本均使用 `scripts/release-config.mjs` 中的三段式正式 runtime 版本，例如 `0.1.4`。日常 runtime build 不再继续 `0.1.0-alpha.N` 双重编号。
+Chrome manifest 的机器版本与用户可见版本均使用 `scripts/release-config.mjs` 中的三段式正式 runtime 版本，例如当前的 `0.5.15`。日常 runtime build 不再继续 `0.1.0-alpha.N` 双重编号。
 
 当前本地命令：
 
@@ -58,22 +58,28 @@ npm run package:release
 该命令会重新 build，然后生成：
 
 ```text
-release/mica-for-chatgpt-v0.1.4.zip
-release/mica-for-chatgpt-v0.1.4.sha256
+release/mica-for-chatgpt-v0.5.15.zip
+release/mica-for-chatgpt-v0.5.15.sha256
 ```
+
+当前本地候选 ZIP 的 SHA-256 为 `5c54ad165f5e09f5d2cd22429f3e179815ab4b5433f650f9c34c63fc0d8adfb8`。最终发布前必须从最终合入提交重新生成并复核，不能只沿用此处记录。
 
 当前 ZIP 解压后根目录直接包含：
 
 ```text
 manifest.json
-known-interruptions.js
-composer-diagnostics.js
 content.js
+answer-context-menu-background.js
+low-memory-background.js
 popup/
+options/
+pdf/
 icons/
 ```
 
 版本来源集中在 `scripts/release-config.mjs`，避免 manifest、固定开发目录、ZIP 文件名和 release tag 漂移。Release package 从当前 canonical `dist/mica-dev` 内容生成版本化 ZIP / SHA-256。
+
+0.5.15 的预发布说明草稿位于 [`releases/v0.5.15.md`](releases/v0.5.15.md)。只有最终登录态验收通过、候选按最终提交重新冻结并经受保护流程合入后，才可以用该说明创建 GitHub Pre-release。
 
 ## 发布前最低检查
 

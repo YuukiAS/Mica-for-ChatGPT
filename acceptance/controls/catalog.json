@@ -62,6 +62,7 @@
     {"id": "installed-extension-service-worker-bypassed", "expected": "REJECT"},
     {"id": "installed-extension-visual-auto-accepted-rehash", "expected": "REJECT"},
     {"id": "installed-extension-real-network-used-rehash", "expected": "REJECT"},
+    {"id": "installed-extension-pdf-highlight-dropped-rehash", "expected": "REJECT"},
     {"id": "stale-chatgpt-contract", "expected": "REJECT"},
     {"id": "control-bundle-presented-as-candidate", "expected": "REJECT"},
     {"id": "copy-serialization-output-mismatch", "expected": "REJECT"},

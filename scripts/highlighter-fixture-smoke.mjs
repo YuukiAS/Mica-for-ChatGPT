@@ -199,6 +199,8 @@ try {
     return globalThis.MicaHighlightEngine.resolveRecord(original, turn, model);
   });
 
+  const listPdfProjection = await exerciseListPdfProjection(page, toolbar);
+
   const output = {
     passed: true,
     reference: { repository: "YuukiAS/Web_Highlighter", commit: "546c8c8bb3e2281929a7af77654793c8910289a7" },
@@ -216,6 +218,7 @@ try {
     removed,
     clearedAnswer,
     branchResolution,
+    listPdfProjection,
     pdfExportHandoff,
     rawLatexSources: await page.evaluate(() => globalThis.MicaAnswerDocument.extractRawMathSources("prose \\(a+b\\) then $$c=d$$ end")),
     screenshots: {
@@ -237,6 +240,7 @@ try {
       colorOwnership: recolored.records[0]?.color === "mint",
       deleteOwnership: removed.records.length === 0,
       clearAnswerOwnership: clearedAnswer.records.length === 0 && clearedAnswer.status.renderedCount === 0,
+      listPdfProjectionAligned: listPdfProjection.resolvedHighlights === 1 && listPdfProjection.selectedText === "list item",
       pdfExportHandoff: pdfExportHandoff.trustedToolbarActionReachedBackground && pdfExportHandoff.localOnly
     }
   };
@@ -277,6 +281,39 @@ async function snapshot(page) {
     const records = runtime.getHighlightRecords();
     if (records[0]) sessionStorage.setItem("mica-fixture-last-record", JSON.stringify(records[0]));
     return { status: runtime.getHighlighterStatus(), records };
+  });
+}
+
+async function exerciseListPdfProjection(page, toolbar) {
+  const selection = await page.evaluate(() => {
+    const root = document.querySelector(".markdown");
+    root.innerHTML = "<ul><li>First list item</li><li>Second list item with <strong>emphasis</strong></li></ul>";
+    globalThis.__MICA_FOUNDATION_TEST__.reconcileHighlights();
+    const text = root.querySelectorAll("li")[1].firstChild;
+    const range = document.createRange();
+    range.setStart(text, 7);
+    range.setEnd(text, 16);
+    const browserSelection = getSelection();
+    browserSelection.removeAllRanges();
+    browserSelection.addRange(range);
+    return globalThis.__MICA_FOUNDATION_TEST__.inspectHighlightSelection();
+  });
+  assert(selection.ok && selection.quoteLength === 9, "list highlight selection was not captured");
+  await toolbar.locator("button[data-color='yellow']").click();
+  await page.waitForFunction(() => globalThis.__MICA_FOUNDATION_TEST__.getHighlighterStatus().recordCount === 1);
+  return page.evaluate(() => {
+    const runtime = globalThis.__MICA_FOUNDATION_TEST__;
+    const documentModel = runtime.getAnswerDocument("conversation-turn-2");
+    const record = runtime.getHighlightRecords()[0];
+    const built = runtime.buildPdfExportModel(documentModel);
+    const resolved = built?.model?.highlights?.[0] || null;
+    return {
+      selectedText: record?.anchor?.textQuote || null,
+      sourceVersionAligned: record?.anchor?.sourceVersion === documentModel?.sourceVersion,
+      resolvedHighlights: built?.model?.highlights?.length || 0,
+      unresolvedHighlights: built?.model?.unresolvedHighlightCount,
+      resolvedText: resolved ? built.model.plainText.slice(resolved.start, resolved.end) : null
+    };
   });
 }
 

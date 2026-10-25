@@ -453,6 +453,10 @@
       collectTableProjectionSegments(node, block, projection);
       return;
     }
+    if (block.kind === "list" && (node.tagName === "UL" || node.tagName === "OL")) {
+      collectListProjectionSegments(node, block, projection);
+      return;
+    }
     if (isMathRoot(node)) {
       const math = mathPayload(node);
       const text = math.rawTeX || math.renderedText;
@@ -460,6 +464,13 @@
       return;
     }
     for (const child of node.childNodes) collectProjectionSegments(child, block, projection);
+  }
+
+  function collectListProjectionSegments(list, block, projection) {
+    Array.from(list.children).filter((item) => item.tagName === "LI").forEach((item, itemIndex) => {
+      if (itemIndex) appendProjectionSegment(projection, "\n", item, "separator", block, null);
+      for (const child of item.childNodes) collectProjectionSegments(child, block, projection);
+    });
   }
 
   function collectTableProjectionSegments(table, block, projection) {

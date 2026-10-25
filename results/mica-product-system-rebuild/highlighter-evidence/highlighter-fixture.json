@@ -87,7 +87,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-1e07880e",
+        "id": "highlight-3ba6eac3",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -120,8 +120,8 @@
         },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-25T16:11:26.157Z",
-        "updatedAt": "2026-10-25T16:11:26.157Z"
+        "createdAt": "2026-10-25T16:44:49.726Z",
+        "updatedAt": "2026-10-25T16:44:49.726Z"
       }
     ]
   },
@@ -138,7 +138,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-1e07880e",
+        "id": "highlight-3ba6eac3",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -171,8 +171,8 @@
         },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-25T16:11:26.157Z",
-        "updatedAt": "2026-10-25T16:11:26.157Z"
+        "createdAt": "2026-10-25T16:44:49.726Z",
+        "updatedAt": "2026-10-25T16:44:49.726Z"
       }
     ]
   },
@@ -189,7 +189,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-1e07880e",
+        "id": "highlight-3ba6eac3",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -222,8 +222,8 @@
         },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-25T16:11:26.157Z",
-        "updatedAt": "2026-10-25T16:11:26.157Z"
+        "createdAt": "2026-10-25T16:44:49.726Z",
+        "updatedAt": "2026-10-25T16:44:49.726Z"
       }
     ]
   },
@@ -240,7 +240,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-1e07880e",
+        "id": "highlight-3ba6eac3",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -273,8 +273,8 @@
         },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-25T16:11:26.157Z",
-        "updatedAt": "2026-10-25T16:11:26.157Z"
+        "createdAt": "2026-10-25T16:44:49.726Z",
+        "updatedAt": "2026-10-25T16:44:49.726Z"
       }
     ]
   },
@@ -291,7 +291,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-1e07880e",
+        "id": "highlight-3ba6eac3",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -324,8 +324,8 @@
         },
         "status": "unresolved",
         "unresolvedReason": "ambiguous_anchor",
-        "createdAt": "2026-10-25T16:11:26.157Z",
-        "updatedAt": "2026-10-25T16:11:26.237Z"
+        "createdAt": "2026-10-25T16:44:49.726Z",
+        "updatedAt": "2026-10-25T16:44:49.808Z"
       }
     ]
   },
@@ -342,7 +342,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-1e07880e",
+        "id": "highlight-3ba6eac3",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -375,8 +375,8 @@
         },
         "status": "unresolved",
         "unresolvedReason": "source_missing",
-        "createdAt": "2026-10-25T16:11:26.157Z",
-        "updatedAt": "2026-10-25T16:11:26.242Z"
+        "createdAt": "2026-10-25T16:44:49.726Z",
+        "updatedAt": "2026-10-25T16:44:49.812Z"
       }
     ]
   },
@@ -393,7 +393,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-1e07880e",
+        "id": "highlight-3ba6eac3",
         "color": "mint",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -426,8 +426,8 @@
         },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-25T16:11:26.157Z",
-        "updatedAt": "2026-10-25T16:11:26.387Z"
+        "createdAt": "2026-10-25T16:44:49.726Z",
+        "updatedAt": "2026-10-25T16:44:49.973Z"
       }
     ]
   },
@@ -460,6 +460,13 @@
     "reason": "conversation_mismatch",
     "candidateCount": 0,
     "range": null
+  },
+  "listPdfProjection": {
+    "selectedText": "list item",
+    "sourceVersionAligned": true,
+    "resolvedHighlights": 1,
+    "unresolvedHighlights": 0,
+    "resolvedText": "list item"
   },
   "pdfExportHandoff": {
     "trustedToolbarActionReachedBackground": true,
@@ -501,6 +508,7 @@
     "colorOwnership": true,
     "deleteOwnership": true,
     "clearAnswerOwnership": true,
+    "listPdfProjectionAligned": true,
     "pdfExportHandoff": true
   }
 }

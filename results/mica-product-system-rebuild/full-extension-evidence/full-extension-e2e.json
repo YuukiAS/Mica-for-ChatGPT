@@ -1,10 +1,10 @@
 {
   "schema": "mica.full-extension-e2e.v1",
   "passed": true,
-  "generatedAt": "2026-10-25T16:09:05.149Z",
+  "generatedAt": "2026-10-25T16:45:22.527Z",
   "candidate": {
-    "version": "0.5.14",
-    "buildLabel": "product-delivery.1"
+    "version": "0.5.15",
+    "buildLabel": "product-delivery.2"
   },
   "execution": {
     "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
@@ -51,9 +51,15 @@
     "independentTextExtraction": true,
     "semanticMathMl": true,
     "tableCodeChinese": true,
+    "installedHighlightRecordCountBeforeExport": 2,
+    "resolvedHighlightCount": 1,
+    "renderedHighlightMarks": 2,
+    "highlightVisibleInExportPage": true,
+    "currentVersionHighlightResolved": true,
+    "sourceMutationFailOpen": true,
     "screenshot": {
       "path": "results/mica-product-system-rebuild/full-extension-evidence/pdf-export-page.png",
-      "sha256": "db2c02444ed8b080822df595923c408cfa4c52d95dece288dbf61121e168823f",
+      "sha256": "8e97d28e22e589a2395792a373b367d545b761b466aa91ced5264caf5770c702",
       "width": 1280,
       "height": 900,
       "baseline": false
@@ -93,15 +99,15 @@
     "status": "MATCH",
     "baseline": "tests/mica-extension-visual-baseline.json",
     "browser": "Chromium 151",
-    "approvedVersion": "0.5.14",
+    "approvedVersion": "0.5.15",
     "mismatches": [],
     "current": {
-      "options-light": "5e357cf9eb589bd052c8228a43395bf90db62332bf7bf7826a6262fe7d91a1d1",
-      "highlights-light": "3dfab3d83f8db5e2d44b27c62f4c8a736e7374bee33493134f2359ecf23ee233",
-      "highlights-dark": "176fc90d123e89b4b509618c725086f28600dd4f250f913e10f4f4a4cd74bebc",
-      "popup-320-light": "0c4a014ca923604d03f43ee074c5dfca0eb10f5c39ff7b0a9d024120d560a8cc",
-      "popup-368-dark": "14dbf54ec13139e62ab56f5e2bf059aac20a83b41d0219b6ef44b38a37d29d9f",
-      "popup-400-light": "d4c53b1ecdf85d23d41ab8987609b425e5f5c27bb2189ac70d842a160db95aea"
+      "options-light": "c6f6b89d5b282bf42faa29e9bb731fa78b673d45d3c516680895377ac20f6ef8",
+      "highlights-light": "485567ecc76fae3fc1c87b7bb5fc2a3576e2edc44bbb5ec5ffb7f364e6a42cfd",
+      "highlights-dark": "206a830ce86bb47f4c09a9567f5f505a8097d44fcba777958e3429e8907987da",
+      "popup-320-light": "a3ec177efde33d9fcfff41a49cc19cebb1f7d0a3639cf8b3b792686ed155eefc",
+      "popup-368-dark": "8577aafa8ea4b397b9d6ecc8f3ed7c19e22808c74f08a8a9c5a90a25cef12bea",
+      "popup-400-light": "6afa20fb3ffe30be730cdd10e910f3fa9cd015adf80a727d896ea15b27c0f5f8"
     }
   },
   "privacy": {
@@ -115,49 +121,49 @@
   "screenshots": {
     "options-light": {
       "path": "results/mica-product-system-rebuild/full-extension-evidence/options-light.png",
-      "sha256": "5e357cf9eb589bd052c8228a43395bf90db62332bf7bf7826a6262fe7d91a1d1",
+      "sha256": "c6f6b89d5b282bf42faa29e9bb731fa78b673d45d3c516680895377ac20f6ef8",
       "width": 1280,
       "height": 900,
       "baseline": true
     },
     "highlights-light": {
       "path": "results/mica-product-system-rebuild/full-extension-evidence/highlights-light.png",
-      "sha256": "3dfab3d83f8db5e2d44b27c62f4c8a736e7374bee33493134f2359ecf23ee233",
+      "sha256": "485567ecc76fae3fc1c87b7bb5fc2a3576e2edc44bbb5ec5ffb7f364e6a42cfd",
       "width": 1280,
       "height": 900,
       "baseline": true
     },
     "highlights-dark": {
       "path": "results/mica-product-system-rebuild/full-extension-evidence/highlights-dark.png",
-      "sha256": "176fc90d123e89b4b509618c725086f28600dd4f250f913e10f4f4a4cd74bebc",
+      "sha256": "206a830ce86bb47f4c09a9567f5f505a8097d44fcba777958e3429e8907987da",
       "width": 1280,
       "height": 900,
       "baseline": true
     },
     "pdf-export-page": {
       "path": "results/mica-product-system-rebuild/full-extension-evidence/pdf-export-page.png",
-      "sha256": "db2c02444ed8b080822df595923c408cfa4c52d95dece288dbf61121e168823f",
+      "sha256": "8e97d28e22e589a2395792a373b367d545b761b466aa91ced5264caf5770c702",
       "width": 1280,
       "height": 900,
       "baseline": false
     },
     "popup-320-light": {
       "path": "results/mica-product-system-rebuild/full-extension-evidence/popup-320-light.png",
-      "sha256": "0c4a014ca923604d03f43ee074c5dfca0eb10f5c39ff7b0a9d024120d560a8cc",
+      "sha256": "a3ec177efde33d9fcfff41a49cc19cebb1f7d0a3639cf8b3b792686ed155eefc",
       "width": 320,
       "height": 760,
       "baseline": true
     },
     "popup-368-dark": {
       "path": "results/mica-product-system-rebuild/full-extension-evidence/popup-368-dark.png",
-      "sha256": "14dbf54ec13139e62ab56f5e2bf059aac20a83b41d0219b6ef44b38a37d29d9f",
+      "sha256": "8577aafa8ea4b397b9d6ecc8f3ed7c19e22808c74f08a8a9c5a90a25cef12bea",
       "width": 368,
       "height": 760,
       "baseline": true
     },
     "popup-400-light": {
       "path": "results/mica-product-system-rebuild/full-extension-evidence/popup-400-light.png",
-      "sha256": "d4c53b1ecdf85d23d41ab8987609b425e5f5c27bb2189ac70d842a160db95aea",
+      "sha256": "6afa20fb3ffe30be730cdd10e910f3fa9cd015adf80a727d896ea15b27c0f5f8",
       "width": 400,
       "height": 760,
       "baseline": true

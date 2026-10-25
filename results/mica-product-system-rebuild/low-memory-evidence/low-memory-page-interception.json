@@ -25,7 +25,7 @@
         "roleSequenceHash": "bc203b0b",
         "source": "validated-conversation-graph",
         "conversationId": "conversation-1219b973",
-        "capturedAt": "2026-10-25T16:11:03.182Z"
+        "capturedAt": "2026-10-25T16:44:48.070Z"
       },
       "telemetryTrust": "page_untrusted",
       "recoveryAuthorization": "extension_ui_or_trusted_user_gesture",
@@ -33,7 +33,7 @@
       "serverMutation": false,
       "reactManagedInteractiveNodesDetached": false,
       "contentUpload": false,
-      "updatedAt": "2026-10-25T16:11:03.182Z"
+      "updatedAt": "2026-10-25T16:44:48.070Z"
     },
     "siteLocalConfigPresent": false
   },
@@ -104,7 +104,7 @@
       "serverMutation": false,
       "reactManagedInteractiveNodesDetached": false,
       "contentUpload": false,
-      "updatedAt": "2026-10-25T16:11:03.440Z"
+      "updatedAt": "2026-10-25T16:44:48.323Z"
     },
     "buttonLabel": "Resume Low Memory",
     "userAction": "trusted_keyboard",
@@ -140,7 +140,7 @@
         "roleSequenceHash": "bc203b0b",
         "source": "validated-conversation-graph",
         "conversationId": "conversation-1219b973",
-        "capturedAt": "2026-10-25T16:11:03.655Z"
+        "capturedAt": "2026-10-25T16:44:48.544Z"
       },
       "telemetryTrust": "page_untrusted",
       "recoveryAuthorization": "extension_ui_or_trusted_user_gesture",
@@ -148,7 +148,7 @@
       "serverMutation": false,
       "reactManagedInteractiveNodesDetached": false,
       "contentUpload": false,
-      "updatedAt": "2026-10-25T16:11:03.655Z"
+      "updatedAt": "2026-10-25T16:44:48.544Z"
     },
     "controlRetained": true,
     "buttonLabel": "Restore full history",
@@ -193,7 +193,7 @@
       "serverMutation": false,
       "reactManagedInteractiveNodesDetached": false,
       "contentUpload": false,
-      "updatedAt": "2026-10-25T16:11:03.872Z"
+      "updatedAt": "2026-10-25T16:44:48.774Z"
     }
   },
   "history": {

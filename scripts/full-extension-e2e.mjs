@@ -209,7 +209,7 @@ async function exerciseHighlighter(page, worker) {
   await clearStoredHighlights(worker);
   await page.reload({ waitUntil: "load" });
   await waitForMicaContentRuntime(worker, page.url());
-  await dragSelect(page, page.getByText("First list item", { exact: true }), 0.05, 0.9);
+  await dragSelect(page, page.locator("#primary-answer"), 0.01, 0.98);
   await page.keyboard.press("Alt+Shift+H");
   await waitHighlightCount(worker, 1);
   records = await highlightRecords(worker);
@@ -233,9 +233,19 @@ async function exerciseHighlighter(page, worker) {
 }
 
 async function exercisePdf(page, launched, pdfPath) {
+  await page.locator("button[data-host-action='duplicate']").click();
+  await page.waitForFunction(() => globalThis.CSS?.highlights?.size === 0);
   await page.locator("button[data-host-action='long']").click();
   await page.waitForTimeout(150);
-  await clickInside(page, page.getByText("First list item", { exact: true }), 0.72);
+  assert((await highlightRecords(launched.worker)).length === 1, "pre-existing highlight record was lost when the answer grew");
+  const currentVersionHighlightText = "Second list item with emphasis";
+  const currentVersionTarget = page.getByText(currentVersionHighlightText, { exact: true });
+  await dragSelect(page, currentVersionTarget, 0.08, 0.92);
+  await (await visibleToolbar(page)).locator("button[data-color='mint']").click();
+  await waitHighlightCount(launched.worker, 2);
+  await waitHighlightActionSettled(page);
+  assert(await visibleHighlightCount(page) >= 1, "current long-answer highlight was not visibly resolved before PDF export");
+  await clickInside(page, currentVersionTarget, 0.72);
   const nextPage = launched.context.waitForEvent("page", { timeout: 10_000 });
   await (await visibleToolbar(page)).locator("button[data-action='pdf']").click();
   const pdfPage = await nextPage;
@@ -246,6 +256,13 @@ async function exercisePdf(page, launched, pdfPath) {
   assert(await pdfPage.locator("table").count() >= 1 && await pdfPage.locator("pre").count() >= 1, "actual PDF page lost table or code content");
   assert((await pdfPage.locator("body").innerText()).includes("复制"), "actual PDF page lost Chinese content");
   assert(await pdfPage.locator("math").count() >= 1, "actual PDF page did not render semantic MathML");
+  const renderedHighlightMarks = await pdfPage.locator("mark").count();
+  const renderedHighlightText = (await pdfPage.locator("mark").allInnerTexts()).join(" ");
+  const exportMeta = await pdfPage.locator(".document-header p").innerText();
+  const exportNote = await pdfPage.locator(".export-note").innerText();
+  assert(renderedHighlightMarks >= 1 && /list item with\s+emphasis/.test(renderedHighlightText), `installed-extension highlight did not reach the actual PDF page: ${JSON.stringify({ renderedHighlightMarks, renderedHighlightText, exportMeta, exportNote })}`);
+  assert(/\b1 highlight\b/.test(exportMeta), "actual PDF page did not report its resolved highlight");
+  assert(/\b1 unresolved highlight\b/.test(exportNote), "source-version drift was not kept unresolved during the full-extension PDF handoff");
   const pdfScreenshot = await screenshot(pdfPage, "pdf-export-page", { fullPage: true, baseline: false });
   const cdp = await launched.context.newCDPSession(pdfPage);
   const printed = await cdp.send("Page.printToPDF", { printBackground: true, preferCSSPageSize: true, generateTaggedPDF: true });
@@ -263,7 +280,25 @@ async function exercisePdf(page, launched, pdfPath) {
   assert(pageCount >= 2 && inlineMathExtracted && displayMathExtracted && normalizedExtracted.includes("复制"), "actual full-extension PDF failed pagination or independent extraction");
   const sessionKeys = await launched.worker.evaluate(async () => Object.keys(await chrome.storage.session.get(null)).filter((key) => key.startsWith("mica.pdf.export.")));
   assert(sessionKeys.length === 0, "consumed PDF handoff remained in session storage");
-  return { actualUserExportClick: true, actualServiceWorkerHandoff: true, actualSessionStorage: true, temporaryModelConsumed: true, actualExtensionPage: true, actualPdfFile: path.relative(root, pdfPath).replaceAll("\\", "/"), pageCount, independentTextExtraction: true, semanticMathMl: true, tableCodeChinese: true, screenshot: pdfScreenshot };
+  return {
+    actualUserExportClick: true,
+    actualServiceWorkerHandoff: true,
+    actualSessionStorage: true,
+    temporaryModelConsumed: true,
+    actualExtensionPage: true,
+    actualPdfFile: path.relative(root, pdfPath).replaceAll("\\", "/"),
+    pageCount,
+    independentTextExtraction: true,
+    semanticMathMl: true,
+    tableCodeChinese: true,
+    installedHighlightRecordCountBeforeExport: 2,
+    resolvedHighlightCount: 1,
+    renderedHighlightMarks,
+    highlightVisibleInExportPage: true,
+    currentVersionHighlightResolved: /list item with\s+emphasis/.test(renderedHighlightText),
+    sourceMutationFailOpen: true,
+    screenshot: pdfScreenshot
+  };
 }
 
 async function exercisePopup(chatPage, launched, chatTabId) {
