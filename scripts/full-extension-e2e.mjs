@@ -321,12 +321,28 @@ async function exercisePopup(chatPage, launched, chatTabId) {
   shotMap["popup-400-light"] = await screenshot(popup, "popup-400-light", { fullPage: true });
   const layout = await popup.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth, labels: [...document.querySelectorAll("button,a,summary,input")].map((node) => node.getAttribute("aria-label") || node.textContent?.trim() || node.id).filter(Boolean) }));
   assert(layout.scrollWidth <= layout.clientWidth && layout.labels.length >= 8, "real popup overflowed or lost accessible controls");
+  await popup.locator("#enabled").focus();
+  const switchFocusVisible = await popup.locator(".brand-header .switch-control").evaluate((label) => {
+    const input = label.querySelector("input");
+    const track = label.querySelector(".switch-track");
+    const style = getComputedStyle(track);
+    return document.activeElement === input && style.outlineStyle !== "none" && Number.parseFloat(style.outlineWidth) >= 2;
+  });
+  assert(switchFocusVisible, "real popup switch focus was not visibly proxied to its track");
 
   const openedOptions = launched.context.waitForEvent("page", { timeout: 5_000 }).catch(() => null);
   await popup.locator("#settings-link").click();
   const optionsOpened = await openedOptions;
   const settingsNavigation = !!optionsOpened && optionsOpened.url().startsWith(`chrome-extension://${launched.extensionId}/options/index.html`);
   assert(settingsNavigation, "real popup Settings action did not open the extension options page");
+  await optionsOpened.waitForLoadState("load");
+  await optionsOpened.locator("#import-highlights").focus();
+  const fileImportFocusVisible = await optionsOpened.locator("#import-highlights").evaluate((input) => {
+    const proxy = input.closest(".file-button");
+    const style = getComputedStyle(proxy);
+    return document.activeElement === input && style.outlineStyle !== "none" && Number.parseFloat(style.outlineWidth) >= 2;
+  });
+  assert(fileImportFocusVisible, "real Options file-import focus was not visibly proxied to its button");
 
   const unsupported = await launched.context.newPage();
   await unsupported.goto(unsupportedUrl, { waitUntil: "load" });
@@ -338,7 +354,7 @@ async function exercisePopup(chatPage, launched, chatTabId) {
   assert(safeUnsupported, "popup did not fail open on an unsupported page");
   await unsupported.close();
   await setActiveTab(launched.worker, chatTabId);
-  return { result: { actualChromeExtensionPage: true, actualActiveTabMessaging: true, settingsPersistence: true, settingsNavigation, widths: [320, 368, 400], lightDark: true, noHorizontalOverflow: true, accessibleControls: true, unsupportedPageFailOpen: true }, screenshots: shotMap, optionsPage: optionsOpened };
+  return { result: { actualChromeExtensionPage: true, actualActiveTabMessaging: true, settingsPersistence: true, settingsNavigation, widths: [320, 368, 400], lightDark: true, noHorizontalOverflow: true, accessibleControls: true, switchFocusVisible, fileImportFocusVisible, unsupportedPageFailOpen: true }, screenshots: shotMap, optionsPage: optionsOpened };
 }
 
 async function exerciseLifecycle(page, worker) {

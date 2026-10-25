@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-export const VALIDATOR_VERSION = "1.21.0";
+export const VALIDATOR_VERSION = "1.22.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 const PLACEMENT_PROOF_OBSERVATION_IDS = [
   "copy-inside-assistant-turn",
@@ -1018,7 +1018,7 @@ export function deriveInstalledExtensionMeasurement(install, full, lowMemory, ba
       copy: full?.copy?.realPointerSelection === true && full?.copy?.realClipboardReadback === true && full?.copy?.targetAnswerOnly === true && full?.copy?.richStructurePreserved === true,
       highlighter: ["actualPointerSelection", "visibleCssHighlights", "fourColors", "recolor", "deleteOne", "clearExactAnswer", "refreshRestore", "hostRemountRestore", "equivalentMathReformatRestore", "duplicateTextFailOpen", "sourceDeletionFailOpen", "branchIsolation", "conversationIsolation", "persistedShortcutDefaultColor"].every((key) => highlighter[key] === true),
       pdf: pdf.actualUserExportClick === true && pdf.actualServiceWorkerHandoff === true && pdf.actualSessionStorage === true && pdf.temporaryModelConsumed === true && pdf.actualExtensionPage === true && pdf.pageCount >= 2 && pdf.independentTextExtraction === true && pdf.semanticMathMl === true && pdf.tableCodeChinese === true && pdf.installedHighlightRecordCountBeforeExport >= 2 && pdf.resolvedHighlightCount >= 1 && pdf.renderedHighlightMarks >= 1 && pdf.highlightVisibleInExportPage === true && pdf.currentVersionHighlightResolved === true && pdf.sourceMutationFailOpen === true,
-      popupAndSettings: popup.actualChromeExtensionPage === true && popup.actualActiveTabMessaging === true && popup.settingsPersistence === true && popup.settingsNavigation === true && sameJson(popup.widths, [320, 368, 400]) && popup.lightDark === true && popup.noHorizontalOverflow === true && popup.accessibleControls === true && popup.unsupportedPageFailOpen === true,
+      popupAndSettings: popup.actualChromeExtensionPage === true && popup.actualActiveTabMessaging === true && popup.settingsPersistence === true && popup.settingsNavigation === true && sameJson(popup.widths, [320, 368, 400]) && popup.lightDark === true && popup.noHorizontalOverflow === true && popup.accessibleControls === true && popup.switchFocusVisible === true && popup.fileImportFocusVisible === true && popup.unsupportedPageFailOpen === true,
       lifecycle: ["stateDrivenHost", "fullDomRemounts", "streamingLifecycle", "composerVariantRemount", "staleDraftNotRestored", "readOnlyToolStage", "virtualizedUnmountRemount", "routeAndConversationSwitch"].every((key) => lifecycle[key] === true),
       workerRestart: full?.workerRestart?.actualWorkerStopped === true && full?.workerRestart?.actualWorkerRestarted === true && full?.workerRestart?.settingsRecovered === true,
       visualMatch: full?.visual?.status === "MATCH" && Array.isArray(full?.visual?.mismatches) && full.visual.mismatches.length === 0 && baseline?.approvedVersion === full?.candidate?.version

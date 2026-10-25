@@ -87,7 +87,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-3ba6eac3",
+        "id": "highlight-383b8eed",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -120,8 +120,8 @@
         },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-25T16:44:49.726Z",
-        "updatedAt": "2026-10-25T16:44:49.726Z"
+        "createdAt": "2026-10-25T17:08:10.402Z",
+        "updatedAt": "2026-10-25T17:08:10.402Z"
       }
     ]
   },
@@ -138,7 +138,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-3ba6eac3",
+        "id": "highlight-383b8eed",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -171,8 +171,8 @@
         },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-25T16:44:49.726Z",
-        "updatedAt": "2026-10-25T16:44:49.726Z"
+        "createdAt": "2026-10-25T17:08:10.402Z",
+        "updatedAt": "2026-10-25T17:08:10.402Z"
       }
     ]
   },
@@ -189,7 +189,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-3ba6eac3",
+        "id": "highlight-383b8eed",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -222,8 +222,8 @@
         },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-25T16:44:49.726Z",
-        "updatedAt": "2026-10-25T16:44:49.726Z"
+        "createdAt": "2026-10-25T17:08:10.402Z",
+        "updatedAt": "2026-10-25T17:08:10.402Z"
       }
     ]
   },
@@ -240,7 +240,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-3ba6eac3",
+        "id": "highlight-383b8eed",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -273,8 +273,8 @@
         },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-25T16:44:49.726Z",
-        "updatedAt": "2026-10-25T16:44:49.726Z"
+        "createdAt": "2026-10-25T17:08:10.402Z",
+        "updatedAt": "2026-10-25T17:08:10.402Z"
       }
     ]
   },
@@ -291,7 +291,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-3ba6eac3",
+        "id": "highlight-383b8eed",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -324,8 +324,8 @@
         },
         "status": "unresolved",
         "unresolvedReason": "ambiguous_anchor",
-        "createdAt": "2026-10-25T16:44:49.726Z",
-        "updatedAt": "2026-10-25T16:44:49.808Z"
+        "createdAt": "2026-10-25T17:08:10.402Z",
+        "updatedAt": "2026-10-25T17:08:10.476Z"
       }
     ]
   },
@@ -342,7 +342,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-3ba6eac3",
+        "id": "highlight-383b8eed",
         "color": "yellow",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -375,8 +375,8 @@
         },
         "status": "unresolved",
         "unresolvedReason": "source_missing",
-        "createdAt": "2026-10-25T16:44:49.726Z",
-        "updatedAt": "2026-10-25T16:44:49.812Z"
+        "createdAt": "2026-10-25T17:08:10.402Z",
+        "updatedAt": "2026-10-25T17:08:10.480Z"
       }
     ]
   },
@@ -393,7 +393,7 @@
     "records": [
       {
         "schemaVersion": 1,
-        "id": "highlight-3ba6eac3",
+        "id": "highlight-383b8eed",
         "color": "mint",
         "anchor": {
           "conversationId": "conversation-8f42df23",
@@ -426,8 +426,8 @@
         },
         "status": "active",
         "unresolvedReason": null,
-        "createdAt": "2026-10-25T16:44:49.726Z",
-        "updatedAt": "2026-10-25T16:44:49.973Z"
+        "createdAt": "2026-10-25T17:08:10.402Z",
+        "updatedAt": "2026-10-25T17:08:10.634Z"
       }
     ]
   },

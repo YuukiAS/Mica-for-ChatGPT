@@ -1,6 +1,6 @@
 # Mica Roadmap
 
-Mica 以 2026-10-12 的冻结产品系统为基础继续推进。当前 `0.5.15` 候选在 Foundation、Low Memory、Highlighter、PDF、Copy、Settings 和 Reliability 后端之上，加入真实安装扩展的统一自动回归：正式 Manifest V3、content scripts、Service Worker、storage、动态注册、popup、Options、剪贴板和 PDF 页面都在隔离 Chromium 中运行。测试拒绝所有未匹配网络请求，不接触用户 Edge profile 或真实 ChatGPT。各项状态以 [`product/MICA_FUNCTIONAL_CONVERGENCE_V1.md`](product/MICA_FUNCTIONAL_CONVERGENCE_V1.md) 为准，测试分类见 [`testing/MICA_EXTENSION_TEST_COVERAGE.md`](testing/MICA_EXTENSION_TEST_COVERAGE.md)。
+Mica 以 2026-10-12 的冻结产品系统为基础继续推进。当前 `0.5.16` 候选在 Foundation、Low Memory、Highlighter、PDF、Copy、Settings 和 Reliability 后端之上，加入真实安装扩展的统一自动回归：正式 Manifest V3、content scripts、Service Worker、storage、动态注册、popup、Options、键盘焦点、剪贴板和 PDF 页面都在隔离 Chromium 中运行。测试拒绝所有未匹配网络请求，不接触用户 Edge profile 或真实 ChatGPT。各项状态以 [`product/MICA_FUNCTIONAL_CONVERGENCE_V1.md`](product/MICA_FUNCTIONAL_CONVERGENCE_V1.md) 为准，测试分类见 [`testing/MICA_EXTENSION_TEST_COVERAGE.md`](testing/MICA_EXTENSION_TEST_COVERAGE.md)。
 
 ## Foundation（内部关口）
 
@@ -39,7 +39,7 @@ ChatGPT 原生 virtualization 只是基线。`content-visibility`、DOM 数量�
 
 ## 功能收敛阶段 — Copy / Settings / Reliability
 
-当前 `0.5.15` 候选已经加入：
+当前 `0.5.16` 候选已经加入：
 
 - 版本化设置 schema 和统一 Options 页面；
 - AnswerDocument 驱动的 Markdown、Notion rich clipboard 和 Notion import file；

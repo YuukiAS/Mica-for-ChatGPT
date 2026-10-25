@@ -1,10 +1,10 @@
 {
   "schema": "mica.full-extension-e2e.v1",
   "passed": true,
-  "generatedAt": "2026-10-25T16:45:22.527Z",
+  "generatedAt": "2026-10-25T17:08:44.421Z",
   "candidate": {
-    "version": "0.5.15",
-    "buildLabel": "product-delivery.2"
+    "version": "0.5.16",
+    "buildLabel": "product-delivery.3"
   },
   "execution": {
     "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
@@ -59,7 +59,7 @@
     "sourceMutationFailOpen": true,
     "screenshot": {
       "path": "results/mica-product-system-rebuild/full-extension-evidence/pdf-export-page.png",
-      "sha256": "8e97d28e22e589a2395792a373b367d545b761b466aa91ced5264caf5770c702",
+      "sha256": "4e4b94a2380e3d7c7405fbd18d3e56bb7776d879928556afc94a2af99e9d7b37",
       "width": 1280,
       "height": 900,
       "baseline": false
@@ -78,6 +78,8 @@
     "lightDark": true,
     "noHorizontalOverflow": true,
     "accessibleControls": true,
+    "switchFocusVisible": true,
+    "fileImportFocusVisible": true,
     "unsupportedPageFailOpen": true
   },
   "lifecycle": {
@@ -99,15 +101,15 @@
     "status": "MATCH",
     "baseline": "tests/mica-extension-visual-baseline.json",
     "browser": "Chromium 151",
-    "approvedVersion": "0.5.15",
+    "approvedVersion": "0.5.16",
     "mismatches": [],
     "current": {
-      "options-light": "c6f6b89d5b282bf42faa29e9bb731fa78b673d45d3c516680895377ac20f6ef8",
+      "options-light": "a5efeb5183fb995996f23715d933ca2ff6ddf183132afea9547a3aff5f4d04ef",
       "highlights-light": "485567ecc76fae3fc1c87b7bb5fc2a3576e2edc44bbb5ec5ffb7f364e6a42cfd",
       "highlights-dark": "206a830ce86bb47f4c09a9567f5f505a8097d44fcba777958e3429e8907987da",
-      "popup-320-light": "a3ec177efde33d9fcfff41a49cc19cebb1f7d0a3639cf8b3b792686ed155eefc",
-      "popup-368-dark": "8577aafa8ea4b397b9d6ecc8f3ed7c19e22808c74f08a8a9c5a90a25cef12bea",
-      "popup-400-light": "6afa20fb3ffe30be730cdd10e910f3fa9cd015adf80a727d896ea15b27c0f5f8"
+      "popup-320-light": "776edc057ae0d1b225208277024ce33f1b3dfc0d856e419b1922dde9fc6e1632",
+      "popup-368-dark": "f5ee2faf9b7f743dd8263b90ee0465ec658598676e5d02ad47d9c38828976b23",
+      "popup-400-light": "3e4b2c39f3e37216550696ec32a0701b46735cf34489014bc4bf748350578f9f"
     }
   },
   "privacy": {
@@ -121,7 +123,7 @@
   "screenshots": {
     "options-light": {
       "path": "results/mica-product-system-rebuild/full-extension-evidence/options-light.png",
-      "sha256": "c6f6b89d5b282bf42faa29e9bb731fa78b673d45d3c516680895377ac20f6ef8",
+      "sha256": "a5efeb5183fb995996f23715d933ca2ff6ddf183132afea9547a3aff5f4d04ef",
       "width": 1280,
       "height": 900,
       "baseline": true
@@ -142,28 +144,28 @@
     },
     "pdf-export-page": {
       "path": "results/mica-product-system-rebuild/full-extension-evidence/pdf-export-page.png",
-      "sha256": "8e97d28e22e589a2395792a373b367d545b761b466aa91ced5264caf5770c702",
+      "sha256": "4e4b94a2380e3d7c7405fbd18d3e56bb7776d879928556afc94a2af99e9d7b37",
       "width": 1280,
       "height": 900,
       "baseline": false
     },
     "popup-320-light": {
       "path": "results/mica-product-system-rebuild/full-extension-evidence/popup-320-light.png",
-      "sha256": "a3ec177efde33d9fcfff41a49cc19cebb1f7d0a3639cf8b3b792686ed155eefc",
+      "sha256": "776edc057ae0d1b225208277024ce33f1b3dfc0d856e419b1922dde9fc6e1632",
       "width": 320,
       "height": 760,
       "baseline": true
     },
     "popup-368-dark": {
       "path": "results/mica-product-system-rebuild/full-extension-evidence/popup-368-dark.png",
-      "sha256": "8577aafa8ea4b397b9d6ecc8f3ed7c19e22808c74f08a8a9c5a90a25cef12bea",
+      "sha256": "f5ee2faf9b7f743dd8263b90ee0465ec658598676e5d02ad47d9c38828976b23",
       "width": 368,
       "height": 760,
       "baseline": true
     },
     "popup-400-light": {
       "path": "results/mica-product-system-rebuild/full-extension-evidence/popup-400-light.png",
-      "sha256": "6afa20fb3ffe30be730cdd10e910f3fa9cd015adf80a727d896ea15b27c0f5f8",
+      "sha256": "3e4b2c39f3e37216550696ec32a0701b46735cf34489014bc4bf748350578f9f",
       "width": 400,
       "height": 760,
       "baseline": true

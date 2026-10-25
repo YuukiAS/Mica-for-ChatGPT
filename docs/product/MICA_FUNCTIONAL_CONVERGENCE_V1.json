@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "updatedAt": "2026-10-26",
   "candidate": {
-    "version": "0.5.15",
-    "buildLabel": "product-delivery.2",
+    "version": "0.5.16",
+    "buildLabel": "product-delivery.3",
     "branch": "codex/mica-functional-convergence",
     "releaseReady": false,
     "browserExecutionAllowedThisRun": true
@@ -167,7 +167,7 @@
       "automatedVerification": ["answer-actions-controller-fixture", "answer-context-menu-background-fixture", "answer-context-menu-fixture", "target-surface-backend-fixture", "static build validation", "acceptance preflight"],
       "realAcceptance": "Current authenticated ChatGPT right-click menu and system clipboard/PDF handoff",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "The existing native-cluster entry remains fail-open when placement is unproven. Version 0.5.15 includes a browser context-menu fallback that sends only turn identity, timestamp and evidence class, then revalidates the same settled answer before one non-replayable Markdown, Notion or PDF action. Isolated Chromium proved the trusted right-click, real serializer/clipboard path and PDF handoff.",
+      "result": "The existing native-cluster entry remains fail-open when placement is unproven. Version 0.5.16 includes a browser context-menu fallback that sends only turn identity, timestamp and evidence class, then revalidates the same settled answer before one non-replayable Markdown, Notion or PDF action. Isolated Chromium proved the trusted right-click, real serializer/clipboard path and PDF handoff.",
       "gap": "The native browser menu itself and system clipboard still need one manual authenticated ChatGPT acceptance pass; current-site inline action-cluster placement remains unproven."
     },
     {
@@ -181,7 +181,7 @@
       "automatedVerification": ["low-memory-background-fixture", "low-memory-fixture-smoke", "low-memory-page-fixture-smoke", "low-memory-extension-lifecycle", "low-memory-pressure"],
       "realAcceptance": "Current candidate on target low-memory device",
       "status": "IMPLEMENTED_UNVERIFIED",
-      "result": "The current 0.5.15 data plane passes short/medium/long fixtures, actual MAIN-world document_start registration, 121 to 41 windowing, popup full-history restore to 121, resume to 41, service-worker restart recovery and a three-sample A/B/C pressure run with real extension B/C states.",
+      "result": "The current 0.5.16 data plane passes short/medium/long fixtures, actual MAIN-world document_start registration, 121 to 41 windowing, popup full-history restore to 121, resume to 41, service-worker restart recovery and a three-sample A/B/C pressure run with real extension B/C states.",
       "gap": "A physical low-memory target and final manual authenticated long-conversation pass remain required."
     },
     {
@@ -443,12 +443,12 @@
       "existingImplementation": true,
       "module": "scripts/release-config.mjs and dist/mica-dev",
       "iterationAction": "repair",
-      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.15.",
+      "successBehavior": "Source, package metadata, manifest, popup and diagnostics agree on 0.5.16.",
       "automatedVerification": ["npm run build", "npm run test:build"],
-      "realAcceptance": "Extension manager shows 0.5.15 after reload",
+      "realAcceptance": "Extension manager shows 0.5.16 after reload",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Runtime version is 0.5.15 with build label product-delivery.2.",
-      "gap": "The installed Chromium manifest, popup and runtime report 0.5.15; the user's extension-manager display is left to the final reload step."
+      "result": "Runtime version is 0.5.16 with build label product-delivery.3.",
+      "gap": "The installed Chromium manifest, popup and runtime report 0.5.16; the user's extension-manager display is left to the final reload step."
     },
     {
       "id": "MFC-610",
@@ -489,7 +489,7 @@
       "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "recovery-action-policy-fixture", "target-surface-backend-fixture", "highlight-record-integrity-fixture", "local-import-integrity-fixture", "chatgpt-ui-compatibility-fixture", "acceptance preflight", "build validator"],
       "realAcceptance": "Functional-convergence candidate 20/20 PASS",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Validator 1.21.0 adds an installed-extension-e2e gate binding the real Manifest V3 service worker, storage, trusted user paths, Low Memory lifecycle, six approved visual hashes, privacy/network boundaries and the actual PDF. The installed-extension PDF must contain a newly resolved highlight after the answer grows while retaining the stale prior anchor as unresolved. Low Memory pressure evidence must report the same runtime version as the candidate. The validator also preserves explicitly fail-open UNKNOWN/NONE capabilities without fabricating missing live-site observations. The control corpus accepts 14 known-good controls and rejects 64 known-bad controls, including stale Low Memory runtime evidence, service-worker bypass, dropped PDF highlights, auto-accepted forged visuals and real ChatGPT network use.",
+      "result": "Validator 1.22.0 adds visible focus-proxy proof to the installed-extension-e2e gate while binding the real Manifest V3 service worker, storage, trusted user paths, Low Memory lifecycle, six approved visual hashes, privacy/network boundaries and the actual PDF. The installed-extension PDF must contain a newly resolved highlight after the answer grows while retaining the stale prior anchor as unresolved. Low Memory pressure evidence must report the same runtime version as the candidate. The validator also preserves explicitly fail-open UNKNOWN/NONE capabilities without fabricating missing live-site observations. The control corpus accepts 14 known-good controls and rejects 65 known-bad controls, including missing focus proxies, stale Low Memory runtime evidence, service-worker bypass, dropped PDF highlights, auto-accepted forged visuals and real ChatGPT network use.",
       "gap": "Only the consolidated authenticated ChatGPT and target-device manual acceptance remains outside the local candidate evidence boundary."
     }
   ]

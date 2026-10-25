@@ -14,8 +14,8 @@
   },
   "pdf": {
     "path": "output/pdf/mica-answer-export-sample.pdf",
-    "sha256": "b1a9b79f193bc9c98ef5afdfedab09e942e56a7a6a82fd0379822850dd915725",
-    "bytes": 72011,
+    "sha256": "92e7538b78724264ee7a1a871fe1fa2e0ce1eeb2abc64143b81cb39d1b379a90",
+    "bytes": 72010,
     "pageCount": 2,
     "pdfInfo": {
       "Tagged": "yes",

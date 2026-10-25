@@ -245,6 +245,14 @@ export async function runControlCorpus(repoRoot) {
       evidence(context.manifest, "installed-extension-e2e").measurement.full.pdf = false;
       refreshRoot(context.manifest);
     }],
+    ["installed-extension-focus-proxy-missing-rehash", async (context) => {
+      await mutateJsonArtifact(context, "full-extension-e2e", (value) => {
+        value.popupAndSettings.switchFocusVisible = false;
+        value.popupAndSettings.fileImportFocusVisible = false;
+      });
+      evidence(context.manifest, "installed-extension-e2e").measurement.full.popupAndSettings = false;
+      refreshRoot(context.manifest);
+    }],
     ["stale-chatgpt-contract", async ({ manifest }) => { evidence(manifest, "adapter-contract").measurement.capabilities[0].invalidatedBy = ["newer incompatible surface"]; refreshRoot(manifest); }],
     ["control-bundle-presented-as-candidate", async (context) => { context.expectedBundleKind = "candidate"; }],
     ["copy-serialization-output-mismatch", async ({ manifest }) => { evidence(manifest, "copy-serialization").measurement.cases[0].actualArtifactId = "copy-rich-actual"; refreshRoot(manifest); }],
@@ -1214,7 +1222,8 @@ function controlFullExtensionE2e(visualHashes) {
     },
     popupAndSettings: {
       actualChromeExtensionPage: true, actualActiveTabMessaging: true, settingsPersistence: true, settingsNavigation: true,
-      widths: [320, 368, 400], lightDark: true, noHorizontalOverflow: true, accessibleControls: true, unsupportedPageFailOpen: true
+      widths: [320, 368, 400], lightDark: true, noHorizontalOverflow: true, accessibleControls: true,
+      switchFocusVisible: true, fileImportFocusVisible: true, unsupportedPageFailOpen: true
     },
     lifecycle: {
       stateDrivenHost: true, fullDomRemounts: true, streamingLifecycle: true, composerVariantRemount: true,

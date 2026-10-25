@@ -1,6 +1,6 @@
-export const MACHINE_VERSION = "0.5.15";
-export const VERSION_NAME = "0.5.15";
-export const BUILD_LABEL = "product-delivery.2";
+export const MACHINE_VERSION = "0.5.16";
+export const VERSION_NAME = "0.5.16";
+export const BUILD_LABEL = "product-delivery.3";
 export const DEV_BUILD = true;
 export const RELEASE_TAG = `v${VERSION_NAME}`;
 export const DEV_DIST_DIR_NAME = "mica-dev";

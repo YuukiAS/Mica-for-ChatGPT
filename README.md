@@ -1,10 +1,10 @@
 # Mica for ChatGPT
 
-Mica 是一个本地运行的 Chromium 浏览器扩展，面向需要长期使用 ChatGPT 长对话、整理回答和控制客户端资源占用的人。当前 `0.5.15` 开发候选把既有 Foundation、Low Memory、ChatGPT 高亮和 PDF 管线，与统一设置、Markdown/Notion 序列化、完整会话导出、高亮记录、本地导入和受合同约束的页面适配整合到同一构建中；当回答内原生操作区尚未取得精确合同时，还提供按右键位置解析的单回答操作入口。
+Mica 是一个本地运行的 Chromium 浏览器扩展，面向需要长期使用 ChatGPT 长对话、整理回答和控制客户端资源占用的人。当前 `0.5.16` 开发候选把既有 Foundation、Low Memory、ChatGPT 高亮和 PDF 管线，与统一设置、Markdown/Notion 序列化、完整会话导出、高亮记录、本地导入和受合同约束的页面适配整合到同一构建中；当回答内原生操作区尚未取得精确合同时，还提供按右键位置解析的单回答操作入口。
 
-当前开发候选是 `0.5.15`（`product-delivery.2`）。Low Memory 会在 ChatGPT 解码、渲染超长 conversation 之前，把客户端历史限制为最近 40 个可见 turns，并保留必要的 system/tool 依赖与近期 branch。服务器历史不会修改；`Load full history`、关闭 Low Memory 或移除扩展后，刷新页面即可回到 ChatGPT 原生完整历史。未知数据结构保持原样并 fail-open。完整会话导出遇到 `unknown_block`、`opaque_interactive`、未证明的文档生产者、重复身份或不支持的角色时会默认失败，不再过滤内容后宣称导出完整。
+当前开发候选是 `0.5.16`（`product-delivery.3`）。Low Memory 会在 ChatGPT 解码、渲染超长 conversation 之前，把客户端历史限制为最近 40 个可见 turns，并保留必要的 system/tool 依赖与近期 branch。服务器历史不会修改；`Load full history`、关闭 Low Memory 或移除扩展后，刷新页面即可回到 ChatGPT 原生完整历史。未知数据结构保持原样并 fail-open。完整会话导出遇到 `unknown_block`、`opaque_interactive`、未证明的文档生产者、重复身份或不支持的角色时会默认失败，不再过滤内容后宣称导出完整。
 
-这仍是未发布的开发候选。`0.5.15` 已通过真实安装扩展的隔离 Chromium 回归：正式 MV3 后台、内容脚本、存储、动态注册、popup、Options、可信右键/鼠标/剪贴板、Low Memory 生命周期、六张视觉基准和实际三页 PDF 均进入同一条自动化路径，外部请求为零。真实登录态 ChatGPT、物理低内存设备和系统剪贴板仍需最后一次集中人工验收，Notion 原生公式不属于本轮优先交付。逐项状态见 [`docs/product/MICA_FUNCTIONAL_CONVERGENCE_V1.md`](docs/product/MICA_FUNCTIONAL_CONVERGENCE_V1.md)。
+这仍是未发布的开发候选。`0.5.16` 已通过真实安装扩展的隔离 Chromium 回归：正式 MV3 后台、内容脚本、存储、动态注册、popup、Options、可信右键/鼠标/剪贴板、键盘焦点可见性、Low Memory 生命周期、六张视觉基准和实际三页 PDF 均进入同一条自动化路径，外部请求为零。真实登录态 ChatGPT、物理低内存设备和系统剪贴板仍需最后一次集中人工验收，Notion 原生公式不属于本轮优先交付。逐项状态见 [`docs/product/MICA_FUNCTIONAL_CONVERGENCE_V1.md`](docs/product/MICA_FUNCTIONAL_CONVERGENCE_V1.md)。
 
 ## 安装开发版
 
@@ -35,7 +35,7 @@ npm run build
 
 - 一个按 capability 判断 `EXACT`、`COMPATIBLE` 或 `UNKNOWN` 的 `ChatGPTAdapter`；除 AnswerDocument 外，它也统一负责 composer context、assistant 进展、工具安全和 reload 安全观察，Reliability controller 不再维护第二套 ChatGPT selector。结构不明时停用相关集成，让 ChatGPT 保持原生行为。
 - 一个由 adapter 唯一生成的 `AnswerDocument`，保留 ordered blocks、streaming/settled 状态、版本身份、源码区间，以及文本、列表、表格、代码、链接、引用、图片和行内/展示数学。表格单元格还保留有序 inline runs，不再把其中的强调、代码、链接和公式压成纯文本。
-- 单回答操作入口：原生操作区只有在 adapter 证明唯一 `EXACT` 目标时才注入一个 `Mica actions` 菜单。当前实站 placement 尚未证明，因此 `0.5.15` 增加浏览器右键菜单作为安全入口；它只记录用户右键所在的唯一 settled answer 身份，不发送回答正文，并在动作执行前核对同一回答、15 秒时效、不可重放和当前结构。streaming、歧义、remount 或身份变化时不执行。
+- 单回答操作入口：原生操作区只有在 adapter 证明唯一 `EXACT` 目标时才注入一个 `Mica actions` 菜单。当前实站 placement 尚未证明，因此 `0.5.16` 保留浏览器右键菜单作为安全入口；它只记录用户右键所在的唯一 settled answer 身份，不发送回答正文，并在动作执行前核对同一回答、15 秒时效、不可重放和当前结构。streaming、歧义、remount 或身份变化时不执行。
 - 独立的 Troubleshooting 与 Developer QA 页面。导出的诊断只包含结构状态、版本和 contract 身份，不包含对话正文、附件内容、请求 body、认证 token 或原始 DOM。
 - 真正的数据层 Low Memory：同时覆盖当前 React Router turbo-stream hydration 与受严格形状保护的 conversation JSON fallback。实现会压缩不可达的历史数据，而不是删除 React 管理的 DOM 或只设置 `content-visibility`。
 - ChatGPT 回答高亮：选择文字后出现短暂工具条，可保存 4 种本地颜色；工具条可删除单条高亮，也可清理当前回答的全部本地高亮。回答级清理必须同时匹配 conversation 与 turn，缺少任一身份就不执行，不会波及其他回答或会话。设置页可选择默认颜色、快捷键以及“选区工具条 / 快捷键 / 两者同时”三种交互方式。快捷键直接应用默认颜色，重复按键与 IME composition 会被忽略，真正的选区映射延后到 animation frame。锚点跨正文与数学，支持刷新、remount 和等价数学重排恢复；重复或缺失文本不会被猜测性附着。ChatGPT 与普通网页记录都预留了本地 `annotation.note` / `annotation.tags` 后端接口，旧记录会迁移为空 annotation；本版没有增加备注编辑界面。
@@ -47,7 +47,7 @@ npm run build
 - 一套统一的 Reliability 状态机：区分已提交、未提交和未知提交状态，按 adapter 提供的正文哈希与工具阶段计时，最多执行两次恢复刷新，并在未知工具、外部副作用、切换 conversation、切换 tab 或用户主动停止时终止自动流程。刷新、原生 Stop、assistant retry 和确认未提交后的 resend 共用一次性后台 claim；后三类动作还必须提供新鲜、精确且与 recovery、scope、turn 和原生控件身份一致的证据。新的控件适配器会在动作前再次核对 subject 与 control identity；当前真实 ChatGPT 控件合同仍是 `UNKNOWN`，因此真实页面保持原生，不会猜测点击或提交。隐私历史也由后台串行去重，不保存草稿、prompt、回答正文或原始 conversation ID。
 - `Hide suggested work` 设置已经接入可逆控制器。只有 `ChatGPTAdapter` 返回唯一 `EXACT` 表面时才会添加 `hidden`、`inert` 和 `aria-hidden`，关闭功能、结构歧义或节点替换时恢复原状态。当前真实目标结构尚未取得精确合同，所以真实页面暂时不隐藏任何内容。
 - Developer QA 的去敏报告增加了 composer 附近及最新 assistant turn 的有界结构候选、语义分类和属性指纹，不包含建议文本、回答正文或原始 DOM，用于以后一次性取得 MFC-402/MFC-420 所需合同。
-- 固定开发路径 `dist/mica-dev`，manifest、弹窗、设置页和诊断报告均显示 `0.5.15`。
+- 固定开发路径 `dist/mica-dev`，manifest、弹窗、设置页和诊断报告均显示 `0.5.16`。
 
 旧的 composer recovery、connector continuity、send residual recovery、页面状态点和 containment runtime 仍未重新并行启用。新 Reliability 后端只监听可信的提交动作和结构变化，不在普通键入事件里扫描或克隆 DOM。历史源码和失败 fixture 继续保留，等待真实页面精确合同后再迁移必要行为。
 
@@ -69,9 +69,9 @@ C = Mica installed, Low Memory enabled
 LOW_MEMORY_TRUNCATION=PASS
 ```
 
-当前 256 MB V8 old-space 压力 workload 使用 800 turns、约 100 MiB UTF-16 retained content，重复 3 次。`0.5.15` 的隔离 Playwright Chromium 样本中，A/B 保留 801 个 mapping nodes 和约 100 MiB 内容，C 保留 41 个 nodes（40 个最近 turns）和约 5 MiB 内容；C 的 JS heap 为 6.591 MiB，而 B 为 101.858 MiB。mounted DOM 在三组中都保持 12，mutation 都是 62，typing p95 都是 0.01 ms，说明收益来自额外的数据截断，而不是把已有 virtualization 当成功劳。进程树内存同时记录，但由于浏览器进程分配噪声，不作为这轮唯一通过依据。
+当前 256 MB V8 old-space 压力 workload 使用 800 turns、约 100 MiB UTF-16 retained content，重复 3 次。`0.5.16` 的隔离 Playwright Chromium 样本中，A/B 保留 801 个 mapping nodes 和约 100 MiB 内容，C 保留 41 个 nodes（40 个最近 turns）和约 5 MiB 内容；C 的 JS heap 为 6.591 MiB，而 B 为 101.858 MiB。mounted DOM 在三组中都保持 12，mutation 都是 62，typing p95 都是 0.01 ms，说明收益来自额外的数据截断，而不是把已有 virtualization 当成功劳。进程树内存同时记录，但由于浏览器进程分配噪声，不作为这轮唯一通过依据。
 
-`0.5.15` 已重新通过 short、medium、long 隔离浏览器回归、真实扩展 document_start 动态注册、121→41→121→41 的完整历史恢复循环、Service Worker 重启和三样本 A/B/C 压力测试。目标物理低内存设备和登录态长对话仍是最终人工边界，不能由本机隔离压力替代。
+`0.5.16` 已重新通过 short、medium、long 隔离浏览器回归、真实扩展 document_start 动态注册、121→41→121→41 的完整历史恢复循环、Service Worker 重启和三样本 A/B/C 压力测试。目标物理低内存设备和登录态长对话仍是最终人工边界，不能由本机隔离压力替代。
 
 ## Highlighter 与 PDF 的候选证据
 
@@ -79,7 +79,7 @@ Highlighter 使用 CSS Custom Highlight API，不包裹或删除 ChatGPT 的 Rea
 
 PDF fixture 从真实构建产物生成两页 A4 PDF，并在 PDF.js 5.6.205 的实际 text layer 中用可信 pointer 事件连续选择 `Before x+1 after`。展示数学 `E=mc^2` 也可选择，`pdfplumber` 能从同一个 PDF 独立提取两段数学文本。黄色跨数学高亮和薄荷色跨页高亮保留在渲染结果中。导出 model 只在 `chrome.storage.session` 中一次性传递；不支持的来源、伪造 consumer 和失败的导出页创建都会 fail-open 并清理临时数据。
 
-`0.5.15` 的当前构建已经重新生成两页 A4 PDF，并在 PDF.js 5.6.205 中通过可信指针选择 `Before x+1 after` 和展示公式 `E=mc^2`；`pdfplumber` 也能从同一文件独立提取公式文本。列表投影与 PDF 文本层已对齐，真实安装扩展导出的三页 PDF 含 1 个当前高亮，并对 1 个歧义旧锚点保持 unresolved；跨数学和跨页高亮也保留在独立 PDF fixture 的实际渲染结果中。真实 ChatGPT 的人工入口与桌面查看器检查仍需在最终验收中完成。
+`0.5.16` 的当前构建已经重新生成两页 A4 PDF，并在 PDF.js 5.6.205 中通过可信指针选择 `Before x+1 after` 和展示公式 `E=mc^2`；`pdfplumber` 也能从同一文件独立提取公式文本。列表投影与 PDF 文本层已对齐，真实安装扩展导出的三页 PDF 含 1 个当前高亮，并对 1 个歧义旧锚点保持 unresolved；跨数学和跨页高亮也保留在独立 PDF fixture 的实际渲染结果中。真实 ChatGPT 的人工入口与桌面查看器检查仍需在最终验收中完成。
 
 ## 本地验证
 
@@ -132,7 +132,7 @@ npm run acceptance:preflight
 
 ## Release 与安装包
 
-`dist/mica-dev/` 是固定的开发版加载路径。0.5.15 的本地预发布 ZIP 与 SHA-256 会从最终候选提交重新生成并校验，在最后一次登录态 ChatGPT 和目标设备验收前不会上传或标成稳定版。包装规则见 [`docs/RELEASE_PACKAGING.md`](docs/RELEASE_PACKAGING.md)，预发布说明草稿见 [`docs/releases/v0.5.15.md`](docs/releases/v0.5.15.md)。
+`dist/mica-dev/` 是固定的开发版加载路径。0.5.16 的本地预发布 ZIP 与 SHA-256 会从最终候选提交重新生成并校验，在最后一次登录态 ChatGPT 和目标设备验收前不会上传或标成稳定版。包装规则见 [`docs/RELEASE_PACKAGING.md`](docs/RELEASE_PACKAGING.md)，预发布说明草稿见 [`docs/releases/v0.5.16.md`](docs/releases/v0.5.16.md)。
 
 ## Branding
 

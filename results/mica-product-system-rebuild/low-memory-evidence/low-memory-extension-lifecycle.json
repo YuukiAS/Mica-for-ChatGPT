@@ -1,10 +1,10 @@
 {
   "schema": "mica.low-memory-extension-lifecycle.v1",
   "passed": true,
-  "generatedAt": "2026-10-25T16:45:34.715Z",
+  "generatedAt": "2026-10-25T17:08:56.457Z",
   "candidate": {
-    "version": "0.5.15",
-    "buildLabel": "product-delivery.2"
+    "version": "0.5.16",
+    "buildLabel": "product-delivery.3"
   },
   "execution": {
     "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",

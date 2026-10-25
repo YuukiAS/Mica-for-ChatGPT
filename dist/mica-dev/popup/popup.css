@@ -90,6 +90,7 @@ h2 { font-size: 13px; line-height: 1.35; font-weight: 650; }
 .switch-control { position: relative; display: grid; place-items: center; min-width: 44px; min-height: 40px; cursor: pointer; }
 .switch-control input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .switch-track { width: 36px; height: 20px; padding: 2px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); transition: background 140ms ease, border-color 140ms ease; }
+.switch-control input:focus-visible + .switch-track { outline: 2px solid var(--focus); outline-offset: 2px; }
 .switch-track::after { content: ""; display: block; width: 14px; height: 14px; border-radius: 50%; background: var(--faint); transition: transform 140ms ease, background 140ms ease; }
 .switch-control input:checked + .switch-track { border-color: var(--accent); background: var(--accent); }
 .switch-control input:checked + .switch-track::after { background: var(--button-fg); transform: translateX(16px); }

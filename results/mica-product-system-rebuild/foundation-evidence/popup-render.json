@@ -46,7 +46,7 @@
       "lowMemoryState": "Ready",
       "historyActionVisible": false,
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/exact-light-368-100.png",
-      "screenshotSha256": "ba129ef58f47a0ff5494e63d5ea56f848aaeedeeee942fbf5a59633f0db51c01"
+      "screenshotSha256": "67583f3c0ecffe3506095244bbabd7bb33365761a0761838a52be06289ae37a9"
     },
     {
       "state": "exact",
@@ -57,7 +57,7 @@
       "lowMemoryState": "40 kept",
       "historyActionVisible": true,
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/exact-low-memory-active-light-368-100.png",
-      "screenshotSha256": "f6413dfb189855047e8d43bb57f28b4bd3aa5151e0ce9106b23098b51f9b6e17"
+      "screenshotSha256": "2c5718372016942762cd99de4935d65c7ecc5c6c85d8a31331f1e3a05d47d1dd"
     },
     {
       "state": "exact",
@@ -68,7 +68,7 @@
       "lowMemoryState": "Reload to restore",
       "historyActionVisible": true,
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/exact-low-memory-restore-required-light-368-100.png",
-      "screenshotSha256": "270708817f4a99a4ced9f8afe337ce1fb8e22bccc865e576921753545d8a7c2f"
+      "screenshotSha256": "179e60308a25ef8a995a3fcc3e8ec2b17ddac3faca5954b1d59ca5f02116532a"
     },
     {
       "state": "exact",
@@ -79,7 +79,7 @@
       "lowMemoryState": "Full history loaded",
       "historyActionVisible": true,
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/exact-low-memory-full-history-bypass-dark-368-100.png",
-      "screenshotSha256": "a5ed7a83b09f8d2145fcc135ee602799f86d2ba7c5b637c2594439fd5c32c067"
+      "screenshotSha256": "4c8440b85675d32928497cec789266c4c4dc001adc11496a555cee2769aef4ae"
     },
     {
       "state": "unknown",
@@ -90,7 +90,7 @@
       "lowMemoryState": "Ready",
       "historyActionVisible": false,
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/unknown-dark-368-100.png",
-      "screenshotSha256": "b246659ef2dd6e468ddef1a8a4a4a61aa18b794935840d1e00124b22084d1230"
+      "screenshotSha256": "b8fea5c606f009599821d3368672767ea6d74ab227d414697bf5f1b4bc0f2654"
     },
     {
       "state": "compatible",
@@ -101,7 +101,7 @@
       "lowMemoryState": "Ready",
       "historyActionVisible": false,
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/compatible-light-320-150.png",
-      "screenshotSha256": "96688a001c572a6a8963b29a9667f790de607208079f9d51ea459ec7fdcdfb09"
+      "screenshotSha256": "829ac97261818fa61a1d2db84587d4c4ccac7ede9118a2ab1b0d78f3792b7971"
     },
     {
       "state": "contentUnavailable",
@@ -112,7 +112,7 @@
       "lowMemoryState": "Ready",
       "historyActionVisible": false,
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/contentUnavailable-dark-400-125.png",
-      "screenshotSha256": "dc296a797621ca575956c44400e16a9f69c2c7f3c7e0826c88f5e4f70884b638"
+      "screenshotSha256": "74bebc99fc000e448f69cc49bbded1acea7c2d88c21051ad7faedebe134e3eaa"
     }
   ],
   "secondaryViews": {
@@ -128,7 +128,7 @@
       "headingFocused": true,
       "horizontalOverflow": 0,
       "screenshotPath": "results/mica-product-system-rebuild/foundation-popup/qa-light-368-100.png",
-      "screenshotSha256": "2f878aebacf865c470bdce9aedb75285832c9b59ccb2ac76c03af62ec6e18ae2"
+      "screenshotSha256": "eccce52a553c51ee3357ed4a14f657cb48498903e37811b95415fee8dc5060f1"
     }
   },
   "focusReturn": {

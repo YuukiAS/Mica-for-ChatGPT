@@ -1,15 +1,15 @@
 {
   "schema": "mica.extension-visual-baseline.v1",
   "approvedAt": "2026-10-26",
-  "approvedVersion": "0.5.15",
+  "approvedVersion": "0.5.16",
   "browser": "Chromium 151",
   "review": "Manually inspected for overflow, clipping, theme contrast, fixed-surface placement, and content integrity before baseline creation.",
   "screenshots": {
-    "options-light": "c6f6b89d5b282bf42faa29e9bb731fa78b673d45d3c516680895377ac20f6ef8",
+    "options-light": "a5efeb5183fb995996f23715d933ca2ff6ddf183132afea9547a3aff5f4d04ef",
     "highlights-light": "485567ecc76fae3fc1c87b7bb5fc2a3576e2edc44bbb5ec5ffb7f364e6a42cfd",
     "highlights-dark": "206a830ce86bb47f4c09a9567f5f505a8097d44fcba777958e3429e8907987da",
-    "popup-320-light": "a3ec177efde33d9fcfff41a49cc19cebb1f7d0a3639cf8b3b792686ed155eefc",
-    "popup-368-dark": "8577aafa8ea4b397b9d6ecc8f3ed7c19e22808c74f08a8a9c5a90a25cef12bea",
-    "popup-400-light": "6afa20fb3ffe30be730cdd10e910f3fa9cd015adf80a727d896ea15b27c0f5f8"
+    "popup-320-light": "776edc057ae0d1b225208277024ce33f1b3dfc0d856e419b1922dde9fc6e1632",
+    "popup-368-dark": "f5ee2faf9b7f743dd8263b90ee0465ec658598676e5d02ad47d9c38828976b23",
+    "popup-400-light": "3e4b2c39f3e37216550696ec32a0701b46735cf34489014bc4bf748350578f9f"
   }
 }
