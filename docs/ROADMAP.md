@@ -71,6 +71,7 @@ ChatGPT 原生 virtualization 只是基线。`content-visibility`、DOM 数量�
 - Composer / Connector 历史真实故障在当前页面结构上的精确收敛；
 - Hide suggested work 的当前真实结构合同与页面验收；
 - 单回答 `Mica actions` 在当前真实 ChatGPT 操作区中的精确 placement；已验证右键 fallback 在此之前提供安全入口；
-- `functional-convergence` 完整候选的最终证据物化与 candidate run。
+
+`functional-convergence` 完整候选现已按冻结提交物化并通过全部 20 个 gate；每次最终提交后仍会重新绑定 SHA 再验证，避免沿用旧候选结论。
 
 本轮只运行隔离 Playwright Chromium，没有打开用户日常浏览器或真实 ChatGPT。剩余真实目标验证集中到最后一次人工验收，不会被模拟宿主或旧截图冒充。今后普通补丁默认由类别 1–4 自动化闭环；只有登录态结构漂移、新的高风险交互、Low Memory 数据语义/资源边界或系统集成证据失效时，才重新考虑人工验收。

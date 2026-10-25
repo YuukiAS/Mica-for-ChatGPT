@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-export const VALIDATOR_VERSION = "1.18.0";
+export const VALIDATOR_VERSION = "1.19.0";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 const PLACEMENT_PROOF_OBSERVATION_IDS = [
   "copy-inside-assistant-turn",
@@ -293,10 +293,19 @@ async function validateMeasurement(kind, record, manifest, artifacts, bundleDir,
         fail(`capability ${capability.capabilityId} differs from the bound contract artifact`);
       }
       const sourceCapability = bootstrap?.capabilities?.find((item) => item.id === capability.sourceCapabilityId);
-      if (!sourceCapability || !bootstrapStatusSupportsContract(sourceCapability.status, capability.status)) {
-        fail(`capability ${capability.capabilityId} is not supported by its current bootstrap capability`);
+      const permitsUnobservedSource = capability.status === "UNKNOWN"
+        && capability.failOpen === true
+        && capability.sourceEvidenceClass === "NONE"
+        && (capability.requiredSourceObservationIds || []).length === 0
+        && (capability.observedInvariants || []).length === 0;
+      if (!sourceCapability) {
+        if (!permitsUnobservedSource) fail(`capability ${capability.capabilityId} is not supported by its current bootstrap capability`);
+      } else {
+        if (!bootstrapStatusSupportsContract(sourceCapability.status, capability.status)) {
+          fail(`capability ${capability.capabilityId} is not supported by its current bootstrap capability`);
+        }
+        if (sourceCapability.evidenceClass !== capability.sourceEvidenceClass) fail(`capability ${capability.capabilityId} evidence class differs from current bootstrap`);
       }
-      if (sourceCapability?.evidenceClass !== capability.sourceEvidenceClass) fail(`capability ${capability.capabilityId} evidence class differs from current bootstrap`);
       const sourceObservationIds = (sourceCapability?.observations || []).map((item) => item?.id);
       if (!uniqueStrings(sourceObservationIds)) fail(`capability ${capability.capabilityId} bootstrap observation IDs must be present and unique`);
       const requiredObservationIds = capability.requiredSourceObservationIds || [];

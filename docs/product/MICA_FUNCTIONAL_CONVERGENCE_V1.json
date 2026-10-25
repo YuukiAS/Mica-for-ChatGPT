@@ -487,10 +487,10 @@
       "iterationAction": "repair",
       "successBehavior": "Known-bad controls remain rejected and convergence requirements become formal candidate gates.",
       "automatedVerification": ["conversation-export-fixture", "recovery-ledger-fixture", "recovery-action-policy-fixture", "target-surface-backend-fixture", "highlight-record-integrity-fixture", "local-import-integrity-fixture", "chatgpt-ui-compatibility-fixture", "acceptance preflight", "build validator"],
-      "realAcceptance": "Full acceptance candidate run",
+      "realAcceptance": "Functional-convergence candidate 20/20 PASS",
       "status": "IMPLEMENTED_VERIFIED",
-      "result": "Validator 1.18.0 adds an installed-extension-e2e gate binding the real Manifest V3 service worker, storage, trusted user paths, Low Memory lifecycle, six approved visual hashes, privacy/network boundaries and the actual PDF. The control corpus accepts 14 known-good controls and rejects 62 known-bad controls, including service-worker bypass, auto-accepted forged visuals and real ChatGPT network use.",
-      "gap": "The final functional-convergence candidate bundle must be materialized against the frozen commit and run before push readback."
+      "result": "Validator 1.19.0 adds an installed-extension-e2e gate binding the real Manifest V3 service worker, storage, trusted user paths, Low Memory lifecycle, six approved visual hashes, privacy/network boundaries and the actual PDF. It preserves explicitly fail-open UNKNOWN/NONE capabilities without fabricating missing live-site observations. The control corpus accepts 14 known-good controls and rejects 62 known-bad controls, including service-worker bypass, auto-accepted forged visuals and real ChatGPT network use.",
+      "gap": "Only the consolidated authenticated ChatGPT and target-device manual acceptance remains outside the local candidate evidence boundary."
     }
   ]
 }

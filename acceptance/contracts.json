@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "validatorVersion": "1.18.0",
+  "validatorVersion": "1.19.0",
   "evidenceSchemaVersion": 1,
   "controlsUseProductionValidators": true,
   "gates": [

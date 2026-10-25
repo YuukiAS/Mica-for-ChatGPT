@@ -363,7 +363,8 @@ async function createGoodBundle(repoRoot) {
     ["chatgpt-contract", "artifacts/chatgpt-contract.json", "application/json", JSON.stringify({
       capabilities: [
         { capabilityId: "turns.list", sourceCapabilityId: "conversation-turn-discovery", sourceEvidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", requiredSourceObservationIds: ["ordered-turn-containers"], variantId: "public-shared-v1", status: "EXACT", requiredInvariants: ["ordered turns", "role ownership"] },
-        { capabilityId: "answer.actionCluster", sourceCapabilityId: "answer-document-static-block-extraction", sourceEvidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", requiredSourceObservationIds: [], variantId: "unproven-v1", status: "UNKNOWN", requiredInvariants: ["native copy button", "same assistant turn", "sibling cluster parent"], failOpen: true }
+        { capabilityId: "answer.actionCluster", sourceCapabilityId: "answer-document-static-block-extraction", sourceEvidenceClass: "REAL_CHATGPT_PUBLIC_SHARED", requiredSourceObservationIds: [], variantId: "unproven-v1", status: "UNKNOWN", requiredInvariants: ["native copy button", "same assistant turn", "sibling cluster parent"], failOpen: true },
+        { capabilityId: "recovery.nativeControls", sourceCapabilityId: "native-stop-retry-resend-controls", sourceEvidenceClass: "NONE", requiredSourceObservationIds: [], variantId: "unproven-v1", status: "UNKNOWN", requiredInvariants: ["current recovery identity", "unique native control identity"], failOpen: true }
       ]
     })],
     ["current-chatgpt-bootstrap", "artifacts/current-chatgpt-bootstrap.json", "application/json", JSON.stringify({
@@ -530,6 +531,20 @@ async function createGoodBundle(repoRoot) {
           variantId: "unproven-v1",
           status: "UNKNOWN",
           requiredInvariants: ["native copy button", "same assistant turn", "sibling cluster parent"],
+          observedInvariants: [],
+          contractHash,
+          sourceArtifactHash: bootstrapHash,
+          invalidatedBy: [],
+          failOpen: true
+        },
+        {
+          capabilityId: "recovery.nativeControls",
+          sourceCapabilityId: "native-stop-retry-resend-controls",
+          sourceEvidenceClass: "NONE",
+          requiredSourceObservationIds: [],
+          variantId: "unproven-v1",
+          status: "UNKNOWN",
+          requiredInvariants: ["current recovery identity", "unique native control identity"],
           observedInvariants: [],
           contractHash,
           sourceArtifactHash: bootstrapHash,
