@@ -8,7 +8,9 @@ Mica 是一个面向 ChatGPT 网页端的浏览器扩展。目标不是重做 Ch
 
 当前最高优先级不是“做完整产品”，而是先恢复一个**今天就能长期使用的长对话优化扩展**。最近 ChatGPT 的长对话加载方式发生变化，LightSession 会停留在 `waiting for messages...`，导致旧的裁剪逻辑失效；在较弱设备上，超长 thread 又会明显拖慢页面。
 
-## 当前目标：v0.1 Long-thread Recovery
+## 首期路线记录：Long-thread Recovery
+
+当前实施顺序以[产品约定](docs/product/MICA_PRODUCT_SYSTEM_V1.md)和[任务目录](docs/tasks/)为准。以下保留首期背景与性能证据。
 
 第一阶段只解决一件事：让当前 ChatGPT 的长 thread 在 Chrome / Edge / macOS Chromium 浏览器上重新保持流畅，同时不破坏 ChatGPT 自己的新分段加载、工具调用、文件授权、分支、编辑消息和正在生成的回答。
 

@@ -2,25 +2,14 @@
 
 ## Project objective
 
-Mica is a local browser extension that improves the ChatGPT web experience. The current P0 is **long-thread performance recovery**: replace the now-unreliable LightSession behavior with a working extension that can be manually installed immediately.
+Mica is a local browser extension for ChatGPT web. Long-term scope covers responsive typing and long conversations, copying and exporting answers and conversations, persistent highlights, bounded recovery, and attaching prompts or plugins according to user configuration. Read `docs/product/MICA_PRODUCT_SYSTEM_V1.md`, `docs/ROADMAP.md`, the active task under `docs/tasks/`, and `docs/VERSIONING.md` for priorities, supported behavior and acceptance.
 
-Read these first:
+## Runtime boundaries
 
-1. `README.md`
-2. `docs/PHASE_1_LONG_THREAD_RECOVERY.md`
-3. `docs/ROADMAP.md`
-4. `docs/VERSIONING.md`
-
-## P0 rules
-
-- Do not expand scope into Markdown export, retry automation, or UI polish until long-thread performance is demonstrably fixed.
-- Reproduce the current failure before copying or rewriting LightSession behavior.
-- Treat ChatGPT private endpoints and DOM structure as unstable.
-- Prefer fail-open behavior: if Mica cannot safely identify a structure, disable optimization instead of guessing.
-- Do not hide, click, confirm, or bypass authorization/security UI.
-- Preserve streaming answers, editing, branching, tools, attachments, and navigation.
-- Prefer a small Manifest V3 + TypeScript implementation over a framework-heavy architecture.
-- The first useful artifact should be a loadable unpacked Chromium extension, not a design-only scaffold.
+- Reproduce the current failure before copying or rewriting LightSession behavior. Treat private endpoints and DOM structure as unstable.
+- Disable the affected enhancement when structure or identity cannot be verified. Preserve native streaming, editing, branching, tools, attachments and navigation.
+- Keep retry deduplicated and bounded. Confirm that the original message was never submitted before resending, and resume the same generation when it was submitted. Attach configured prompts or plugins within the user’s selected conditions.
+- Do not hide, click, confirm or bypass authorization/security UI. Keep the Manifest V3 and TypeScript implementation small.
 
 ## Versioning rules
 
@@ -29,7 +18,7 @@ Mica runtime versions must identify the actual code the user has loaded. Follow 
 - Do not keep changing runtime code while continuing to report the same version such as `0.1.0-alpha.3`.
 - Any change pushed to `main` that changes the loadable extension's runtime behavior must bump the runtime version in the same iteration and rebuild `dist`.
 - Pure documentation, task, roadmap, investigation, or unused development-helper changes do not require a runtime bump.
-- Starting with the next runtime change after the historical alpha.3 builds, use plain three-part versions beginning at `0.1.4`; do not continue the `0.1.0-alpha.N` sequence.
+- Use plain three-part versions according to `docs/VERSIONING.md`.
 - During the current `0.x` line, use PATCH bumps for ordinary fixes/small features and MINOR bumps for a clear new capability stage.
 - `scripts/release-config.mjs` is the version source of truth. `MACHINE_VERSION` and the user-visible version must not drift from the actual build.
 - `BUILD_LABEL` may remain as an internal descriptive diagnostic field, but it never substitutes for a unique formal version.
@@ -139,9 +128,9 @@ impact audit + smallest focused checks
   `npm run build` / `npm run test:build`, and stress status, including categories
   not run and why.
 
-### P0 acceptance
+### Long-conversation performance acceptance
 
-Before calling P0 complete, test a real long conversation and cover the regression checklist in `docs/PHASE_1_LONG_THREAD_RECOVERY.md`. Record enough before/after evidence to show that the optimization is real. A powerful development desktop is not sufficient final evidence if the target symptom only appears on a lower-power machine.
+When delivering a long-conversation performance change, test a real long conversation and use the applicable regression checks in the current product contract and `docs/PHASE_1_LONG_THREAD_RECOVERY.md`. Record enough before/after evidence to show that the optimization is real. A powerful development desktop is not sufficient final evidence if the target symptom only appears on a lower-power machine.
 
 This final real-site pass is manual authenticated acceptance by the user. It is
 not an automated logged-in ChatGPT regression and must not become one.
@@ -174,4 +163,4 @@ Each iteration should leave the repository in a runnable state and include:
 - updated installation instructions only if the canonical development path itself changes;
 - for runtime-changing iterations, a unique bumped version and rebuilt canonical dev build matching that version.
 
-Avoid unrelated refactors during P0.
+Keep changes scoped to the active task and affected regression surface.

@@ -2,7 +2,9 @@
 
 Mica 的路线按“先能用，再稳定，再扩功能”推进。任何阶段都不为了架构漂亮而拖延当前可用性。
 
-## Phase 1 — Long-thread Recovery（P0）
+当前优先级以[产品约定](product/MICA_PRODUCT_SYSTEM_V1.md)与[现行任务](tasks/)为准。下文列出长期功能及原阶段背景。
+
+## Phase 1 — Long-thread Recovery（原 P0）
 
 目标：替代当前失效的 LightSession，让超长 ChatGPT thread 在日常机器上重新可用。
 
